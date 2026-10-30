@@ -2,7 +2,11 @@
 
 Status values: **Done** (implemented and validated as stated), **Partial**
 (works with the stated limits), **Gap** (measured difference from FlowJo),
-**Not implemented**. Evidence labels follow REA's convention:
+**Not implemented**. Validation strength, weakest to strongest:
+*implemented* (code exists), *tested* (own unit/E2E tests with independently
+derived expectations), *cross-checked* (agrees with another open
+implementation), *reference-validated* (agrees with a standard's truth data
+or FlowJo output, on the named fixtures only). Evidence labels follow REA's convention:
 *observed* (seen in a FlowJo-written artifact or measured), *spec* (published
 standard), *derived* (reasoned from observations), *unknown*.
 

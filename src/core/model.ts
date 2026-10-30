@@ -60,6 +60,8 @@ export interface Workspace {
   statColumns: StatColumn[];
   notes: string;
   provenance: { importedFrom?: string; warnings: string[] };
+  // Plot layout per population path ('' = ungated), shared across samples.
+  plots?: Record<string, { x: string; y: string | null; kind: 'pseudocolor' | 'dot' | 'histogram' }>;
 }
 
 export type StatKind =

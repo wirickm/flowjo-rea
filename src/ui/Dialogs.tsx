@@ -1,0 +1,213 @@
+import { useState } from 'react';
+import { invert, parseSpilloverCsv, validateMatrix, type SpilloverMatrix } from '../core/compensation';
+import { describeTransform, makeTransform, type TransformSpec } from '../core/transforms';
+import type { SampleMeta } from '../core/service';
+
+export function Modal(p: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
+  return (
+    <div className="modal-bg" onMouseDown={(e) => e.target === e.currentTarget && p.onClose()}>
+      <div className={`modal ${p.wide ? 'wide' : ''}`} role="dialog" aria-label={p.title}>
+        <div className="modal-head">
+          <b>{p.title}</b>
+          <button onClick={p.onClose} aria-label="Close">x</button>
+        </div>
+        <div className="modal-body">{p.children}</div>
+      </div>
+    </div>
+  );
+}
+
+export function KeywordsDialog(p: { meta: SampleMeta; onClose: () => void }) {
+  const [filter, setFilter] = useState('');
+  const kws = Object.entries(p.meta.keywords).filter(([k, v]) => !filter || k.includes(filter.toUpperCase()) || v.toLowerCase().includes(filter.toLowerCase()));
+  return (
+    <Modal title={`Sample: ${p.meta.fileName}`} onClose={p.onClose} wide>
+      <p>
+        {p.meta.version}, {p.meta.eventCount.toLocaleString()} events, {p.meta.channels.length} parameters, {p.meta.fileSize.toLocaleString()} bytes. SHA-256 {p.meta.fingerprint.slice(0, 16)}...
+        {p.meta.datasetCount > 1 && ` File contains ${p.meta.datasetCount} data sets; showing data set 1.`}
+      </p>
+      {p.meta.warnings.length > 0 && (
+        <div className="warn">
+          <b>Parser warnings</b>
+          <ul>{p.meta.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
+        </div>
+      )}
+      <h4>Parameters</h4>
+      <table className="grid">
+        <thead><tr><th>#</th><th>$PnN</th><th>$PnS</th><th>Bits</th><th>Range</th><th>$PnE</th><th>$PnG</th></tr></thead>
+        <tbody>
+          {p.meta.channels.map((c) => (
+            <tr key={c.index}><td>{c.index}</td><td>{c.name}</td><td>{c.label}</td><td>{c.bits}</td><td>{c.range}</td><td>{c.logDecades},{c.logOffset}</td><td>{c.gain}</td></tr>
+          ))}
+        </tbody>
+      </table>
+      <h4>Keywords <input placeholder="filter" value={filter} onChange={(e) => setFilter(e.target.value)} /></h4>
+      <table className="grid">
+        <tbody>{kws.map(([k, v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody>
+      </table>
+    </Modal>
+  );
+}
+
+const PARAMS: Record<string, string[]> = {
+  linear: ['T', 'A'],
+  log: ['T', 'M'],
+  asinh: ['T', 'M', 'A'],
+  logicle: ['T', 'W', 'M', 'A'],
+  hyperlog: ['T', 'W', 'M', 'A'],
+  'flowjo-biex': ['max', 'width', 'pos', 'neg', 'channelRange'],
+  'flowjo-log': ['offset', 'decades'],
+};
+
+const DEFAULTS: Record<string, TransformSpec> = {
+  linear: { kind: 'linear', T: 262144, A: 0 },
+  log: { kind: 'log', T: 262144, M: 4.5 },
+  asinh: { kind: 'asinh', T: 262144, M: 4.5, A: 0 },
+  logicle: { kind: 'logicle', T: 262144, W: 0.5, M: 4.5, A: 0 },
+  hyperlog: { kind: 'hyperlog', T: 262144, W: 0.5, M: 4.5, A: 0 },
+  'flowjo-biex': { kind: 'flowjo-biex', max: 262144, width: -10, pos: 4.418539922, neg: 0, channelRange: 4096 },
+  'flowjo-log': { kind: 'flowjo-log', offset: 1, decades: 4.5 },
+};
+
+export function TransformDialog(p: { channel: string; spec: TransformSpec; onApply: (s: TransformSpec) => void; onClose: () => void }) {
+  const [spec, setSpec] = useState<TransformSpec>(p.spec.kind === 'none' ? DEFAULTS.linear : p.spec);
+  let error = '';
+  try {
+    makeTransform(spec);
+  } catch (e) {
+    error = (e as Error).message;
+  }
+  return (
+    <Modal title={`Scale for ${p.channel}`} onClose={p.onClose}>
+      <label>
+        Type{' '}
+        <select value={spec.kind} onChange={(e) => setSpec(DEFAULTS[e.target.value])} data-testid="transform-kind">
+          {Object.keys(PARAMS).map((k) => <option key={k} value={k}>{k}</option>)}
+        </select>
+      </label>
+      <div className="params">
+        {PARAMS[spec.kind].map((k) => (
+          <label key={k}>
+            {k}{' '}
+            <input
+              type="number"
+              step="any"
+              value={(spec as unknown as Record<string, number>)[k]}
+              onChange={(e) => setSpec({ ...spec, [k]: Number(e.target.value) } as TransformSpec)}
+            />
+          </label>
+        ))}
+      </div>
+      <p className="muted">{describeTransform(spec)}. Applies to plot display of this channel in all samples; existing gates keep their own scale.</p>
+      {error && <p className="error">{error}</p>}
+      <button disabled={!!error} onClick={() => p.onApply(spec)}>Apply</button>
+    </Modal>
+  );
+}
+
+export function CompensationDialog(p: {
+  matrices: SpilloverMatrix[];
+  meta: SampleMeta | null;
+  current: string;
+  onSave: (m: SpilloverMatrix[]) => void;
+  onAssign: (ref: string, scope: 'sample' | 'group') => void;
+  onClose: () => void;
+}) {
+  const [mats, setMats] = useState<SpilloverMatrix[]>(p.matrices);
+  const [selected, setSelected] = useState<string>(p.matrices[0]?.id ?? '');
+  const [msg, setMsg] = useState('');
+  const m = mats.find((x) => x.id === selected);
+  let check = '';
+  if (m) {
+    try {
+      if (p.meta) validateMatrix(m, p.meta.channels.map((c) => c.name)).forEach((w) => (check += w + '. '));
+      invert(m.values);
+      check = check || 'Matrix is valid and invertible.';
+    } catch (e) {
+      check = `Invalid: ${(e as Error).message}`;
+    }
+  }
+  const add = (nm: SpilloverMatrix) => {
+    setMats([...mats, nm]);
+    setSelected(nm.id);
+  };
+  return (
+    <Modal title="Compensation" onClose={p.onClose} wide>
+      <p>
+        Current sample uses: <b data-testid="comp-current">{p.current === 'none' ? 'Uncompensated' : p.current === 'file' ? 'File spillover keyword' : mats.find((x) => x.id === p.current)?.name ?? p.current}</b>
+      </p>
+      <div className="row">
+        <button onClick={() => p.onAssign('none', 'sample')}>Uncompensated (sample)</button>
+        <button disabled={!p.meta?.hasSpillover} title={p.meta?.hasSpillover ? '' : 'Sample has no spillover keyword'} onClick={() => p.onAssign('file', 'sample')}>Use file keyword (sample)</button>
+        <button disabled={!p.meta?.hasSpillover} onClick={() => p.onAssign('file', 'group')}>Use file keyword (group)</button>
+      </div>
+      <div className="row">
+        <button disabled={!p.meta?.spillover} onClick={() => add({ ...p.meta!.spillover!, id: `m_${Date.now().toString(36)}`, name: `Copy of ${p.meta!.fileName} spillover`, values: p.meta!.spillover!.values.map((r) => [...r]) })}>
+          New matrix from file keyword
+        </button>
+        <label className="file-btn">
+          Import matrix CSV
+          <input
+            type="file"
+            accept=".csv,.txt"
+            onChange={async (e) => {
+              const f = e.target.files?.[0];
+              if (!f) return;
+              try {
+                add(parseSpilloverCsv(await f.text(), f.name));
+                setMsg('');
+              } catch (err) {
+                setMsg((err as Error).message);
+              }
+              e.target.value = '';
+            }}
+          />
+        </label>
+      </div>
+      {msg && <p className="error">{msg}</p>}
+      <div className="row">
+        <select value={selected} onChange={(e) => setSelected(e.target.value)} data-testid="matrix-select">
+          {mats.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+        </select>
+        {m && <button onClick={() => { setMats(mats.filter((x) => x.id !== m.id)); setSelected(''); }}>Delete matrix</button>}
+      </div>
+      {m && (
+        <>
+          <p className="muted">Spillover: row = fluorochrome channel, column = detector receiving spillover. Diagonal should be 1.</p>
+          <div className="matrix-wrap">
+            <table className="grid matrix">
+              <thead><tr><th />{m.channels.map((c) => <th key={c}>{c}</th>)}</tr></thead>
+              <tbody>
+                {m.values.map((r, i) => (
+                  <tr key={i}>
+                    <th>{m.channels[i]}</th>
+                    {r.map((v, j) => (
+                      <td key={j}>
+                        <input
+                          type="number"
+                          step="any"
+                          value={v}
+                          onChange={(e) => {
+                            const values = m.values.map((row) => [...row]);
+                            values[i][j] = Number(e.target.value);
+                            setMats(mats.map((x) => (x.id === m.id ? { ...m, values } : x)));
+                          }}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className={check.startsWith('Invalid') ? 'error' : 'muted'} data-testid="matrix-check">{check}</p>
+          <div className="row">
+            <button disabled={check.startsWith('Invalid')} onClick={() => { p.onSave(mats); p.onAssign(m.id, 'sample'); }}>Save and apply to sample</button>
+            <button disabled={check.startsWith('Invalid')} onClick={() => { p.onSave(mats); p.onAssign(m.id, 'group'); }}>Save and apply to group</button>
+          </div>
+        </>
+      )}
+      <button onClick={() => p.onSave(mats)}>Save matrices</button>
+    </Modal>
+  );
+}

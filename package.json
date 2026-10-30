@@ -5,7 +5,11 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc -p .",
-    "fixtures": "./scripts/fetch-fixtures.sh"
+    "fixtures": "./scripts/fetch-fixtures.sh",
+    "dev": "vite",
+    "build": "tsc -p . && vite build",
+    "preview": "vite preview",
+    "e2e": "node e2e/workflow.mjs"
   },
   "repository": {
     "type": "git",

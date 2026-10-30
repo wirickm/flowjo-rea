@@ -11,6 +11,7 @@ import { axisRange, defaultTransform, isScatterOrTime } from './axes';
 import { CompensationDialog, KeywordsDialog, TransformDialog } from './Dialogs';
 import type { Axis } from './gateGeometry';
 import { Plot, type PlotKind, type Tool } from './Plot';
+import { initHistory, pushHistory, redo, undo, type History } from './history';
 import { createAnalysisClient } from './workerClient';
 
 const client = createAnalysisClient();
@@ -33,7 +34,11 @@ const fmtStat = (v: number | string) => (typeof v === 'string' ? v : Number.isNa
 const csvCell = (s: string) => (/[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
 
 export function App() {
-  const [ws, setWs] = useState<Workspace>(() => emptyWorkspace());
+  // Workspace with undo/redo history; every edit goes through setWs.
+  const [hist, setHist] = useState<History<Workspace>>(() => initHistory(emptyWorkspace()));
+  const ws = hist.present;
+  const setWs = (next: Workspace | ((w: Workspace) => Workspace)) =>
+    setHist((h) => pushHistory(h, typeof next === 'function' ? next(h.present) : next));
   const [meta, setMeta] = useState<Record<string, SampleMeta>>({});
   const [analysis, setAnalysis] = useState<Record<string, Analysis>>({});
   const [sel, setSel] = useState<{ sampleId: string | null; popId: string | null }>({ sampleId: null, popId: null });
@@ -50,6 +55,19 @@ export function App() {
   const [syncGroup, setSyncGroup] = useState(false);
   const [checked, setChecked] = useState<string[]>([]);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const k = e.key.toLowerCase();
+      if (k === 'z' && !e.shiftKey) { e.preventDefault(); setHist(undo); }
+      else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); setHist(redo); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const note = useCallback((level: 'info' | 'warn' | 'error', text: string) => setLog((l) => [{ level, text }, ...l].slice(0, 200)), []);
   const run = useCallback(async <T,>(fn: () => Promise<T>): Promise<T | undefined> => {
@@ -68,7 +86,12 @@ export function App() {
   const sMeta = sample ? meta[sample.id] : undefined;
   const group = ws.groups.find((g) => g.id === groupId) ?? ws.groups[0];
   const groupSamples = ws.samples.filter((s) => group?.sampleIds.includes(s.id));
-  const popPath = sample && sel.popId ? populationPath(sample.populations, sel.popId) : '';
+  // Undo/redo can remove the selected population; fall back to its absence.
+  const selPopValid = !!sample && !!sel.popId && sample.populations.some((p) => p.id === sel.popId);
+  useEffect(() => {
+    if (sel.popId && sample && !selPopValid) setSel({ sampleId: sample.id, popId: null });
+  }, [sel.popId, sample, selPopValid]);
+  const popPath = sample && sel.popId && selPopValid ? populationPath(sample.populations, sel.popId) : '';
 
   // --- file loading -------------------------------------------------------
   const addFiles = async (files: FileList | File[]) => {
@@ -122,7 +145,7 @@ export function App() {
       setMeta({});
       setAnalysis({});
       setStats({});
-      setWs(next);
+      setHist(initHistory(next)); // opening a workspace resets history
       setGroupId('all');
       setSel({ sampleId: next.samples[0]?.id ?? null, popId: null });
     });
@@ -369,6 +392,8 @@ export function App() {
         <label className="file-btn">Open workspace / FlowJo .wsp<input type="file" accept=".json,.wsp,.frea" data-testid="open-ws" onChange={(e) => { const f = e.target.files?.[0]; if (f) openWorkspace(f); e.target.value = ''; }} /></label>
         <label className="file-btn">Import Gating-ML<input type="file" accept=".xml" data-testid="import-gml" onChange={(e) => { const f = e.target.files?.[0]; if (f) importGatingMl(f); e.target.value = ''; }} /></label>
         <button data-testid="save-ws" onClick={() => download(`${ws.name.replace(/\.(wsp|json)$/i, '') || 'workspace'}.frea.json`, serializeWorkspace(ws), 'application/json')}>Save workspace</button>
+        <button disabled={!hist.past.length} onClick={() => setHist(undo)} data-testid="undo" title="Undo (Ctrl+Z)">Undo</button>
+        <button disabled={!hist.future.length} onClick={() => setHist(redo)} data-testid="redo" title="Redo (Ctrl+Shift+Z)">Redo</button>
         <span className="sep" />
         <button disabled={!sample} onClick={() => setDialog({ kind: 'comp' })} data-testid="open-comp">Compensation</button>
         <button disabled={!sMeta} onClick={() => setDialog({ kind: 'keywords' })} data-testid="open-keywords">Keywords</button>

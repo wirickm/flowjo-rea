@@ -44,6 +44,17 @@ Gating-ML import/export, FlowJo .wsp import. See
 4. FlowJo binary analysis not performed (artifact absent; EULA restriction;
    see `docs/design.md` section 2).
 
+## Milestone 2 plan (prioritised by dependency, then user impact)
+
+| # | Feature | Depends on | Acceptance criteria | External dependency |
+|---|---|---|---|---|
+| 1 | Undo/redo | none | Ctrl/Cmd+Z, Ctrl+Shift+Z / Ctrl+Y and toolbar buttons undo/redo every workspace edit (gates create/edit/delete/rename, boolean, compensation, scales, stats columns, groups, plot settings); 100-step cap; opening a workspace resets history; unit-tested history; E2E create -> undo -> redo restores the identical count | none |
+| 2 | Full ellipse editing | none | Drag inside = move; drag a major-axis handle = change semi-major length and rotation; drag a minor-axis handle = change semi-minor length; geometry unit-tested (handles lie on the edited ellipse); refused with a log message when plot scale differs from gate scale; E2E handle drag changes the count | none |
+| 3 | Contour plots | none | Contour option enabled; equal-probability levels (configurable 2/5/10%), each contour k encloses about 100 - k x level % of plotted events after Gaussian smoothing; outliers optional; marching squares unit-tested; enclosed fractions within 2 pp on a synthetic Gaussian | Matching FlowJo's contour placement exactly would need FlowJo output (not attempted) |
+| 4 | Layout editor and batch export | reusable plot renderer | Add current plot to layout; reorder/remove; render all items for any sample; export layout PNG for one sample and batch PNG for every sample in the group; layout saved in workspace and undoable; E2E | none |
+| 5 | Spectral unmixing (OLS) | none | Non-square spectrum matrix (fluorochromes x detectors) accepted from CSV and Gating-ML; least-squares unmixing; unmixed channels named by fluorochrome usable in plots, gates and stats; exact recovery on synthetic mixtures; comparison with FlowKit spectral fixture output | Instrument-vendor unmixing output for a reference comparison |
+| 6 | FlowJo .wsp export | 1-5 not required | Writes samples, groups, matrices, transforms and gates in the observed FlowJo structure; re-import through our reader reproduces identical counts | Opening in FlowJo is the only real validation |
+
 ## Next implementation steps
 
 1. Import FlowJo graph settings (axes per population) from .wsp.

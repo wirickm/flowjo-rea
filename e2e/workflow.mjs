@@ -88,6 +88,14 @@ await page.mouse.click(cx, cy);
 await idle();
 const polyCount = Number(await count('Polygon 1'));
 check('polygon gate on compensated logicle axes', polyCount > 0 && polyCount < rectCount, `Polygon 1 = ${polyCount}`);
+// undo/redo the polygon creation
+await page.getByTestId('undo').click();
+await idle();
+const goneAfterUndo = (await page.getByTestId('pop-Polygon 1').count()) === 0;
+await page.keyboard.press('Control+Shift+Z');
+await idle();
+const backCount = Number(await count('Polygon 1'));
+check('undo removes the gate; redo (keyboard) restores the identical count', goneAfterUndo && backCount === polyCount, `undo removed: ${goneAfterUndo}, redo count ${backCount}`);
 // edit: drag a vertex outward and confirm the count changes
 await page.getByTestId('tool-select').click();
 const [vx, vy] = at(0.55, 0.45);
@@ -96,6 +104,12 @@ await page.mouse.move(vx, vy); await page.mouse.down(); await page.mouse.move(vx
 await idle();
 const polyEdited = Number(await count('Polygon 1'));
 check('dragging a polygon vertex re-gates', polyEdited !== polyCount, `${polyCount} -> ${polyEdited}`);
+await page.keyboard.press('Control+Z');
+await idle();
+const undoneEdit = Number(await count('Polygon 1'));
+await page.keyboard.press('Control+Y');
+await idle();
+check('undo/redo a vertex edit', undoneEdit === polyCount && Number(await count('Polygon 1')) === polyEdited, `${undoneEdit} / ${await count('Polygon 1')}`);
 // quadrant + histogram range on Cells
 await page.getByTestId('tool-quadrant').click();
 const [qx, qy] = at(0.5, 0.5);

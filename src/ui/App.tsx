@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PopulationResult } from '../core/analysis';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../core/gatingml';
-import { emptyWorkspace, newId, populationPath, type Gate, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
+import { emptyWorkspace, newId, populationPath, type Gate, type PlotSettings, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
 import { applySubtree, deserializeWorkspace, removePopulation, serializeWorkspace } from '../core/project';
 import type { PlotResult, SampleMeta } from '../core/service';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL } from '../core/stats';
@@ -204,7 +204,7 @@ export function App() {
     const y = names.find((n) => /^SSC-A$/i.test(n)) ?? names.find((n) => n !== x) ?? null;
     return { x, y, kind: 'pseudocolor' as PlotKind };
   }, [ws.plots, popPath, sMeta]);
-  const setPlotSettings = (patch: Partial<{ x: string; y: string | null; kind: PlotKind }>) =>
+  const setPlotSettings = (patch: Partial<PlotSettings>) =>
     updateWs((w) => {
       w.plots = { ...(w.plots ?? {}), [popPath]: { ...plotSettings, ...patch } };
     });
@@ -468,7 +468,7 @@ export function App() {
                   <option value="pseudocolor">Pseudocolor</option>
                   <option value="dot">Dot plot</option>
                   <option value="histogram">Histogram</option>
-                  <option value="contour" disabled>Contour (not implemented)</option>
+                  <option value="contour">Contour</option>
                 </select>
                 X <select value={plotSettings.x} onChange={(e) => setPlotSettings({ x: e.target.value })} data-testid="x-channel">
                   {sMeta.channels.map((c) => <option key={c.name} value={c.name}>{c.label ? `${c.name} :: ${c.label}` : c.name}</option>)}
@@ -483,6 +483,15 @@ export function App() {
                   </>
                 )}
               </div>
+              {kind === 'contour' && (
+                <div className="row">
+                  Level <select value={plotSettings.contourLevel ?? 5} onChange={(e) => setPlotSettings({ contourLevel: Number(e.target.value) })} data-testid="contour-level">
+                    {[2, 5, 10, 20].map((v) => <option key={v} value={v}>{v}%</option>)}
+                  </select>
+                  <label><input type="checkbox" checked={!!plotSettings.showOutliers} onChange={(e) => setPlotSettings({ showOutliers: e.target.checked })} data-testid="contour-outliers" /> show outliers</label>
+                  <span className="muted">equal-probability contours; not compared with FlowJo's placement</span>
+                </div>
+              )}
               <div className="row tools">
                 {(kind === 'histogram' ? (['select', 'range'] as Tool[]) : (['select', 'rect', 'polygon', 'ellipse', 'quadrant'] as Tool[])).map((t) => (
                   <button key={t} className={tool === t ? 'active' : ''} onClick={() => setTool(t)} data-testid={`tool-${t}`}>{t}</button>
@@ -506,10 +515,12 @@ export function App() {
                 onSelect={setGateSel}
                 onRefuse={(m) => note('warn', m)}
                 canvasRef={canvasRef}
+                contourLevel={plotSettings.contourLevel ?? 5}
+                showOutliers={!!plotSettings.showOutliers}
               />
               <div className="muted" data-testid="plot-caption">
                 {popPath || 'All events'}: {plotData ? plotData.count.toLocaleString() : '-'} events shown
-                {plotData && kind === 'dot' && plotData.points.length / 2 < plotData.count && ` (dot plot draws ${(plotData.points.length / 2).toLocaleString()} sampled events)`}
+                {plotData && (kind === 'dot' || (kind === 'contour' && plotSettings.showOutliers)) && plotData.points.length / 2 < plotData.count && ` (dot plot draws ${(plotData.points.length / 2).toLocaleString()} sampled events)`}
               </div>
             </>
           ) : (

@@ -155,6 +155,19 @@ await drag(at(hx, hy), at(eg.mean[0] - 2 * bMinor * Math.sin(th), eg.mean[1] + 2
 const e3 = Number(await count(ellName));
 await page.screenshot({ path: join(out, '02b-ellipse.png') });
 check('ellipse move, major-handle resize/rotate, minor-handle widen each re-gate', e0 > 0 && e1 !== e0 && e2 !== e1 && e3 > e2, `${e0} -> ${e1} -> ${e2} -> ${e3}`);
+// contour plot renders equal-probability lines (pixels in the contour colour)
+const contourPixels = async () => Number(await page.getByTestId('plot-canvas').getAttribute('data-contour-segments'));
+const beforeContour = await contourPixels();
+await page.getByTestId('plot-kind').selectOption('contour'); await remeasure();
+await idle();
+const c5 = await contourPixels();
+await page.getByTestId('contour-level').selectOption('20');
+await idle();
+const c20 = await contourPixels();
+await page.screenshot({ path: join(out, '02c-contour.png') });
+check('contour plot draws lines; coarser level draws fewer', beforeContour === 0 && c20 > 0 && c20 < c5, `contour segments: pseudocolor ${beforeContour}, 5% ${c5}, 20% ${c20}`);
+await page.getByTestId('plot-kind').selectOption('pseudocolor'); await remeasure();
+await idle();
 // 6. statistics: count + median CD3 for Polygon 1, across the group
 await page.getByTestId('pop-Polygon 1').click();
 await page.getByTestId('stat-kind').selectOption('count');

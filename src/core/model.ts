@@ -61,7 +61,22 @@ export interface Workspace {
   notes: string;
   provenance: { importedFrom?: string; warnings: string[] };
   // Plot layout per population path ('' = ungated), shared across samples.
-  plots?: Record<string, { x: string; y: string | null; kind: 'pseudocolor' | 'dot' | 'histogram' }>;
+  plots?: Record<string, PlotSettings>;
+  layout?: LayoutItem[];
+}
+
+export interface PlotSettings {
+  x: string;
+  y: string | null;
+  kind: 'pseudocolor' | 'dot' | 'contour' | 'histogram';
+  contourLevel?: number; // percent per contour step
+  showOutliers?: boolean;
+}
+
+// A plot placed in the layout: rendered for whichever sample is chosen.
+export interface LayoutItem extends PlotSettings {
+  id: string;
+  populationPath: string; // '' = all events
 }
 
 export type StatKind =

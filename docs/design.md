@@ -36,9 +36,35 @@ that permits it, targeted analysis of specific unresolved behaviors (polygon
 and logicle-ellipse count gaps, statistic conventions) is the highest-value
 use. Downloading the installer again was not attempted for the same reasons.
 
-REA's binary tooling was therefore not run against any FlowJo artifact. REA's
-evidence discipline (observation vs derivation vs unknown, provenance on every
-claim) is applied in the compatibility matrix.
+### What was and was not done with REA
+
+Using REA's evidence labels in the matrix is not the same as running REA's
+research workflow. Actual use, in this repository's session history:
+
+| REA step | Done? | What it produced |
+|---|---|---|
+| Read REA docs (README, AGENTS.md, DISCLAIMER.md, reconstruction-readiness.md) | Yes | Understanding of the intended discover, analyze, compare, verify workflow |
+| Run published CLI `npx rea-agents@latest` | **Blocked** | The session's tool-permission classifier denied it ("Code from External"). No output |
+| Build REA from the local checkout (`npm ci --ignore-scripts`, `npm run build:cached`, REA commit a40ee74) | Yes | Working `node scripts/rea.mjs` CLI (rea 6.5.0). No REA files were modified |
+| `rea doctor --json` | Yes | `docs/rea/doctor.json`: node/host healthy; Hopper, Ghidra, IDA, JADX, Kuna all `missing_analysis_engine` |
+| `rea inspect-artifact` on a FlowJo-written .wsp and two FCS files | Yes | `docs/rea/inspect-*.json`: all rejected, `unsupported binary format`. REA targets executables, packages and apps, not data files |
+| REA static or deep analysis of FlowJo (`inspect`, `inspect-binary-layout`, `inspect-managed-artifact`, `decompile`, `function`) | **Not performed** | See the two separate blockers below |
+| REA runtime observation of FlowJo (`capture-process`, scenarios) | **Not performed** | Same blockers; also needs Windows/macOS and an activated FlowJo |
+| REA compare / reconstruction-coverage / obligation ledger against FlowJo | **Not performed** | Depends on FlowJo Evidence that does not exist |
+
+Separate blockers for FlowJo analysis:
+1. **Artifact missing (technical).** `/tmp/claude-0/fj-dl/FlowJo-Win64-10.10.2.exe`
+   was reported by a previous session but `/tmp/claude-0/fj-dl/` does not
+   exist in this container. Re-downloading was not attempted.
+2. **Permission unresolved (license).** The FlowJo EULA text found restricts
+   reverse engineering "except to the extent permitted by applicable law"; the
+   owner's license version, seat and jurisdiction have not been established.
+   No permission is assumed. Even with the installer present, deep analysis
+   would also need a supported engine (Ghidra/IDA/Hopper), which `rea doctor`
+   reports as absent (a third, technical dependency).
+
+Neither blocker prevents application development; work continues on
+behavior defined by standards and FlowJo-written files.
 
 The term "clean-room" is not used: no separation-of-teams process was set up.
 

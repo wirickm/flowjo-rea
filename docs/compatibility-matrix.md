@@ -24,7 +24,7 @@ hand-computed expectations; **E2E** = `e2e/workflow.mjs` through the real UI.
 | 1 | Multiple data sets (`$NEXTDATA`) | spec | Partial | parser enumerates data sets | UI always loads data set 1 and reports the count |
 | 1 | Inspect metadata, parameters, keywords, parser warnings | - | Done | E2E | - |
 | 2 | Samples and groups; group membership | observed (wsp GroupNode/SampleRefs) | Done | E2E; wsp import shows FlowJo groups | No keyword-criteria (smart) groups |
-| 3 | Compensation from `$SPILLOVER`/`SPILL`/`$COMP` | spec | Done | ISAC (spectrumMatrix cases); FJ-count (compensated gates exact in reused_quad_gate_with_child.wsp) | Default for samples with a keyword is "file", as in FlowJo |
+| 3 | Compensation from `$SPILLOVER`/`SPILL`/`$COMP` | spec | Done | ISAC (spectrumMatrix cases); FJ-count (compensated biex rectangles exact in reused_quad_gate_with_child.wsp, tested fixture only) | Default for samples with a keyword is "file", as in FlowJo |
 | 3 | Matrix CSV import, editing, validation (square, finite, channels present, invertible) | - | Done | unit tests; dialog shows validation result | No automatic single-stain matrix calculation |
 | 3 | Spectral unmixing | - | Not implemented | - | Non-square matrices rejected explicitly |
 | 3 | Scales: linear, log, arcsinh, logicle, hyperlog | spec (Gating-ML 2.0) | Done | ISAC (all transform cases exact); closed-form unit tests | - |
@@ -44,20 +44,107 @@ hand-computed expectations; **E2E** = `e2e/workflow.mjs` through the real UI.
 
 ## FlowJo workspace interoperability (distinct from the native format)
 
-| Behavior | Evidence | Status | Validation | Limitations |
-|---|---|---|---|---|
-| Read FlowJo 10 .wsp: samples, groups, per-sample spillover, transforms, gates, boolean nodes | observed in 14 FlowJo-saved workspaces (FlowJo 10.6.2 to 10.10.0) | Partial | FJ-count | Format undocumented; only constructs present in the fixtures are handled. Graph/layout settings, statistics nodes, keywords-based groups, exclusion gates (`eventsInside="0"`) not imported (warned) |
-| Rectangle and quadrant gates (raw-unit coordinates) | observed | Done | FJ-count exact (diamond quad, asinh, biex; reused quad) | - |
-| "Comp-" prefixed parameters = compensated channel | observed | Done | FJ-count exact in reused_quad_gate_with_child.wsp | - |
-| Time gate with FlowJo per-sample gain | observed | Done | FJ-count: Time exact on all 3 samples | - |
-| Ellipse gates (display-space foci/edges at gate resolution) | observed; derived | Partial | FJ-count exact for single_ellipse_51_events (linear) | **Gap**: ellipse on logicle axes 2.0 to 3.2% below FlowJo |
-| Polygon gates | observed | **Gap** | FJ-count: Singlets polygon about 0.25% below FlowJo on all samples; downstream populations inherit it (worst: 10 events on a 74-event population) | Cause unidentified. Tested and rejected: exact raw-space test, 6 binning hypotheses, FlowJo logicle as biex table. Needs FlowJo-side evidence |
-| Boolean And/Or/Not nodes by dependency path | observed | Done | FJ-count bounded (inherits polygon gap) | - |
-| Write FlowJo .wsp | - | Not implemented | - | No way to validate output without FlowJo; button shown disabled |
+Reference: population counts FlowJo saved in 14 FlowJo-written workspaces
+(FlowJo 10.6.2, 10.8.0, 10.8.1, 10.10.0) from FlowKit commit
+f2159043b6a56e527d4baacf97490caf8354618e. Every population, with reference
+count, our count, absolute and population-relative difference, and the
+inherited/introduced split, is in
+[validation/wsp-counts.md](validation/wsp-counts.md). "Exact" below means
+exact **on these fixtures only**; it is not proof that a gate type is
+compatible in general.
 
-Overall: 61 of 228 FlowJo-saved counts reproduced exactly; every workspace
-without polygon gates or logicle ellipses matches exactly. This is
-**demonstrated partial compatibility, not FlowJo parity**.
+Reproduce:
+
+```bash
+./scripts/fetch-fixtures.sh
+```
+
+```bash
+npx vitest run tests/wsp.test.ts
+```
+
+```bash
+WRITE_REPORT=1 npx vitest run tests/wsp-report.test.ts
+```
+
+```bash
+DIAG=1 npx vitest run tests/diagnostics/polygon.test.ts
+```
+
+### Results by gate type and FlowJo axis scale (228 populations, 61 exact)
+
+"Introduced" = the part of the difference attributable to the gate itself:
+our parent x (our frequency of parent - FlowJo frequency of parent).
+Inherited + introduced = total difference exactly. This attribution is at
+population level; event-level FlowJo output would be needed to identify
+which events differ.
+
+| Gate [x,y scale] | Pops | Exact | Worst introduced (events) | Worst freq.-of-parent diff | Status on fixtures |
+|---|---:|---:|---:|---:|---|
+| rect [biex,biex] | 14 | 14 | 0 | 0 | Exact (tested fixtures) |
+| rect [asinh,asinh] | 2 | 2 | 0 | 0 | Exact (tested fixtures) |
+| ellipse [linear,linear] | 1 | 1 | 0 | 0 | Exact (one 51-event fixture) |
+| boolean AND | 1 | 1 | 0 | 0 | Exact (one fixture) |
+| rect [linear,linear] | 21 | 14 | 88 | 0.031 pp | All 7 non-exact rows are the FlowJo 10.10.0 Time-gate chain for E05 (see below) |
+| rect [logicle,logicle] | 99 | 29 | 9.9 | 0.012 pp | Non-exact rows are children of polygon gates; introduced part <= 10 events |
+| boolean NOT / OR | 12 | 0 | 10.9 | 0.013 pp | Operands inherit polygon differences |
+| polygon [linear,linear] | 17 | 0 | 684 | 0.236 pp | **Gap**: FlowJo always higher |
+| polygon [logicle,linear] | 34 | 0 | 189 | 0.080 pp | **Gap**: FlowJo always higher |
+| polygon [logicle,logicle] | 24 | 0 | 37 | 0.028 pp | **Gap**: FlowJo always higher |
+| ellipse [logicle,logicle] | 3 | 0 | 222 | 0.166 pp | **Gap**: FlowJo higher by 124-232 events (2.0-3.2% of the population) |
+
+The earlier "0.25%" figure was the Singlets polygon's difference relative to
+FlowJo's Singlets count (E03: 236,780 vs 237,375, -595 = -0.25% of the
+population; parent counts equal, so all of it is introduced by that gate).
+Downstream, the same events are a larger share of small populations: IL2+
+under CD4+ (E03, 8_color_ICS.wsp) is 64 vs 74, -10 events = **-13.5% of that
+population**, of which about 0.1 events is inherited and about 9.9 introduced
+at the IL2+ rectangle itself (its parent CD4+ already differs by 135 events).
+
+### FlowJo reference counts are not stable across FlowJo versions
+
+For sample E05 the FlowJo 10.6.2 and 10.8.1 saves record Time = 284,933;
+the FlowJo 10.10.0 save (8_color_ICS_dot_gate_name.wsp) records 284,845.
+The Time gate bounds, the Time gain, the transforms and the spillover matrix
+are identical in these files (checked by hashing those XML blocks). Our
+count is 284,933. Likewise E03 CD4+ is 81,990 in the 10.6.2 save and
+81,992 in the 10.8.1/10.10.0 saves, with identical CD3+/CD4+ vertices and
+logicle parameters. Some reference differences therefore reflect FlowJo
+version behavior (or stale saved counts), not a single fixed truth.
+
+### Polygon diagnostic (existing evidence only)
+
+`docs/validation/polygon-diagnostics.md`. For the Singlets polygon (linear
+axes; parent equal to FlowJo, so no inheritance), FlowJo's extra events equal
+all parent events lying outside our polygon within 0.078, 0.083 and 0.094
+display bins (1 bin = 1/256 of the axis) on the three samples. FlowJo is
+higher for every polygon on every sample. This is consistent with FlowJo
+including a thin outer band, but these aggregate counts cannot distinguish
+between: (a) a dilated or inclusive-boundary test, (b) rasterised gating at a
+finer resolution, (c) FlowJo using unrounded vertices while the .wsp stores
+values snapped to 1/256 of the axis (all Singlets vertices are multiples of
+1024), (d) version-specific recomputation. No implementation change was made
+on this basis.
+
+**Reference data that would resolve it** (each item independent):
+1. For one sample, FlowJo's event-level membership of Singlets and of one
+   logicle polygon (e.g. CD3+): FlowJo "Export Population" as CSV including an
+   event-number column, or a derived parameter of gate membership. Shows
+   exactly which events differ and where they sit relative to the edges.
+2. A synthetic FCS file with events on a regular grid crossing a polygon edge,
+   a polygon drawn in FlowJo, and the FlowJo-saved .wsp with counts plus the
+   exported member events. Separates (a), (b) and (c).
+3. The same workspace saved by two FlowJo versions after forcing
+   recalculation, to quantify (d).
+4. For the logicle ellipse, the same event-level export for ellipse1.
+
+### Construct coverage
+
+| Behavior | Evidence | Status | Limitations |
+|---|---|---|---|
+| Read FlowJo 10 .wsp: samples, groups, per-sample spillover, transforms, gates, boolean nodes | observed in the 14 fixtures | Implemented; reference-compared as above | Format undocumented; only constructs present in the fixtures are handled. Graph/layout settings, statistic nodes, keyword-based groups, exclusion gates (`eventsInside="0"`) not imported (warned) |
+| Raw-unit rectangle/polygon coordinates; display-space ellipse foci/edges; "Comp-" prefix; Time gain | observed; derived | Implemented | Derived from the fixtures only |
+| Write FlowJo .wsp | - | Not implemented | Opening the output in FlowJo is the only real validation (external dependency) |
 
 ## Backlog for broader parity (not implemented)
 

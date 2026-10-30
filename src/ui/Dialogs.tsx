@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { invert, parseSpilloverCsv, validateMatrix, type SpilloverMatrix } from '../core/compensation';
+import { invert, isSpectral, parseSpilloverCsv, unmixingOperator, validateMatrix, type SpilloverMatrix } from '../core/compensation';
 import { describeTransform, makeTransform, type TransformSpec } from '../core/transforms';
 import type { SampleMeta } from '../core/service';
 
@@ -121,7 +121,8 @@ export function CompensationDialog(p: {
   if (m) {
     try {
       if (p.meta) validateMatrix(m, p.meta.channels.map((c) => c.name)).forEach((w) => (check += w + '. '));
-      invert(m.values);
+      if (isSpectral(m)) unmixingOperator(m);
+      else invert(m.values);
       check = check || 'Matrix is valid and invertible.';
     } catch (e) {
       check = `Invalid: ${(e as Error).message}`;
@@ -173,14 +174,18 @@ export function CompensationDialog(p: {
       </div>
       {m && (
         <>
-          <p className="muted">Spillover: row = fluorochrome channel, column = detector receiving spillover. Diagonal should be 1.</p>
+          <p className="muted">
+            {m.values.length !== m.channels.length
+              ? `Spectral matrix: ${m.values.length} fluorochromes (rows) x ${m.channels.length} detectors (columns); unmixed by ordinary least squares. Unmixed channels appear in channel lists under the fluorochrome names.`
+              : 'Spillover: row = fluorochrome channel, column = detector receiving spillover. Diagonal should be 1.'}
+          </p>
           <div className="matrix-wrap">
             <table className="grid matrix">
               <thead><tr><th />{m.channels.map((c) => <th key={c}>{c}</th>)}</tr></thead>
               <tbody>
                 {m.values.map((r, i) => (
                   <tr key={i}>
-                    <th>{m.channels[i]}</th>
+                    <th>{m.outputNames?.[i] ?? m.channels[i]}</th>
                     {r.map((v, j) => (
                       <td key={j}>
                         <input

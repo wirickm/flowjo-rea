@@ -1,3 +1,4 @@
+import { isSpectral, type SpilloverMatrix } from '../core/compensation';
 import type { FcsChannel } from '../core/fcs';
 import { makeTransform, type Transform, type TransformSpec } from '../core/transforms';
 
@@ -80,4 +81,16 @@ export function makeAxis(channels: FcsChannel[], keywords: Record<string, string
   const spec = channelTransforms[ch] ?? defaultTransform(c, keywords);
   const t = makeTransform(spec);
   return { channel: ch, spec, t, range: axisRange(t) };
+}
+
+// Channels a sample offers for plots and stats: its FCS parameters plus the
+// unmixed fluorochromes of a spectral matrix assigned to it.
+export function sampleChannels(meta: { channels: FcsChannel[] }, compensation: string, matrices: SpilloverMatrix[]): FcsChannel[] {
+  const m = matrices.find((x) => x.id === compensation);
+  if (!m || !isSpectral(m) || !m.outputNames) return meta.channels;
+  const range = Math.max(...meta.channels.filter((c) => m.channels.includes(c.name)).map((c) => c.range), 1);
+  return [
+    ...meta.channels,
+    ...m.outputNames.map((name, i) => ({ index: meta.channels.length + i + 1, name, label: 'unmixed', bits: 32, range, logDecades: 0, logOffset: 0, gain: 1 })),
+  ];
 }

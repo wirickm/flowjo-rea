@@ -7,8 +7,9 @@ export interface SpilloverMatrix {
   id: string;
   name: string;
   channels: string[]; // detector names ($PnN), row/column order
-  // Optional names for the compensated outputs (Gating-ML fluorochromes),
-  // index-aligned with channels.
+  // Optional names for the compensated outputs (Gating-ML fluorochromes).
+  // Square: index-aligned with channels. Spectral: one per row of values,
+  // with fewer rows (fluorochromes) than columns (detectors).
   outputNames?: string[];
   values: number[][]; // spill[i][j]: fraction of channel i signal seen in detector j
   source: string;
@@ -55,6 +56,11 @@ export function parseSpilloverCsv(text: string, name = 'CSV matrix'): SpilloverM
   if (labelCol || header[0] === '') header = header.slice(1);
   const n = header.length;
   const values = body.map((r) => (labelCol || r.length === n + 1 ? r.slice(1) : r).map(Number));
+  if (labelCol && values.length !== n) {
+    // Spectral: rows are fluorochromes (labels), columns detectors (header).
+    if (values.some((r) => r.length !== n || r.some((v) => !Number.isFinite(v)))) fail('COMP_INVALID', 'Spectral matrix CSV rows must have one numeric value per detector');
+    return { id: `csv-${Date.now().toString(36)}`, name, channels: header, outputNames: body.map((r) => r[0]), values, source: 'csv (spectral)' };
+  }
   if (values.length !== n || values.some((r) => r.length !== n)) {
     fail('COMP_INVALID', `Matrix CSV is not square: ${n} channel names, ${values.length} rows`);
   }
@@ -86,7 +92,67 @@ export function invert(m: number[][]): number[][] {
   return inv;
 }
 
+// Spectral (unmixing) matrix: fluorochrome rows x detector columns, rows < columns.
+export function isSpectral(m: SpilloverMatrix): boolean {
+  return m.values.length !== m.channels.length;
+}
+
+function transpose(a: number[][]): number[][] {
+  return a[0].map((_, j) => a.map((r) => r[j]));
+}
+
+function matmul(a: number[][], b: number[][]): number[][] {
+  return a.map((r) => b[0].map((_, j) => r.reduce((s, v, k) => s + v * b[k][j], 0)));
+}
+
+// Ordinary least squares unmixing operator M = S^T (S S^T)^-1 (detectors x
+// fluorochromes): fluor = raw x M minimises ||raw - fluor x S||.
+export function unmixingOperator(m: SpilloverMatrix): number[][] {
+  const S = m.values;
+  let inv: number[][];
+  try {
+    inv = invert(matmul(S, transpose(S)));
+  } catch {
+    fail('COMP_SINGULAR', 'Spectral matrix rows are linearly dependent; unmixing is undefined');
+  }
+  return matmul(transpose(S), inv);
+}
+
+function validateSpectral(m: SpilloverMatrix, available: string[]): string[] {
+  const nf = m.values.length;
+  const nd = m.channels.length;
+  if (!m.outputNames || m.outputNames.length !== nf) fail('COMP_INVALID', 'Spectral matrix needs one fluorochrome name per row');
+  if (nf > nd) fail('COMP_INVALID', `Spectral matrix has more fluorochromes (${nf}) than detectors (${nd})`);
+  if (m.values.some((r) => r.length !== nd || r.some((v) => !Number.isFinite(v)))) fail('COMP_INVALID', 'Spectral matrix rows must have one finite value per detector');
+  if (new Set(m.channels).size !== nd || new Set(m.outputNames).size !== nf) fail('COMP_INVALID', 'Spectral matrix repeats a detector or fluorochrome name');
+  const missing = m.channels.filter((c) => !available.includes(c));
+  if (missing.length) fail('COMP_CHANNEL_MISMATCH', `Matrix detectors not in sample: ${missing.join(', ')}`);
+  const clash = m.outputNames.filter((c) => available.includes(c));
+  if (clash.length) fail('COMP_INVALID', `Fluorochrome names collide with sample channels: ${clash.join(', ')}`);
+  unmixingOperator(m);
+  return [];
+}
+
+// Unmixed fluorochrome columns keyed by fluorochrome name.
+export function unmix(data: Float64Array[], channelNames: string[], m: SpilloverMatrix): Map<string, Float64Array> {
+  validateSpectral(m, channelNames);
+  const M = unmixingOperator(m);
+  const idx = m.channels.map((c) => channelNames.indexOf(c));
+  const nf = m.values.length;
+  const ev = data[0]?.length ?? 0;
+  const cols = Array.from({ length: nf }, () => new Float64Array(ev));
+  for (let e = 0; e < ev; e++) {
+    for (let k = 0; k < nf; k++) {
+      let s = 0;
+      for (let d = 0; d < idx.length; d++) s += data[idx[d]][e] * M[d][k];
+      cols[k][e] = s;
+    }
+  }
+  return new Map(m.outputNames!.map((n, k) => [n, cols[k]]));
+}
+
 export function validateMatrix(m: SpilloverMatrix, available: string[]): string[] {
+  if (isSpectral(m)) return validateSpectral(m, available);
   const warnings: string[] = [];
   const n = m.channels.length;
   if (m.values.length !== n || m.values.some((r) => r.length !== n)) fail('COMP_INVALID', 'Matrix dimensions do not match channel list');

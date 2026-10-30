@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { populationPath, type LayoutItem, type SampleState, type Workspace } from '../core/model';
 import type { PlotResult, SampleMeta } from '../core/service';
-import { makeAxis } from './axes';
+import { makeAxis, sampleChannels } from './axes';
 import { drawableGates } from './gateGeometry';
 import { PLOT, renderPlot } from './renderPlot';
 import type { createAnalysisClient } from './workerClient';
@@ -32,8 +32,9 @@ export async function renderLayout(client: Client, ws: Workspace, s: SampleState
       out.push({ item, canvas: null, title: `${s.fileName} / ${label}`, error: 'population not present in this sample' });
       continue;
     }
-    const x = makeAxis(meta.channels, meta.keywords, ws.channelTransforms, item.x);
-    const y = item.kind === 'histogram' ? null : makeAxis(meta.channels, meta.keywords, ws.channelTransforms, item.y ?? '');
+    const chans = sampleChannels(meta, s.compensation, ws.matrices);
+    const x = makeAxis(chans, meta.keywords, ws.channelTransforms, item.x);
+    const y = item.kind === 'histogram' ? null : makeAxis(chans, meta.keywords, ws.channelTransforms, item.y ?? '');
     if (!x || (item.kind !== 'histogram' && !y)) {
       out.push({ item, canvas: null, title: `${s.fileName} / ${label}`, error: `channel ${!x ? item.x : item.y} not in this sample` });
       continue;

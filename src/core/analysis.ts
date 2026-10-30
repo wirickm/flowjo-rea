@@ -1,6 +1,6 @@
 // Gate evaluation over a population hierarchy. Pure: FCS data + workspace
 // state in, boolean masks and counts out. Runs in a worker in the UI.
-import { compensate, invert, spilloverFromFcs, type SpilloverMatrix } from './compensation';
+import { compensate, invert, isSpectral, spilloverFromFcs, unmix, type SpilloverMatrix } from './compensation';
 import { AppError, fail } from './errors';
 import type { FcsFile } from './fcs';
 import type { Dimension, Gate, Population, SampleState, Workspace } from './model';
@@ -17,6 +17,7 @@ export interface PopulationResult {
 
 export class SampleEngine {
   private compCache = new Map<string, Float64Array[]>();
+  private unmixCache = new Map<string, Map<string, Float64Array>>();
   private dimCache = new Map<string, Float64Array>();
   readonly masks = new Map<string, Uint8Array>();
   readonly results = new Map<string, PopulationResult>();
@@ -49,7 +50,11 @@ export class SampleEngine {
     const hit = this.compCache.get(ref);
     if (hit) return hit;
     const m = this.matrixFor(ref);
-    const data = m ? compensate(this.fcs.data, this.channelNames, m) : this.fcs.data;
+    let data = this.fcs.data;
+    if (m && isSpectral(m)) {
+      // Detector columns stay raw; unmixed fluorochromes are extra columns.
+      this.unmixCache.set(ref, unmix(this.fcs.data, this.channelNames, m));
+    } else if (m) data = compensate(this.fcs.data, this.channelNames, m);
     this.compCache.set(ref, data);
     return data;
   }
@@ -59,6 +64,9 @@ export class SampleEngine {
     const ref = compRef ?? this.sample.compensation;
     let i = this.channelNames.indexOf(channel);
     if (i < 0) {
+      this.compensated(ref); // fills unmixCache for spectral matrices
+      const unmixed = this.unmixCache.get(ref)?.get(channel);
+      if (unmixed) return unmixed;
       // Gating-ML spectrum matrices name compensated outputs by fluorochrome.
       const m = this.matrixFor(ref);
       const k = m?.outputNames?.indexOf(channel) ?? -1;

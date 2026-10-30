@@ -65,9 +65,6 @@ export function parseGatingMl(xml: string): GatingMlDoc {
       const outputs = kids(fl, 'fcs-dimension').map((d) => attr(d, 'name') ?? '');
       const detectors = kids(de, 'fcs-dimension').map((d) => attr(d, 'name') ?? '');
       const rows = kids(e, 'spectrum').map((s) => kids(s, 'coefficient').map((c) => Number(attr(c, 'value'))));
-      if (outputs.length !== detectors.length) {
-        fail('UNSUPPORTED_FEATURE', 'Non-square spectrum matrices (unmixing) are not supported');
-      }
       if (attr(e, 'matrix-inverted-already') === 'true') {
         fail('UNSUPPORTED_FEATURE', 'Pre-inverted spectrum matrices are not supported');
       }

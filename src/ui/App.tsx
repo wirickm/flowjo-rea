@@ -7,7 +7,7 @@ import type { PlotResult, SampleMeta } from '../core/service';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL } from '../core/stats';
 import { makeTransform, type TransformSpec } from '../core/transforms';
 import { parseWsp } from '../core/wsp';
-import { defaultTransform, isScatterOrTime, makeAxis } from './axes';
+import { defaultTransform, isScatterOrTime, makeAxis, sampleChannels } from './axes';
 import { CompensationDialog, KeywordsDialog, TransformDialog } from './Dialogs';
 import { LayoutView } from './Layout';
 import type { Axis } from './gateGeometry';
@@ -92,6 +92,7 @@ export function App() {
   useEffect(() => {
     if (sel.popId && sample && !selPopValid) setSel({ sampleId: sample.id, popId: null });
   }, [sel.popId, sample, selPopValid]);
+  const channels = useMemo(() => (sMeta && sample ? sampleChannels(sMeta, sample.compensation, ws.matrices) : []), [sMeta, sample?.compensation, ws.matrices]); // eslint-disable-line react-hooks/exhaustive-deps
   const popPath = sample && sel.popId && selPopValid ? populationPath(sample.populations, sel.popId) : '';
 
   // --- file loading -------------------------------------------------------
@@ -199,12 +200,12 @@ export function App() {
 
   const plotSettings = useMemo(() => {
     const saved = ws.plots?.[popPath];
-    if (saved && sMeta?.channels.some((c) => c.name === saved.x)) return saved;
-    const names = sMeta?.channels.map((c) => c.name) ?? [];
+    if (saved && channels.some((c) => c.name === saved.x)) return saved;
+    const names = channels.map((c) => c.name);
     const x = names.find((n) => /^FSC-A$/i.test(n)) ?? names.find((n) => isScatterOrTime(n)) ?? names[0] ?? '';
     const y = names.find((n) => /^SSC-A$/i.test(n)) ?? names.find((n) => n !== x) ?? null;
     return { x, y, kind: 'pseudocolor' as PlotKind };
-  }, [ws.plots, popPath, sMeta]);
+  }, [ws.plots, popPath, channels]);
   const setPlotSettings = (patch: Partial<PlotSettings>) =>
     updateWs((w) => {
       w.plots = { ...(w.plots ?? {}), [popPath]: { ...plotSettings, ...patch } };
@@ -213,9 +214,9 @@ export function App() {
   const axisFor = useCallback(
     (ch: string): Axis | null => {
       if (!ch || !sMeta) return null;
-      return makeAxis(sMeta.channels, sMeta.keywords, ws.channelTransforms, ch);
+      return makeAxis(channels, sMeta.keywords, ws.channelTransforms, ch);
     },
-    [sMeta, ws.channelTransforms],
+    [sMeta, channels, ws.channelTransforms],
   );
   const kind: PlotKind = plotSettings.kind;
   const xAxis = useMemo(() => axisFor(plotSettings.x), [axisFor, plotSettings.x]);
@@ -328,7 +329,8 @@ export function App() {
     const bytes = await run(() =>
       client.exportEvents({
         sampleId: sample.id, compensation: sample.compensation, populations: sample.populations, matrices: ws.matrices,
-        popId: sel.popId, format, channels: sMeta.channels.map((c) => c.name), compensated,
+        // Unmixed fluorochromes exist only in compensated output.
+        popId: sel.popId, format, channels: (compensated ? channels : sMeta.channels).map((c) => c.name), compensated,
       }),
     );
     if (!bytes) return;
@@ -469,13 +471,13 @@ export function App() {
                   <option value="contour">Contour</option>
                 </select>
                 X <select value={plotSettings.x} onChange={(e) => setPlotSettings({ x: e.target.value })} data-testid="x-channel">
-                  {sMeta.channels.map((c) => <option key={c.name} value={c.name}>{c.label ? `${c.name} :: ${c.label}` : c.name}</option>)}
+                  {channels.map((c) => <option key={c.name} value={c.name}>{c.label ? `${c.name} :: ${c.label}` : c.name}</option>)}
                 </select>
                 <button onClick={() => setDialog({ kind: 'transform', channel: plotSettings.x })} title="Axis scale" data-testid="x-scale">scale</button>
                 {kind !== 'histogram' && (
                   <>
                     Y <select value={plotSettings.y ?? ''} onChange={(e) => setPlotSettings({ y: e.target.value })} data-testid="y-channel">
-                      {sMeta.channels.map((c) => <option key={c.name} value={c.name}>{c.label ? `${c.name} :: ${c.label}` : c.name}</option>)}
+                      {channels.map((c) => <option key={c.name} value={c.name}>{c.label ? `${c.name} :: ${c.label}` : c.name}</option>)}
                     </select>
                     <button onClick={() => setDialog({ kind: 'transform', channel: plotSettings.y ?? '' })} title="Axis scale" data-testid="y-scale">scale</button>
                   </>
@@ -538,7 +540,7 @@ export function App() {
             {STAT_NEEDS_CHANNEL(newStat.stat) && (
               <select value={newStat.channel} onChange={(e) => setNewStat({ ...newStat, channel: e.target.value })} data-testid="stat-channel">
                 <option value="">channel...</option>
-                {sMeta?.channels.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+                {channels.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
               </select>
             )}
             {newStat.stat === 'percentile' && <input type="number" min={0} max={100} value={newStat.percentile} onChange={(e) => setNewStat({ ...newStat, percentile: Number(e.target.value) })} style={{ width: 60 }} />}
@@ -595,7 +597,7 @@ export function App() {
       {dialog?.kind === 'transform' && sMeta && (
         <TransformDialog
           channel={dialog.channel}
-          spec={ws.channelTransforms[dialog.channel] ?? defaultTransform(sMeta.channels.find((c) => c.name === dialog.channel)!, sMeta.keywords)}
+          spec={ws.channelTransforms[dialog.channel] ?? defaultTransform(channels.find((c) => c.name === dialog.channel)!, sMeta.keywords)}
           onClose={() => setDialog(null)}
           onApply={(spec) => { updateWs((w) => { w.channelTransforms[dialog.channel] = spec; }); setDialog(null); }}
         />

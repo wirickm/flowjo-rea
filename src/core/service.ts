@@ -207,8 +207,9 @@ export class AnalysisService {
       return new TextEncoder().encode(lines.join('\n') + '\n');
     }
     const chans = r.channels.map((ch, k) => {
-      const meta = f.channels.find((c) => c.name === ch)!;
-      return { name: ch, label: meta.label, range: meta.range, values: cols[k] };
+      // Unmixed fluorochromes have no FCS parameter; use the largest detector range.
+      const meta = f.channels.find((c) => c.name === ch);
+      return { name: ch, label: meta ? meta.label : 'unmixed', range: meta ? meta.range : Math.max(...f.channels.map((c) => c.range)), values: cols[k] };
     });
     const extra: Record<string, string> = {};
     // Values are written in scale units (Time already in seconds, gain applied),

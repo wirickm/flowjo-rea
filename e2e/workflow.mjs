@@ -258,6 +258,23 @@ check('FlowJo .wsp imported in UI; Time count equals FlowJo (283968)', timeCount
 await page.getByTestId('pop-CD3+').click();
 await idle();
 await page.screenshot({ path: join(out, '04-flowjo-wsp.png') });
+// spectral unmixing through the UI (UI path only: a synthetic 2-fluorochrome x
+// 3-detector matrix on conventional data; numerics are covered by unit tests)
+const specCsv = join(out, 'spectral.csv');
+writeFileSync(specCsv, ',CD3 APC-H7 FLR-A,CD4 PE-Cy7 FLR-A,CD8 PerCP-Cy55 FLR-A\nUnmixA,1,0.3,0.1\nUnmixB,0.2,1,0.5\n');
+await page.getByTestId('open-comp').click();
+await page.getByRole('dialog').locator('input[type=file]').setInputFiles(specCsv);
+await page.getByRole('button', { name: 'Save and apply to sample' }).click();
+await page.getByRole('dialog').getByLabel('Close').click();
+await idle();
+await page.getByTestId('pop-root').click(); await idle();
+const hasUnmixed = (await page.getByTestId('x-channel').locator('option', { hasText: 'UnmixA' }).count()) === 1;
+await page.getByTestId('x-channel').selectOption('UnmixA'); await remeasure();
+await page.getByTestId('y-channel').selectOption('UnmixB'); await remeasure();
+await idle();
+const cap = await page.getByTestId('plot-caption').textContent();
+await page.screenshot({ path: join(out, '05-unmixed.png') });
+check('spectral CSV import exposes unmixed channels that plot', hasUnmixed && cap.includes('283,969'), cap);
 check('no uncaught page errors', errors.length === 0, errors.join('; '));
 await browser.close();
 writeFileSync(join(out, 'results.json'), JSON.stringify(results, null, 1));

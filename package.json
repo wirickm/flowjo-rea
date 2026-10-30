@@ -2,9 +2,10 @@
   "name": "flowjo-rea",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run",
+    "typecheck": "tsc -p .",
+    "fixtures": "./scripts/fetch-fixtures.sh"
   },
   "repository": {
     "type": "git",
@@ -18,15 +19,19 @@
   },
   "homepage": "https://github.com/wirickm/flowjo-rea#readme",
   "dependencies": {
+    "@xmldom/xmldom": "^0.8.10",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@types/node": "^22.20.5",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
     "typescript": "^5.6.3",
     "vite": "^5.4.10",
     "vitest": "^2.1.4"
-  }
+  },
+  "type": "module",
+  "private": true
 }

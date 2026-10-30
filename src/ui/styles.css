@@ -41,3 +41,7 @@ button.x { padding: 0 4px; font-size: 10px; }
 .params input { width: 120px; }
 .matrix-wrap { overflow: auto; max-width: 100%; }
 table.matrix input { width: 72px; }
+/* Fixed-height tool row so changing tools never moves the plot under the cursor. */
+.row.tools { flex-wrap: nowrap; height: 28px; overflow: hidden; }
+.row.tools .muted { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.row.plot-controls { min-height: 56px; align-content: flex-start; }

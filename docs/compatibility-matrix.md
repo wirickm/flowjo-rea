@@ -31,8 +31,8 @@ hand-computed expectations; **E2E** = `e2e/workflow.mjs` through the real UI.
 | 3 | FlowJo biex | observed (FJ-LUT); structure informed by FlowKit | Done | FJ-LUT 4096 entries within 1e-5 relative; FJ-count biex rect exact | - |
 | 3 | FlowJo log, linear-with-gain | observed (wsp attributes) | Partial | FJ-count (Time gain exact) | FlowJo log not exercised by any FlowJo fixture |
 | 4 | Pseudocolor, dot, histogram plots with transformed axes and decade ticks | - | Done | E2E screenshots | Contour, zebra, density, overlays, backgating not implemented (contour shown disabled) |
-| 5 | Rectangle, polygon, ellipse, quadrant, 1-D range, boolean AND/OR/NOT gates | spec | Done | ISAC exact; E2E creation and editing | Ellipse editing: translate only, and only when the plot scale equals the gate's scale |
-| 5 | Hierarchical gating, rename, delete (blocked when a boolean depends on it) | - | Done | E2E; unit tests | No undo |
+| 5 | Rectangle, polygon, ellipse, quadrant, 1-D range, boolean AND/OR/NOT gates | spec | Done | ISAC exact; E2E creation and editing; ellipse geometry unit tests | Ellipse editing (move, rotate/resize via major handles, width via minor handles) only when the plot scales equal the gate's scales; otherwise refused with a log message |
+| 5 | Hierarchical gating, rename, delete (blocked when a boolean depends on it), undo/redo of every workspace edit | - | Done | E2E; unit tests | History is in memory only (not saved with the workspace) |
 | 5 | Gating-ML 2.0 import | spec | Done | ISAC: 46 files, every truth file, 0 mismatched events | Non-square spectrum matrices, pre-inverted matrices unsupported |
 | 5 | Gating-ML 2.0 export | spec | Partial | round trip (identical counts) | FlowJo biex/log and ratio dimensions are not representable and are rejected |
 | 6 | Count, % parent, % grandparent, % total, mean, median, geometric mean, SD, CV, robust SD/CV, MAD, min, max, percentile | hand | Done | hand-computed tests; E2E table | Values on compensated, untransformed data. FlowJo's exact median/percentile and robust CV conventions are unknown (not verified against FlowJo) |

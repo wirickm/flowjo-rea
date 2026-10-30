@@ -57,9 +57,11 @@ await page.getByRole('dialog').getByLabel('Close').click();
 await idle();
 // 4. gate: rectangle on FSC-A / SSC-A (default axes)
 const canvas = page.getByTestId('plot-canvas');
-const box = await canvas.boundingBox();
+// Re-measured on every call so a layout change cannot offset clicks.
+let box = await canvas.boundingBox();
 const at = (fx, fy) => [box.x + 64 + fx * (460 - 78), box.y + 14 + (1 - fy) * (420 - 62)];
-await page.getByTestId('tool-rect').click();
+const remeasure = async () => { box = await canvas.boundingBox(); };
+await page.getByTestId('tool-rect').click(); await remeasure();
 let [x0, y0] = at(0.15, 0.04);
 let [x1, y1] = at(0.85, 0.6);
 await page.mouse.move(x0, y0); await page.mouse.down(); await page.mouse.move(x1, y1, { steps: 5 }); await page.mouse.up();
@@ -74,11 +76,11 @@ await idle();
 check('rename population', (await page.getByTestId('pop-Cells').count()) === 1);
 // 5. drill into Cells and gate CD3 vs CD4 (logicle) with a polygon
 await page.getByTestId('pop-Cells').click();
-await page.getByTestId('x-channel').selectOption('CD3 APC-H7 FLR-A');
-await page.getByTestId('y-channel').selectOption('CD4 PE-Cy7 FLR-A');
+await page.getByTestId('x-channel').selectOption('CD3 APC-H7 FLR-A'); await remeasure();
+await page.getByTestId('y-channel').selectOption('CD4 PE-Cy7 FLR-A'); await remeasure();
 await idle();
 await page.screenshot({ path: join(out, '01-cd3-cd4.png') });
-await page.getByTestId('tool-polygon').click();
+await page.getByTestId('tool-polygon').click(); await remeasure();
 for (const [fx, fy] of [[0.55, 0.45], [0.95, 0.45], [0.95, 0.95], [0.55, 0.95]]) {
   const [px, py] = at(fx, fy);
   await page.mouse.click(px, py);
@@ -97,7 +99,7 @@ await idle();
 const backCount = Number(await count('Polygon 1'));
 check('undo removes the gate; redo (keyboard) restores the identical count', goneAfterUndo && backCount === polyCount, `undo removed: ${goneAfterUndo}, redo count ${backCount}`);
 // edit: drag a vertex outward and confirm the count changes
-await page.getByTestId('tool-select').click();
+await page.getByTestId('tool-select').click(); await remeasure();
 const [vx, vy] = at(0.55, 0.45);
 const [vx2, vy2] = at(0.4, 0.3);
 await page.mouse.move(vx, vy); await page.mouse.down(); await page.mouse.move(vx2, vy2, { steps: 5 }); await page.mouse.up();
@@ -111,20 +113,48 @@ await page.keyboard.press('Control+Y');
 await idle();
 check('undo/redo a vertex edit', undoneEdit === polyCount && Number(await count('Polygon 1')) === polyEdited, `${undoneEdit} / ${await count('Polygon 1')}`);
 // quadrant + histogram range on Cells
-await page.getByTestId('tool-quadrant').click();
+await page.getByTestId('tool-quadrant').click(); await remeasure();
 const [qx, qy] = at(0.5, 0.5);
 await page.mouse.click(qx, qy);
 await idle();
 const q = await Promise.all(['Q1', 'Q2', 'Q3', 'Q4'].map(async (k) => Number((await page.locator(`[data-testid^="count-${k}:"]`).first().textContent()).replace(/,/g, ''))));
 check('quadrant gates partition the parent', q.reduce((a, b) => a + b, 0) === rectCount, `${q.join(' + ')} = ${q.reduce((a, b) => a + b, 0)} (parent ${rectCount})`);
-await page.getByTestId('plot-kind').selectOption('histogram');
+await page.getByTestId('plot-kind').selectOption('histogram'); await remeasure();
 await idle();
-await page.getByTestId('tool-range').click();
+await page.getByTestId('tool-range').click(); await remeasure();
 [x0, y0] = at(0.6, 0.5); [x1, y1] = at(0.9, 0.5);
 await page.mouse.move(x0, y0); await page.mouse.down(); await page.mouse.move(x1, y1, { steps: 4 }); await page.mouse.up();
 await idle();
 check('histogram range gate', Number(await count('Range 6')) > 0, `Range 6 = ${await count('Range 6')}`);
 await page.screenshot({ path: join(out, '02-histogram.png') });
+// ellipse: draw, then move, resize/rotate (major handle) and narrow (minor handle)
+await page.getByTestId('plot-kind').selectOption('pseudocolor'); await remeasure();
+await idle();
+await page.getByTestId('tool-ellipse').click(); await remeasure();
+[x0, y0] = at(0.3, 0.3); [x1, y1] = at(0.5, 0.45);
+await page.mouse.move(x0, y0); await page.mouse.down(); await page.mouse.move(x1, y1, { steps: 4 }); await page.mouse.up();
+await idle();
+const ellName = (await page.locator('[data-testid^="pop-Ellipse"]').first().getAttribute('data-testid')).slice(4);
+const e0 = Number(await count(ellName));
+await page.getByTestId('tool-select').click(); await remeasure();
+const drag = async (a, b) => { await remeasure(); await page.mouse.move(...a); await page.mouse.down(); await page.mouse.move(...b, { steps: 5 }); await page.mouse.up(); await idle(); };
+await drag(at(0.4, 0.375), at(0.45, 0.4));
+const e1 = Number(await count(ellName));
+await drag(at(0.55, 0.4), at(0.75, 0.6));
+const e2 = Number(await count(ellName));
+// minor handle: centre (0.45, 0.4) with b = 0.075 along the rotated minor axis;
+// read the handle position from the saved gate rather than assuming it.
+const wsNow = JSON.parse(readFileSync(await download(() => page.getByTestId('save-ws').click()), 'utf8'));
+const eg = wsNow.samples.find((s) => s.fileName === F1).populations.find((p) => p.name === ellName).gate;
+const [[sxx, sxy], [, syy]] = eg.cov;
+const th = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+const l2 = (sxx + syy) / 2 - Math.sqrt(((sxx - syy) / 2) ** 2 + sxy * sxy);
+const bMinor = Math.sqrt(l2 * eg.distanceSquare);
+const hx = eg.mean[0] - bMinor * Math.sin(th), hy = eg.mean[1] + bMinor * Math.cos(th);
+await drag(at(hx, hy), at(eg.mean[0] - 2 * bMinor * Math.sin(th), eg.mean[1] + 2 * bMinor * Math.cos(th)));
+const e3 = Number(await count(ellName));
+await page.screenshot({ path: join(out, '02b-ellipse.png') });
+check('ellipse move, major-handle resize/rotate, minor-handle widen each re-gate', e0 > 0 && e1 !== e0 && e2 !== e1 && e3 > e2, `${e0} -> ${e1} -> ${e2} -> ${e3}`);
 // 6. statistics: count + median CD3 for Polygon 1, across the group
 await page.getByTestId('pop-Polygon 1').click();
 await page.getByTestId('stat-kind').selectOption('count');

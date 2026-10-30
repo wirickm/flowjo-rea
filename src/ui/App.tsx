@@ -504,6 +504,7 @@ export function App() {
                 onCreate={createGates}
                 onUpdate={updateGates}
                 onSelect={setGateSel}
+                onRefuse={(m) => note('warn', m)}
                 canvasRef={canvasRef}
               />
               <div className="muted" data-testid="plot-caption">

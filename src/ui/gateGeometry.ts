@@ -1,6 +1,7 @@
 // Mapping gates between their own coordinate space (gate dimension
 // transforms) and a plot's axis display space.
 import type { Dimension, Gate, Population } from '../core/model';
+import { axesFromGate, handles, outline, type EllipseAxes } from '../core/ellipse';
 import { makeTransform, type Transform, type TransformSpec } from '../core/transforms';
 
 export interface Axis {
@@ -35,7 +36,8 @@ export type Drawable =
   | { pop: Population; kind: 'rect'; x0: number; x1: number; y0: number; y1: number }
   | { pop: Population; kind: 'range'; x0: number; x1: number }
   | { pop: Population; kind: 'polygon'; pts: [number, number][] }
-  | { pop: Population; kind: 'ellipse'; pts: [number, number][]; cx: number; cy: number }
+  // axes are in gate space; editable when both plot scales equal the gate's.
+  | { pop: Population; kind: 'ellipse'; pts: [number, number][]; cx: number; cy: number; axes: EllipseAxes; editable: boolean; handles: [number, number][] }
   | { pop: Population; kind: 'quadrant'; x: number; y: number };
 
 // Gates of child populations drawable on this plot.
@@ -67,7 +69,7 @@ export function drawableGates(pops: Population[], parentId: string | null, x: Ax
     } else if (g.type === 'polygon' && y && ch[0] === x.channel && ch[1] === y.channel) {
       out.push({ pop: p, kind: 'polygon', pts: g.vertices.map(([a, b]) => [dimToAxis(a, g.dims[0], x), dimToAxis(b, g.dims[1], y)]) });
     } else if (g.type === 'ellipsoid' && y && g.dims.length === 2 && ch[0] === x.channel && ch[1] === y.channel) {
-      out.push({ pop: p, kind: 'ellipse', ...ellipseOutline(g, x, y) });
+      out.push(ellipseDrawable(p, axesFromGate(g.mean, g.cov, g.distanceSquare), x, y));
     } else if (g.type === 'quadrant' && y && g.dims.length === 2 && ch[0] === x.channel && ch[1] === y.channel && g.dividers[0].length === 1 && g.dividers[1].length === 1) {
       out.push({ pop: p, kind: 'quadrant', x: dimToAxis(g.dividers[0][0], g.dims[0], x), y: dimToAxis(g.dividers[1][0], g.dims[1], y) });
     }
@@ -75,24 +77,19 @@ export function drawableGates(pops: Population[], parentId: string | null, x: Ax
   return out;
 }
 
-function ellipseOutline(g: Extract<Gate, { type: 'ellipsoid' }>, x: Axis, y: Axis) {
-  // Eigen-decomposition of the 2x2 covariance gives the outline in gate space.
-  const [[a, b], [, d]] = g.cov;
-  const tr = a + d;
-  const det = a * d - b * b;
-  const l1 = tr / 2 + Math.sqrt(Math.max(0, (tr * tr) / 4 - det));
-  const l2 = tr / 2 - Math.sqrt(Math.max(0, (tr * tr) / 4 - det));
-  const th = Math.abs(b) < 1e-300 ? (a >= d ? 0 : Math.PI / 2) : Math.atan2(l1 - a, b);
-  const r1 = Math.sqrt(l1 * g.distanceSquare);
-  const r2 = Math.sqrt(Math.max(l2, 0) * g.distanceSquare);
-  const pts: [number, number][] = [];
-  for (let i = 0; i < 72; i++) {
-    const u = (i / 72) * 2 * Math.PI;
-    const ex = g.mean[0] + r1 * Math.cos(u) * Math.cos(th) - r2 * Math.sin(u) * Math.sin(th);
-    const ey = g.mean[1] + r1 * Math.cos(u) * Math.sin(th) + r2 * Math.sin(u) * Math.cos(th);
-    pts.push([dimToAxis(ex, g.dims[0], x), dimToAxis(ey, g.dims[1], y)]);
-  }
-  return { pts, cx: dimToAxis(g.mean[0], g.dims[0], x), cy: dimToAxis(g.mean[1], g.dims[1], y) };
+export function ellipseDrawable(pop: Population, axes: EllipseAxes, x: Axis, y: Axis): Extract<Drawable, { kind: 'ellipse' }> {
+  const g = pop.gate as Extract<Gate, { type: 'ellipsoid' }>;
+  const toAxis = ([a, b]: [number, number]): [number, number] => [dimToAxis(a, g.dims[0], x), dimToAxis(b, g.dims[1], y)];
+  return {
+    pop,
+    kind: 'ellipse',
+    axes,
+    pts: outline(axes).map(toAxis),
+    cx: dimToAxis(axes.cx, g.dims[0], x),
+    cy: dimToAxis(axes.cy, g.dims[1], y),
+    editable: sameScale(g.dims[0].transform, x.spec) && sameScale(g.dims[1].transform, y.spec),
+    handles: handles(axes).map(toAxis),
+  };
 }
 
 export function quadrantSiblings(pops: Population[], p: Population): Population[] {

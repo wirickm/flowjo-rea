@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Gate, Population } from '../core/model';
 import type { PlotResult } from '../core/service';
 import { ticks } from './axes';
-import { channelDim, drawableGates, pointInPolygon, quadrantSiblings, type Axis, type Drawable } from './gateGeometry';
+import { dragHandle, gateFromAxes } from '../core/ellipse';
+import { channelDim, drawableGates, ellipseDrawable, pointInPolygon, quadrantSiblings, type Axis, type Drawable } from './gateGeometry';
 
 export type PlotKind = 'pseudocolor' | 'dot' | 'histogram';
 export type Tool = 'select' | 'rect' | 'polygon' | 'ellipse' | 'quadrant' | 'range';
@@ -20,6 +21,7 @@ interface Props {
   onCreate: (gates: { name: string; gate: Gate }[]) => void;
   onUpdate: (updates: { id: string; gate: Gate }[]) => void;
   onSelect: (id: string) => void;
+  onRefuse?: (message: string) => void;
   canvasRef?: React.MutableRefObject<HTMLCanvasElement | null>;
 }
 
@@ -206,6 +208,7 @@ export function Plot(p: Props) {
       }
       ctx.stroke();
       if (g.kind === 'polygon' && sel) for (const [a, b] of g.pts) ctx.strokeRect(sx(a) - 3, sy(b) - 3, 6, 6);
+      if (g.kind === 'ellipse' && sel && g.editable) for (const [a, b] of g.handles) ctx.strokeRect(sx(a) - 3, sy(b) - 3, 6, 6);
       ctx.fillStyle = sel ? '#d0021b' : '#111';
       ctx.fillText(`${g.pop.name} ${pct}`, Math.max(PLOT.ml + 2, lx), Math.max(PLOT.mt + 11, ly));
     }
@@ -252,6 +255,8 @@ export function Plot(p: Props) {
         if (Math.abs(sx(pt[0]) - sx(g.x1)) < 6) return { g, vertex: 1 };
         if (pt[0] >= g.x0 && pt[0] <= g.x1) return { g };
       } else if (g.kind === 'ellipse') {
+        const v = g.handles.findIndex((q) => pxDist(q, pt) < 7);
+        if (v >= 0) return { g, vertex: v };
         if (pointInPolygon(pt[0], pt[1], g.pts)) return { g };
       } else if (g.kind === 'quadrant') {
         if (pxDist([g.x, g.y], pt) < 10) return { g, vertex: 0 };
@@ -290,6 +295,10 @@ export function Plot(p: Props) {
       const h = hit(pt);
       if (h) {
         p.onSelect(h.g.pop.id);
+        if (h.g.kind === 'ellipse' && !h.g.editable) {
+          p.onRefuse?.(`"${h.g.pop.name}" was drawn on a different axis scale; set this plot's axes to the gate's scales to edit it`);
+          return;
+        }
         const group = h.g.kind === 'quadrant' ? gates.filter((g) => quadrantSiblings(p.populations, h.g.pop).some((q) => q.id === g.pop.id)) : [h.g];
         setDrag({ mode: h.vertex !== undefined ? 'vertex' : 'move', start: pt, original: group, vertex: h.vertex });
       }
@@ -333,7 +342,11 @@ export function Plot(p: Props) {
         if (drag.mode === 'move') return { ...o, x0: o.x0 + dx, x1: o.x1 + dx };
         return drag.vertex === 0 ? { ...o, x0: o.x0 + dx } : { ...o, x1: o.x1 + dx };
       }
-      if (o.kind === 'ellipse') return { ...o, cx: o.cx + dx, cy: o.cy + dy, pts: o.pts.map((q) => [q[0] + dx, q[1] + dy] as [number, number]) };
+      if (o.kind === 'ellipse' && p.y) {
+        // Editable ellipses share the plot's scales, so axis space = gate space.
+        const axes = drag.mode === 'move' ? { ...o.axes, cx: o.axes.cx + dx, cy: o.axes.cy + dy } : dragHandle(o.axes, drag.vertex!, pt);
+        return ellipseDrawable(o.pop, axes, p.x, p.y);
+      }
       if (o.kind === 'quadrant') return { ...o, x: o.x + dx, y: o.y + dy };
       return g;
     }));
@@ -364,15 +377,7 @@ export function Plot(p: Props) {
             const open = (v: number) => (v < p.x.range[0] || v > p.x.range[1] ? null : v);
             ups.push({ id: g.pop.id, gate: keepDims({ type: 'rect', dims: [X], min: [open(Math.min(g.x0, g.x1))], max: [open(Math.max(g.x0, g.x1))] }) });
           }
-          if (g.kind === 'ellipse' && old.type === 'ellipsoid') {
-            // Translate in gate space by the axis-space shift of the centre.
-            const o = drag.original.find((q) => q.pop.id === g.pop.id) as Extract<Drawable, { kind: 'ellipse' }>;
-            const shiftX = g.cx - o.cx;
-            const shiftY = g.cy - o.cy;
-            const sameX = JSON.stringify(old.dims[0].transform) === JSON.stringify(p.x.spec);
-            const sameY = JSON.stringify(old.dims[1].transform) === JSON.stringify(p.y!.spec);
-            if (sameX && sameY) ups.push({ id: g.pop.id, gate: { ...old, mean: [old.mean[0] + shiftX, old.mean[1] + shiftY] } });
-          }
+          if (g.kind === 'ellipse' && old.type === 'ellipsoid' && g.editable) ups.push({ id: g.pop.id, gate: { ...old, ...gateFromAxes(g.axes) } });
           if (g.kind === 'quadrant' && Y && old.type === 'quadrant') ups.push({ id: g.pop.id, gate: keepDims({ ...old, dims: [X, Y], dividers: [[g.x], [g.y]] }) });
         }
         if (ups.length) p.onUpdate(ups);

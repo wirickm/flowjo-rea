@@ -50,7 +50,7 @@ function parseTransforms(e: El | undefined, warnings: string[], timestep: number
         // per-sample time scale close to (not equal to) $TIMESTEP.
         const gain = n('gain', 1);
         const factor = /^time$/i.test(name) && timestep > 0 ? gain / timestep : gain;
-        const spec: TransformSpec = factor === 1 ? { kind: 'none' } : { kind: 'linear', T: 1 / factor, A: 0 };
+        const spec: TransformSpec = factor === 1 ? { kind: 'none' } : { kind: 'scale', factor };
         out.set(name, { spec, displayLength: 256, normalize: (y) => (y - min) / (max - min) });
         break;
       }
@@ -163,7 +163,7 @@ export function parseWsp(xml: string): WspImport {
           const dims: Dimension[] = names.map((n) => {
             const r = resolveDim(n);
             const sp = scaleOf(n).spec;
-            return { kind: 'channel', channel: r.channel, compensation: r.comp, transform: sp.kind === 'linear' ? sp : { kind: 'none' } };
+            return { kind: 'channel', channel: r.channel, compensation: r.comp, transform: sp.kind === 'scale' ? sp : { kind: 'none' } };
           });
           return { type: 'rect', dims, min: dimEls.map((d) => numAttr(d, 'min') ?? null), max: dimEls.map((d) => numAttr(d, 'max') ?? null) };
         }
@@ -178,7 +178,7 @@ export function parseWsp(xml: string): WspImport {
           const vertices = kids(g, 'vertex').map((v) => {
             const c = kids(v, 'coordinate').map((x) => Number(attr(x, 'value')));
             // Linear (gain) coordinates are already in scaled units.
-            const at = (k: number) => (sc[k].spec.kind === 'linear' ? c[k] : tf[k].apply(c[k]));
+            const at = (k: number) => (sc[k].spec.kind === 'scale' ? c[k] : tf[k].apply(c[k]));
             return [at(0), at(1)] as [number, number];
           });
           return { type: 'polygon', dims, vertices };
@@ -191,9 +191,11 @@ export function parseWsp(xml: string): WspImport {
             const r = resolveDim(n);
             const s0 = sc[k];
             let spec = s0.spec;
-            if (spec.kind === 'none') {
+            if (spec.kind === 'none' || spec.kind === 'scale') {
+              // Display fraction of FlowJo units (raw x gain) over the axis range.
               const top = s0.normalize(1) - s0.normalize(0);
-              spec = { kind: 'linear', T: 1 / top, A: 0 };
+              const gain = spec.kind === 'scale' ? spec.factor : 1;
+              spec = { kind: 'linear', T: 1 / (top * gain), A: 0 };
             }
             return { kind: 'channel' as const, channel: r.channel, compensation: r.comp, transform: spec };
           });
@@ -294,7 +296,8 @@ export function parseWsp(xml: string): WspImport {
     flowjoCounts[fileName] = counts;
     for (const [ch, sc] of scales) {
       const r = resolveDim(ch);
-      if (!(r.channel in ws.channelTransforms) && sc.spec.kind !== 'none') ws.channelTransforms[r.channel] = sc.spec;
+      // Gains are gate-evaluation details, not display scales.
+      if (!(r.channel in ws.channelTransforms) && sc.spec.kind !== 'none' && sc.spec.kind !== 'scale') ws.channelTransforms[r.channel] = sc.spec;
     }
     warnings.push(...sw.map((w) => `${fileName}: ${w}`));
   }

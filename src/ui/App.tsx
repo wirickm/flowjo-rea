@@ -7,6 +7,7 @@ import type { PlotResult, SampleMeta } from '../core/service';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL } from '../core/stats';
 import { makeTransform, type TransformSpec } from '../core/transforms';
 import { parseWsp } from '../core/wsp';
+import { writeWsp } from '../core/wspWriter';
 import { defaultTransform, isScatterOrTime, makeAxis, sampleChannels } from './axes';
 import { CompensationDialog, KeywordsDialog, TransformDialog } from './Dialogs';
 import { LayoutView } from './Layout';
@@ -625,6 +626,27 @@ export function App() {
           onClose={() => setDialog(null)}
           onEvents={exportEvents}
           onPng={() => canvasRef.current?.toBlob((b) => b && download(`${sample.fileName}_${(popPath || 'all').replace(/[^\w.-]+/g, '_')}.png`, b, 'image/png'))}
+          onWsp={() => {
+            try {
+              const { xml, warnings } = writeWsp({
+                ws,
+                sampleMatrix: (id) => {
+                  const s = ws.samples.find((x) => x.id === id)!;
+                  if (s.compensation === 'file') return meta[id]?.spillover ?? null;
+                  return ws.matrices.find((m) => m.id === s.compensation) ?? null;
+                },
+                counts: (id) => {
+                  const a = analysis[id];
+                  return a ? Object.fromEntries(a.results.filter(Boolean).map((r) => [r.id, r.count])) : undefined;
+                },
+              });
+              for (const w of warnings) note('warn', `.wsp export: ${w}`);
+              download(`${ws.name.replace(/\.(wsp|json)$/i, '') || 'workspace'}.wsp`, xml, 'application/xml');
+              note('info', 'Exported FlowJo-style .wsp (round-trip tested with this app only; not validated in FlowJo)');
+            } catch (e) {
+              note('error', `.wsp export: ${(e as Error).message}`);
+            }
+          }}
           onGatingMl={() => {
             try {
               download(`${sample.fileName.replace(/\.fcs$/i, '')}_gates.xml`, exportGatingMl(sample.populations, ws.matrices, sample.compensation), 'application/xml');
@@ -638,7 +660,7 @@ export function App() {
   );
 }
 
-function ExportDialog(p: { popLabel: string; hasData: boolean; onClose: () => void; onEvents: (f: 'csv' | 'fcs', comp: boolean) => void; onPng: () => void; onGatingMl: () => void }) {
+function ExportDialog(p: { popLabel: string; hasData: boolean; onClose: () => void; onEvents: (f: 'csv' | 'fcs', comp: boolean) => void; onPng: () => void; onGatingMl: () => void; onWsp: () => void }) {
   const [comp, setComp] = useState(true);
   return (
     <div className="modal-bg" onMouseDown={(e) => e.target === e.currentTarget && p.onClose()}>
@@ -655,7 +677,7 @@ function ExportDialog(p: { popLabel: string; hasData: boolean; onClose: () => vo
           <div className="row">
             <button disabled={!p.hasData} onClick={p.onPng} data-testid="export-png">Plot PNG</button>
             <button onClick={p.onGatingMl} data-testid="export-gml">Gates as Gating-ML 2.0</button>
-            <button disabled title="Not implemented: FlowJo .wsp writing has no validation path without FlowJo">FlowJo .wsp (not implemented)</button>
+            <button onClick={p.onWsp} data-testid="export-wsp" title="Round-trip tested with this app; not validated by opening in FlowJo">FlowJo-style .wsp (unvalidated in FlowJo)</button>
           </div>
           <p className="muted">Statistics CSV export is in the Statistics panel. Workspace save is in the toolbar.</p>
         </div>

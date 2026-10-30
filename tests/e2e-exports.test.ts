@@ -22,6 +22,19 @@ describe.skipIf(!existsSync(manifest))('E2E export files', () => {
     const doc = parseGatingMl(readFileSync(m.gmlOut, 'utf8'));
     expect(doc.populations.length).toBeGreaterThanOrEqual(7);
   });
+  it('FlowJo-style .wsp export from the UI re-imports with identical counts (own reader)', async () => {
+    const { parseWsp } = await import('../src/core/wsp');
+    const { SampleEngine } = await import('../src/core/analysis');
+    const { join } = await import('node:path');
+    const imp = parseWsp(readFileSync(m.wspOut, 'utf8'));
+    const s = imp.workspace.samples.find((x) => x.fileName === '101_DEN084Y5_15_E03_009_clean.fcs')!;
+    const fcs = parseFcs(new Uint8Array(readFileSync(join(m.fcsDir, s.fileName))));
+    const eng = new SampleEngine(fcs, s, imp.workspace.matrices).run();
+    const poly = s.populations.find((p) => p.name === 'Polygon 1')!;
+    expect(eng.results.get(poly.id)!.count).toBe(m.polyFinal);
+    // the app wrote its own counts into the file
+    expect(imp.flowjoCounts[s.fileName]['Cells/Polygon 1']).toBe(m.polyFinal);
+  });
   it('PNG export is a PNG', () => {
     const b = readFileSync(m.pngOut);
     expect([...b.subarray(1, 4)].map((c) => String.fromCharCode(c)).join('')).toBe('PNG');

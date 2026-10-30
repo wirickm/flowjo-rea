@@ -1,36 +1,35 @@
 # Progress and handoff
 
-## State (2026-10-30)
+## State (2026-10-30, milestone 2)
 
-Branch `main` on GitHub (wirickm/flowjo-rea). The earlier scaffold branch
-`claude/friendly-newton-i046h7` was left untouched; `main` was created from
-it (its last commit deleted the truncated design draft).
+Branch `main` on GitHub (wirickm/flowjo-rea). Milestone 1 delivered the core
+app. Milestone 2 (this session) delivered: per-population FlowJo evidence
+report with inherited/introduced split; REA run from the local checkout;
+undo/redo; full ellipse editing; contour plots; layout editor with batch PNG
+export; OLS spectral unmixing; FlowJo-style .wsp export (unvalidated in
+FlowJo). Status per feature: `docs/compatibility-matrix.md`.
 
-Working: FCS import, metadata inspection, groups, compensation, scales,
-plots, gate creation and editing, hierarchical and boolean gating,
-statistics across a group, native save/reload with relinking, exports,
-Gating-ML import/export, FlowJo .wsp import. See
-`docs/compatibility-matrix.md` for status and gaps.
+## Commands and checks run (latest)
 
-## Commands and checks run
+- `./scripts/fetch-fixtures.sh` (FlowKit commit f2159043b6a56e527d4baacf97490caf8354618e)
+- `npm test`: 127 passed, 2 skipped (report writer and polygon diagnostic run only with `WRITE_REPORT=1` / `DIAG=1`)
+- `npx tsc -p .`: clean
+- `npm run dev` then `npm run e2e`: 26/26 checks passed in Chromium
+- `WRITE_REPORT=1 npx vitest run tests/wsp-report.test.ts` -> `docs/validation/wsp-counts.md`
+- `DIAG=1 npx vitest run tests/diagnostics/polygon.test.ts` -> `docs/validation/polygon-diagnostics.md`
+- REA: `npm ci --ignore-scripts && npm run build:cached` in `../rea`, then
+  `node scripts/rea.mjs doctor --json` and `inspect-artifact` (outputs in `docs/rea/`)
 
-- `./scripts/fetch-fixtures.sh` (required for fixture-based tests)
-- `npm test` : 101 passed, 1 skipped (report writer, runs with `WRITE_REPORT=1`)
-- `npx tsc -p .` : clean
-- `npm run dev` then `npm run e2e` : 17/17 checks passed in Chromium
-- `WRITE_REPORT=1 npx vitest run tests/wsp.test.ts` regenerates
-  `docs/validation/wsp-counts.md`
+## Defects found and fixed in milestone 2
 
-## Findings recorded on the way
-
-- FlowJo .wsp rectangle/polygon coordinates are raw values; ellipse foci and
-  edges are display-space at gate resolution; first two edge vertices are the
-  major axis (gating:distance is not 2a).
-- FlowJo Time gates use `$TIMESTEP` seconds times a per-sample gain stored on
-  the Time linear transform.
-- FlowJo biex uses a table with an integer-snapped zero channel.
-- Exported FCS must not carry the source `$TIMESTEP` (values already in
-  seconds); fixed and covered by `tests/e2e-exports.test.ts`.
+- Plot canvas moved 22 px when switching tools (hint text wrapping); fixed
+  with a fixed-height tool row. Earlier E2E clicks were offset by this.
+- Compensation dialog applied a square-inverse check to spectral matrices.
+- .wsp writer: Transformations were serialised before gates registered
+  their scales; Time gain was written without `$TIMESTEP`.
+- FlowJo linear gain was represented as a `linear` display transform, which
+  made export ambiguous and gave imported Time a meaningless display scale;
+  now a separate `scale` transform used only by imported gates.
 
 ## Unresolved
 
@@ -55,10 +54,26 @@ Gating-ML import/export, FlowJo .wsp import. See
 | 5 | Spectral unmixing (OLS) | none | Non-square spectrum matrix (fluorochromes x detectors) accepted from CSV and Gating-ML; least-squares unmixing; unmixed channels named by fluorochrome usable in plots, gates and stats; exact recovery on synthetic mixtures; comparison with FlowKit spectral fixture output | Instrument-vendor unmixing output for a reference comparison |
 | 6 | FlowJo .wsp export | 1-5 not required | Writes samples, groups, matrices, transforms and gates in the observed FlowJo structure; re-import through our reader reproduces identical counts | Opening in FlowJo is the only real validation |
 
+Milestone 2 plan status: items 1-6 implemented and tested as described in
+the matrix. Items 3, 5 and 6 carry the external dependencies listed above.
+
+## External dependencies (each independent)
+
+1. FlowJo event-level membership export for one polygon and the logicle
+   ellipse (resolves the polygon/ellipse count gaps).
+2. A synthetic grid FCS + FlowJo-drawn polygon + FlowJo-saved .wsp and member
+   export (separates boundary-band, rasterisation and vertex-rounding causes).
+3. The same workspace saved by two FlowJo versions after recalculation.
+4. Opening an exported .wsp in FlowJo and comparing counts (validates export).
+5. Vendor-unmixed spectral reference data (validates unmixing beyond the
+   FlowKit cross-check).
+6. FlowJo installer plus an established license/jurisdiction permission, plus
+   a deep-analysis engine (Ghidra/IDA/Hopper), for any REA analysis of FlowJo.
+
 ## Next implementation steps
 
 1. Import FlowJo graph settings (axes per population) from .wsp.
-2. Contour/density plots and overlays.
-3. Ellipse resize/rotate editing; undo/redo.
-4. Layout editor / batch report export (PNG/SVG per sample).
-5. FlowJo .wsp export once a validation path exists.
+2. Overlays/backgating and zebra/density plots.
+3. Table editor templates; SVG/PDF vector export for plots and layouts.
+4. Keyword-based groups and sample annotations.
+5. Autofluorescence handling and spectrum estimation from single-stain controls.

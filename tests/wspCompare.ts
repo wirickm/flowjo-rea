@@ -49,7 +49,7 @@ export interface CompareRow {
 // in raw units, so their own transform is 'none').
 export function gateLabel(g: Gate, scales: Record<string, TransformSpec>): string {
   if (g.type === 'boolean') return `boolean-${g.op}`;
-  const scale = (k: string) => (k === 'none' || k === 'linear' ? 'linear' : k === 'flowjo-biex' ? 'biex' : k);
+  const scale = (k: string) => (k === 'none' || k === 'linear' || k === 'scale' ? 'linear' : k === 'flowjo-biex' ? 'biex' : k);
   return `${g.type}[${g.dims.map((d) => scale(d.kind === 'channel' ? (scales[d.channel] ?? d.transform).kind : 'ratio')).join(',')}]`;
 }
 

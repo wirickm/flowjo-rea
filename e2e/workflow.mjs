@@ -222,10 +222,11 @@ const fcsOut = await download(() => page.getByTestId('export-fcs').click());
 const csvOut = await download(() => page.getByTestId('export-csv').click());
 const pngOut = await download(() => page.getByTestId('export-png').click());
 const gmlOut = await download(() => page.getByTestId('export-gml').click());
+const wspOut = await download(() => page.getByTestId('export-wsp').click());
 await page.getByRole('dialog').getByRole('button', { name: 'x' }).click();
 const csvRows = readFileSync(csvOut, 'utf8').trim().split('\n').length - 1;
 check('events CSV row count equals population count', csvRows === polyFinal, `${csvRows} vs ${polyFinal}`);
-writeFileSync(join(out, 'exports.json'), JSON.stringify({ fcsOut, csvOut, pngOut, gmlOut, polyFinal }));
+writeFileSync(join(out, 'exports.json'), JSON.stringify({ fcsOut, csvOut, pngOut, gmlOut, wspOut, polyFinal, fcsDir: join(root, 'fixtures/flowkit/data/8_color_data_set/fcs_files') }));
 // 8. save, reload, reopen, relink
 const wsPath = await download(() => page.getByTestId('save-ws').click());
 const before = await page.locator('.panel.tree').innerText();

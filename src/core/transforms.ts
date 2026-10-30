@@ -15,7 +15,9 @@ export type TransformSpec =
   // FlowJo 10 "biex": logicle(T=max, W=log10(-width)/2, M=pos, A=neg) scaled to channelRange.
   | { kind: 'flowjo-biex'; max: number; width: number; pos: number; neg: number; channelRange: number }
   // FlowJo 10 log: (log10(max(x, offset)) - log10(offset)) / decades
-  | { kind: 'flowjo-log'; offset: number; decades: number };
+  | { kind: 'flowjo-log'; offset: number; decades: number }
+  // FlowJo linear-parameter gain: x * factor. Used by imported gates only, not as a display scale.
+  | { kind: 'scale'; factor: number };
 
 export interface Transform {
   spec: TransformSpec;
@@ -295,6 +297,9 @@ export function makeTransform(spec: TransformSpec): Transform {
         displayMax: r,
       };
     }
+    case 'scale':
+      checkPositive('factor', spec.factor);
+      return { spec, apply: (x) => x * spec.factor, inverse: (y) => y / spec.factor, displayMin: NaN, displayMax: NaN };
     case 'flowjo-log': {
       checkPositive('offset', spec.offset);
       checkPositive('decades', spec.decades);
@@ -335,5 +340,7 @@ export function describeTransform(s: TransformSpec): string {
       return `Biex (width=${s.width}, pos=${s.pos}, neg=${s.neg}, max=${s.max})`;
     case 'flowjo-log':
       return `FlowJo log (offset=${s.offset}, decades=${s.decades})`;
+    case 'scale':
+      return `Gain x${s.factor}`;
   }
 }

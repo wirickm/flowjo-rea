@@ -146,7 +146,7 @@ on this basis.
 |---|---|---|---|
 | Read FlowJo 10 .wsp: samples, groups, per-sample spillover, transforms, gates, boolean nodes | observed in the 14 fixtures | Implemented; reference-compared as above | Format undocumented; only constructs present in the fixtures are handled. Graph/layout settings, statistic nodes, keyword-based groups, exclusion gates (`eventsInside="0"`) not imported (warned) |
 | Raw-unit rectangle/polygon coordinates; display-space ellipse foci/edges; "Comp-" prefix; Time gain | observed; derived | Implemented | Derived from the fixtures only |
-| Write FlowJo .wsp | - | Not implemented | Opening the output in FlowJo is the only real validation (external dependency) |
+| Write FlowJo-style .wsp (samples, groups, square spillover, scales, rectangle/polygon/ellipse gates, quadrants as rectangles, And/Or/Not nodes, this app's counts) | observed structure | Implemented; round-trip tested with this app's reader only | **Not validated in FlowJo** (external dependency: open the file in FlowJo and compare counts). Spectral matrices, ratio dimensions, complemented boolean operands and scales without an observed FlowJo equivalent (hyperlog, Gating-ML log) are not representable and produce export warnings. `gating:distance` semantics unknown; 2a is written |
 
 ## Backlog for broader parity (not implemented)
 

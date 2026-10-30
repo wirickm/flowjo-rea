@@ -19,7 +19,8 @@ export interface FcsFile {
   channels: FcsChannel[];
   eventCount: number;
   // Column-major event data in "scale" units: $PnE log amplification is
-  // converted to linear values and linear parameters are divided by $PnG.
+  // converted to linear values, linear parameters are divided by $PnG and a
+  // channel named Time is multiplied by $TIMESTEP.
   data: Float64Array[];
   warnings: string[];
   datasetIndex: number;
@@ -258,7 +259,14 @@ function parseDataset(buf: Uint8Array, base: number, decodeData: boolean, raw: b
       }
     }
   }
+  // Time in $TIMESTEP units -> seconds (FCS 3.1 $TIMESTEP), matching FlowJo-saved time gates.
+  const timestep = parseFloat(kw['$TIMESTEP'] ?? '');
   channels.forEach((c, ci) => {
+    if (!raw && /^time$/i.test(c.name) && timestep > 0 && timestep !== 1) {
+      const col = data[ci];
+      for (let e = 0; e < tot; e++) col[e] *= timestep;
+      return;
+    }
     if (datatype !== 'I' && c.logDecades > 0) warnings.push(`$P${c.index}E log amplification ignored for floating-point data`);
     // Channel-to-scale for linear parameters divides by $PnG (FCS 3.1; Gating-ML 2.0 section 4).
     if (!raw && c.gain !== 1 && !(datatype === 'I' && c.logDecades > 0)) {

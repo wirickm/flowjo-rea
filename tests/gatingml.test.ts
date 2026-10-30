@@ -44,3 +44,21 @@ describe.skipIf(!haveFixtures)('Gating-ML 2.0 compliance suite (data1.fcs)', () 
     expect(missing).toEqual([]);
   });
 });
+
+describe.skipIf(!haveFixtures)('Gating-ML export round trip', () => {
+  it('re-imported export of gml_all_gates gives identical memberships', async () => {
+    const { exportGatingMl } = await import('../src/core/gatingml');
+    const fcs = parseFcs(readBytes('gate_ref/data1.fcs'));
+    const doc = parseGatingMl(readText('gate_ref/gml/gml_all_gates.xml'));
+    // ratio dimensions have no export path; drop them and dependants
+    const pops = doc.populations.filter((p) => p.gate.type === 'boolean' || !p.gate.dims.some((d) => d.kind === 'ratio'));
+    const keep = new Set(pops.map((p) => p.id));
+    const exportable = pops.filter((p) => p.gate.type !== 'boolean' || p.gate.operands.every((o) => keep.has(o.ref)));
+    const xml = exportGatingMl(exportable, doc.matrices, 'uncompensated');
+    const back = parseGatingMl(xml);
+    const a = new SampleEngine(fcs, { compensation: 'uncompensated', populations: exportable }, doc.matrices).run();
+    const b = new SampleEngine(fcs, { compensation: 'uncompensated', populations: back.populations }, back.matrices).run();
+    expect(back.populations.length).toBe(exportable.length);
+    for (const p of exportable) expect(b.results.get(p.id)?.count, p.id).toBe(a.results.get(p.id)!.count);
+  });
+});

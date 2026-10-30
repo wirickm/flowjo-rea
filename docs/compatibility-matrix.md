@@ -39,7 +39,8 @@ hand-computed expectations; **E2E** = `e2e/workflow.mjs` through the real UI.
 | 6 | Count, % parent, % grandparent, % total, mean, median, geometric mean, SD, CV, robust SD/CV, MAD, min, max, percentile | hand | Done | hand-computed tests; E2E table | Values on compensated, untransformed data. FlowJo's exact median/percentile and robust CV conventions are unknown (not verified against FlowJo) |
 | 6 | Empty populations | - | Done | unit tests | Frequencies and channel stats give NaN, never 0 |
 | 7 | Apply a gate tree to a group; sync edits to group | observed (FlowJo group gating) | Done | unit tests; E2E | Copies by population path; not FlowJo's live group-owned gates |
-| 7 | Statistics table across samples of a group, CSV export | - | Done | E2E | No layout editor / table editor templates |
+| 7 | Statistics table across samples of a group, CSV export | - | Done | E2E | No table editor templates |
+| 7 | Layout editor: ordered plots rendered for any sample, reorder/remove, PNG export for one sample and batch PNG per sample in the group; saved in the workspace, undoable | - | Implemented, tested | E2E (2-up 920x442 PNG; one PNG per sample) | No free positioning, text boxes, overlays or vector (SVG/PDF) output; long gate labels can overlap |
 | 8 | Save and reopen native workspace (`.frea.json`), relink FCS by file name, SHA-256 mismatch warning | - | Done | unit round trip; E2E (tree, counts, stats identical after reload) | FCS data is not embedded; files must be re-added |
 | 9 | Export stats CSV, gated events CSV and FCS 3.1, plot PNG, Gating-ML | - | Done | E2E + re-read of exported FCS (event count and values) | No SVG/PDF vector plot export; no batch image export |
 

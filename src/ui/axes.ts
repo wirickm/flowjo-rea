@@ -72,3 +72,12 @@ export function ticks(t: Transform): Tick[] {
 }
 
 export const transformOf = (spec: TransformSpec) => makeTransform(spec);
+
+// Axis for a channel of a loaded sample, using the workspace scale if set.
+export function makeAxis(channels: FcsChannel[], keywords: Record<string, string>, channelTransforms: Record<string, TransformSpec>, ch: string) {
+  const c = channels.find((x) => x.name === ch);
+  if (!c) return null;
+  const spec = channelTransforms[ch] ?? defaultTransform(c, keywords);
+  const t = makeTransform(spec);
+  return { channel: ch, spec, t, range: axisRange(t) };
+}

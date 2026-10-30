@@ -7,8 +7,9 @@ import type { PlotResult, SampleMeta } from '../core/service';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL } from '../core/stats';
 import { makeTransform, type TransformSpec } from '../core/transforms';
 import { parseWsp } from '../core/wsp';
-import { axisRange, defaultTransform, isScatterOrTime } from './axes';
+import { defaultTransform, isScatterOrTime, makeAxis } from './axes';
 import { CompensationDialog, KeywordsDialog, TransformDialog } from './Dialogs';
+import { LayoutView } from './Layout';
 import type { Axis } from './gateGeometry';
 import { Plot, type PlotKind, type Tool } from './Plot';
 import { initHistory, pushHistory, redo, undo, type History } from './history';
@@ -17,7 +18,7 @@ import { createAnalysisClient } from './workerClient';
 const client = createAnalysisClient();
 
 type Analysis = { results: PopulationResult[]; total: number; compError?: string };
-type Dialog = null | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export' };
+type Dialog = null | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export' } | { kind: 'layout' };
 
 function download(name: string, data: BlobPart, type = 'application/octet-stream') {
   const url = URL.createObjectURL(new Blob([data], { type }));
@@ -212,11 +213,7 @@ export function App() {
   const axisFor = useCallback(
     (ch: string): Axis | null => {
       if (!ch || !sMeta) return null;
-      const c = sMeta.channels.find((x) => x.name === ch);
-      if (!c) return null;
-      const spec: TransformSpec = ws.channelTransforms[ch] ?? defaultTransform(c, sMeta.keywords);
-      const t = makeTransform(spec);
-      return { channel: ch, spec, t, range: axisRange(t) };
+      return makeAxis(sMeta.channels, sMeta.keywords, ws.channelTransforms, ch);
     },
     [sMeta, ws.channelTransforms],
   );
@@ -398,6 +395,7 @@ export function App() {
         <button disabled={!sample} onClick={() => setDialog({ kind: 'comp' })} data-testid="open-comp">Compensation</button>
         <button disabled={!sMeta} onClick={() => setDialog({ kind: 'keywords' })} data-testid="open-keywords">Keywords</button>
         <button disabled={!sample} onClick={() => setDialog({ kind: 'export' })} data-testid="open-export">Export</button>
+        <button onClick={() => setDialog({ kind: 'layout' })} data-testid="open-layout">Layout ({ws.layout?.length ?? 0})</button>
         <span className="sep" />
         <span className="status" data-testid="busy">{busy > 0 ? 'Working...' : 'Ready'}</span>
       </header>
@@ -518,6 +516,9 @@ export function App() {
                 contourLevel={plotSettings.contourLevel ?? 5}
                 showOutliers={!!plotSettings.showOutliers}
               />
+              <div className="row">
+                <button data-testid="add-to-layout" onClick={() => { updateWs((w) => { w.layout = [...(w.layout ?? []), { id: newId('lay'), populationPath: popPath, ...plotSettings }]; }); note('info', `Added ${popPath || 'All events'} (${plotSettings.x}${kind === 'histogram' ? '' : ` vs ${plotSettings.y}`}) to the layout`); }}>Add to layout</button>
+              </div>
               <div className="muted" data-testid="plot-caption">
                 {popPath || 'All events'}: {plotData ? plotData.count.toLocaleString() : '-'} events shown
                 {plotData && (kind === 'dot' || (kind === 'contour' && plotSettings.showOutliers)) && plotData.points.length / 2 < plotData.count && ` (dot plot draws ${(plotData.points.length / 2).toLocaleString()} sampled events)`}
@@ -579,6 +580,17 @@ export function App() {
         </section>
       </main>
 
+      {dialog?.kind === 'layout' && (
+        <LayoutView
+          ws={ws}
+          meta={meta}
+          samples={groupSamples}
+          client={client}
+          onChange={(items) => updateWs((w) => { w.layout = items; })}
+          onDownload={(name, blob) => download(name, blob, 'image/png')}
+          onClose={() => setDialog(null)}
+        />
+      )}
       {dialog?.kind === 'keywords' && sMeta && <KeywordsDialog meta={sMeta} onClose={() => setDialog(null)} />}
       {dialog?.kind === 'transform' && sMeta && (
         <TransformDialog

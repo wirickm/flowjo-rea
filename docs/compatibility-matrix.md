@@ -46,9 +46,10 @@ hand-computed expectations; **E2E** = `e2e/workflow.mjs` through the real UI.
 | 6 | Empty populations | - | Done | unit tests | Frequencies and channel stats give NaN, never 0 |
 | 7 | Apply a gate tree to a group; sync edits to group | observed (FlowJo group gating) | Done | unit tests; E2E | Copies by population path; not FlowJo's live group-owned gates |
 | 7 | Statistics table across samples of a group, CSV export | - | Done | E2E | No table editor templates |
-| 7 | Layout editor: ordered plots rendered for any sample, reorder/remove, PNG export for one sample and batch PNG per sample in the group; saved in the workspace, undoable | - | Implemented, tested | E2E (2-up 920x442 PNG; one PNG per sample) | No free positioning, text boxes, overlays or vector (SVG/PDF) output; long gate labels can overlap |
+| 7 | Layout editor: ordered plots rendered for any sample, reorder/remove, PNG or SVG export for one sample and batch export per sample in the group; saved in the workspace, undoable | - | Implemented, tested | E2E (2-up 920x442 PNG; one PNG per sample; SVG parsed) | No free positioning or text boxes; long gate labels can overlap |
 | 8 | Save and reopen native workspace (`.frea.json`), relink FCS by file name, SHA-256 mismatch warning | - | Done | unit round trip; E2E (tree, counts, stats identical after reload) | FCS data is not embedded; files must be re-added |
-| 9 | Export stats CSV, gated events CSV and FCS 3.1, plot PNG, Gating-ML | - | Done | E2E + re-read of exported FCS (event count and values) | No SVG/PDF vector plot export; no batch image export |
+| 9 | Export stats CSV, gated events CSV and FCS 3.1, plot PNG, Gating-ML | - | Done | E2E + re-read of exported FCS (event count and values) | - |
+| 9 | Plot and layout SVG export (single and batch): vector axes, text, gates, contours, histograms, dots; pseudocolor density embedded as an image | - | Implemented, tested | Unit (renderer -> well-formed SVG with expected text/paths); E2E files re-parsed as XML | No PDF (print the SVG to PDF from a browser); text widths in SVG are estimated, so long labels may differ slightly from the canvas |
 
 ## FlowJo workspace interoperability (distinct from the native format)
 

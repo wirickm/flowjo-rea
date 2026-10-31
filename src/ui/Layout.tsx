@@ -5,7 +5,8 @@ import { populationPath, type LayoutItem, type SampleState, type Workspace } fro
 import type { PlotResult, SampleMeta } from '../core/service';
 import { makeAxis, sampleChannels } from './axes';
 import { drawableGates } from './gateGeometry';
-import { PLOT, renderPlot } from './renderPlot';
+import { PLOT, renderPlot, type RenderOptions } from './renderPlot';
+import { asCanvas, SvgContext } from './svgContext';
 import type { createAnalysisClient } from './workerClient';
 
 type Client = ReturnType<typeof createAnalysisClient>;
@@ -14,6 +15,7 @@ const TITLE_H = 22;
 interface Rendered {
   item: LayoutItem;
   canvas: HTMLCanvasElement | null;
+  options?: RenderOptions; // kept so the same plot can be re-rendered as SVG
   title: string;
   error?: string;
 }
@@ -58,8 +60,9 @@ export async function renderLayout(client: Client, ws: Workspace, s: SampleState
     const cv = document.createElement('canvas');
     cv.width = PLOT.w;
     cv.height = PLOT.h;
-    renderPlot(cv.getContext('2d')!, { kind: item.kind, x, y, data, gates: drawableGates(s.populations, pop?.id ?? null, x, y), counts, contourLevel: item.contourLevel, showOutliers: item.showOutliers, overlays });
-    out.push({ item, canvas: cv, title: `${s.fileName} / ${label} (${data.count.toLocaleString()} events)` });
+    const options: RenderOptions = { kind: item.kind, x, y, data, gates: drawableGates(s.populations, pop?.id ?? null, x, y), counts, contourLevel: item.contourLevel, showOutliers: item.showOutliers, overlays };
+    renderPlot(cv.getContext('2d')!, options);
+    out.push({ item, canvas: cv, options, title: `${s.fileName} / ${label} (${data.count.toLocaleString()} events)` });
   }
   return out;
 }
@@ -88,6 +91,25 @@ export function compose(rendered: Rendered[], cols = 2): HTMLCanvasElement {
   return cv;
 }
 
+// Same arrangement as compose(), as an SVG document with vector plots.
+export function composeSvg(rendered: Rendered[], cols = 2): string {
+  const rows = Math.max(1, Math.ceil(rendered.length / cols));
+  const svg = new SvgContext(cols * PLOT.w, rows * (PLOT.h + TITLE_H));
+  rendered.forEach((r, i) => {
+    const x0 = (i % cols) * PLOT.w;
+    const y0 = Math.floor(i / cols) * (PLOT.h + TITLE_H);
+    svg.font = '12px sans-serif';
+    svg.fillStyle = r.options ? '#111' : '#b00020';
+    svg.fillText(r.options ? r.title : `${r.title}: ${r.error ?? 'not rendered'}`, x0 + 8, y0 + 15);
+    if (r.options) {
+      const sub = new SvgContext(PLOT.w, PLOT.h);
+      renderPlot(asCanvas(sub), r.options);
+      svg.embed(sub.body(), x0, y0 + TITLE_H);
+    }
+  });
+  return svg.toString();
+}
+
 export function LayoutView(p: {
   ws: Workspace;
   meta: Record<string, SampleMeta>;
@@ -102,6 +124,7 @@ export function LayoutView(p: {
   const [sampleId, setSampleId] = useState(loaded[0]?.id ?? '');
   const [rendered, setRendered] = useState<Rendered[]>([]);
   const [busy, setBusy] = useState(false);
+  const [batchFormat, setBatchFormat] = useState<'png' | 'svg'>('png');
   const [error, setError] = useState('');
   const sample = p.samples.find((s) => s.id === sampleId);
 
@@ -136,13 +159,17 @@ export function LayoutView(p: {
               {loaded.map((s) => <option key={s.id} value={s.id}>{s.fileName}</option>)}
             </select>
             <button disabled={!rendered.length} data-testid="layout-export" onClick={async () => p.onDownload(`layout_${safe(sample!.fileName)}.png`, await toBlob(compose(rendered)))}>Export PNG (this sample)</button>
+            <button disabled={!rendered.length} data-testid="layout-export-svg" onClick={() => p.onDownload(`layout_${safe(sample!.fileName)}.svg`, new Blob([composeSvg(rendered)], { type: 'image/svg+xml' }))}>Export SVG (this sample)</button>
             <button
               disabled={!items.length || busy}
               data-testid="layout-batch"
               onClick={async () => {
                 setBusy(true);
                 try {
-                  for (const s of loaded) p.onDownload(`layout_${safe(s.fileName)}.png`, await toBlob(compose(await renderLayout(p.client, p.ws, s, p.meta[s.id], items))));
+                  for (const s of loaded) {
+                    const r = await renderLayout(p.client, p.ws, s, p.meta[s.id], items);
+                    p.onDownload(`layout_${safe(s.fileName)}.${batchFormat}`, batchFormat === 'svg' ? new Blob([composeSvg(r)], { type: 'image/svg+xml' }) : await toBlob(compose(r)));
+                  }
                 } catch (e) {
                   setError((e as Error).message);
                 } finally {
@@ -150,8 +177,12 @@ export function LayoutView(p: {
                 }
               }}
             >
-              Batch export PNG ({loaded.length} samples in group)
+              Batch export ({loaded.length} samples in group)
             </button>
+            <select value={batchFormat} onChange={(e) => setBatchFormat(e.target.value as 'png' | 'svg')} data-testid="layout-batch-format">
+              <option value="png">PNG</option>
+              <option value="svg">SVG</option>
+            </select>
             {busy && <span className="muted">exporting...</span>}
           </div>
           {loaded.length < p.samples.length && <p className="muted">{p.samples.length - loaded.length} sample(s) without loaded data are skipped.</p>}

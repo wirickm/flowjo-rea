@@ -35,6 +35,16 @@ describe.skipIf(!existsSync(manifest))('E2E export files', () => {
     // the app wrote its own counts into the file
     expect(imp.flowjoCounts[s.fileName]['Cells/Polygon 1']).toBe(m.polyFinal);
   });
+  it('plot and layout SVG exports are well-formed XML with vector text', async () => {
+    const { DOMParser } = await import('@xmldom/xmldom');
+    for (const f of [m.svgOut, m.layoutSvg]) {
+      const errors: string[] = [];
+      const doc = new DOMParser({ errorHandler: { error: (e) => errors.push(e), fatalError: (e) => errors.push(e) } }).parseFromString(readFileSync(f, 'utf8'), 'image/svg+xml');
+      expect(errors).toEqual([]);
+      expect(doc.documentElement!.nodeName).toBe('svg');
+      expect(doc.getElementsByTagName('text').length).toBeGreaterThan(10);
+    }
+  });
   it('PNG export is a PNG', () => {
     const b = readFileSync(m.pngOut);
     expect([...b.subarray(1, 4)].map((c) => String.fromCharCode(c)).join('')).toBe('PNG');

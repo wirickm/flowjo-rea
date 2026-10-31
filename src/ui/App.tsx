@@ -13,6 +13,9 @@ import { CompensationDialog, KeywordsDialog, TransformDialog } from './Dialogs';
 import { LayoutView } from './Layout';
 import type { Axis } from './gateGeometry';
 import { Plot, type PlotKind, type Tool } from './Plot';
+import { PLOT, renderPlot } from './renderPlot';
+import { asCanvas, SvgContext } from './svgContext';
+import { drawableGates } from './gateGeometry';
 import { initHistory, pushHistory, redo, undo, type History } from './history';
 import { createAnalysisClient } from './workerClient';
 
@@ -704,6 +707,12 @@ export function App() {
           hasData={!!sMeta}
           onClose={() => setDialog(null)}
           onEvents={exportEvents}
+          onSvg={() => {
+            if (!xAxis || !plotData) return;
+            const svg = new SvgContext(PLOT.w, PLOT.h);
+            renderPlot(asCanvas(svg), { kind, x: xAxis, y: yAxis, data: plotData, gates: drawableGates(sample.populations, sel.popId, xAxis, yAxis), counts, contourLevel: plotSettings.contourLevel, showOutliers: plotSettings.showOutliers, overlays: overlayData });
+            download(`${sample.fileName}_${(popPath || 'all').replace(/[^\w.-]+/g, '_')}.svg`, svg.toString(), 'image/svg+xml');
+          }}
           onPng={() => canvasRef.current?.toBlob((b) => b && download(`${sample.fileName}_${(popPath || 'all').replace(/[^\w.-]+/g, '_')}.png`, b, 'image/png'))}
           onWsp={() => {
             try {
@@ -739,7 +748,7 @@ export function App() {
   );
 }
 
-function ExportDialog(p: { popLabel: string; hasData: boolean; onClose: () => void; onEvents: (f: 'csv' | 'fcs', comp: boolean) => void; onPng: () => void; onGatingMl: () => void; onWsp: () => void }) {
+function ExportDialog(p: { popLabel: string; hasData: boolean; onClose: () => void; onEvents: (f: 'csv' | 'fcs', comp: boolean) => void; onPng: () => void; onSvg: () => void; onGatingMl: () => void; onWsp: () => void }) {
   const [comp, setComp] = useState(true);
   return (
     <div className="modal-bg" onMouseDown={(e) => e.target === e.currentTarget && p.onClose()}>
@@ -755,6 +764,7 @@ function ExportDialog(p: { popLabel: string; hasData: boolean; onClose: () => vo
           <h4>Plot and gates</h4>
           <div className="row">
             <button disabled={!p.hasData} onClick={p.onPng} data-testid="export-png">Plot PNG</button>
+            <button disabled={!p.hasData} onClick={p.onSvg} data-testid="export-svg" title="Vector axes, text, gates, contours and histograms; pseudocolor density embedded as an image">Plot SVG</button>
             <button onClick={p.onGatingMl} data-testid="export-gml">Gates as Gating-ML 2.0</button>
             <button onClick={p.onWsp} data-testid="export-wsp" title="Round-trip tested with this app; not validated by opening in FlowJo">FlowJo-style .wsp (unvalidated in FlowJo)</button>
           </div>

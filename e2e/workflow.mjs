@@ -208,6 +208,7 @@ check('stats table has both samples with values', table1.includes(F1) && table1.
 const statsCsv = await download(() => page.getByTestId('export-stats').click());
 check('stats CSV exported', readFileSync(statsCsv, 'utf8').split('\n').length >= 3);
 // layout editor: two plots, rendered per sample, single and batch PNG export
+let layoutSvg = '';
 const pngSize = (p) => { const b = readFileSync(p); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };
 await page.getByTestId('pop-Cells').click(); await idle();
 await page.getByTestId('add-to-layout').click();
@@ -216,6 +217,7 @@ await page.getByTestId('add-to-layout').click();
 await page.getByTestId('open-layout').click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid=layout-card] img').length === 2, null, { timeout: 60000 });
 const single = await download(() => page.getByTestId('layout-export').click());
+layoutSvg = await download(() => page.getByTestId('layout-export-svg').click());
 const batch = [];
 page.on('download', async (d) => { const pth = join(out, `batch-${d.suggestedFilename()}`); await d.saveAs(pth); batch.push(pth); });
 await page.getByTestId('layout-batch').click();
@@ -259,10 +261,13 @@ const csvOut = await download(() => page.getByTestId('export-csv').click());
 const pngOut = await download(() => page.getByTestId('export-png').click());
 const gmlOut = await download(() => page.getByTestId('export-gml').click());
 const wspOut = await download(() => page.getByTestId('export-wsp').click());
+const svgOut = await download(() => page.getByTestId('export-svg').click());
+const svgText = readFileSync(svgOut, 'utf8');
+check('plot SVG export is SVG with vector axis labels', svgText.includes('<svg') && svgText.includes('>Polygon 1') === false && /<text[^>]*>CD3 APC-H7 FLR-A<\/text>|<text[^>]*>FSC-A<\/text>/.test(svgText), `${svgText.length} bytes`);
 await page.getByRole('dialog').getByRole('button', { name: 'x' }).click();
 const csvRows = readFileSync(csvOut, 'utf8').trim().split('\n').length - 1;
 check('events CSV row count equals population count', csvRows === polyFinal, `${csvRows} vs ${polyFinal}`);
-writeFileSync(join(out, 'exports.json'), JSON.stringify({ fcsOut, csvOut, pngOut, gmlOut, wspOut, polyFinal, fcsDir: join(root, 'fixtures/flowkit/data/8_color_data_set/fcs_files') }));
+writeFileSync(join(out, 'exports.json'), JSON.stringify({ fcsOut, csvOut, pngOut, gmlOut, wspOut, svgOut, layoutSvg, polyFinal, fcsDir: join(root, 'fixtures/flowkit/data/8_color_data_set/fcs_files') }));
 // 8. save, reload, reopen, relink
 const wsPath = await download(() => page.getByTestId('save-ws').click());
 const before = await page.locator('.panel.tree').innerText();

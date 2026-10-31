@@ -49,10 +49,16 @@ export async function renderLayout(client: Client, ws: Workspace, s: SampleState
       yRange: y ? y.range : null,
       maxPoints: 20000,
     });
+    const overlays: { label: string; data: PlotResult }[] = [];
+    for (const path of item.overlays ?? []) {
+      const op = s.populations.find((q) => populationPath(s.populations, q.id) === path);
+      if (!op) continue;
+      overlays.push({ label: path, data: await client.plot({ ...base, popId: op.id, x: { kind: 'channel', channel: x.channel, transform: x.spec }, y: y ? { kind: 'channel', channel: y.channel, transform: y.spec } : null, bins: y ? 200 : 256, xRange: x.range, yRange: y ? y.range : null, maxPoints: 5000 }) });
+    }
     const cv = document.createElement('canvas');
     cv.width = PLOT.w;
     cv.height = PLOT.h;
-    renderPlot(cv.getContext('2d')!, { kind: item.kind, x, y, data, gates: drawableGates(s.populations, pop?.id ?? null, x, y), counts, contourLevel: item.contourLevel, showOutliers: item.showOutliers });
+    renderPlot(cv.getContext('2d')!, { kind: item.kind, x, y, data, gates: drawableGates(s.populations, pop?.id ?? null, x, y), counts, contourLevel: item.contourLevel, showOutliers: item.showOutliers, overlays });
     out.push({ item, canvas: cv, title: `${s.fileName} / ${label} (${data.count.toLocaleString()} events)` });
   }
   return out;

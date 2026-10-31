@@ -72,6 +72,7 @@ export interface PlotSettings {
   kind: 'pseudocolor' | 'dot' | 'contour' | 'histogram';
   contourLevel?: number; // percent per contour step
   showOutliers?: boolean;
+  overlays?: string[]; // population paths drawn on top (backgating)
 }
 
 // A plot placed in the layout: rendered for whichever sample is chosen.

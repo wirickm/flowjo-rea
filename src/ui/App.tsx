@@ -48,6 +48,7 @@ export function App() {
   const [groupId, setGroupId] = useState('all');
   const [tool, setTool] = useState<Tool>('select');
   const [plotData, setPlotData] = useState<PlotResult | null>(null);
+  const [overlayData, setOverlayData] = useState<{ label: string; data: PlotResult }[]>([]);
   const [log, setLog] = useState<{ level: 'info' | 'warn' | 'error'; text: string }[]>([]);
   const [busy, setBusy] = useState(0);
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -248,9 +249,23 @@ export function App() {
         maxPoints: 20000,
       });
       if (live && d) setPlotData(d);
+      // Overlays: same axes, each overlay population's own events.
+      const ovs: { label: string; data: PlotResult }[] = [];
+      for (const path of plotSettings.overlays ?? []) {
+        const pop = sample.populations.find((p) => populationPath(sample.populations, p.id) === path);
+        if (!pop) continue;
+        const od = await client.plot({
+          sampleId: sample.id, compensation: sample.compensation, populations: sample.populations, matrices: ws.matrices, popId: pop.id,
+          x: { kind: 'channel', channel: xAxis.channel, transform: xAxis.spec },
+          y: yAxis ? { kind: 'channel', channel: yAxis.channel, transform: yAxis.spec } : null,
+          bins: yAxis ? 200 : 256, xRange: xAxis.range, yRange: yAxis ? yAxis.range : null, maxPoints: 5000,
+        });
+        ovs.push({ label: path, data: od });
+      }
+      if (live) setOverlayData(ovs);
     });
     return () => { live = false; };
-  }, [sample?.id, sample?.compensation, sample?.populations, ws.matrices, meta, sel.popId, xAxis, yAxis, run]);
+  }, [sample?.id, sample?.compensation, sample?.populations, ws.matrices, meta, sel.popId, xAxis, yAxis, run, plotSettings.overlays]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // statistics table across the current group
   useEffect(() => {
@@ -563,6 +578,7 @@ export function App() {
                 onSelect={setGateSel}
                 onRefuse={(m) => note('warn', m)}
                 canvasRef={canvasRef}
+                overlays={overlayData}
                 contourLevel={plotSettings.contourLevel ?? 5}
                 showOutliers={!!plotSettings.showOutliers}
               />
@@ -573,6 +589,20 @@ export function App() {
                 {popPath || 'All events'}: {plotData ? plotData.count.toLocaleString() : '-'} events shown
                 {plotData && (kind === 'dot' || (kind === 'contour' && plotSettings.showOutliers)) && plotData.points.length / 2 < plotData.count && ` (dot plot draws ${(plotData.points.length / 2).toLocaleString()} sampled events)`}
               </div>
+              <details className="overlay-picker">
+                <summary data-testid="overlay-toggle">Overlay populations ({plotSettings.overlays?.length ?? 0})</summary>
+                {sample.populations.map((p) => populationPath(sample.populations, p.id)).filter((path) => path !== popPath).map((path) => (
+                  <label key={path} className="node">
+                    <input
+                      type="checkbox"
+                      data-testid={`overlay-${path}`}
+                      checked={plotSettings.overlays?.includes(path) ?? false}
+                      onChange={(e) => setPlotSettings({ overlays: e.target.checked ? [...(plotSettings.overlays ?? []), path] : (plotSettings.overlays ?? []).filter((x) => x !== path) })}
+                    />
+                    <span className="pname">{path}</span>
+                  </label>
+                ))}
+              </details>
             </>
           ) : (
             <p className="muted">{sample ? 'Sample data not loaded: add the FCS file to relink it.' : 'Select a sample.'}</p>

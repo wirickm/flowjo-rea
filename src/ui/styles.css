@@ -48,3 +48,5 @@ table.matrix input { width: 72px; }
 .modal.layout { width: min(1500px, 96vw); max-height: 94vh; }
 .layout-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 8px; }
 .layout-card { border: 1px solid #d3d9e3; border-radius: 4px; padding: 4px; }
+.overlay-picker { margin: 4px 0; max-height: 160px; overflow: auto; }
+.overlay-picker summary { cursor: pointer; }

@@ -155,7 +155,8 @@ export class AnalysisService {
         density[by * B + bx]++;
       } else density[bx]++;
     }
-    const step = Math.max(1, Math.floor(count / r.maxPoints));
+    // maxPoints is an upper bound on the sampled events returned.
+    const step = Math.max(1, Math.ceil(count / r.maxPoints));
     const pts: number[] = [];
     let k = 0;
     if (ys) for (let i = 0; i < mask.length; i++) if (mask[i] && k++ % step === 0) pts.push(xs[i], ys[i]);

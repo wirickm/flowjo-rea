@@ -232,6 +232,22 @@ const afterRemove = await page.getByTestId('layout-card').count();
 await page.getByRole('dialog').getByLabel('Close').click();
 await page.getByTestId('undo').click();
 check('layout reorder/remove are undoable', afterRemove === 1 && (await page.getByTestId('open-layout').textContent()).includes('2'), `cards after remove ${afterRemove}; button "${await page.getByTestId('open-layout').textContent()}"`);
+// overlays / backgating: Polygon 1 on the ungated FSC/SSC plot, then as a histogram
+await page.getByTestId(`sample-${F1}`).click();
+await page.getByTestId('pop-root').click(); await idle();
+await page.getByTestId('overlay-toggle').click();
+await page.getByTestId('overlay-Cells/Polygon 1').check();
+await idle(); await page.waitForTimeout(300);
+const ov2d = Number(await canvas.getAttribute('data-overlay-points'));
+await page.screenshot({ path: join(out, '02d-backgate.png') });
+await page.getByTestId('plot-kind').selectOption('histogram'); await remeasure();
+await idle(); await page.waitForTimeout(300);
+const ovHist = Number(await canvas.getAttribute('data-overlay-points'));
+const polyNow = Number(await count('Polygon 1'));
+check('backgating overlay draws the population (2-D sampled, histogram full count)', ov2d > 0 && ov2d <= 5000 && ovHist === polyNow, `2-D points ${ov2d}, histogram events ${ovHist}, Polygon 1 ${polyNow}`);
+await page.getByTestId('overlay-Cells/Polygon 1').uncheck();
+await page.getByTestId('plot-kind').selectOption('pseudocolor'); await remeasure();
+await idle();
 // 7. exports: gated events FCS + CSV, PNG, Gating-ML
 await page.getByTestId(`sample-${F1}`).click();
 await page.getByTestId('pop-Polygon 1').click();

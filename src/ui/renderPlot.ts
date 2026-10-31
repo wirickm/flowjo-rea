@@ -51,7 +51,12 @@ export interface RenderOptions {
   selectedId?: string | null;
   contourLevel?: number; // percent per contour step
   showOutliers?: boolean;
+  // Populations drawn on top (backgating): dots on 2-D plots, curves normalised
+  // to their own maximum on histograms.
+  overlays?: { label: string; data: PlotResult }[];
 }
+
+export const OVERLAY_COLORS = ['#e6194b', '#3cb44b', '#f58231', '#911eb4', '#008080', '#9a6324'];
 
 // Returns the number of contour segments drawn (0 for other plot kinds).
 export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): number {
@@ -75,6 +80,7 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
         let mx = 0;
         for (const v of d.density) mx = Math.max(mx, v);
         const img = ctx.createImageData(pw, ph);
+        const greyBase = !!o.overlays?.length;
         const lmx = Math.log1p(mx);
         for (let py = 0; py < ph; py++) {
           const by = Math.floor(((ph - 1 - py) / ph) * B);
@@ -83,7 +89,9 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
             const c = d.density[by * B + bx];
             const o = (py * pw + px) * 4;
             if (c > 0) {
-              const [r, g, b] = ramp(Math.log1p(c) / lmx);
+              // Greyscale base when overlays are shown so overlay colours stay distinct.
+              const tt = Math.log1p(c) / lmx;
+              const [r, g, b] = greyBase ? ([1, 1, 1].map(() => Math.round(215 - 135 * tt)) as [number, number, number]) : ramp(tt);
               img.data[o] = r; img.data[o + 1] = g; img.data[o + 2] = b; img.data[o + 3] = 255;
             } else img.data[o + 3] = 0;
           }
@@ -117,6 +125,48 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
         ctx.strokeStyle = '#2a4f9c';
         ctx.stroke();
       }
+    }
+    if (o.overlays?.length) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(PLOT.ml, PLOT.mt, pw, ph);
+      ctx.clip();
+      o.overlays.forEach((ov, k) => {
+        const col = OVERLAY_COLORS[k % OVERLAY_COLORS.length];
+        if (o.y) {
+          ctx.fillStyle = col;
+          const P = ov.data.points;
+          for (let i = 0; i < P.length; i += 2) {
+            const X = sx(Math.min(Math.max(P[i], o.x.range[0]), o.x.range[1]));
+            const Y = sy(Math.min(Math.max(P[i + 1], yAxis.range[0]), yAxis.range[1]));
+            ctx.fillRect(X - 0.75, Y - 0.75, 1.6, 1.6);
+          }
+        } else {
+          const D = ov.data.density;
+          let m = 0;
+          for (const v of D) m = Math.max(m, v);
+          if (m > 0) {
+            ctx.strokeStyle = col;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            for (let i = 0; i < D.length; i++) {
+              const X = PLOT.ml + ((i + 0.5) / D.length) * pw;
+              const Y = PLOT.mt + ph - (D[i] / m) * ph * 0.95;
+              if (i) ctx.lineTo(X, Y); else ctx.moveTo(X, Y);
+            }
+            ctx.stroke();
+          }
+        }
+      });
+      ctx.restore();
+      // legend
+      ctx.font = '11px sans-serif';
+      ctx.textAlign = 'right';
+      o.overlays.forEach((ov, k) => {
+        ctx.fillStyle = OVERLAY_COLORS[k % OVERLAY_COLORS.length];
+        ctx.fillText(`${ov.label} (${ov.data.count.toLocaleString()})`, PLOT.ml + pw - 4, PLOT.mt + 26 + k * 13);
+      });
+      ctx.textAlign = 'left';
     }
     // Axes and ticks
     ctx.strokeStyle = '#333';

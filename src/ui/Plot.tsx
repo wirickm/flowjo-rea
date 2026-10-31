@@ -25,6 +25,7 @@ interface Props {
   canvasRef?: React.MutableRefObject<HTMLCanvasElement | null>;
   contourLevel?: number;
   showOutliers?: boolean;
+  overlays?: { label: string; data: PlotResult }[];
 }
 
 export function Plot(p: Props) {
@@ -49,7 +50,8 @@ export function Plot(p: Props) {
     if (!cv) return;
     if (p.canvasRef) p.canvasRef.current = cv;
     const ctx = cv.getContext('2d')!;
-    cv.dataset.contourSegments = String(renderPlot(ctx, { kind: p.kind, x: p.x, y: p.y, data: p.data, gates: shown, counts: p.counts, selectedId: p.selectedId, contourLevel: p.contourLevel, showOutliers: p.showOutliers }));
+    cv.dataset.contourSegments = String(renderPlot(ctx, { kind: p.kind, x: p.x, y: p.y, data: p.data, gates: shown, counts: p.counts, selectedId: p.selectedId, contourLevel: p.contourLevel, showOutliers: p.showOutliers, overlays: p.overlays }));
+    cv.dataset.overlayPoints = String((p.overlays ?? []).reduce((n, o) => n + (p.y ? o.data.points.length / 2 : o.data.count), 0));
     ctx.save();
     ctx.beginPath();
     ctx.rect(PLOT.ml, PLOT.mt, pw, ph);

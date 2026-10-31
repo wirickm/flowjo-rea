@@ -1,5 +1,14 @@
 # Progress and handoff
 
+## State (2026-10-31, milestone 3)
+
+Milestone 3 delivered: single-file offline build (`npm run build` ->
+`dist/index.html`, opens from disk; E2E 30/30 from file:// and dev server);
+FlowJo per-population plot settings import; sample annotations, group by
+keyword/annotation, group rename; overlays/backgating. Fixed: module worker
+never starting under file://, worker failures leaving the UI at
+"Working..." forever, sampled point cap exceeding maxPoints.
+
 ## State (2026-10-30, milestone 2)
 
 Branch `main` on GitHub (wirickm/flowjo-rea). Milestone 1 delivered the core
@@ -72,8 +81,9 @@ the matrix. Items 3, 5 and 6 carry the external dependencies listed above.
 
 ## Next implementation steps
 
-1. Import FlowJo graph settings (axes per population) from .wsp.
-2. Overlays/backgating and zebra/density plots.
-3. Table editor templates; SVG/PDF vector export for plots and layouts.
-4. Keyword-based groups and sample annotations.
+1. SVG/PDF vector export for plots and layouts.
+2. Table editor templates (saved statistic sets, per-group export).
+3. Zebra/density plot types.
+4. Live (criteria-based) groups that update as samples are added.
 5. Autofluorescence handling and spectrum estimation from single-stain controls.
+6. Verify the offline build in Firefox and Safari.

@@ -4,6 +4,7 @@ import { SampleEngine, type PopulationResult } from './analysis';
 import { spilloverFromFcs, type SpilloverMatrix } from './compensation';
 import { AppError } from './errors';
 import { parseFcs, type FcsChannel, type FcsFile } from './fcs';
+import { estimateSpillover, type ControlInput, type WizardResult } from './compWizard';
 import { writeFcs } from './fcsWriter';
 import type { Dimension, Population, StatColumn } from './model';
 import { populationPath } from './model';
@@ -54,6 +55,15 @@ export interface PlotResult {
 
 export interface StatsRequest extends AnalyzeRequest {
   columns: StatColumn[];
+}
+
+export interface WizardRequest {
+  // primary = channel the tube is stained for, null = unstained control
+  controls: { sampleId: string; primary: string | null; compensation: string; populations: Population[] }[];
+  channels: string[];
+  positivePct: number;
+  gatePath: string; // '' = all events; else a population path present in every control
+  matrices: SpilloverMatrix[];
 }
 
 export interface ExportRequest extends AnalyzeRequest {
@@ -194,6 +204,27 @@ export class AnalysisService {
         throw e;
       }
     });
+  }
+
+  // Spillover from single-stain controls on raw (uncompensated) values.
+  compWizard(r: WizardRequest): WizardResult {
+    const inputs: ControlInput[] = r.controls.map((c) => {
+      const f = this.files.get(c.sampleId);
+      if (!f) throw new AppError('WORKSPACE_INVALID', 'Control sample data is not loaded');
+      let mask: Uint8Array | undefined;
+      if (r.gatePath) {
+        const pop = c.populations.find((p) => populationPath(c.populations, p.id) === r.gatePath);
+        if (!pop) throw new AppError('GATE_INVALID', `Population "${r.gatePath}" is missing in ${f.keywords['$FIL'] ?? c.sampleId}`);
+        mask = this.engine({ sampleId: c.sampleId, compensation: c.compensation, populations: c.populations, matrices: r.matrices }).masks.get(pop.id);
+      }
+      return {
+        label: f.keywords['$FIL'] ?? c.sampleId,
+        primary: c.primary,
+        columns: new Map(f.channels.map((ch, i) => [ch.name, f.data[i]])),
+        mask,
+      };
+    });
+    return estimateSpillover(inputs, r.channels, r.positivePct);
   }
 
   exportEvents(r: ExportRequest): Uint8Array {

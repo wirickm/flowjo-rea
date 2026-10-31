@@ -348,6 +348,50 @@ await idle();
 const cap = await page.getByTestId('plot-caption').textContent();
 await page.screenshot({ path: join(out, '05-unmixed.png') });
 check('spectral CSV import exposes unmixed channels that plot', hasUnmixed && cap.includes('283,969'), cap);
+// compensation wizard on synthetic single-stain controls with a known matrix
+const TRUE = [[1, 0.25, 0.01], [0.02, 1, 0.08], [0, 0.05, 1]];
+const DYES = ['FITC-A', 'PE-A', 'APC-A'];
+const writeControl = (file, primary, seed) => {
+  let st = seed >>> 0;
+  const u = () => ((st = (1664525 * st + 1013904223) >>> 0) + 0.5) / 4294967296;
+  const nrm = () => Math.sqrt(-2 * Math.log(u())) * Math.cos(2 * Math.PI * u());
+  const names = ['FSC-A', 'SSC-A', ...DYES];
+  const n = 20000;
+  const buf = Buffer.alloc(n * names.length * 4);
+  const p = DYES.indexOf(primary);
+  for (let e = 0; e < n; e++) {
+    const dye = p >= 0 && e < n * 0.3 ? 20000 * (1 + 0.2 * nrm()) : 0;
+    const row = [50000 + 2000 * nrm(), 30000 + 2000 * nrm(), ...DYES.map((_, j) => 200 + (p >= 0 ? dye * TRUE[p][j] : 0) + 50 * nrm())];
+    row.forEach((v, c) => buf.writeFloatLE(v, (e * names.length + c) * 4));
+  }
+  const kw = { $BYTEORD: '1,2,3,4', $DATATYPE: 'F', $MODE: 'L', $PAR: String(names.length), $TOT: String(n), $FIL: file.split('/').pop() };
+  names.forEach((nm, i) => Object.assign(kw, { [`$P${i + 1}N`]: nm, [`$P${i + 1}B`]: '32', [`$P${i + 1}R`]: '262144', [`$P${i + 1}E`]: '0,0' }));
+  const textFor = (b, e2) => '/' + Object.entries({ ...kw, $BEGINDATA: String(b), $ENDDATA: String(e2) }).map(([k, v]) => `${k}/${v}`).join('/') + '/';
+  let text = textFor(0, 0);
+  for (let i = 0; i < 3; i++) { const b = 58 + Buffer.byteLength(text); text = textFor(b, b + buf.length - 1); }
+  const b = 58 + Buffer.byteLength(text);
+  const pad = (v) => String(v).padStart(8, ' ');
+  const header = `FCS3.1    ${pad(58)}${pad(b - 1)}${pad(b)}${pad(b + buf.length - 1)}${pad(0)}${pad(0)}`;
+  writeFileSync(file, Buffer.concat([Buffer.from(header), Buffer.from(text), buf]));
+};
+const ctrlDir = join(out, 'comp-controls');
+mkdirSync(ctrlDir, { recursive: true });
+const ctrlFiles = [['unstained.fcs', null], ['fitc.fcs', 'FITC-A'], ['pe.fcs', 'PE-A'], ['apc.fcs', 'APC-A']].map(([f, pr], i) => { writeControl(join(ctrlDir, f), pr, i + 1); return [f, pr]; });
+await page.reload();
+await page.getByTestId('add-fcs').setInputFiles(ctrlFiles.map(([f]) => join(ctrlDir, f)));
+await idle();
+await page.getByTestId('sample-unstained.fcs').click();
+await page.getByTestId('open-comp').click();
+await page.getByTestId('wizard').locator('summary').click();
+for (const [f, pr] of ctrlFiles) await page.getByTestId(`wizard-role-${f}`).selectOption(pr ?? 'unstained');
+await page.getByTestId('wizard-run').click();
+await page.getByTestId('wizard-diagnostics').waitFor({ timeout: 30000 });
+const cells = await page.locator('table.matrix tbody tr').evaluateAll((rows) => rows.map((r) => [...r.querySelectorAll('input')].map((i) => Number(i.value))));
+const worst = Math.max(...cells.flatMap((row, i) => row.map((v, j) => Math.abs(v - TRUE[i][j]))));
+await page.getByRole('button', { name: 'Save and apply to sample' }).click();
+const applied = await page.getByTestId('comp-current').textContent();
+await page.getByRole('dialog').getByLabel('Close').click();
+check('compensation wizard recovers the known matrix from synthetic controls (|err| < 0.005) and applies it', cells.length === 3 && worst < 0.005 && applied.includes('Wizard matrix'), `worst |error| ${worst.toFixed(5)}; applied "${applied}"`);
 check('no uncaught page errors', errors.length === 0, errors.join('; '));
 await browser.close();
 writeFileSync(join(out, 'results.json'), JSON.stringify(results, null, 1));

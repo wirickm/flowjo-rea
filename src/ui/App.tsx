@@ -737,6 +737,19 @@ export function App() {
           current={sample.compensation}
           onClose={() => setDialog(null)}
           onSave={(m) => updateWs((w) => { w.matrices = m; })}
+          controls={groupSamples.map((s) => ({ id: s.id, fileName: s.fileName, loaded: !!meta[s.id] }))}
+          channels={(sMeta?.channels ?? []).filter((c) => !isScatterOrTime(c.name)).map((c) => c.name)}
+          gatePaths={sample.populations.map((p) => populationPath(sample.populations, p.id))}
+          onWizard={async (roles, positivePct, gatePath) => {
+            const controls = roles.map((r) => {
+              const s = ws.samples.find((x) => x.id === r.sampleId)!;
+              return { sampleId: s.id, primary: r.primary, compensation: s.compensation, populations: s.populations };
+            });
+            const res = await client.compWizard({ controls, channels: (sMeta?.channels ?? []).map((c) => c.name), positivePct, gatePath, matrices: ws.matrices });
+            note('info', `Compensation wizard: ${res.diagnostics.length} controls -> ${res.matrix.name}`);
+            for (const d of res.diagnostics) for (const w of d.warnings) note('warn', `${d.label}: ${w}`);
+            return res;
+          }}
           onAssign={(ref, scope) => {
             updateWs((w) => {
               const ids = scope === 'sample' ? [sample.id] : w.groups.find((g) => g.id === groupId)!.sampleIds;

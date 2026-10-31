@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { invert, isSpectral, parseSpilloverCsv, unmixingOperator, validateMatrix, type SpilloverMatrix } from '../core/compensation';
 import { describeTransform, makeTransform, type TransformSpec } from '../core/transforms';
 import type { SampleMeta } from '../core/service';
+import type { WizardResult } from '../core/compWizard';
 
 export function Modal(p: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   return (
@@ -112,8 +113,19 @@ export function CompensationDialog(p: {
   onSave: (m: SpilloverMatrix[]) => void;
   onAssign: (ref: string, scope: 'sample' | 'group') => void;
   onClose: () => void;
+  // Compensation wizard: candidate control samples (current group), channels
+  // of the current sample, population paths usable as a pre-gate.
+  controls: { id: string; fileName: string; loaded: boolean }[];
+  channels: string[];
+  gatePaths: string[];
+  onWizard: (roles: { sampleId: string; primary: string | null }[], positivePct: number, gatePath: string) => Promise<WizardResult>;
 }) {
   const [mats, setMats] = useState<SpilloverMatrix[]>(p.matrices);
+  const [roles, setRoles] = useState<Record<string, string>>({}); // sampleId -> '' | 'unstained' | channel
+  const [pct, setPct] = useState(10);
+  const [gatePath, setGatePath] = useState('');
+  const [diag, setDiag] = useState<WizardResult['diagnostics'] | null>(null);
+  const [wizErr, setWizErr] = useState('');
   const [selected, setSelected] = useState<string>(p.matrices[0]?.id ?? '');
   const [msg, setMsg] = useState('');
   const m = mats.find((x) => x.id === selected);
@@ -166,6 +178,62 @@ export function CompensationDialog(p: {
         </label>
       </div>
       {msg && <p className="error">{msg}</p>}
+      <details data-testid="wizard">
+        <summary>Compensation wizard (from single-stain controls)</summary>
+        <p className="muted">Assign each control tube its stained channel (or Unstained). Spillover = (median of the brightest {pct}% minus median of the negative) in each channel, divided by the same difference in the stained channel. Negative = unstained control if assigned, else the dimmest {pct}% of the same tube. Not compared with FlowJo's wizard.</p>
+        <table className="grid">
+          <tbody>
+            {p.controls.map((c) => (
+              <tr key={c.id}>
+                <td>{c.fileName}</td>
+                <td>
+                  <select disabled={!c.loaded} value={roles[c.id] ?? ''} onChange={(e) => setRoles({ ...roles, [c.id]: e.target.value })} data-testid={`wizard-role-${c.fileName}`}>
+                    <option value="">not a control</option>
+                    <option value="unstained">Unstained</option>
+                    {p.channels.map((ch) => <option key={ch} value={ch}>{ch}</option>)}
+                  </select>
+                  {!c.loaded && <span className="muted"> data not loaded</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="row">
+          <label>Positive % <input type="number" min={1} max={49} value={pct} onChange={(e) => setPct(Number(e.target.value))} style={{ width: 60 }} data-testid="wizard-pct" /></label>
+          <label>Pre-gate <select value={gatePath} onChange={(e) => setGatePath(e.target.value)} data-testid="wizard-gate">
+            <option value="">all events</option>
+            {p.gatePaths.map((g) => <option key={g} value={g}>{g}</option>)}
+          </select></label>
+          <button
+            data-testid="wizard-run"
+            onClick={async () => {
+              setWizErr('');
+              setDiag(null);
+              try {
+                const assigned = Object.entries(roles).filter(([, v]) => v).map(([sampleId, v]) => ({ sampleId, primary: v === 'unstained' ? null : v }));
+                const r = await p.onWizard(assigned, pct, gatePath);
+                add(r.matrix);
+                setDiag(r.diagnostics);
+              } catch (e) {
+                setWizErr((e as Error).message);
+              }
+            }}
+          >
+            Calculate matrix
+          </button>
+        </div>
+        {wizErr && <p className="error" data-testid="wizard-error">{wizErr}</p>}
+        {diag && (
+          <table className="grid" data-testid="wizard-diagnostics">
+            <thead><tr><th>Control</th><th>Channel</th><th>Positives</th><th>Negatives</th><th>Negative from</th><th>Pos. median</th><th>Neg. median</th><th>Warnings</th></tr></thead>
+            <tbody>
+              {diag.map((d) => (
+                <tr key={d.primary}><td>{d.label}</td><td>{d.primary}</td><td>{d.positives}</td><td>{d.negatives}</td><td>{d.negativeSource}</td><td>{d.positiveMedian.toFixed(1)}</td><td>{d.negativeMedian.toFixed(1)}</td><td className={d.warnings.length ? 'error' : ''}>{d.warnings.join('; ')}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </details>
       <div className="row">
         <select value={selected} onChange={(e) => setSelected(e.target.value)} data-testid="matrix-select">
           {mats.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}

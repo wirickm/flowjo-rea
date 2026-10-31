@@ -1,0 +1,52 @@
+* { box-sizing: border-box; }
+body { margin: 0; font: 13px/1.35 system-ui, sans-serif; color: #1d2330; background: #eef1f5; }
+button, select, input { font: inherit; }
+button { padding: 3px 9px; border: 1px solid #a8b1c0; background: #fff; border-radius: 3px; cursor: pointer; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button.active { background: #2a4f9c; color: #fff; border-color: #2a4f9c; }
+.app { display: flex; flex-direction: column; height: 100vh; }
+.toolbar { display: flex; gap: 6px; align-items: center; padding: 6px 10px; background: #26334d; color: #fff; flex-wrap: wrap; }
+.toolbar .brand { margin-right: 10px; }
+.toolbar .sep { width: 12px; }
+.toolbar .status { margin-left: auto; opacity: 0.8; }
+.file-btn { position: relative; display: inline-block; padding: 3px 9px; border: 1px solid #a8b1c0; background: #fff; color: #1d2330; border-radius: 3px; cursor: pointer; }
+.file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+.layout { flex: 1; display: grid; grid-template-columns: 250px 280px 500px minmax(300px, 1fr); gap: 6px; padding: 6px; min-height: 0; }
+.panel { background: #fff; border: 1px solid #d3d9e3; border-radius: 4px; padding: 6px; overflow: auto; min-height: 0; }
+.panel h3 { margin: 4px 0 6px; font-size: 13px; }
+.node { display: flex; align-items: center; gap: 6px; padding: 2px 6px; cursor: pointer; border-radius: 3px; white-space: nowrap; }
+.node:hover { background: #eef3fb; }
+.node.sel { background: #d7e3f8; }
+.node.multi { outline: 2px dashed #2a4f9c; }
+.pname { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.pcount { color: #445; font-variant-numeric: tabular-nums; }
+.ppct { width: 58px; text-align: right; color: #667; font-variant-numeric: tabular-nums; }
+.row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
+.muted { color: #6b7385; font-size: 12px; }
+.missing { color: #b25d00; }
+.error { color: #b00020; }
+.warn { background: #fff7e0; border: 1px solid #e8cf7a; padding: 4px 8px; margin: 6px 0; }
+.log { font-size: 12px; max-height: 220px; overflow: auto; }
+.log .error { color: #b00020; } .log .warn { color: #9a5b00; }
+table.grid { border-collapse: collapse; font-size: 12px; }
+table.grid td, table.grid th { border: 1px solid #d3d9e3; padding: 2px 5px; text-align: left; }
+.table-wrap { overflow: auto; max-height: 50vh; }
+button.x { padding: 0 4px; font-size: 10px; }
+.modal-bg { position: fixed; inset: 0; background: rgba(20, 25, 40, 0.35); display: flex; align-items: center; justify-content: center; z-index: 10; }
+.modal { background: #fff; border-radius: 6px; width: 520px; max-height: 88vh; display: flex; flex-direction: column; }
+.modal.wide { width: 860px; }
+.modal-head { display: flex; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #ddd; }
+.modal-body { padding: 10px 12px; overflow: auto; }
+.params { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin: 8px 0; }
+.params input { width: 120px; }
+.matrix-wrap { overflow: auto; max-width: 100%; }
+table.matrix input { width: 72px; }
+/* Fixed-height tool row so changing tools never moves the plot under the cursor. */
+.row.tools { flex-wrap: nowrap; height: 28px; overflow: hidden; }
+.row.tools .muted { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.row.plot-controls { min-height: 56px; align-content: flex-start; }
+.modal.layout { width: min(1500px, 96vw); max-height: 94vh; }
+.layout-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 8px; }
+.layout-card { border: 1px solid #d3d9e3; border-radius: 4px; padding: 4px; }
+.overlay-picker { margin: 4px 0; max-height: 160px; overflow: auto; }
+.overlay-picker summary { cursor: pointer; }

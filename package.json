@@ -1,0 +1,42 @@
+{
+  "name": "flowjo-rea",
+  "version": "1.0.0",
+  "description": "Local flow cytometry analysis app with measured FlowJo workspace compatibility",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p .",
+    "fixtures": "./scripts/fetch-fixtures.sh",
+    "dev": "vite",
+    "build": "tsc -p . && vite build",
+    "preview": "vite preview",
+    "e2e": "node e2e/workflow.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wirickm/flowjo-rea.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/wirickm/flowjo-rea/issues"
+  },
+  "homepage": "https://github.com/wirickm/flowjo-rea#readme",
+  "dependencies": {
+    "@xmldom/xmldom": "^0.8.10",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "vite-plugin-singlefile": "^2.0.3",
+    "vitest": "^2.1.4"
+  },
+  "type": "module",
+  "private": true
+}

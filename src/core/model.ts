@@ -91,10 +91,16 @@ export interface PlotSettings {
   overlays?: string[]; // population paths drawn on top (backgating)
 }
 
-// A plot placed in the layout: rendered for whichever sample is chosen.
-export interface LayoutItem extends PlotSettings {
+// A layout cell: a plot rendered for whichever sample is chosen, or a text block.
+export type LayoutItem = LayoutPlot | LayoutText;
+export interface LayoutPlot extends PlotSettings {
   id: string;
   populationPath: string; // '' = all events
+  text?: undefined;
+}
+export interface LayoutText {
+  id: string;
+  text: string;
 }
 
 export type StatKind =

@@ -7,15 +7,32 @@ import { makeAxis, sampleChannels } from './axes';
 import { drawableGates } from './gateGeometry';
 import { PLOT, renderPlot, type RenderOptions } from './renderPlot';
 import { asCanvas, SvgContext } from './svgContext';
+import { canvasToPdf } from './pdf';
 import type { createAnalysisClient } from './workerClient';
 
 type Client = ReturnType<typeof createAnalysisClient>;
 const TITLE_H = 22;
 
+// Greedy word wrap at ~11px/char; also splits on explicit newlines.
+function wrapText(text: string, widthPx: number): string[] {
+  const max = Math.max(8, Math.floor(widthPx / 8));
+  const lines: string[] = [];
+  for (const para of text.split('\n')) {
+    let cur = '';
+    for (const word of para.split(/\s+/)) {
+      if (cur && (cur + ' ' + word).length > max) { lines.push(cur); cur = word; }
+      else cur = cur ? `${cur} ${word}` : word;
+    }
+    lines.push(cur);
+  }
+  return lines;
+}
+
 interface Rendered {
   item: LayoutItem;
   canvas: HTMLCanvasElement | null;
   options?: RenderOptions; // kept so the same plot can be re-rendered as SVG
+  text?: string; // text block instead of a plot
   title: string;
   error?: string;
 }
@@ -28,6 +45,10 @@ export async function renderLayout(client: Client, ws: Workspace, s: SampleState
   for (const r of analysis.results) if (r) counts[r.id] = r;
   const out: Rendered[] = [];
   for (const item of items) {
+    if (item.text !== undefined) {
+      out.push({ item, canvas: null, text: item.text, title: '' });
+      continue;
+    }
     const pop = item.populationPath ? s.populations.find((p) => populationPath(s.populations, p.id) === item.populationPath) : null;
     const label = item.populationPath || 'All events';
     if (item.populationPath && !pop) {
@@ -79,6 +100,12 @@ export function compose(rendered: Rendered[], cols = 2): HTMLCanvasElement {
   rendered.forEach((r, i) => {
     const x0 = (i % cols) * PLOT.w;
     const y0 = Math.floor(i / cols) * (PLOT.h + TITLE_H);
+    if (r.text !== undefined) {
+      ctx.fillStyle = '#111';
+      ctx.font = '15px sans-serif';
+      wrapText(r.text, PLOT.w - 24).forEach((ln, k) => ctx.fillText(ln, x0 + 12, y0 + 28 + k * 20));
+      return;
+    }
     ctx.fillStyle = '#111';
     ctx.font = '12px sans-serif';
     ctx.fillText(r.title, x0 + 8, y0 + 15, PLOT.w - 16);
@@ -98,6 +125,12 @@ export function composeSvg(rendered: Rendered[], cols = 2): string {
   rendered.forEach((r, i) => {
     const x0 = (i % cols) * PLOT.w;
     const y0 = Math.floor(i / cols) * (PLOT.h + TITLE_H);
+    if (r.text !== undefined) {
+      svg.font = '15px sans-serif';
+      svg.fillStyle = '#111';
+      wrapText(r.text, PLOT.w - 24).forEach((ln, k) => svg.fillText(ln, x0 + 12, y0 + 28 + k * 20));
+      return;
+    }
     svg.font = '12px sans-serif';
     svg.fillStyle = r.options ? '#111' : '#b00020';
     svg.fillText(r.options ? r.title : `${r.title}: ${r.error ?? 'not rendered'}`, x0 + 8, y0 + 15);
@@ -124,7 +157,7 @@ export function LayoutView(p: {
   const [sampleId, setSampleId] = useState(loaded[0]?.id ?? '');
   const [rendered, setRendered] = useState<Rendered[]>([]);
   const [busy, setBusy] = useState(false);
-  const [batchFormat, setBatchFormat] = useState<'png' | 'svg'>('png');
+  const [batchFormat, setBatchFormat] = useState<'png' | 'svg' | 'pdf'>('png');
   const [error, setError] = useState('');
   const sample = p.samples.find((s) => s.id === sampleId);
 
@@ -160,6 +193,8 @@ export function LayoutView(p: {
             </select>
             <button disabled={!rendered.length} data-testid="layout-export" onClick={async () => p.onDownload(`layout_${safe(sample!.fileName)}.png`, await toBlob(compose(rendered)))}>Export PNG (this sample)</button>
             <button disabled={!rendered.length} data-testid="layout-export-svg" onClick={() => p.onDownload(`layout_${safe(sample!.fileName)}.svg`, new Blob([composeSvg(rendered)], { type: 'image/svg+xml' }))}>Export SVG (this sample)</button>
+            <button disabled={!rendered.length} data-testid="layout-export-pdf" onClick={async () => p.onDownload(`layout_${safe(sample!.fileName)}.pdf`, new Blob([await canvasToPdf(compose(rendered))], { type: 'application/pdf' }))}>Export PDF (this sample)</button>
+            <button data-testid="layout-add-text" onClick={() => p.onChange([...items, { id: `txt_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, text: 'New text' }])}>Add text block</button>
             <button
               disabled={!items.length || busy}
               data-testid="layout-batch"
@@ -168,7 +203,10 @@ export function LayoutView(p: {
                 try {
                   for (const s of loaded) {
                     const r = await renderLayout(p.client, p.ws, s, p.meta[s.id], items);
-                    p.onDownload(`layout_${safe(s.fileName)}.${batchFormat}`, batchFormat === 'svg' ? new Blob([composeSvg(r)], { type: 'image/svg+xml' }) : await toBlob(compose(r)));
+                    const blob = batchFormat === 'svg' ? new Blob([composeSvg(r)], { type: 'image/svg+xml' })
+                      : batchFormat === 'pdf' ? new Blob([await canvasToPdf(compose(r))], { type: 'application/pdf' })
+                      : await toBlob(compose(r));
+                    p.onDownload(`layout_${safe(s.fileName)}.${batchFormat}`, blob);
                   }
                 } catch (e) {
                   setError((e as Error).message);
@@ -179,9 +217,10 @@ export function LayoutView(p: {
             >
               Batch export ({loaded.length} samples in group)
             </button>
-            <select value={batchFormat} onChange={(e) => setBatchFormat(e.target.value as 'png' | 'svg')} data-testid="layout-batch-format">
+            <select value={batchFormat} onChange={(e) => setBatchFormat(e.target.value as 'png' | 'svg' | 'pdf')} data-testid="layout-batch-format">
               <option value="png">PNG</option>
               <option value="svg">SVG</option>
+              <option value="pdf">PDF</option>
             </select>
             {busy && <span className="muted">exporting...</span>}
           </div>
@@ -194,12 +233,19 @@ export function LayoutView(p: {
               return (
                 <div key={it.id} className="layout-card" data-testid="layout-card">
                   <div className="row">
-                    <span className="pname">{r?.title ?? `${it.populationPath || 'All events'}`}</span>
+                    <span className="pname">{it.text !== undefined ? 'Text' : r?.title ?? `${it.populationPath || 'All events'}`}</span>
                     <button onClick={() => move(i, -1)} disabled={i === 0} aria-label="move up">up</button>
                     <button onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label="move down">down</button>
                     <button onClick={() => p.onChange(items.filter((x) => x.id !== it.id))} data-testid="layout-remove">remove</button>
                   </div>
-                  {r?.canvas ? <img alt={r.title} src={r.canvas.toDataURL()} width={PLOT.w / 1.5} /> : <p className="error">{r?.error ?? 'rendering...'}</p>}
+                  {it.text !== undefined ? (
+                    <textarea
+                      value={it.text}
+                      data-testid="layout-text"
+                      onChange={(e) => p.onChange(items.map((x) => (x.id === it.id ? { id: x.id, text: e.target.value } : x)))}
+                      style={{ width: '100%', minHeight: 60 }}
+                    />
+                  ) : r?.canvas ? <img alt={r.title} src={r.canvas.toDataURL()} width={PLOT.w / 1.5} /> : <p className="error">{r?.error ?? 'rendering...'}</p>}
                 </div>
               );
             })}

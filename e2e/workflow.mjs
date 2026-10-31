@@ -263,6 +263,17 @@ const afterRemove = await page.getByTestId('layout-card').count();
 await page.getByRole('dialog').getByLabel('Close').click();
 await page.getByTestId('undo').click();
 check('layout reorder/remove are undoable', afterRemove === 1 && (await page.getByTestId('open-layout').textContent()).includes('2'), `cards after remove ${afterRemove}; button "${await page.getByTestId('open-layout').textContent()}"`);
+// layout text block + PDF export (reopen the layout, which now has 2 plots again after undo)
+await page.getByTestId('open-layout').click();
+await page.getByTestId('layout-add-text').click();
+await page.getByTestId('layout-text').fill('Figure 1: CD3 vs CD4 gating');
+await page.waitForTimeout(200);
+layoutSvg = await download(() => page.getByTestId('layout-export-svg').click());
+const layoutPdf = await download(() => page.getByTestId('layout-export-pdf').click());
+const pdfHead = readFileSync(layoutPdf).subarray(0, 8).toString('latin1');
+const svgHasText = readFileSync(layoutSvg, 'utf8').includes('Figure 1: CD3 vs CD4 gating');
+await page.getByRole('dialog').getByLabel('Close').click();
+check('layout text block appears in SVG and a PDF is produced', pdfHead === '%PDF-1.4' && svgHasText, `pdf head ${pdfHead}, svg has caption ${svgHasText}`);
 // overlays / backgating: Polygon 1 on the ungated FSC/SSC plot, then as a histogram
 await page.getByTestId(`sample-${F1}`).click();
 await page.getByTestId('pop-root').click(); await idle();
@@ -313,7 +324,7 @@ const after = await page.locator('.panel.tree').innerText();
 check('population tree and counts identical after save/reload', before === after, before === after ? '' : `before:\n${before}\nafter:\n${after}`);
 const table2 = await page.getByTestId('stats-table').innerText();
 check('stats identical after reload', table2 === table1);
-check('layout persists in the saved workspace', (await page.getByTestId('open-layout').textContent()).includes('2'));
+check('layout (2 plots + text block) persists in the saved workspace', (await page.getByTestId('open-layout').textContent()).includes('3'));
 await page.screenshot({ path: join(out, '03-reloaded.png') });
 // 9. FlowJo workspace import through the UI: counts vs FlowJo's saved counts
 await page.reload();

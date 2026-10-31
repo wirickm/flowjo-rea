@@ -6,8 +6,8 @@ Status values: **Done** (implemented and validated as stated), **Partial**
 *implemented* (code exists), *tested* (own unit/E2E tests with independently
 derived expectations), *cross-checked* (agrees with another open
 implementation), *reference-validated* (agrees with a standard's truth data
-or FlowJo output, on the named fixtures only). Evidence labels follow REA's convention:
-*observed* (seen in a FlowJo-written artifact or measured), *spec* (published
+or FlowJo output, on the named fixtures only). Evidence labels:
+*observed* (seen in a FlowJo-written file or measured), *spec* (published
 standard), *derived* (reasoned from observations), *unknown*.
 
 Validation keys: **ISAC** = Gating-ML 2.0 compliance truth (per-event

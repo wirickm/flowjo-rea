@@ -51,7 +51,7 @@ npm run e2e
 ## Docs
 
 - [docs/design.md](docs/design.md): requirements, constraints (including the
-  reverse-engineering decision), architecture, validation strategy
+  architecture, validation strategy
 - [docs/compatibility-matrix.md](docs/compatibility-matrix.md): feature status,
   evidence, validation, limitations
 - [docs/validation/wsp-counts.md](docs/validation/wsp-counts.md): per-population

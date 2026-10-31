@@ -30,7 +30,7 @@ never starting under file://, worker failures leaving the UI at
 
 Branch `main` on GitHub (wirickm/flowjo-rea). Milestone 1 delivered the core
 app. Milestone 2 (this session) delivered: per-population FlowJo evidence
-report with inherited/introduced split; REA run from the local checkout;
+report with inherited/introduced split;
 undo/redo; full ellipse editing; contour plots; layout editor with batch PNG
 export; OLS spectral unmixing; FlowJo-style .wsp export (unvalidated in
 FlowJo). Status per feature: `docs/compatibility-matrix.md`.
@@ -43,8 +43,6 @@ FlowJo). Status per feature: `docs/compatibility-matrix.md`.
 - `npm run dev` then `npm run e2e`: 26/26 checks passed in Chromium
 - `WRITE_REPORT=1 npx vitest run tests/wsp-report.test.ts` -> `docs/validation/wsp-counts.md`
 - `DIAG=1 npx vitest run tests/diagnostics/polygon.test.ts` -> `docs/validation/polygon-diagnostics.md`
-- REA: `npm ci --ignore-scripts && npm run build:cached` in `../rea`, then
-  `node scripts/rea.mjs doctor --json` and `inspect-artifact` (outputs in `docs/rea/`)
 
 ## Defects found and fixed in milestone 2
 
@@ -61,13 +59,10 @@ FlowJo). Status per feature: `docs/compatibility-matrix.md`.
 
 1. Polygon gates on the 8-colour set: about 0.25% fewer events than FlowJo.
    Rejected hypotheses are listed in the matrix. Next step: obtain FlowJo-side
-   evidence (event-level export of a polygon population from FlowJo, or
-   licensed analysis of FlowJo's polygon test).
+   evidence (event-level export of a polygon population from FlowJo).
 2. Ellipse on logicle axes: 2-3% fewer events than FlowJo. Likely related to
    FlowJo's logicle display mapping; same evidence needed.
 3. FlowJo statistic conventions (median, percentiles, robust CV) unverified.
-4. FlowJo binary analysis not performed (artifact absent; EULA restriction;
-   see `docs/design.md` section 2).
 
 ## Milestone 2 plan (prioritised by dependency, then user impact)
 
@@ -93,8 +88,6 @@ the matrix. Items 3, 5 and 6 carry the external dependencies listed above.
 4. Opening an exported .wsp in FlowJo and comparing counts (validates export).
 5. Vendor-unmixed spectral reference data (validates unmixing beyond the
    FlowKit cross-check).
-6. FlowJo installer plus an established license/jurisdiction permission, plus
-   a deep-analysis engine (Ghidra/IDA/Hopper), for any REA analysis of FlowJo.
 
 ## Next implementation steps
 

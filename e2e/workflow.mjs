@@ -207,6 +207,18 @@ check('stats table shows annotation column', table1.split('\n')[0].includes('Con
 check('stats table has both samples with values', table1.includes(F1) && table1.includes(F2) && !table1.includes('missing population'), table1.split('\n').slice(1).join(' | '));
 const statsCsv = await download(() => page.getByTestId('export-stats').click());
 check('stats CSV exported', readFileSync(statsCsv, 'utf8').split('\n').length >= 3);
+// statistic templates and all-groups export
+await page.getByTestId('template-save').click();
+await page.getByTestId('stats-table').getByLabel('remove column').first().click();
+const colsAfterRemove = await page.locator('[data-testid=stats-table] thead th').count();
+await page.getByTestId('template-select').selectOption({ index: 1 });
+await page.getByTestId('template-apply').click();
+await idle(); await page.waitForTimeout(400); await idle();
+const colsAfterApply = await page.locator('[data-testid=stats-table] thead th').count();
+const tableAfterTemplate = await page.getByTestId('stats-table').innerText();
+check('template restores the saved statistic columns and values', colsAfterApply === colsAfterRemove + 1 && tableAfterTemplate === table1, `${colsAfterRemove} -> ${colsAfterApply} columns`);
+const allCsv = readFileSync(await download(() => page.getByTestId('export-stats-all').click()), 'utf8').trim().split('\n');
+check('all-groups CSV has a Group column and one row per group membership', allCsv[0].startsWith('Group,Sample,Condition') && allCsv.length === 1 + 4, `${allCsv.length - 1} rows; header ${allCsv[0].slice(0, 60)}`);
 // layout editor: two plots, rendered per sample, single and batch PNG export
 let layoutSvg = '';
 const pngSize = (p) => { const b = readFileSync(p); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };

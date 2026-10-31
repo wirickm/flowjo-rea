@@ -64,6 +64,7 @@ export interface Workspace {
   // Plot layout per population path ('' = ungated), shared across samples.
   plots?: Record<string, PlotSettings>;
   layout?: LayoutItem[];
+  statTemplates?: { id: string; name: string; columns: StatColumn[] }[];
 }
 
 export interface PlotSettings {

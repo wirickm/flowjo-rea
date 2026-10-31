@@ -5,6 +5,7 @@ import { emptyWorkspace, newId, populationPath, type Gate, type PlotSettings, ty
 import { applySubtree, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace } from '../core/project';
 import type { PlotResult, SampleMeta } from '../core/service';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL } from '../core/stats';
+import { formatStat, statsCsv } from '../core/statsTable';
 import { makeTransform, type TransformSpec } from '../core/transforms';
 import { parseWsp } from '../core/wsp';
 import { writeWsp } from '../core/wspWriter';
@@ -35,8 +36,7 @@ function download(name: string, data: BlobPart, type = 'application/octet-stream
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-const fmtStat = (v: number | string) => (typeof v === 'string' ? v : Number.isNaN(v) ? 'NaN' : Number.isInteger(v) ? String(v) : v.toPrecision(5));
-const csvCell = (s: string) => (/[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
+const fmtStat = formatStat;
 
 export function App() {
   // Workspace with undo/redo history; every edit goes through setWs.
@@ -59,6 +59,7 @@ export function App() {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [gateSel, setGateSel] = useState<string | null>(null);
   const [groupKey, setGroupKey] = useState('');
+  const [templateId, setTemplateId] = useState('');
   const [annKey, setAnnKey] = useState('');
   const [annVal, setAnnVal] = useState('');
   const [syncGroup, setSyncGroup] = useState(false);
@@ -345,9 +346,27 @@ export function App() {
 
   // --- exports --------------------------------------------------------------------
   const exportStatsCsv = () => {
-    const head = ['Sample', ...annotationKeys, ...ws.statColumns.map(colLabel)];
-    const rows = groupSamples.map((s) => [s.fileName, ...annotationKeys.map((k) => s.annotations?.[k] ?? ''), ...(stats[s.id] ?? ws.statColumns.map(() => 'data not loaded')).map(fmtStat)]);
-    download(`${group?.name ?? 'stats'}.csv`, [head, ...rows].map((r) => r.map(csvCell).join(',')).join('\n') + '\n', 'text/csv');
+    const rows = groupSamples.map((s) => ({ sample: s.fileName, annotations: annotationKeys.map((k) => s.annotations?.[k] ?? ''), values: stats[s.id] ?? ws.statColumns.map(() => 'data not loaded') }));
+    download(`${group?.name ?? 'stats'}.csv`, statsCsv({ group: false, annotations: annotationKeys, columns: ws.statColumns.map(colLabel) }, rows), 'text/csv');
+  };
+
+  // Every group, one row per (group, sample); a sample in several groups appears once per group.
+  const exportAllGroupsCsv = async () => {
+    const allAnn = [...new Set(ws.samples.flatMap((s) => Object.keys(s.annotations ?? {})))].sort();
+    const cache = new Map<string, (number | string)[]>();
+    const rows = [];
+    for (const g of ws.groups) {
+      for (const id of g.sampleIds) {
+        const s = ws.samples.find((x) => x.id === id);
+        if (!s) continue;
+        if (!cache.has(id)) {
+          const v = meta[id] ? await run(() => client.stats({ sampleId: id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, columns: ws.statColumns })) : undefined;
+          cache.set(id, v ?? ws.statColumns.map(() => 'data not loaded'));
+        }
+        rows.push({ group: g.name, sample: s.fileName, annotations: allAnn.map((k) => s.annotations?.[k] ?? ''), values: cache.get(id)! });
+      }
+    }
+    download('all_groups.csv', statsCsv({ group: true, annotations: allAnn, columns: ws.statColumns.map(colLabel) }, rows), 'text/csv');
   };
 
   const exportEvents = async (format: 'csv' | 'fcs', compensated: boolean) => {
@@ -633,6 +652,23 @@ export function App() {
               Add for "{popPath || 'All events'}"
             </button>
             <button disabled={!ws.statColumns.length} onClick={exportStatsCsv} data-testid="export-stats">Export CSV</button>
+            <button disabled={!ws.statColumns.length} onClick={exportAllGroupsCsv} data-testid="export-stats-all">Export all groups</button>
+          </div>
+          <div className="row">
+            <button disabled={!ws.statColumns.length} data-testid="template-save" onClick={() => {
+              const name = `Template ${(ws.statTemplates?.length ?? 0) + 1}`;
+              updateWs((w) => { w.statTemplates = [...(w.statTemplates ?? []), { id: newId('tpl'), name, columns: structuredClone(w.statColumns) }]; });
+              note('info', `Saved ${ws.statColumns.length} statistic columns as "${name}"`);
+            }}>Save columns as template</button>
+            <select value={templateId} onChange={(e) => setTemplateId(e.target.value)} data-testid="template-select">
+              <option value="">template...</option>
+              {(ws.statTemplates ?? []).map((t) => <option key={t.id} value={t.id}>{t.name} ({t.columns.length})</option>)}
+            </select>
+            <button disabled={!templateId} data-testid="template-apply" onClick={() => {
+              const t = ws.statTemplates?.find((x) => x.id === templateId);
+              if (t) updateWs((w) => { w.statColumns = t.columns.map((c) => ({ ...c, id: newId('col') })); });
+            }}>Apply</button>
+            <button disabled={!templateId} onClick={() => { updateWs((w) => { w.statTemplates = (w.statTemplates ?? []).filter((x) => x.id !== templateId); }); setTemplateId(''); }}>Delete</button>
           </div>
           {ws.statColumns.length > 0 && (
             <div className="table-wrap">

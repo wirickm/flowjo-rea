@@ -120,23 +120,43 @@ export function sampleValue(s: SampleState, key: string): string | undefined {
   return s.annotations?.[key] ?? s.keywordsSnapshot[key] ?? s.keywordsSnapshot[key.toUpperCase()];
 }
 
-// One group per distinct value of `key` among the given samples, named
+// One live group per distinct value of `key` over all samples, named
 // "key = value"; samples without the key go to "key = (missing)". Existing
-// groups with the same name are updated rather than duplicated.
-export function groupByKey(ws: Workspace, key: string, sampleIds: string[]): string[] {
-  const buckets = new Map<string, string[]>();
-  for (const id of sampleIds) {
-    const s = ws.samples.find((x) => x.id === id);
-    if (!s) continue;
+// groups with the same rule are updated rather than duplicated (renaming a
+// live group keeps its rule).
+export function groupByKey(ws: Workspace, key: string): string[] {
+  const values = new Set<string | null>();
+  for (const s of ws.samples) {
     const v = sampleValue(s, key);
-    const label = `${key} = ${v === undefined || v === '' ? '(missing)' : v}`;
-    buckets.set(label, [...(buckets.get(label) ?? []), id]);
+    values.add(v === undefined || v === '' ? null : v);
   }
-  const names = [...buckets.keys()].sort();
-  for (const name of names) {
-    const existing = ws.groups.find((g) => g.name === name);
-    if (existing) existing.sampleIds = buckets.get(name)!;
-    else ws.groups.push({ id: newId('grp'), name, sampleIds: buckets.get(name)! });
+  const names: string[] = [];
+  for (const value of [...values].sort((a, b) => (a ?? '').localeCompare(b ?? ''))) {
+    const existing = ws.groups.find((g) => g.criteria?.key === key && g.criteria.value === value);
+    const name = `${key} = ${value ?? '(missing)'}`;
+    if (!existing) ws.groups.push({ id: newId('grp'), name, sampleIds: [], criteria: { key, value } });
+    names.push(existing?.name ?? name);
   }
+  syncLiveGroups(ws);
   return names;
+}
+
+// Recompute live-group membership in place; returns true if anything changed.
+export function syncLiveGroups(ws: Workspace): boolean {
+  let changed = false;
+  for (const g of ws.groups) {
+    if (!g.criteria) continue;
+    const { key, value } = g.criteria;
+    const ids = ws.samples
+      .filter((s) => {
+        const v = sampleValue(s, key);
+        return value === null ? v === undefined || v === '' : v === value;
+      })
+      .map((s) => s.id);
+    if (ids.join() !== g.sampleIds.join()) {
+      g.sampleIds = ids;
+      changed = true;
+    }
+  }
+  return changed;
 }

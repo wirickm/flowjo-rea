@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PopulationResult } from '../core/analysis';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../core/gatingml';
 import { emptyWorkspace, newId, populationPath, type Gate, type PlotSettings, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
-import { applySubtree, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace } from '../core/project';
+import { applySubtree, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
 import type { PlotResult, SampleMeta } from '../core/service';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL } from '../core/stats';
 import { formatStat, statsCsv } from '../core/statsTable';
@@ -42,8 +42,14 @@ export function App() {
   // Workspace with undo/redo history; every edit goes through setWs.
   const [hist, setHist] = useState<History<Workspace>>(() => initHistory(emptyWorkspace()));
   const ws = hist.present;
+  // Live groups are re-synchronised after every edit.
   const setWs = (next: Workspace | ((w: Workspace) => Workspace)) =>
-    setHist((h) => pushHistory(h, typeof next === 'function' ? next(h.present) : next));
+    setHist((h) => {
+      let w = typeof next === 'function' ? next(h.present) : next;
+      const copy = structuredClone(w);
+      if (syncLiveGroups(copy)) w = copy;
+      return pushHistory(h, w);
+    });
   const [meta, setMeta] = useState<Record<string, SampleMeta>>({});
   const [analysis, setAnalysis] = useState<Record<string, Analysis>>({});
   const [sel, setSel] = useState<{ sampleId: string | null; popId: string | null }>({ sampleId: null, popId: null });
@@ -463,6 +469,7 @@ export function App() {
                 ) : (
                   <span className="pname">{g.name}</span>
                 )}
+                {g.criteria && <span className="muted" title={`live: ${g.criteria.key} = ${g.criteria.value ?? '(missing)'}`}>live</span>}
                 <span className="pcount">{g.sampleIds.length}</span>
               </div>
             ))}
@@ -481,8 +488,8 @@ export function App() {
               {groupKeys.map((k) => <option key={k} value={k}>{k}</option>)}
             </select>
             <button disabled={!groupKey} data-testid="group-by" onClick={() => {
-              updateWs((w) => { groupByKey(w, groupKey, group?.sampleIds ?? []); });
-              note('info', `Grouped ${groupSamples.length} samples by ${groupKey}`);
+              updateWs((w) => { groupByKey(w, groupKey); });
+              note('info', `Live groups by ${groupKey} created; they update as samples and annotations change`);
             }}>Make groups</button>
           </div>
           <h3>Samples ({groupSamples.length})</h3>

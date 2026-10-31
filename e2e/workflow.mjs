@@ -196,6 +196,18 @@ await page.getByTestId('group-Condition = stim').dblclick();
 await page.getByLabel('Group name').fill('Stimulated');
 await page.getByLabel('Group name').press('Enter');
 const groupsText = await page.locator('.groups').innerText();
+// live group: changing F2's annotation to stim moves it into the renamed group
+await page.getByTestId('group-All Samples').click();
+await page.getByTestId(`sample-${F2}`).click();
+await page.getByLabel('remove Condition').click();
+await page.getByTestId('ann-key').fill('Condition');
+await page.getByTestId('ann-value').fill('stim');
+await page.getByTestId('ann-add').click();
+const liveCount = (await page.getByTestId('group-Stimulated').innerText()).trim().split(/\s+/).pop();
+await page.getByTestId('undo').click();
+await page.getByTestId('undo').click();
+const undoneCount = (await page.getByTestId('group-Stimulated').innerText()).trim().split(/\s+/).pop();
+check('live group follows annotation edits (and undo)', liveCount === '2' && undoneCount === '1', `after edit ${liveCount}, after undo ${undoneCount}`);
 await page.getByTestId('group-All Samples').click();
 check('annotations -> group by annotation -> rename group', groupsText.includes('Stimulated') && groupsText.includes('Condition = ctrl'), groupsText.replace(/\n/g, ' | '));
 await page.getByTestId(`sample-${F1}`).click();

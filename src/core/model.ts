@@ -46,6 +46,9 @@ export interface Group {
   id: string;
   name: string;
   sampleIds: string[];
+  // Live group: membership is recomputed from this rule over all samples
+  // (value null = samples without the key).
+  criteria?: { key: string; value: string | null };
 }
 
 export interface Workspace {

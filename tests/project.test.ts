@@ -65,19 +65,30 @@ describe('apply gates across samples', () => {
   });
 });
 
-describe('grouping by keyword or annotation', () => {
-  it('creates one group per value, annotation overriding keyword, missing bucket', async () => {
+describe('live groups by keyword or annotation', () => {
+  it('one group per value with a missing bucket; annotation overrides keyword', async () => {
     const { groupByKey } = await import('../src/core/project');
     const ws = build();
     ws.samples[0].keywordsSnapshot = { 'TUBE NAME': 'A' };
     ws.samples[1].keywordsSnapshot = { 'TUBE NAME': 'B' };
     ws.samples[1].annotations = { 'TUBE NAME': 'A' };
-    expect(groupByKey(ws, 'TUBE NAME', ['a', 'b', 'c'])).toEqual(['TUBE NAME = (missing)', 'TUBE NAME = A']);
+    expect(groupByKey(ws, 'TUBE NAME')).toEqual(['TUBE NAME = (missing)', 'TUBE NAME = A']);
     expect(ws.groups.find((g) => g.name === 'TUBE NAME = A')!.sampleIds).toEqual(['a', 'b']);
-    // re-running updates instead of duplicating
-    ws.samples[1].annotations = {};
-    groupByKey(ws, 'TUBE NAME', ['a', 'b', 'c']);
-    expect(ws.groups.filter((g) => g.name === 'TUBE NAME = A')).toHaveLength(1);
-    expect(ws.groups.find((g) => g.name === 'TUBE NAME = B')!.sampleIds).toEqual(['b']);
+  });
+  it('membership follows later edits and new samples; renamed groups keep their rule', async () => {
+    const { groupByKey, syncLiveGroups } = await import('../src/core/project');
+    const ws = build();
+    ws.samples[0].annotations = { Condition: 'stim' };
+    groupByKey(ws, 'Condition');
+    const stim = ws.groups.find((g) => g.name === 'Condition = stim')!;
+    stim.name = 'Stimulated';
+    ws.samples[1].annotations = { Condition: 'stim' };
+    ws.samples.push({ ...ws.samples[2], id: 'd', fileName: 'd.fcs', annotations: { Condition: 'stim' } });
+    expect(syncLiveGroups(ws)).toBe(true);
+    expect(stim.sampleIds).toEqual(['a', 'b', 'd']);
+    expect(ws.groups.find((g) => g.name === 'Condition = (missing)')!.sampleIds).toEqual(['c']);
+    expect(syncLiveGroups(ws)).toBe(false);
+    groupByKey(ws, 'Condition'); // re-running does not duplicate the renamed group
+    expect(ws.groups.filter((g) => g.criteria?.value === 'stim')).toHaveLength(1);
   });
 });

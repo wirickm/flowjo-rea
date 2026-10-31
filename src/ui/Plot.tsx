@@ -5,7 +5,7 @@ import { dragHandle, gateFromAxes } from '../core/ellipse';
 import { PLOT, ph, pw, renderPlot } from './renderPlot';
 import { channelDim, drawableGates, ellipseDrawable, pointInPolygon, quadrantSiblings, type Axis, type Drawable } from './gateGeometry';
 
-export type PlotKind = 'pseudocolor' | 'dot' | 'contour' | 'histogram';
+export type PlotKind = 'pseudocolor' | 'density' | 'zebra' | 'dot' | 'contour' | 'histogram';
 export type Tool = 'select' | 'rect' | 'polygon' | 'ellipse' | 'quadrant' | 'range';
 
 interface Props {

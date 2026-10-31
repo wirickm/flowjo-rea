@@ -41,3 +41,22 @@ describe('equal-probability contours', () => {
     expect(marchingSquares(d, B, 1)).toEqual([]);
   });
 });
+
+describe('probability bands (zebra plots)', () => {
+  it('band index increases toward the density peak and bands enclose the expected mass', async () => {
+    const { probabilityBands } = await import('../src/core/contour');
+    const d = Float64Array.from(gaussianGrid());
+    const levels = contourLevels(20); // 0.8, 0.6, 0.4, 0.2
+    const ts = probabilityThresholds(d, levels);
+    const bands = probabilityBands(d, ts);
+    expect(bands[c * B + c]).toBe(levels.length);
+    expect(bands[0]).toBe(0);
+    let total = 0;
+    for (const v of d) total += v;
+    levels.forEach((p, k) => {
+      let mass = 0;
+      for (let i = 0; i < d.length; i++) if (bands[i] >= k + 1) mass += d[i];
+      expect(Math.abs(mass / total - p)).toBeLessThan(0.01);
+    });
+  });
+});

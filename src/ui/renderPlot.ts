@@ -1,6 +1,6 @@
 // Draws a complete plot (data, axes, gates) into a 460x420 canvas context.
 // Shared by the interactive plot and the layout editor.
-import { contourLevels, marchingSquares, probabilityThresholds, smooth } from '../core/contour';
+import { contourLevels, marchingSquares, probabilityBands, probabilityThresholds, smooth } from '../core/contour';
 import type { Gate } from '../core/model';
 import type { PlotResult } from '../core/service';
 import { ticks } from './axes';
@@ -42,7 +42,7 @@ function drawLabel(ctx: CanvasRenderingContext2D, label: string, x: number, y: n
 }
 
 export interface RenderOptions {
-  kind: 'pseudocolor' | 'dot' | 'contour' | 'histogram';
+  kind: 'pseudocolor' | 'density' | 'zebra' | 'dot' | 'contour' | 'histogram';
   x: Axis;
   y: Axis | null;
   data: PlotResult | null;
@@ -75,10 +75,16 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
     ctx.fillRect(0, 0, PLOT.w, PLOT.h);
     const d = o.data;
     if (d) {
-      if (o.y && o.kind === 'pseudocolor') {
+      if (o.y && (o.kind === 'pseudocolor' || o.kind === 'density' || o.kind === 'zebra')) {
         const B = d.bins;
+        // density: Gaussian-smoothed counts; zebra: equal-probability bands of
+        // the smoothed density, alternating light/dark shades per band.
+        const smoothed = o.kind === 'pseudocolor' ? null : smooth(d.density, B, 1.5);
+        const levels = contourLevels(o.contourLevel ?? 10);
+        const bands = o.kind === 'zebra' ? probabilityBands(smoothed!, probabilityThresholds(smoothed!, levels)) : null;
+        const grid: ArrayLike<number> = smoothed ?? d.density;
         let mx = 0;
-        for (const v of d.density) mx = Math.max(mx, v);
+        for (let i = 0; i < grid.length; i++) mx = Math.max(mx, grid[i]);
         const img = ctx.createImageData(pw, ph);
         const greyBase = !!o.overlays?.length;
         const lmx = Math.log1p(mx);
@@ -86,9 +92,16 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
           const by = Math.floor(((ph - 1 - py) / ph) * B);
           for (let px = 0; px < pw; px++) {
             const bx = Math.floor((px / pw) * B);
-            const c = d.density[by * B + bx];
+            const c = grid[by * B + bx];
             const o = (py * pw + px) * 4;
-            if (c > 0) {
+            if (bands) {
+              const k = bands[by * B + bx];
+              if (k > 0 || d.density[by * B + bx] > 0) {
+                const [r, g, b] = ramp(k / levels.length);
+                const shade = k % 2 ? 1 : 0.78;
+                img.data[o] = r * shade; img.data[o + 1] = g * shade; img.data[o + 2] = b * shade; img.data[o + 3] = 255;
+              } else img.data[o + 3] = 0;
+            } else if (c > (smoothed ? mx * 1e-4 : 0)) {
               // Greyscale base when overlays are shown so overlay colours stay distinct.
               const tt = Math.log1p(c) / lmx;
               const [r, g, b] = greyBase ? ([1, 1, 1].map(() => Math.round(215 - 135 * tt)) as [number, number, number]) : ramp(tt);

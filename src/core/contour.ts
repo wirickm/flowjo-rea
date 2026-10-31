@@ -104,3 +104,17 @@ export function contourLevels(levelPct: number): number[] {
   for (let k = 1; 100 - k * levelPct > 0; k++) out.push((100 - k * levelPct) / 100);
   return out;
 }
+
+// Equal-probability band per bin: the number of thresholds the bin's density
+// reaches (0 = outside the outermost contour). thresholds from
+// probabilityThresholds(d, contourLevels(level)), outermost first.
+export function probabilityBands(d: Float64Array, thresholds: number[]): Uint8Array {
+  const ts = thresholds.filter((t) => t > 0);
+  const out = new Uint8Array(d.length);
+  for (let i = 0; i < d.length; i++) {
+    let k = 0;
+    while (k < ts.length && d[i] >= ts[k]) k++;
+    out[i] = k;
+  }
+  return out;
+}

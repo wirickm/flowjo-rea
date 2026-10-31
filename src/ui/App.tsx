@@ -561,6 +561,8 @@ export function App() {
                   <option value="dot">Dot plot</option>
                   <option value="histogram">Histogram</option>
                   <option value="contour">Contour</option>
+                  <option value="density">Density (smoothed)</option>
+                  <option value="zebra">Zebra (probability bands)</option>
                 </select>
                 X <select value={plotSettings.x} onChange={(e) => setPlotSettings({ x: e.target.value })} data-testid="x-channel">
                   {channels.map((c) => <option key={c.name} value={c.name}>{c.label ? `${c.name} :: ${c.label}` : c.name}</option>)}
@@ -575,12 +577,12 @@ export function App() {
                   </>
                 )}
               </div>
-              {kind === 'contour' && (
+              {(kind === 'contour' || kind === 'zebra') && (
                 <div className="row">
-                  Level <select value={plotSettings.contourLevel ?? 5} onChange={(e) => setPlotSettings({ contourLevel: Number(e.target.value) })} data-testid="contour-level">
+                  Level <select value={plotSettings.contourLevel ?? (kind === 'zebra' ? 10 : 5)} onChange={(e) => setPlotSettings({ contourLevel: Number(e.target.value) })} data-testid="contour-level">
                     {[2, 5, 10, 20].map((v) => <option key={v} value={v}>{v}%</option>)}
                   </select>
-                  <label><input type="checkbox" checked={!!plotSettings.showOutliers} onChange={(e) => setPlotSettings({ showOutliers: e.target.checked })} data-testid="contour-outliers" /> show outliers</label>
+                  {kind === 'contour' && <label><input type="checkbox" checked={!!plotSettings.showOutliers} onChange={(e) => setPlotSettings({ showOutliers: e.target.checked })} data-testid="contour-outliers" /> show outliers</label>}
                   <span className="muted">equal-probability contours; not compared with FlowJo's placement</span>
                 </div>
               )}
@@ -608,7 +610,7 @@ export function App() {
                 onRefuse={(m) => note('warn', m)}
                 canvasRef={canvasRef}
                 overlays={overlayData}
-                contourLevel={plotSettings.contourLevel ?? 5}
+                contourLevel={plotSettings.contourLevel ?? (kind === 'zebra' ? 10 : 5)}
                 showOutliers={!!plotSettings.showOutliers}
               />
               <div className="row">

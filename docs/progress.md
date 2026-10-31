@@ -1,5 +1,14 @@
 # Progress and handoff
 
+## State (2026-10-31, milestone 4)
+
+Milestone 4 delivered: SVG export for plots and layouts; statistic templates
+and all-groups CSV; live groups; density and zebra plots. E2E 35/35 on the
+dev server and on the single-file build from file://; 137 unit tests.
+Firefox/Safari: not verified. Only Chromium is installed in this
+environment and installing other Playwright browsers is not permitted here
+(external dependency: run the offline file in those browsers).
+
 ## State (2026-10-31, milestone 3)
 
 Milestone 3 delivered: single-file offline build (`npm run build` ->
@@ -81,9 +90,8 @@ the matrix. Items 3, 5 and 6 carry the external dependencies listed above.
 
 ## Next implementation steps
 
-1. SVG/PDF vector export for plots and layouts.
-2. Table editor templates (saved statistic sets, per-group export).
-3. Zebra/density plot types.
-4. Live (criteria-based) groups that update as samples are added.
-5. Autofluorescence handling and spectrum estimation from single-stain controls.
-6. Verify the offline build in Firefox and Safari.
+1. Compensation wizard: spillover estimation from single-stain controls.
+2. Autofluorescence handling and spectrum estimation for unmixing.
+3. Derived parameters (e.g. ratio channels in the UI).
+4. Layout text boxes and free positioning; PDF export.
+5. Verify the offline build in Firefox and Safari (needs those browsers).

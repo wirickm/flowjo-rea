@@ -166,6 +166,11 @@ await idle();
 const c20 = await contourPixels();
 await page.screenshot({ path: join(out, '02c-contour.png') });
 check('contour plot draws lines; coarser level draws fewer', beforeContour === 0 && c20 > 0 && c20 < c5, `contour segments: pseudocolor ${beforeContour}, 5% ${c5}, 20% ${c20}`);
+// density and zebra render distinct images from pseudocolor
+const shot = async (k) => { await page.getByTestId('plot-kind').selectOption(k); await remeasure(); await idle(); await page.waitForTimeout(200); return canvas.evaluate((cv) => cv.toDataURL()); };
+const imgs = { pseudocolor: await shot('pseudocolor'), density: await shot('density'), zebra: await shot('zebra') };
+await page.screenshot({ path: join(out, '02e-zebra.png') });
+check('density and zebra plot types render distinct images', new Set(Object.values(imgs)).size === 3 && Object.values(imgs).every((u) => u.length > 20000), Object.entries(imgs).map(([k, u]) => `${k} ${u.length}`).join(', '));
 await page.getByTestId('plot-kind').selectOption('pseudocolor'); await remeasure();
 await idle();
 // 6. statistics: count + median CD3 for Polygon 1, across the group

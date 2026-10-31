@@ -73,7 +73,7 @@ export interface Workspace {
 export interface PlotSettings {
   x: string;
   y: string | null;
-  kind: 'pseudocolor' | 'dot' | 'contour' | 'histogram';
+  kind: 'pseudocolor' | 'density' | 'zebra' | 'dot' | 'contour' | 'histogram';
   contourLevel?: number; // percent per contour step
   showOutliers?: boolean;
   overlays?: string[]; // population paths drawn on top (backgating)

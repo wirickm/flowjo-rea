@@ -114,3 +114,29 @@ export function removePopulation(s: SampleState, id: string): void {
   }
   s.populations = s.populations.filter((p) => !doomed.has(p.id));
 }
+
+// Value of a sample attribute for grouping: annotation first, then keyword.
+export function sampleValue(s: SampleState, key: string): string | undefined {
+  return s.annotations?.[key] ?? s.keywordsSnapshot[key] ?? s.keywordsSnapshot[key.toUpperCase()];
+}
+
+// One group per distinct value of `key` among the given samples, named
+// "key = value"; samples without the key go to "key = (missing)". Existing
+// groups with the same name are updated rather than duplicated.
+export function groupByKey(ws: Workspace, key: string, sampleIds: string[]): string[] {
+  const buckets = new Map<string, string[]>();
+  for (const id of sampleIds) {
+    const s = ws.samples.find((x) => x.id === id);
+    if (!s) continue;
+    const v = sampleValue(s, key);
+    const label = `${key} = ${v === undefined || v === '' ? '(missing)' : v}`;
+    buckets.set(label, [...(buckets.get(label) ?? []), id]);
+  }
+  const names = [...buckets.keys()].sort();
+  for (const name of names) {
+    const existing = ws.groups.find((g) => g.name === name);
+    if (existing) existing.sampleIds = buckets.get(name)!;
+    else ws.groups.push({ id: newId('grp'), name, sampleIds: buckets.get(name)! });
+  }
+  return names;
+}

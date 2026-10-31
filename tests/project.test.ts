@@ -64,3 +64,20 @@ describe('apply gates across samples', () => {
     expect(ws.samples[0].populations).toEqual([]);
   });
 });
+
+describe('grouping by keyword or annotation', () => {
+  it('creates one group per value, annotation overriding keyword, missing bucket', async () => {
+    const { groupByKey } = await import('../src/core/project');
+    const ws = build();
+    ws.samples[0].keywordsSnapshot = { 'TUBE NAME': 'A' };
+    ws.samples[1].keywordsSnapshot = { 'TUBE NAME': 'B' };
+    ws.samples[1].annotations = { 'TUBE NAME': 'A' };
+    expect(groupByKey(ws, 'TUBE NAME', ['a', 'b', 'c'])).toEqual(['TUBE NAME = (missing)', 'TUBE NAME = A']);
+    expect(ws.groups.find((g) => g.name === 'TUBE NAME = A')!.sampleIds).toEqual(['a', 'b']);
+    // re-running updates instead of duplicating
+    ws.samples[1].annotations = {};
+    groupByKey(ws, 'TUBE NAME', ['a', 'b', 'c']);
+    expect(ws.groups.filter((g) => g.name === 'TUBE NAME = A')).toHaveLength(1);
+    expect(ws.groups.find((g) => g.name === 'TUBE NAME = B')!.sampleIds).toEqual(['b']);
+  });
+});

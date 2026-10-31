@@ -183,7 +183,27 @@ await page.getByTestId('apply-group').click();
 await idle();
 await page.waitForTimeout(800);
 await idle();
+// annotations, group by annotation, rename group
+for (const [f, v] of [[F1, 'stim'], [F2, 'ctrl']]) {
+  await page.getByTestId(`sample-${f}`).click();
+  await page.getByTestId('ann-key').fill('Condition');
+  await page.getByTestId('ann-value').fill(v);
+  await page.getByTestId('ann-add').click();
+}
+await page.getByTestId('group-key').selectOption('Condition');
+await page.getByTestId('group-by').click();
+await page.getByTestId('group-Condition = stim').dblclick();
+await page.getByLabel('Group name').fill('Stimulated');
+await page.getByLabel('Group name').press('Enter');
+const groupsText = await page.locator('.groups').innerText();
+await page.getByTestId('group-All Samples').click();
+check('annotations -> group by annotation -> rename group', groupsText.includes('Stimulated') && groupsText.includes('Condition = ctrl'), groupsText.replace(/\n/g, ' | '));
+await page.getByTestId(`sample-${F1}`).click();
+await idle();
+await page.waitForTimeout(500);
+await idle();
 const table1 = await page.getByTestId('stats-table').innerText();
+check('stats table shows annotation column', table1.split('\n')[0].includes('Condition') && table1.includes('stim'));
 check('stats table has both samples with values', table1.includes(F1) && table1.includes(F2) && !table1.includes('missing population'), table1.split('\n').slice(1).join(' | '));
 const statsCsv = await download(() => page.getByTestId('export-stats').click());
 check('stats CSV exported', readFileSync(statsCsv, 'utf8').split('\n').length >= 3);

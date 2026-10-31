@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PopulationResult } from '../core/analysis';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../core/gatingml';
 import { emptyWorkspace, newId, populationPath, type Gate, type PlotSettings, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
-import { applySubtree, deserializeWorkspace, removePopulation, serializeWorkspace } from '../core/project';
+import { applySubtree, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace } from '../core/project';
 import type { PlotResult, SampleMeta } from '../core/service';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL } from '../core/stats';
 import { makeTransform, type TransformSpec } from '../core/transforms';
@@ -54,6 +54,9 @@ export function App() {
   const [stats, setStats] = useState<Record<string, (number | string)[]>>({});
   const [renaming, setRenaming] = useState<string | null>(null);
   const [gateSel, setGateSel] = useState<string | null>(null);
+  const [groupKey, setGroupKey] = useState('');
+  const [annKey, setAnnKey] = useState('');
+  const [annVal, setAnnVal] = useState('');
   const [syncGroup, setSyncGroup] = useState(false);
   const [checked, setChecked] = useState<string[]>([]);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -94,6 +97,8 @@ export function App() {
     if (sel.popId && sample && !selPopValid) setSel({ sampleId: sample.id, popId: null });
   }, [sel.popId, sample, selPopValid]);
   const channels = useMemo(() => (sMeta && sample ? sampleChannels(sMeta, sample.compensation, ws.matrices) : []), [sMeta, sample?.compensation, ws.matrices]); // eslint-disable-line react-hooks/exhaustive-deps
+  const annotationKeys = [...new Set(groupSamples.flatMap((s) => Object.keys(s.annotations ?? {})))].sort();
+  const groupKeys = [...new Set([...annotationKeys, ...groupSamples.flatMap((s) => Object.keys(s.keywordsSnapshot))])].sort();
   const popPath = sample && sel.popId && selPopValid ? populationPath(sample.populations, sel.popId) : '';
 
   // --- file loading -------------------------------------------------------
@@ -114,7 +119,8 @@ export function App() {
           const w = structuredClone(w0);
           for (const c of m.channels) if (!w.channelTransforms[c.name]) w.channelTransforms[c.name] = defaultTransform(c, m.keywords);
           const snapshot: Record<string, string> = {};
-          for (const k of ['$FIL', '$DATE', '$CYT', '$TOT', '$PAR', '$BTIM', '$ETIM', '$SRC', 'TUBE NAME', '$TIMESTEP']) if (m.keywords[k]) snapshot[k] = m.keywords[k];
+          // Keep sample-level keywords for grouping; skip per-parameter and matrix keywords.
+          for (const [k, v] of Object.entries(m.keywords)) if (!/^\$?P\d+[A-Z]$/.test(k) && !/SPILL|\$COMP/.test(k) && v.length <= 500) snapshot[k] = v;
           const fields = { fileSize: m.fileSize, fingerprint: m.fingerprint, channelNames: m.channels.map((c) => c.name), eventCount: m.eventCount, keywordsSnapshot: snapshot };
           if (existing) {
             Object.assign(w.samples.find((s) => s.id === id)!, fields);
@@ -321,8 +327,8 @@ export function App() {
 
   // --- exports --------------------------------------------------------------------
   const exportStatsCsv = () => {
-    const head = ['Sample', ...ws.statColumns.map(colLabel)];
-    const rows = groupSamples.map((s) => [s.fileName, ...(stats[s.id] ?? ws.statColumns.map(() => 'data not loaded')).map(fmtStat)]);
+    const head = ['Sample', ...annotationKeys, ...ws.statColumns.map(colLabel)];
+    const rows = groupSamples.map((s) => [s.fileName, ...annotationKeys.map((k) => s.annotations?.[k] ?? ''), ...(stats[s.id] ?? ws.statColumns.map(() => 'data not loaded')).map(fmtStat)]);
     download(`${group?.name ?? 'stats'}.csv`, [head, ...rows].map((r) => r.map(csvCell).join(',')).join('\n') + '\n', 'text/csv');
   };
 
@@ -408,8 +414,19 @@ export function App() {
           <h3>Groups</h3>
           <div className="groups">
             {ws.groups.map((g) => (
-              <div key={g.id} className={`node ${g.id === groupId ? 'sel' : ''}`} onClick={() => setGroupId(g.id)} data-testid={`group-${g.name}`}>
-                <span className="pname">{g.name}</span><span className="pcount">{g.sampleIds.length}</span>
+              <div key={g.id} className={`node ${g.id === groupId ? 'sel' : ''}`} onClick={() => setGroupId(g.id)} onDoubleClick={() => g.id !== 'all' && setRenaming(`group:${g.id}`)} data-testid={`group-${g.name}`}>
+                {renaming === `group:${g.id}` ? (
+                  <input
+                    autoFocus
+                    defaultValue={g.name}
+                    aria-label="Group name"
+                    onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== g.name) updateWs((w) => { w.groups.find((x) => x.id === g.id)!.name = v; }); setRenaming(null); }}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                  />
+                ) : (
+                  <span className="pname">{g.name}</span>
+                )}
+                <span className="pcount">{g.sampleIds.length}</span>
               </div>
             ))}
           </div>
@@ -421,6 +438,16 @@ export function App() {
             }}>New group from checked</button>
             <button disabled={groupId === 'all'} onClick={() => { updateWs((w) => { w.groups = w.groups.filter((g) => g.id !== groupId); }); setGroupId('all'); }}>Delete group</button>
           </div>
+          <div className="row">
+            <select value={groupKey} onChange={(e) => setGroupKey(e.target.value)} data-testid="group-key" style={{ maxWidth: 140 }}>
+              <option value="">group by...</option>
+              {groupKeys.map((k) => <option key={k} value={k}>{k}</option>)}
+            </select>
+            <button disabled={!groupKey} data-testid="group-by" onClick={() => {
+              updateWs((w) => { groupByKey(w, groupKey, group?.sampleIds ?? []); });
+              note('info', `Grouped ${groupSamples.length} samples by ${groupKey}`);
+            }}>Make groups</button>
+          </div>
           <h3>Samples ({groupSamples.length})</h3>
           {groupSamples.map((s) => (
             <div key={s.id} className={`node ${s.id === sel.sampleId ? 'sel' : ''}`} data-testid={`sample-${s.fileName}`} onClick={() => setSel({ sampleId: s.id, popId: s.id === sel.sampleId ? sel.popId : null })}>
@@ -430,6 +457,25 @@ export function App() {
             </div>
           ))}
           {!ws.samples.length && <p className="muted">Add FCS files to begin. Data stays on this computer.</p>}
+          {sample && (
+            <>
+              <h3>Annotations - {sample.fileName}</h3>
+              {Object.entries(sample.annotations ?? {}).map(([k, v]) => (
+                <div key={k} className="row">
+                  <span className="pname">{k} = {v}</span>
+                  <button className="x" aria-label={`remove ${k}`} onClick={() => updateWs((w) => { delete w.samples.find((x) => x.id === sample.id)!.annotations![k]; })}>x</button>
+                </div>
+              ))}
+              <div className="row">
+                <input placeholder="key" value={annKey} onChange={(e) => setAnnKey(e.target.value)} style={{ width: 80 }} data-testid="ann-key" />
+                <input placeholder="value" value={annVal} onChange={(e) => setAnnVal(e.target.value)} style={{ width: 80 }} data-testid="ann-value" />
+                <button disabled={!annKey.trim()} data-testid="ann-add" onClick={() => {
+                  updateWs((w) => { const t = w.samples.find((x) => x.id === sample.id)!; t.annotations = { ...(t.annotations ?? {}), [annKey.trim()]: annVal }; });
+                  setAnnKey(''); setAnnVal('');
+                }}>Add</button>
+              </div>
+            </>
+          )}
         </section>
 
         <section className="panel tree">
@@ -561,6 +607,7 @@ export function App() {
                 <thead>
                   <tr>
                     <th>Sample</th>
+                    {annotationKeys.map((k) => <th key={`ann-${k}`}>{k}</th>)}
                     {ws.statColumns.map((c) => (
                       <th key={c.id}>{colLabel(c)} <button className="x" onClick={() => updateWs((w) => { w.statColumns = w.statColumns.filter((x) => x.id !== c.id); })} aria-label="remove column">x</button></th>
                     ))}
@@ -570,6 +617,7 @@ export function App() {
                   {groupSamples.map((s) => (
                     <tr key={s.id}>
                       <td>{s.fileName}</td>
+                      {annotationKeys.map((k) => <td key={`ann-${k}`}>{s.annotations?.[k] ?? ''}</td>)}
                       {ws.statColumns.map((c, i) => <td key={c.id}>{meta[s.id] ? fmtStat(stats[s.id]?.[i] ?? '...') : 'no data'}</td>)}
                     </tr>
                   ))}

@@ -37,6 +37,7 @@ export interface SampleState {
   compensation: string; // 'none' | 'file' | matrix id
   populations: Population[];
   keywordsSnapshot: Record<string, string>;
+  annotations?: Record<string, string>; // user-entered sample metadata
   channelNames: string[];
   eventCount: number;
 }

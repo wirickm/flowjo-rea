@@ -19,6 +19,11 @@ export type Gate =
   // One quadrant of a split. side[i] = index of the interval of dims[i] split by
   // dividers[i] (sorted). Interval k is [dividers[k-1], dividers[k]).
   | { type: 'quadrant'; dims: Dimension[]; dividers: number[][]; side: number[] }
+  // Curved quadrant: each divider is a monotone cubic spline through control
+  // points. xDivider gives x as a function of y (points sorted by y); yDivider
+  // gives y as a function of x (sorted by x). Outside the control points the
+  // end value is held. side[0] = 0: x < divider, 1: x >= divider (same for y).
+  | { type: 'splineQuadrant'; dims: [Dimension, Dimension]; xDivider: [number, number][]; yDivider: [number, number][]; side: [number, number] }
   | { type: 'boolean'; op: 'and' | 'or' | 'not'; operands: { ref: string; complement?: boolean }[] };
 
 export interface Population {
@@ -26,6 +31,8 @@ export interface Population {
   name: string;
   parentId: string | null; // null = child of the ungated root
   gate: Gate;
+  // FlowJo eventsInside="0": the population is the parent's events outside the gate.
+  exclude?: boolean;
 }
 
 export interface SampleState {
@@ -46,9 +53,17 @@ export interface Group {
   id: string;
   name: string;
   sampleIds: string[];
-  // Live group: membership is recomputed from this rule over all samples
-  // (value null = samples without the key).
-  criteria?: { key: string; value: string | null };
+  // Live group: membership is recomputed from the criteria over all samples.
+  // { key, value }: exact match (value null = samples without the key).
+  // { rules }: FlowJo-style keyword criteria, combined left to right.
+  criteria?: { key: string; value: string | null } | { rules: KeywordRule[] };
+}
+
+export interface KeywordRule {
+  connector: 'and' | 'or'; // ignored on the first rule
+  keyword: string;
+  op: 'contains' | 'notContains' | 'equals' | 'notEquals' | 'startsWith' | 'endsWith';
+  value: string;
 }
 
 export interface Workspace {

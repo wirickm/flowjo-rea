@@ -1,6 +1,6 @@
 // Native workspace persistence (.frea.json) and cross-sample operations.
 import { fail } from './errors';
-import { newId, populationPath, type Population, type SampleState, type Workspace } from './model';
+import { newId, populationPath, type KeywordRule, type Population, type SampleState, type Workspace } from './model';
 
 export function serializeWorkspace(ws: Workspace): string {
   return JSON.stringify(ws, null, 1);
@@ -132,7 +132,7 @@ export function groupByKey(ws: Workspace, key: string): string[] {
   }
   const names: string[] = [];
   for (const value of [...values].sort((a, b) => (a ?? '').localeCompare(b ?? ''))) {
-    const existing = ws.groups.find((g) => g.criteria?.key === key && g.criteria.value === value);
+    const existing = ws.groups.find((g) => g.criteria && 'key' in g.criteria && g.criteria.key === key && g.criteria.value === value);
     const name = `${key} = ${value ?? '(missing)'}`;
     if (!existing) ws.groups.push({ id: newId('grp'), name, sampleIds: [], criteria: { key, value } });
     names.push(existing?.name ?? name);
@@ -145,12 +145,13 @@ export function groupByKey(ws: Workspace, key: string): string[] {
 export function syncLiveGroups(ws: Workspace): boolean {
   let changed = false;
   for (const g of ws.groups) {
-    if (!g.criteria) continue;
-    const { key, value } = g.criteria;
+    const c = g.criteria;
+    if (!c) continue;
     const ids = ws.samples
       .filter((s) => {
-        const v = sampleValue(s, key);
-        return value === null ? v === undefined || v === '' : v === value;
+        if ('rules' in c) return matchRules(s, c.rules);
+        const v = sampleValue(s, c.key);
+        return c.value === null ? v === undefined || v === '' : v === c.value;
       })
       .map((s) => s.id);
     if (ids.join() !== g.sampleIds.join()) {
@@ -159,4 +160,28 @@ export function syncLiveGroups(ws: Workspace): boolean {
     }
   }
   return changed;
+}
+
+// FlowJo keyword criteria, combined strictly left to right (no precedence).
+// Matching is case-insensitive; FlowJo's case handling is unverified.
+export function matchRules(s: SampleState, rules: KeywordRule[]): boolean {
+  let acc = false;
+  rules.forEach((r, i) => {
+    const v = (sampleValue(s, r.keyword) ?? '').toLowerCase();
+    const q = r.value.toLowerCase();
+    const hit =
+      r.op === 'contains' ? v.includes(q)
+      : r.op === 'notContains' ? !v.includes(q)
+      : r.op === 'equals' ? v === q
+      : r.op === 'notEquals' ? v !== q
+      : r.op === 'startsWith' ? v.startsWith(q)
+      : v.endsWith(q);
+    acc = i === 0 ? hit : r.connector === 'and' ? acc && hit : acc || hit;
+  });
+  return acc;
+}
+
+export function criteriaLabel(c: NonNullable<Workspace['groups'][number]['criteria']>): string {
+  if ('rules' in c) return c.rules.map((r, i) => `${i ? `${r.connector} ` : ''}${r.keyword} ${r.op} "${r.value}"`).join(' ');
+  return `${c.key} = ${c.value ?? '(missing)'}`;
 }

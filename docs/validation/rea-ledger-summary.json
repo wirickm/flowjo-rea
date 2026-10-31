@@ -1,0 +1,184 @@
+{
+ "tool": "rea 6.8.0 (wirickm/rea @ 6e9ee97, built locally)",
+ "input": "flowjo-rea src compiled with tsc to unbundled ES modules (37 files, tests excluded)",
+ "analysis_evidence_id": "ev_ee034f671df5e6cee964f3b5298b30f44ba3cb544edb782a5a06cc11ef1fc47b",
+ "statistics": {
+  "relevant_files": 38,
+  "nested_asar_containers": 0,
+  "text_bytes_read": 312238,
+  "invalid_utf8_files": 0,
+  "parsed_javascript_files": 37,
+  "skipped_javascript_files": 0,
+  "visited_ast_nodes": 56651,
+  "findings": 631,
+  "modules": 0,
+  "parse_failures": 0
+ },
+ "static_source_coverage": {
+  "sources": 37,
+  "unmeasured_sources": 0,
+  "syntax": {
+   "complete": 37,
+   "recovered": 0,
+   "failed": 0,
+   "not-examined": 0
+  },
+  "semantics": {
+   "unknown_sources": 14,
+   "unexamined_sources": 0
+  },
+  "examination": {
+   "complete": 37,
+   "limited": 0,
+   "not-examined": 0
+  },
+  "electron_applicability": {
+   "observed": 0,
+   "unknown": 37
+  }
+ },
+ "request_family": {
+  "retained_relations": 0,
+  "status": "partial",
+  "meaning": "no fetch/WebSocket/http request construction recovered; partial coverage, so not proof of absence"
+ },
+ "ledger_evidence_id": "ev_24bcd69b3e7999b17d829623fe0158ce5097ef8866727aeaefefda652e2e2dee",
+ "ledger_id": "rol_71dc30bfad73a77e6c31e52208881636fae080c4c813a14f7f85297965cfb024",
+ "closure_digest": "c20eab37276892b3b47bc76cd0113c42f318e34c88c7108b4dbb229326718b97",
+ "ledger_status": "unknown",
+ "summary": {
+  "total": 109,
+  "required": 109,
+  "verified": 0,
+  "required_open": 109,
+  "by_status": [
+   {
+    "key": "unowned",
+    "count": 72
+   },
+   {
+    "key": "characterized",
+    "count": 0
+   },
+   {
+    "key": "implemented",
+    "count": 0
+   },
+   {
+    "key": "verified",
+    "count": 0
+   },
+   {
+    "key": "contradicted",
+    "count": 0
+   },
+   {
+    "key": "blocked",
+    "count": 0
+   },
+   {
+    "key": "out-of-scope",
+    "count": 0
+   },
+   {
+    "key": "unknown",
+    "count": 37
+   }
+  ],
+  "by_application_layer": [
+   {
+    "key": "cli",
+    "count": 0
+   },
+   {
+    "key": "protocol",
+    "count": 0
+   },
+   {
+    "key": "electron",
+    "count": 0
+   },
+   {
+    "key": "persistence",
+    "count": 0
+   },
+   {
+    "key": "process",
+    "count": 0
+   },
+   {
+    "key": "runtime",
+    "count": 43
+   },
+   {
+    "key": "packaging",
+    "count": 1
+   },
+   {
+    "key": "native-abi",
+    "count": 0
+   },
+   {
+    "key": "application",
+    "count": 65
+   },
+   {
+    "key": "other",
+    "count": 0
+   }
+  ],
+  "by_evidence_authority": [
+   {
+    "key": "shipped-artifact",
+    "count": 109
+   },
+   {
+    "key": "controlled-replay",
+    "count": 0
+   },
+   {
+    "key": "historical-reference",
+    "count": 0
+   },
+   {
+    "key": "external-service",
+    "count": 0
+   },
+   {
+    "key": "analyst-inference",
+    "count": 0
+   }
+  ],
+  "by_source_state": [
+   {
+    "key": "candidate",
+    "count": 109
+   },
+   {
+    "key": "observed",
+    "count": 0
+   },
+   {
+    "key": "reviewed",
+    "count": 0
+   },
+   {
+    "key": "unknown",
+    "count": 0
+   }
+  ]
+ },
+ "titles": [
+  "package-lifecycle: flowjo-rea",
+  "parser-boundary: JSON.parse",
+  "parser-boundary: Number",
+  "parser-boundary: String",
+  "parser-boundary: parseFloat",
+  "parser-boundary: parseInt",
+  "promise-ownership: Promise.catch",
+  "promise-ownership: Promise.new",
+  "promise-ownership: Promise.then",
+  "task-lifecycle: awaited expression",
+  "timer: setTimeout"
+ ]
+}

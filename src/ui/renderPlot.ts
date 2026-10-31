@@ -242,6 +242,12 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
         g.pts.forEach(([a, b], i) => (i ? ctx.lineTo(sx(a), sy(b)) : ctx.moveTo(sx(a), sy(b))));
         ctx.closePath();
         lx = Math.min(...g.pts.map((q) => sx(q[0]))); ly = Math.min(...g.pts.map((q) => sy(q[1]))) - 3;
+      } else if (g.kind === 'spline') {
+        g.xCurve.forEach(([a, b], i) => (i ? ctx.lineTo(sx(a), sy(b)) : ctx.moveTo(sx(a), sy(b))));
+        g.yCurve.forEach(([a, b], i) => (i ? ctx.lineTo(sx(a), sy(b)) : ctx.moveTo(sx(a), sy(b))));
+        const gate = g.pop.gate as Extract<Gate, { type: 'splineQuadrant' }>;
+        lx = gate.side[0] ? PLOT.ml + pw - 110 : PLOT.ml + 4;
+        ly = gate.side[1] ? PLOT.mt + 14 : PLOT.mt + ph - 6;
       } else if (g.kind === 'quadrant') {
         ctx.moveTo(sx(g.x), PLOT.mt); ctx.lineTo(sx(g.x), PLOT.mt + ph); ctx.moveTo(PLOT.ml, sy(g.y)); ctx.lineTo(PLOT.ml + pw, sy(g.y));
         const gate = g.pop.gate as Extract<Gate, { type: 'quadrant' }>;
@@ -251,6 +257,7 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
       ctx.stroke();
       if (g.kind === 'polygon' && sel) for (const [a, b] of g.pts) ctx.strokeRect(sx(a) - 3, sy(b) - 3, 6, 6);
       if (g.kind === 'ellipse' && sel && g.editable) for (const [a, b] of g.handles) ctx.strokeRect(sx(a) - 3, sy(b) - 3, 6, 6);
+      if (g.kind === 'spline' && sel && g.editable) for (const [a, b] of [...g.xPts, ...g.yPts]) ctx.strokeRect(sx(a) - 3, sy(b) - 3, 6, 6);
       ctx.fillStyle = sel ? '#d0021b' : '#111';
       ctx.fillText(`${g.pop.name} ${pct}`, Math.max(PLOT.ml + 2, lx), Math.max(PLOT.mt + 11, ly));
     }

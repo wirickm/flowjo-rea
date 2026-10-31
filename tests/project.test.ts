@@ -89,6 +89,6 @@ describe('live groups by keyword or annotation', () => {
     expect(ws.groups.find((g) => g.name === 'Condition = (missing)')!.sampleIds).toEqual(['c']);
     expect(syncLiveGroups(ws)).toBe(false);
     groupByKey(ws, 'Condition'); // re-running does not duplicate the renamed group
-    expect(ws.groups.filter((g) => g.criteria?.value === 'stim')).toHaveLength(1);
+    expect(ws.groups.filter((g) => g.criteria && 'value' in g.criteria && g.criteria.value === 'stim')).toHaveLength(1);
   });
 });

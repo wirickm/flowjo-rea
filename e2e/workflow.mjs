@@ -434,6 +434,111 @@ await page.waitForFunction(() => [...document.querySelectorAll('table.matrix tbo
 const outputs = await page.locator('table.matrix tbody th').evaluateAll((th) => th.map((t) => t.textContent));
 await page.getByRole('dialog').getByLabel('Close').click();
 check('autofluorescence row added to a spectral matrix from an unstained control', outputs.length === 3 && outputs.includes('Autofluorescence'), outputs.join(', '));
+
+// milestone 6: platforms, spline quadrants, exclusion gates, keyword rule groups, multiple data sets
+const fcsBytes = (names, rows, extra = {}) => {
+  const buf = Buffer.alloc(rows.length * names.length * 4);
+  rows.forEach((row, e) => row.forEach((v, c) => buf.writeFloatLE(v, (e * names.length + c) * 4)));
+  const kw = { $BYTEORD: '1,2,3,4', $DATATYPE: 'F', $MODE: 'L', $PAR: String(names.length), $TOT: String(rows.length), $NEXTDATA: '0', ...extra };
+  names.forEach((nm, i) => Object.assign(kw, { [`$P${i + 1}N`]: nm, [`$P${i + 1}B`]: '32', [`$P${i + 1}R`]: nm === 'DNA' ? '1024' : '262144', [`$P${i + 1}E`]: '0,0' }));
+  const textFor = (b, e2) => '/' + Object.entries({ ...kw, $BEGINDATA: String(b), $ENDDATA: String(e2) }).map(([k, v]) => `${k}/${v}`).join('/') + '/';
+  let text = textFor(0, 0);
+  for (let i = 0; i < 3; i++) { const b = 58 + Buffer.byteLength(text); text = textFor(b, b + buf.length - 1); }
+  const b = 58 + Buffer.byteLength(text);
+  const pad = (v) => String(v).padStart(8, ' ');
+  return Buffer.concat([Buffer.from(`FCS3.1    ${pad(58)}${pad(b - 1)}${pad(b)}${pad(b + buf.length - 1)}${pad(0)}${pad(0)}`), Buffer.from(text), buf]);
+};
+let seed6 = 7;
+const u6 = () => ((seed6 = (1664525 * seed6 + 1013904223) >>> 0) + 0.5) / 4294967296;
+const n6 = () => Math.sqrt(-2 * Math.log(u6())) * Math.cos(2 * Math.PI * u6());
+// Truth: cell cycle 55/30/15 (G1 at 200, CV 4%); proliferation generations 0..4 with counts 20/25/25/20/10 %.
+const GENS = [0.2, 0.25, 0.25, 0.2, 0.1];
+const rows6 = [];
+for (let e = 0; e < 40000; e++) {
+  const r = u6();
+  const dna = r < 0.55 ? 200 * (1 + 0.04 * n6()) : r < 0.85 ? (200 + 200 * u6()) * (1 + 0.04 * n6()) : 400 * (1 + 0.04 * n6());
+  let acc = 0, g = 0; const q = u6();
+  for (; g < GENS.length - 1; g++) { acc += GENS[g]; if (q < acc) break; }
+  const cfse = Math.pow(10, 4 - g * Math.log10(2) + 0.08 * n6());
+  rows6.push([50000 + 15000 * n6(), 30000 + 9000 * n6(), dna, cfse, e / 100]);
+}
+const synth = join(out, 'synth6.fcs');
+writeFileSync(synth, fcsBytes(['FSC-A', 'SSC-A', 'DNA', 'CFSE', 'Time'], rows6, { $FIL: 'synth6.fcs' }));
+await page.reload();
+await page.getByTestId('add-fcs').setInputFiles(synth);
+await idle();
+await page.getByTestId('open-platforms').click();
+await page.getByTestId('platform-channel').selectOption('DNA');
+await page.getByTestId('platform-run').click();
+await page.getByTestId('cc-result').waitFor({ timeout: 60000 });
+const ccv = await Promise.all(['cc-g1', 'cc-s', 'cc-g2'].map(async (id) => parseFloat(await page.getByTestId(id).textContent())));
+check('cell cycle (Dean-Jett-Fox) recovers synthetic 55/30/15 within 2.5 pp', Math.abs(ccv[0] - 55) < 2.5 && Math.abs(ccv[1] - 30) < 2.5 && Math.abs(ccv[2] - 15) < 2.5, ccv.join(' / '));
+await page.getByTestId('platform-kind').selectOption('proliferation');
+await page.getByTestId('platform-channel').selectOption('CFSE');
+await page.getByTestId('platform-run').click();
+await page.getByTestId('prolif-result').waitFor({ timeout: 60000 });
+const divided = parseFloat(await page.getByTestId('prolif-divided').textContent());
+check('proliferation recovers % divided (truth 80%) within 3 pp', Math.abs(divided - 80) < 3, `${divided}%`);
+await page.getByTestId('platform-kind').selectOption('kinetics');
+await page.getByTestId('platform-run').click();
+await page.getByTestId('kin-result').waitFor({ timeout: 30000 });
+const kinRows = await page.locator('[data-testid=kin-table] tbody tr').count();
+const kinSum = (await page.locator('[data-testid=kin-table] tbody tr td:nth-child(3)').allTextContents()).reduce((a, t) => a + Number(t), 0);
+check('kinetics: 50 time bins whose event counts sum to the population', kinRows === 50 && kinSum === 40000, `${kinRows} bins, ${kinSum} events`);
+await page.getByRole('dialog').getByLabel('Close').click();
+// spline quadrant on FSC-A / SSC-A
+await page.getByTestId('pop-root').click(); await idle(); await remeasure();
+await page.getByTestId('tool-spline').click(); await remeasure();
+[x0, y0] = at(0.2, 0.12);
+await page.mouse.click(x0, y0);
+await idle();
+const sq = async () => Promise.all([1, 2, 3, 4].map(async (k) => Number((await page.locator(`[data-testid^="count-SQ${k}:"]`).first().textContent()).replace(/,/g, ''))));
+const sq1 = await sq();
+await page.getByTestId('tool-select').click(); await remeasure();
+// drag the top control point of the vertical divider to the right
+await page.locator('[data-testid^="pop-SQ1:"]').first().click(); await idle();
+await page.getByTestId('pop-root').click(); await idle(); await remeasure();
+[x0, y0] = at(0.2, 1.0);
+[x1, y1] = at(0.6, 1.0);
+await page.mouse.move(x0, y0 + 1); await page.mouse.down(); await page.mouse.move(x1, y1 + 1, { steps: 6 }); await page.mouse.up();
+await idle();
+const sq2 = await sq();
+const sum6 = (a) => a.reduce((x, y) => x + y, 0);
+check('spline quadrant: four populations partition all events; curving a divider moves events', sum6(sq1) === 40000 && sum6(sq2) === 40000 && sq2.join() !== sq1.join(), `${sq1.join('/')} -> ${sq2.join('/')}`);
+// exclusion gate
+await page.getByTestId('tool-rect').click(); await remeasure();
+[x0, y0] = at(0.1, 0.05); [x1, y1] = at(0.3, 0.3);
+await page.mouse.move(x0, y0); await page.mouse.down(); await page.mouse.move(x1, y1, { steps: 5 }); await page.mouse.up();
+await idle();
+const rectName = (await page.locator('[data-testid^="pop-Rect"]').first().getAttribute('data-testid')).slice(4);
+const inc = Number(await count(rectName));
+await page.getByTestId(`pop-${rectName}`).click();
+await page.getByTestId('toggle-exclude').click();
+await idle();
+const exc = Number(await count(rectName));
+check('exclusion toggle: count becomes parent minus inclusive count', inc > 0 && exc === 40000 - inc, `${inc} -> ${exc}`);
+// keyword rule group
+await page.getByTestId('rule-key').selectOption('$FIL');
+await page.getByTestId('rule-value').fill('SYNTH');
+await page.getByTestId('rule-group').click();
+await idle();
+check('keyword rule group selects matching samples (case-insensitive contains)', (await page.getByTestId('group-$FIL contains SYNTH').textContent()).trim().endsWith('1'));
+// multiple data sets
+const ds1 = fcsBytes(['FSC-A', 'SSC-A'], Array.from({ length: 300 }, (_, i) => [i, i]), { $FIL: 'multi.fcs', PAD: 'xxxxxxxxxx' });
+const ds2 = fcsBytes(['FSC-A', 'SSC-A'], Array.from({ length: 700 }, (_, i) => [i, 2 * i]));
+const ds1s = ds1.toString('latin1');
+const nd = String(ds1.length);
+const ds1p = ds1s.replace('/$NEXTDATA/0/', `/$NEXTDATA/${nd}/`).replace('/PAD/xxxxxxxxxx', `/PAD/${'x'.repeat(11 - nd.length)}`);
+writeFileSync(join(out, 'multi.fcs'), Buffer.concat([Buffer.from(ds1p, 'latin1'), ds2]));
+await page.getByTestId('group-All Samples').click();
+await page.getByTestId('add-fcs').setInputFiles(join(out, 'multi.fcs'));
+await idle();
+await page.getByTestId('sample-multi.fcs').click(); await idle();
+const before6 = await page.getByTestId('sample-multi.fcs').textContent();
+await page.getByTestId('dataset-select').selectOption('1');
+await idle();
+const after6 = await page.getByTestId('sample-multi.fcs').textContent();
+check('multiple data sets: switch from data set 1 (300 events) to 2 (700 events)', before6.includes('300') && after6.includes('700'), `${before6} -> ${after6}`);
 check('no uncaught page errors', errors.length === 0, errors.join('; '));
 await browser.close();
 writeFileSync(join(out, 'results.json'), JSON.stringify(results, null, 1));

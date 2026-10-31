@@ -87,14 +87,19 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
         warn(`"${path(p)}" uses a ratio dimension; not representable, skipped`);
         return null;
       }
+      if (g.type === 'splineQuadrant') {
+        warn(`"${path(p)}" is a spline quadrant; no observed FlowJo equivalent, skipped`);
+        return null;
+      }
+      const inside = p.exclude ? 0 : 1; // FlowJo exclusion gates: observed attribute, unexercised by fixtures
       const dims = g.dims as Extract<Dimension, { kind: 'channel' }>[];
       const names = dims.map(nameOf);
       if (g.type === 'rect') {
-        return `<gating:RectangleGate eventsInside="1">${dims.map((d, k) => dimXml(names[k], (g.min[k] !== null ? ` gating:min="${raw(g.min[k]!, d)}"` : '') + (g.max[k] !== null ? ` gating:max="${raw(g.max[k]!, d)}"` : ''))).join('')}</gating:RectangleGate>`;
+        return `<gating:RectangleGate eventsInside="${inside}">${dims.map((d, k) => dimXml(names[k], (g.min[k] !== null ? ` gating:min="${raw(g.min[k]!, d)}"` : '') + (g.max[k] !== null ? ` gating:max="${raw(g.max[k]!, d)}"` : ''))).join('')}</gating:RectangleGate>`;
       }
       if (g.type === 'quadrant') {
         // FlowJo stores quadrants as rectangles (observed).
-        return `<gating:RectangleGate eventsInside="1">${dims
+        return `<gating:RectangleGate eventsInside="${inside}">${dims
           .map((d, k) => {
             const div = g.dividers[k];
             const side = g.side[k];
@@ -112,7 +117,7 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
         if (!same) warn(`"${path(p)}" was drawn on a ${d.transform.kind} scale but ${names[k]} is exported with a ${fj.spec.kind} scale; FlowJo may interpret the shape differently`);
       });
       if (g.type === 'polygon') {
-        return `<gating:PolygonGate eventsInside="1" gateResolution="256">${dimXml(names[0])}${dimXml(names[1])}${g.vertices.map(([a, b]) => `<gating:vertex>${coord(raw(a, dims[0]))}${coord(raw(b, dims[1]))}</gating:vertex>`).join('')}</gating:PolygonGate>`;
+        return `<gating:PolygonGate eventsInside="${inside}" gateResolution="256">${dimXml(names[0])}${dimXml(names[1])}${g.vertices.map(([a, b]) => `<gating:vertex>${coord(raw(a, dims[0]))}${coord(raw(b, dims[1]))}</gating:vertex>`).join('')}</gating:PolygonGate>`;
       }
       if (g.type === 'ellipsoid') {
         if (dims.length !== 2) {
@@ -142,7 +147,7 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
         const v = (q: number[]) => `<gating:vertex>${coord(q[0])}${coord(q[1])}</gating:vertex>`;
         // gating:distance semantics in FlowJo are unknown (not 2a in observed files); 2a written.
         const dist = Math.hypot(pts[2][0] - pts[3][0], pts[2][1] - pts[3][1]);
-        return `<gating:EllipsoidGate eventsInside="1" gating:distance="${dist}">${dimXml(names[0])}${dimXml(names[1])}<gating:foci>${v(pts[0])}${v(pts[1])}</gating:foci><gating:edge>${pts.slice(2).map(v).join('')}</gating:edge></gating:EllipsoidGate>`;
+        return `<gating:EllipsoidGate eventsInside="${inside}" gating:distance="${dist}">${dimXml(names[0])}${dimXml(names[1])}<gating:foci>${v(pts[0])}${v(pts[1])}</gating:foci><gating:edge>${pts.slice(2).map(v).join('')}</gating:edge></gating:EllipsoidGate>`;
       }
       return null;
     };

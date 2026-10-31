@@ -18,7 +18,7 @@ FlowJo-written data files:
   plot settings they contain; a FlowJo-exported biex lookup table.
 - **Open-source references (test fixtures and oracles only):** FlowKit (BSD-3),
   flowio (BSD-3), ISAC Gating-ML compliance data. Fetched at test time, not
-  redistributed. See `THIRD_PARTY_NOTICES.md`.
+  redistributed.
 
 Behavior that could not be derived from these sources is listed as unresolved
 in `docs/progress.md` and bounded in the validation strategy below.

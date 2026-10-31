@@ -57,4 +57,3 @@ npm run e2e
 - [docs/validation/wsp-counts.md](docs/validation/wsp-counts.md): per-population
   comparison with FlowJo-saved counts
 - [docs/progress.md](docs/progress.md): handoff log
-- [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)

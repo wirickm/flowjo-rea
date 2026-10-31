@@ -181,9 +181,8 @@ function hyperlogFns(T: number, W: number, M: number, A: number) {
 // FlowJo evaluates biex through a channel lookup table rather than the exact
 // logicle inverse: the zero point is snapped to an integer channel (which
 // adjusts the effective decade count) and the scale factor is max * e^-b.
-// Structure informed by FlowKit's generate_biex_lut (BSD-3-Clause, see
-// THIRD_PARTY_NOTICES.md); validated against a FlowJo-exported table in
-// tests/transforms.test.ts.
+// Structure informed by FlowKit's generate_biex_lut (BSD-3-Clause);
+// validated against a FlowJo-exported table in tests/transforms.test.ts.
 
 const biexCache = new Map<string, Float64Array>();
 

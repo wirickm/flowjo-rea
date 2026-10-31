@@ -110,6 +110,8 @@ export function parseWsp(xml: string): WspImport {
   const sampleList = kid(root, 'SampleList');
   if (!sampleList) fail('WORKSPACE_INVALID', 'Workspace has no SampleList');
   const sampleIdMap = new Map<string, string>();
+  // Plot settings per population path, from the first sample that has them.
+  const plots: NonNullable<Workspace['plots']> = {};
 
   for (const s of kids(sampleList, 'Sample')) {
     const ds = kid(s, 'DataSet');
@@ -236,7 +238,28 @@ export function parseWsp(xml: string): WspImport {
       }
     };
 
+    // FlowJo stores, per node, the last plot viewed for that node's events
+    // (axes and type); it need not show every child gate. Observed types:
+    // Pseudocolor, Histogram; unobserved types map to pseudocolor.
+    const graphOf = (container: El, path: string) => {
+      const g = kid(container, 'Graph');
+      if (!g || path in plots) return;
+      const axes = kids(g, 'Axis');
+      const axis = (d: string) => {
+        const n = axes.find((a) => attr(a, 'dimension') === d);
+        const v = n ? attr(n, 'name') ?? '' : '';
+        return v ? resolveDim(v).channel : null;
+      };
+      const type = attr(g, 'type') ?? '';
+      const x = axis('x');
+      if (!x) return;
+      const kind = type === 'Histogram' ? 'histogram' : type === 'Dot' ? 'dot' : type === 'Contour' ? 'contour' : 'pseudocolor';
+      if (!['Histogram', 'Dot', 'Contour', 'Pseudocolor'].includes(type)) sw.push(`Plot type "${type}" for "${path || 'All events'}" shown as pseudocolor`);
+      plots[path] = { x, y: kind === 'histogram' ? null : axis('y'), kind };
+    };
+
     const walk = (container: El, parentId: string | null, parentPath: string) => {
+      graphOf(container, parentPath);
       const sub = kid(container, 'Subpopulations');
       if (!sub) return;
       for (const p of kids(sub)) {
@@ -314,6 +337,7 @@ export function parseWsp(xml: string): WspImport {
   }
   if (!groups.some((g) => g.id === 'all')) groups.unshift({ id: 'all', name: 'All Samples', sampleIds: ws.samples.map((s) => s.id) });
   ws.groups = groups;
+  ws.plots = plots;
   const flowjoVersion = attr(root, 'flowJoVersion') ?? 'unknown';
   ws.provenance = { importedFrom: `FlowJo workspace (FlowJo ${flowjoVersion}, wsp version ${attr(root, 'version') ?? '?'})`, warnings };
   return { workspace: ws, flowjoCounts, flowjoVersion, warnings };

@@ -201,7 +201,8 @@ export function App() {
 
   const plotSettings = useMemo(() => {
     const saved = ws.plots?.[popPath];
-    if (saved && channels.some((c) => c.name === saved.x)) return saved;
+    const has = (ch: string | null) => !!ch && channels.some((c) => c.name === ch);
+    if (saved && has(saved.x) && (saved.kind === 'histogram' || has(saved.y))) return saved;
     const names = channels.map((c) => c.name);
     const x = names.find((n) => /^FSC-A$/i.test(n)) ?? names.find((n) => isScatterOrTime(n)) ?? names[0] ?? '';
     const y = names.find((n) => /^SSC-A$/i.test(n)) ?? names.find((n) => n !== x) ?? null;

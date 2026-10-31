@@ -3,7 +3,7 @@
 import { compensate, invert, isSpectral, spilloverFromFcs, unmix, type SpilloverMatrix } from './compensation';
 import { AppError, fail } from './errors';
 import type { FcsFile } from './fcs';
-import type { Dimension, Gate, Population, SampleState, Workspace } from './model';
+import type { DerivedParameter, Dimension, Gate, Population, SampleState, Workspace } from './model';
 import { makeTransform } from './transforms';
 
 export interface PopulationResult {
@@ -28,6 +28,7 @@ export class SampleEngine {
     readonly fcs: FcsFile,
     readonly sample: Pick<SampleState, 'compensation' | 'populations'>,
     readonly matrices: SpilloverMatrix[],
+    readonly derived: DerivedParameter[] = [],
   ) {
     this.channelNames = fcs.channels.map((c) => c.name);
     this.root = new Uint8Array(fcs.eventCount).fill(1);
@@ -59,11 +60,15 @@ export class SampleEngine {
     return data;
   }
 
-  // Raw (compensated, untransformed) column for a channel.
+  private derivedCache = new Map<string, Float64Array>();
+
+  // Raw (compensated, untransformed) column for a channel or derived parameter.
   column(channel: string, compRef?: string): Float64Array {
     const ref = compRef ?? this.sample.compensation;
     let i = this.channelNames.indexOf(channel);
     if (i < 0) {
+      const dp = this.derived.find((d) => d.name === channel);
+      if (dp) return this.derivedColumn(dp, ref);
       this.compensated(ref); // fills unmixCache for spectral matrices
       const unmixed = this.unmixCache.get(ref)?.get(channel);
       if (unmixed) return unmixed;
@@ -74,6 +79,20 @@ export class SampleEngine {
     }
     if (i < 0) fail('CHANNEL_MISSING', `Channel "${channel}" is not in this sample`);
     return this.compensated(ref)[i];
+  }
+
+  // A*(num-B)/(den-C) over the two source columns, computed once per matrix.
+  private derivedColumn(dp: DerivedParameter, ref: string): Float64Array {
+    const key = `${dp.name}|${ref}`;
+    const hit = this.derivedCache.get(key);
+    if (hit) return hit;
+    if (dp.num === dp.name || dp.den === dp.name) fail('CHANNEL_MISSING', `Derived parameter "${dp.name}" refers to itself`);
+    const x = this.column(dp.num, ref);
+    const y = this.column(dp.den, ref);
+    const out = new Float64Array(x.length);
+    for (let i = 0; i < x.length; i++) out[i] = (dp.A * (x[i] - dp.B)) / (y[i] - dp.C);
+    this.derivedCache.set(key, out);
+    return out;
   }
 
   // Column for a gate dimension (compensated, then transformed).

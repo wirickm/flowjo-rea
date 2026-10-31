@@ -1,4 +1,5 @@
 import { isSpectral, type SpilloverMatrix } from '../core/compensation';
+import type { DerivedParameter } from '../core/model';
 import type { FcsChannel } from '../core/fcs';
 import { makeTransform, type Transform, type TransformSpec } from '../core/transforms';
 
@@ -13,6 +14,7 @@ export function defaultTransform(c: FcsChannel, keywords: Record<string, string>
     return { kind: 'linear', T: range * (ts > 0 ? ts : 1), A: 0 };
   }
   if (isScatterOrTime(c.name)) return { kind: 'linear', T: range / (c.gain || 1), A: 0 };
+  if (c.label === 'derived') return { kind: 'linear', T: range, A: 0 }; // ratio parameter
   return { kind: 'logicle', T: range, W: 0.5, M: 4.5, A: 0 };
 }
 
@@ -85,12 +87,14 @@ export function makeAxis(channels: FcsChannel[], keywords: Record<string, string
 
 // Channels a sample offers for plots and stats: its FCS parameters plus the
 // unmixed fluorochromes of a spectral matrix assigned to it.
-export function sampleChannels(meta: { channels: FcsChannel[] }, compensation: string, matrices: SpilloverMatrix[]): FcsChannel[] {
+export function sampleChannels(meta: { channels: FcsChannel[] }, compensation: string, matrices: SpilloverMatrix[], derived: DerivedParameter[] = []): FcsChannel[] {
+  const out = [...meta.channels];
   const m = matrices.find((x) => x.id === compensation);
-  if (!m || !isSpectral(m) || !m.outputNames) return meta.channels;
-  const range = Math.max(...meta.channels.filter((c) => m.channels.includes(c.name)).map((c) => c.range), 1);
-  return [
-    ...meta.channels,
-    ...m.outputNames.map((name, i) => ({ index: meta.channels.length + i + 1, name, label: 'unmixed', bits: 32, range, logDecades: 0, logOffset: 0, gain: 1 })),
-  ];
+  if (m && isSpectral(m) && m.outputNames) {
+    const range = Math.max(...meta.channels.filter((c) => m.channels.includes(c.name)).map((c) => c.range), 1);
+    out.push(...m.outputNames.map((name, i) => ({ index: meta.channels.length + i + 1, name, label: 'unmixed', bits: 32, range, logDecades: 0, logOffset: 0, gain: 1 })));
+  }
+  // Derived ratio parameters typically span ~0..a few; use a modest range.
+  out.push(...derived.map((d, i) => ({ index: out.length + i + 1, name: d.name, label: 'derived', bits: 32, range: 16, logDecades: 0, logOffset: 0, gain: 1 })));
+  return out;
 }

@@ -10,7 +10,7 @@ import { makeTransform, type TransformSpec } from '../core/transforms';
 import { parseWsp } from '../core/wsp';
 import { writeWsp } from '../core/wspWriter';
 import { defaultTransform, isScatterOrTime, makeAxis, sampleChannels } from './axes';
-import { CompensationDialog, KeywordsDialog, TransformDialog } from './Dialogs';
+import { CompensationDialog, DerivedDialog, KeywordsDialog, TransformDialog } from './Dialogs';
 import { LayoutView } from './Layout';
 import type { Axis } from './gateGeometry';
 import { Plot, type PlotKind, type Tool } from './Plot';
@@ -23,7 +23,7 @@ import { createAnalysisClient } from './workerClient';
 const client = createAnalysisClient();
 
 type Analysis = { results: PopulationResult[]; total: number; compError?: string };
-type Dialog = null | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export' } | { kind: 'layout' };
+type Dialog = null | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export' } | { kind: 'layout' } | { kind: 'derived' };
 
 function download(name: string, data: BlobPart, type = 'application/octet-stream') {
   const url = URL.createObjectURL(new Blob([data], { type }));
@@ -107,7 +107,7 @@ export function App() {
   useEffect(() => {
     if (sel.popId && sample && !selPopValid) setSel({ sampleId: sample.id, popId: null });
   }, [sel.popId, sample, selPopValid]);
-  const channels = useMemo(() => (sMeta && sample ? sampleChannels(sMeta, sample.compensation, ws.matrices) : []), [sMeta, sample?.compensation, ws.matrices]); // eslint-disable-line react-hooks/exhaustive-deps
+  const channels = useMemo(() => (sMeta && sample ? sampleChannels(sMeta, sample.compensation, ws.matrices, ws.derivedParameters) : []), [sMeta, sample?.compensation, ws.matrices, ws.derivedParameters]); // eslint-disable-line react-hooks/exhaustive-deps
   const annotationKeys = [...new Set(groupSamples.flatMap((s) => Object.keys(s.annotations ?? {})))].sort();
   const groupKeys = [...new Set([...annotationKeys, ...groupSamples.flatMap((s) => Object.keys(s.keywordsSnapshot))])].sort();
   const popPath = sample && sel.popId && selPopValid ? populationPath(sample.populations, sel.popId) : '';
@@ -205,7 +205,7 @@ export function App() {
   useEffect(() => {
     if (!sample || !meta[sample.id]) return;
     let live = true;
-    const req = { sampleId: sample.id, compensation: sample.compensation, populations: sample.populations, matrices: ws.matrices };
+    const req = { sampleId: sample.id, compensation: sample.compensation, populations: sample.populations, matrices: ws.matrices, derived: ws.derivedParameters };
     run(async () => {
       const a = await client.analyze(req);
       if (!live) return;
@@ -250,6 +250,7 @@ export function App() {
         compensation: sample.compensation,
         populations: sample.populations,
         matrices: ws.matrices,
+        derived: ws.derivedParameters,
         popId: sel.popId,
         x: { kind: 'channel', channel: xAxis.channel, transform: xAxis.spec },
         y: yAxis ? { kind: 'channel', channel: yAxis.channel, transform: yAxis.spec } : null,
@@ -265,7 +266,7 @@ export function App() {
         const pop = sample.populations.find((p) => populationPath(sample.populations, p.id) === path);
         if (!pop) continue;
         const od = await client.plot({
-          sampleId: sample.id, compensation: sample.compensation, populations: sample.populations, matrices: ws.matrices, popId: pop.id,
+          sampleId: sample.id, compensation: sample.compensation, populations: sample.populations, matrices: ws.matrices, derived: ws.derivedParameters, popId: pop.id,
           x: { kind: 'channel', channel: xAxis.channel, transform: xAxis.spec },
           y: yAxis ? { kind: 'channel', channel: yAxis.channel, transform: yAxis.spec } : null,
           bins: yAxis ? 200 : 256, xRange: xAxis.range, yRange: yAxis ? yAxis.range : null, maxPoints: 5000,
@@ -285,7 +286,7 @@ export function App() {
       for (const s of groupSamples) {
         if (!meta[s.id]) continue;
         run(async () => {
-          const v = await client.stats({ sampleId: s.id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, columns: ws.statColumns });
+          const v = await client.stats({ sampleId: s.id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters, columns: ws.statColumns });
           if (live && v) setStats((x) => ({ ...x, [s.id]: v }));
         });
       }
@@ -366,7 +367,7 @@ export function App() {
         const s = ws.samples.find((x) => x.id === id);
         if (!s) continue;
         if (!cache.has(id)) {
-          const v = meta[id] ? await run(() => client.stats({ sampleId: id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, columns: ws.statColumns })) : undefined;
+          const v = meta[id] ? await run(() => client.stats({ sampleId: id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters, columns: ws.statColumns })) : undefined;
           cache.set(id, v ?? ws.statColumns.map(() => 'data not loaded'));
         }
         rows.push({ group: g.name, sample: s.fileName, annotations: allAnn.map((k) => s.annotations?.[k] ?? ''), values: cache.get(id)! });
@@ -379,7 +380,7 @@ export function App() {
     if (!sample || !sMeta) return;
     const bytes = await run(() =>
       client.exportEvents({
-        sampleId: sample.id, compensation: sample.compensation, populations: sample.populations, matrices: ws.matrices,
+        sampleId: sample.id, compensation: sample.compensation, populations: sample.populations, matrices: ws.matrices, derived: ws.derivedParameters,
         // Unmixed fluorochromes exist only in compensated output.
         popId: sel.popId, format, channels: (compensated ? channels : sMeta.channels).map((c) => c.name), compensated,
       }),
@@ -447,6 +448,7 @@ export function App() {
         <span className="sep" />
         <button disabled={!sample} onClick={() => setDialog({ kind: 'comp' })} data-testid="open-comp">Compensation</button>
         <button disabled={!sMeta} onClick={() => setDialog({ kind: 'keywords' })} data-testid="open-keywords">Keywords</button>
+        <button disabled={!sMeta} onClick={() => setDialog({ kind: 'derived' })} data-testid="open-derived">Derived ({ws.derivedParameters?.length ?? 0})</button>
         <button disabled={!sample} onClick={() => setDialog({ kind: 'export' })} data-testid="open-export">Export</button>
         <button onClick={() => setDialog({ kind: 'layout' })} data-testid="open-layout">Layout ({ws.layout?.length ?? 0})</button>
         <span className="sep" />
@@ -722,6 +724,14 @@ export function App() {
         />
       )}
       {dialog?.kind === 'keywords' && sMeta && <KeywordsDialog meta={sMeta} onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'derived' && sMeta && (
+        <DerivedDialog
+          params={ws.derivedParameters ?? []}
+          channels={sMeta.channels.map((c) => c.name)}
+          onClose={() => setDialog(null)}
+          onChange={(dp) => updateWs((w) => { w.derivedParameters = dp; })}
+        />
+      )}
       {dialog?.kind === 'transform' && sMeta && (
         <TransformDialog
           channel={dialog.channel}

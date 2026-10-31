@@ -22,7 +22,7 @@ interface Rendered {
 
 // Render every layout item for one sample into standalone canvases.
 export async function renderLayout(client: Client, ws: Workspace, s: SampleState, meta: SampleMeta, items: LayoutItem[]): Promise<Rendered[]> {
-  const base = { sampleId: s.id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices };
+  const base = { sampleId: s.id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters };
   const analysis = await client.analyze(base);
   const counts: Record<string, { count: number; parentCount: number }> = {};
   for (const r of analysis.results) if (r) counts[r.id] = r;
@@ -34,7 +34,7 @@ export async function renderLayout(client: Client, ws: Workspace, s: SampleState
       out.push({ item, canvas: null, title: `${s.fileName} / ${label}`, error: 'population not present in this sample' });
       continue;
     }
-    const chans = sampleChannels(meta, s.compensation, ws.matrices);
+    const chans = sampleChannels(meta, s.compensation, ws.matrices, ws.derivedParameters);
     const x = makeAxis(chans, meta.keywords, ws.channelTransforms, item.x);
     const y = item.kind === 'histogram' ? null : makeAxis(chans, meta.keywords, ws.channelTransforms, item.y ?? '');
     if (!x || (item.kind !== 'histogram' && !y)) {

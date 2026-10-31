@@ -348,6 +348,24 @@ await idle();
 const cap = await page.getByTestId('plot-caption').textContent();
 await page.screenshot({ path: join(out, '05-unmixed.png') });
 check('spectral CSV import exposes unmixed channels that plot', hasUnmixed && cap.includes('283,969'), cap);
+// derived parameter: create FSC-A/SSC-A ratio, use it as a stat channel
+await page.getByTestId(`sample-${F1}`).click();
+await page.getByTestId('open-derived').click();
+await page.getByTestId('derived-name').fill('FSCoverSSC');
+await page.getByTestId('derived-num').selectOption('FSC-A');
+await page.getByTestId('derived-den').selectOption('SSC-A');
+await page.getByTestId('derived-add').click();
+await page.getByRole('dialog').getByLabel('Close').click();
+await idle();
+await page.getByTestId('pop-root').click();
+await page.getByTestId('stat-kind').selectOption('median');
+await page.getByTestId('stat-channel').selectOption('FSCoverSSC');
+await page.getByTestId('add-stat').click();
+await idle(); await page.waitForTimeout(400); await idle();
+const derivedHeader = (await page.getByTestId('stats-table').innerText()).split('\n')[0];
+const derivedVal = await page.locator('[data-testid=stats-table] tbody tr').first().locator('td').last().innerText();
+check('derived parameter is a usable stat channel', derivedHeader.includes('FSCoverSSC') && Number(derivedVal) > 0, `header has FSCoverSSC: ${derivedHeader.includes('FSCoverSSC')}, median ${derivedVal}`);
+await page.locator('[data-testid=stats-table] thead').getByLabel('remove column').last().click();
 // compensation wizard on synthetic single-stain controls with a known matrix
 const TRUE = [[1, 0.25, 0.01], [0.02, 1, 0.08], [0, 0.05, 1]];
 const DYES = ['FITC-A', 'PE-A', 'APC-A'];

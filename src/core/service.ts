@@ -6,7 +6,7 @@ import { AppError } from './errors';
 import { parseFcs, type FcsChannel, type FcsFile } from './fcs';
 import { estimateSpillover, type ControlInput, type WizardResult } from './compWizard';
 import { writeFcs } from './fcsWriter';
-import type { Dimension, Population, StatColumn } from './model';
+import type { DerivedParameter, Dimension, Population, StatColumn } from './model';
 import { populationPath } from './model';
 import { fingerprint } from './project';
 import { computeStat, gather } from './stats';
@@ -32,6 +32,7 @@ export interface AnalyzeRequest {
   compensation: string;
   populations: Population[];
   matrices: SpilloverMatrix[];
+  derived?: DerivedParameter[];
 }
 
 export interface PlotRequest extends AnalyzeRequest {
@@ -117,10 +118,10 @@ export class AnalysisService {
   engine(r: AnalyzeRequest): SampleEngine {
     const f = this.files.get(r.sampleId);
     if (!f) throw new AppError('WORKSPACE_INVALID', 'Sample data is not loaded');
-    const key = JSON.stringify([r.compensation, r.populations, r.matrices]);
+    const key = JSON.stringify([r.compensation, r.populations, r.matrices, r.derived]);
     const hit = this.engines.get(r.sampleId);
     if (hit && hit.key === key) return hit.engine;
-    const engine = new SampleEngine(f, { compensation: r.compensation, populations: r.populations }, r.matrices).run();
+    const engine = new SampleEngine(f, { compensation: r.compensation, populations: r.populations }, r.matrices, r.derived ?? []).run();
     this.engines.set(r.sampleId, { key, engine });
     return engine;
   }

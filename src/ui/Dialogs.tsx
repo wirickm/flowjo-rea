@@ -3,6 +3,7 @@ import { invert, isSpectral, parseSpilloverCsv, unmixingOperator, validateMatrix
 import { describeTransform, makeTransform, type TransformSpec } from '../core/transforms';
 import type { SampleMeta } from '../core/service';
 import type { WizardResult } from '../core/compWizard';
+import type { DerivedParameter } from '../core/model';
 
 export function Modal(p: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   return (
@@ -281,6 +282,60 @@ export function CompensationDialog(p: {
         </>
       )}
       <button onClick={() => p.onSave(mats)}>Save matrices</button>
+    </Modal>
+  );
+}
+
+export function DerivedDialog(p: {
+  params: DerivedParameter[];
+  channels: string[];
+  onClose: () => void;
+  onChange: (params: DerivedParameter[]) => void;
+}) {
+  const [name, setName] = useState('');
+  const [num, setNum] = useState(p.channels[0] ?? '');
+  const [den, setDen] = useState(p.channels[1] ?? p.channels[0] ?? '');
+  const [a, setA] = useState(1);
+  const [b, setB] = useState(0);
+  const [c, setC] = useState(0);
+  const [err, setErr] = useState('');
+  const taken = new Set([...p.channels, ...p.params.map((x) => x.name)]);
+  const add = () => {
+    const n = name.trim();
+    if (!n) return setErr('Name is required');
+    if (taken.has(n)) return setErr(`"${n}" is already a channel or parameter`);
+    p.onChange([...p.params, { name: n, num, den, A: a, B: b, C: c }]);
+    setName('');
+    setErr('');
+  };
+  return (
+    <Modal title="Derived parameters" onClose={p.onClose} wide>
+      <p className="muted">A derived parameter is computed per event as A x (numerator - B) / (denominator - C) on the sample's compensated values. It appears in channel lists for plots, gates and statistics.</p>
+      {p.params.length > 0 && (
+        <table className="grid" data-testid="derived-list">
+          <thead><tr><th>Name</th><th>Formula</th><th /></tr></thead>
+          <tbody>
+            {p.params.map((d) => (
+              <tr key={d.name}>
+                <td>{d.name}</td>
+                <td>{d.A} x ({d.num} - {d.B}) / ({d.den} - {d.C})</td>
+                <td><button className="x" aria-label={`remove ${d.name}`} onClick={() => p.onChange(p.params.filter((x) => x.name !== d.name))}>x</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <div className="row">
+        <input placeholder="name" value={name} onChange={(e) => setName(e.target.value)} data-testid="derived-name" style={{ width: 120 }} />
+        =
+        <input type="number" step="any" value={a} onChange={(e) => setA(Number(e.target.value))} style={{ width: 54 }} aria-label="A" /> x (
+        <select value={num} onChange={(e) => setNum(e.target.value)} data-testid="derived-num">{p.channels.map((ch) => <option key={ch} value={ch}>{ch}</option>)}</select>
+        - <input type="number" step="any" value={b} onChange={(e) => setB(Number(e.target.value))} style={{ width: 54 }} aria-label="B" /> ) / (
+        <select value={den} onChange={(e) => setDen(e.target.value)} data-testid="derived-den">{p.channels.map((ch) => <option key={ch} value={ch}>{ch}</option>)}</select>
+        - <input type="number" step="any" value={c} onChange={(e) => setC(Number(e.target.value))} style={{ width: 54 }} aria-label="C" /> )
+        <button onClick={add} data-testid="derived-add">Add</button>
+      </div>
+      {err && <p className="error" data-testid="derived-error">{err}</p>}
     </Modal>
   );
 }

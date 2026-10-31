@@ -1,5 +1,12 @@
 # Progress and handoff
 
+## State (2026-11, milestone 5, in progress)
+
+Milestone 5 so far: compensation wizard (spillover from single-stain
+controls) and derived ratio parameters. E2E 37/37 on dev and file://; 145
+unit tests. Remaining in this milestone: layout text boxes + PDF;
+autofluorescence/spectrum estimation (the latter needs reference data).
+
 ## State (2026-10-31, milestone 4)
 
 Milestone 4 delivered: SVG export for plots and layouts; statistic templates

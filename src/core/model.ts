@@ -68,6 +68,18 @@ export interface Workspace {
   plots?: Record<string, PlotSettings>;
   layout?: LayoutItem[];
   statTemplates?: { id: string; name: string; columns: StatColumn[] }[];
+  derivedParameters?: DerivedParameter[];
+}
+
+// A user-defined channel computed per event as A*(num-B)/(den-C) on the
+// sample's compensated values (FlowJo-style ratio derived parameter).
+export interface DerivedParameter {
+  name: string;
+  num: string;
+  den: string;
+  A: number;
+  B: number;
+  C: number;
 }
 
 export interface PlotSettings {

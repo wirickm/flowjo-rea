@@ -9,7 +9,18 @@ Vite; parsing and gating run in a Web Worker. Data never leaves your machine.
 [docs/compatibility-matrix.md](docs/compatibility-matrix.md) for what is
 validated against FlowJo output and what still differs.
 
-## Run
+## Use without installing
+
+```bash
+npm run build
+```
+
+This writes one self-contained file, `dist/index.html` (about 330 KB: app,
+styles and analysis worker inlined). Open it by double-clicking; it runs
+offline from disk and FCS files never leave the browser. Verified in Chromium
+from `file://` with the full E2E run; Firefox and Safari not yet verified.
+
+## Run (development)
 
 ```bash
 npm install

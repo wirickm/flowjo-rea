@@ -3,6 +3,7 @@ import { invert, isSpectral, parseSpilloverCsv, unmixingOperator, validateMatrix
 import { describeTransform, makeTransform, type TransformSpec } from '../core/transforms';
 import type { SampleMeta } from '../core/service';
 import type { WizardResult } from '../core/compWizard';
+import { withAutofluorescence } from '../core/autofluorescence';
 import type { DerivedParameter } from '../core/model';
 
 export function Modal(p: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
@@ -120,6 +121,7 @@ export function CompensationDialog(p: {
   channels: string[];
   gatePaths: string[];
   onWizard: (roles: { sampleId: string; primary: string | null }[], positivePct: number, gatePath: string) => Promise<WizardResult>;
+  onEstimateAf: (sampleId: string, detectors: string[], gatePath: string) => Promise<number[]>;
 }) {
   const [mats, setMats] = useState<SpilloverMatrix[]>(p.matrices);
   const [roles, setRoles] = useState<Record<string, string>>({}); // sampleId -> '' | 'unstained' | channel
@@ -127,6 +129,9 @@ export function CompensationDialog(p: {
   const [gatePath, setGatePath] = useState('');
   const [diag, setDiag] = useState<WizardResult['diagnostics'] | null>(null);
   const [wizErr, setWizErr] = useState('');
+  const [afControl, setAfControl] = useState('');
+  const [afGate, setAfGate] = useState('');
+  const [afErr, setAfErr] = useState('');
   const [selected, setSelected] = useState<string>(p.matrices[0]?.id ?? '');
   const [msg, setMsg] = useState('');
   const m = mats.find((x) => x.id === selected);
@@ -275,6 +280,35 @@ export function CompensationDialog(p: {
             </table>
           </div>
           <p className={check.startsWith('Invalid') ? 'error' : 'muted'} data-testid="matrix-check">{check}</p>
+          {m.values.length !== m.channels.length && (
+            <div className="row" data-testid="af-row">
+              <span className="muted">Autofluorescence:</span>
+              <select value={afControl} onChange={(e) => setAfControl(e.target.value)} data-testid="af-control">
+                <option value="">unstained control...</option>
+                {p.controls.filter((c) => c.loaded).map((c) => <option key={c.id} value={c.id}>{c.fileName}</option>)}
+              </select>
+              <select value={afGate} onChange={(e) => setAfGate(e.target.value)} data-testid="af-gate">
+                <option value="">all events</option>
+                {p.gatePaths.map((g) => <option key={g} value={g}>{g}</option>)}
+              </select>
+              <button
+                disabled={!afControl}
+                data-testid="af-add"
+                onClick={async () => {
+                  setAfErr('');
+                  try {
+                    const spectrum = await p.onEstimateAf(afControl, m.channels, afGate);
+                    add(withAutofluorescence(m, spectrum));
+                  } catch (e) {
+                    setAfErr((e as Error).message);
+                  }
+                }}
+              >
+                Add AF row from unstained
+              </button>
+              {afErr && <span className="error" data-testid="af-error">{afErr}</span>}
+            </div>
+          )}
           <div className="row">
             <button disabled={check.startsWith('Invalid')} onClick={() => { p.onSave(mats); p.onAssign(m.id, 'sample'); }}>Save and apply to sample</button>
             <button disabled={check.startsWith('Invalid')} onClick={() => { p.onSave(mats); p.onAssign(m.id, 'group'); }}>Save and apply to group</button>

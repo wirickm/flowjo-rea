@@ -2,11 +2,11 @@
 
 ## State (2026-11, milestone 5, in progress)
 
-Milestone 5 so far: compensation wizard (spillover from single-stain
-controls), derived ratio parameters, layout text blocks, and PNG/SVG/PDF
-layout export. E2E 38/38 on dev and file://; 146 unit tests. Remaining:
-autofluorescence/spectrum estimation (needs reference data). PDF is a
-single page embedding the composed layout as JPEG, validated with pypdf.
+Milestone 5 delivered: compensation wizard (spillover from single-stain
+controls), derived ratio parameters, layout text blocks, PNG/SVG/PDF layout
+export, and autofluorescence (AF spectrum from an unstained control added as
+an extra unmixing row). E2E 39/39 on dev and file://; 149 unit tests. All
+new numerics validated synthetically only (no FlowJo/vendor reference).
 
 ## State (2026-10-31, milestone 4)
 

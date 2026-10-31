@@ -760,6 +760,12 @@ export function App() {
             for (const d of res.diagnostics) for (const w of d.warnings) note('warn', `${d.label}: ${w}`);
             return res;
           }}
+          onEstimateAf={async (sampleId, detectors, gatePath) => {
+            const s = ws.samples.find((x) => x.id === sampleId)!;
+            const spectrum = await client.estimateAf({ sampleId, detectors, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, gatePath });
+            note('info', `Autofluorescence spectrum estimated from ${s.fileName}`);
+            return spectrum;
+          }}
           onAssign={(ref, scope) => {
             updateWs((w) => {
               const ids = scope === 'sample' ? [sample.id] : w.groups.find((g) => g.id === groupId)!.sampleIds;

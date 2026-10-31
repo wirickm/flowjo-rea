@@ -4,6 +4,7 @@ import { SampleEngine, type PopulationResult } from './analysis';
 import { spilloverFromFcs, type SpilloverMatrix } from './compensation';
 import { AppError } from './errors';
 import { parseFcs, type FcsChannel, type FcsFile } from './fcs';
+import { estimateAfSpectrum } from './autofluorescence';
 import { estimateSpillover, type ControlInput, type WizardResult } from './compWizard';
 import { writeFcs } from './fcsWriter';
 import type { DerivedParameter, Dimension, Population, StatColumn } from './model';
@@ -208,6 +209,20 @@ export class AnalysisService {
   }
 
   // Spillover from single-stain controls on raw (uncompensated) values.
+  // Estimate an AF spectrum from an unstained control over a matrix's detectors.
+  estimateAf(r: { sampleId: string; detectors: string[]; compensation: string; populations: Population[]; matrices: SpilloverMatrix[]; gatePath: string }): number[] {
+    const f = this.files.get(r.sampleId);
+    if (!f) throw new AppError('WORKSPACE_INVALID', 'Unstained control data is not loaded');
+    let mask: Uint8Array | undefined;
+    if (r.gatePath) {
+      const pop = r.populations.find((p) => populationPath(r.populations, p.id) === r.gatePath);
+      if (!pop) throw new AppError('GATE_INVALID', `Population "${r.gatePath}" is missing in the control`);
+      mask = this.engine({ sampleId: r.sampleId, compensation: r.compensation, populations: r.populations, matrices: r.matrices }).masks.get(pop.id);
+    }
+    const columns = new Map(f.channels.map((ch, i) => [ch.name, f.data[i]]));
+    return estimateAfSpectrum(columns, r.detectors, mask);
+  }
+
   compWizard(r: WizardRequest): WizardResult {
     const inputs: ControlInput[] = r.controls.map((c) => {
       const f = this.files.get(c.sampleId);

@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/tmp/ghidra/ghidra_11.4.2_PUBLIC/support/analyzeHeadless:*)"
+    ]
+  }
+}

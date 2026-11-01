@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Gate, Population } from '../core/model';
 import type { PlotResult } from '../core/service';
 import { dragHandle, gateFromAxes } from '../core/ellipse';
+import { defaultGrid } from '../core/gateGrid';
 import { PLOT, ph, pw, renderPlot } from './renderPlot';
 import { channelDim, drawableGates, ellipseDrawable, pointInPolygon, quadrantSiblings, splineDrawable, type Axis, type Drawable } from './gateGeometry';
 
@@ -133,7 +134,7 @@ export function Plot(p: Props) {
       p.onCreate([{ name: `Ellipse ${n}`, gate: { type: 'ellipsoid', dims: [X, Y], mean: [(a0 + a1) / 2, (b0 + b1) / 2], cov: [[rx * rx, 0], [0, ry * ry]], distanceSquare: 1 } }]);
     } else if (p.tool === 'polygon' && Y) {
       if (pts.length < 3) return;
-      p.onCreate([{ name: `Polygon ${n}`, gate: { type: 'polygon', dims: [X, Y], vertices: pts } }]);
+      p.onCreate([{ name: `Polygon ${n}`, gate: { type: 'polygon', dims: [X, Y], vertices: pts, grid: defaultGrid([X, Y]) } }]);
     }
   };
 
@@ -237,7 +238,7 @@ export function Plot(p: Props) {
             gate.dims = gate.dims.map((d, k) => ({ ...d, compensation: old.dims[k]?.compensation })) as typeof gate.dims;
             return gate;
           };
-          if (g.kind === 'polygon' && Y) ups.push({ id: g.pop.id, gate: keepDims({ type: 'polygon', dims: [X, Y], vertices: g.pts }) });
+          if (g.kind === 'polygon' && Y) ups.push({ id: g.pop.id, gate: keepDims({ type: 'polygon', dims: [X, Y], vertices: g.pts, grid: old.type === 'polygon' && old.grid ? old.grid : defaultGrid([X, Y]) }) });
           if (g.kind === 'rect' && Y && old.type === 'rect') {
             const open = (v: number, lo: number, hi: number) => (v < lo || v > hi ? null : v);
             ups.push({ id: g.pop.id, gate: keepDims({ type: 'rect', dims: [X, Y], min: [open(Math.min(g.x0, g.x1), p.x.range[0], p.x.range[1]), open(Math.min(g.y0, g.y1), p.y!.range[0], p.y!.range[1])], max: [open(Math.max(g.x0, g.x1), p.x.range[0], p.x.range[1]), open(Math.max(g.y0, g.y1), p.y!.range[0], p.y!.range[1])] }) });

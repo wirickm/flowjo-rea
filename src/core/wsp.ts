@@ -10,7 +10,7 @@
 //  - AndNode/OrNode/NotNode populations reference operands by path.
 import type { SpilloverMatrix } from './compensation';
 import { fail } from './errors';
-import { emptyWorkspace, type Dimension, type Gate, type Group, type KeywordRule, type Population, type SampleState, type StatKind, type Workspace } from './model';
+import { emptyWorkspace, type Dimension, type Gate, type GridAxis, type Group, type KeywordRule, type Population, type SampleState, type StatKind, type Workspace } from './model';
 import { syncLiveGroups } from './project';
 import { STAT_NEEDS_CHANNEL } from './stats';
 import { makeTransform, type TransformSpec } from './transforms';
@@ -28,6 +28,7 @@ interface ScaleInfo {
   spec: TransformSpec; // used for gate evaluation
   displayLength: number; // FlowJo display resolution for ellipse coordinates
   normalize: (y: number) => number; // spec output -> 0..1 display fraction
+  linearRange?: [number, number]; // FlowJo linear axis range (FlowJo units)
 }
 
 // timestep: the sample's $TIMESTEP, already applied to Time by the FCS reader.
@@ -53,7 +54,7 @@ function parseTransforms(e: El | undefined, warnings: string[], timestep: number
         const gain = n('gain', 1);
         const factor = /^time$/i.test(name) && timestep > 0 ? gain / timestep : gain;
         const spec: TransformSpec = factor === 1 ? { kind: 'none' } : { kind: 'scale', factor };
-        out.set(name, { spec, displayLength: 256, normalize: (y) => (y - min) / (max - min) });
+        out.set(name, { spec, displayLength: 256, normalize: (y) => (y - min) / (max - min), linearRange: [min, max] });
         break;
       }
       case 'logicle':
@@ -146,7 +147,7 @@ export function parseWsp(xml: string): WspImport {
       return { channel: name, comp: 'uncompensated' };
     };
     const scaleOf = (name: string): ScaleInfo =>
-      scales.get(name) ?? { spec: { kind: 'none' }, displayLength: 256, normalize: (x) => x / 262144 };
+      scales.get(name) ?? { spec: { kind: 'none' }, displayLength: 256, normalize: (x) => x / 262144, linearRange: [0, 262144] };
 
     const pops: Population[] = [];
     const counts: Record<string, number> = {};
@@ -184,7 +185,14 @@ export function parseWsp(xml: string): WspImport {
             const at = (k: number) => (sc[k].spec.kind === 'scale' ? c[k] : tf[k].apply(c[k]));
             return [at(0), at(1)] as [number, number];
           });
-          return { type: 'polygon', dims, vertices };
+          // FlowJo 10 evaluates polygons on its gate grid (docs/validation/flowjo-engine-specs.md).
+          const axis = (k: number): GridAxis => {
+            const lr = sc[k].linearRange;
+            if (lr) return { mode: 'round', min: lr[0], max: lr[1] };
+            return { mode: 'floor', min: tf[k].displayMin, max: tf[k].displayMax };
+          };
+          const resolution = numAttr(g, 'gateResolution') ?? 256;
+          return { type: 'polygon', dims, vertices, grid: { resolution, axes: [axis(0), axis(1)] } };
         }
         case 'EllipsoidGate': {
           if (names.length !== 2) fail('WORKSPACE_INVALID', `Ellipse gate "${popName}" is not 2-D`);

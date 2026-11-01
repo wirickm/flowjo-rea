@@ -4,6 +4,7 @@ import { compensate, invert, isSpectral, spilloverFromFcs, unmix, type Spillover
 import { AppError, fail } from './errors';
 import type { FcsFile } from './fcs';
 import type { DerivedParameter, Dimension, Gate, Population, SampleState, Workspace } from './model';
+import { eventCell, polygonGridMask } from './gateGrid';
 import { splineDividers } from './spline';
 import { makeTransform } from './transforms';
 
@@ -192,6 +193,20 @@ export class SampleEngine {
         if (g.vertices.length < 3) fail('GATE_INVALID', 'Polygon gate needs at least 3 vertices');
         const xs = this.dimension(g.dims[0]);
         const ys = this.dimension(g.dims[1]);
+        if (g.grid) {
+          const R = g.grid.resolution;
+          if (!(Number.isInteger(R) && R >= 2 && R <= 4096)) fail('GATE_INVALID', `Polygon gate resolution ${R} is not an integer in 2..4096`);
+          const [ax, ay] = g.grid.axes;
+          if (!(ax.max > ax.min && ay.max > ay.min)) fail('GATE_INVALID', 'Polygon gate grid range is empty');
+          const cells = polygonGridMask(g.grid, g.vertices);
+          for (let i = 0; i < n; i++) {
+            const x = xs[i];
+            const y = ys[i];
+            if (Number.isNaN(x) || Number.isNaN(y)) continue;
+            out[i] = cells[eventCell(ax, R, x) * R + eventCell(ay, R, y)];
+          }
+          return out;
+        }
         const vx = g.vertices.map((v) => v[0]);
         const vy = g.vertices.map((v) => v[1]);
         const m = vx.length;

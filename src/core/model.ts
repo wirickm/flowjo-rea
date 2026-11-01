@@ -10,10 +10,24 @@ export type Dimension =
   | { kind: 'channel'; channel: string; transform: TransformSpec; compensation?: string }
   | { kind: 'ratio'; num: string; den: string; A: number; B: number; C: number; transform: TransformSpec; compensation?: string };
 
+// One axis of a FlowJo gate grid, in gate (dimension) units: 'round' for
+// linear axes, 'floor' for transformed axes; [min, max] spans the R cells.
+export interface GridAxis {
+  mode: 'round' | 'floor';
+  min: number;
+  max: number;
+}
+export interface GateGrid {
+  resolution: number;
+  axes: [GridAxis, GridAxis];
+}
+
 export type Gate =
   // Each bound may be null (open). Membership: min <= x < max (Gating-ML 2.0).
   | { type: 'rect'; dims: Dimension[]; min: (number | null)[]; max: (number | null)[] }
-  | { type: 'polygon'; dims: [Dimension, Dimension]; vertices: [number, number][] }
+  // grid: evaluate on FlowJo 10's gate grid (src/core/gateGrid.ts); absent =
+  // exact point-in-polygon (Gating-ML semantics).
+  | { type: 'polygon'; dims: [Dimension, Dimension]; vertices: [number, number][]; grid?: GateGrid }
   // (x-mean)^T inv(cov) (x-mean) <= distanceSquare
   | { type: 'ellipsoid'; dims: Dimension[]; mean: number[]; cov: number[][]; distanceSquare: number }
   // One quadrant of a split. side[i] = index of the interval of dims[i] split by

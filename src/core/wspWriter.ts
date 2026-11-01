@@ -117,7 +117,7 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
         if (!same) warn(`"${path(p)}" was drawn on a ${d.transform.kind} scale but ${names[k]} is exported with a ${fj.spec.kind} scale; FlowJo may interpret the shape differently`);
       });
       if (g.type === 'polygon') {
-        return `<gating:PolygonGate eventsInside="${inside}" gateResolution="256">${dimXml(names[0])}${dimXml(names[1])}${g.vertices.map(([a, b]) => `<gating:vertex>${coord(raw(a, dims[0]))}${coord(raw(b, dims[1]))}</gating:vertex>`).join('')}</gating:PolygonGate>`;
+        return `<gating:PolygonGate eventsInside="${inside}" gateResolution="${g.grid?.resolution ?? 256}">${dimXml(names[0])}${dimXml(names[1])}${g.vertices.map(([a, b]) => `<gating:vertex>${coord(raw(a, dims[0]))}${coord(raw(b, dims[1]))}</gating:vertex>`).join('')}</gating:PolygonGate>`;
       }
       if (g.type === 'ellipsoid') {
         if (dims.length !== 2) {

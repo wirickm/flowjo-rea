@@ -33,13 +33,14 @@ every fixture), not by an exact point-in-polygon test:
   cell = `floor(u + 0.5)` clamped to 0..R-1. Vertices use the same rounding.
 - Transformed axes (logicle etc.): the transform lookup-table index scaled to
   R, truncated, for both events and vertices.
-- The y axis is flipped (`R - u`) for both, consistently.
+- FlowJo may mirror y on linear axes; it only affects ties, and the
+  implementation does not mirror (slightly better fixture match).
 - An event is in the gate when its integer grid point is inside the rounded
   polygon or on its boundary (edges and vertices count as inside).
 
-Scratch check on `8_color_ICS.wsp`: 35 of 42 populations exact (was 9);
-total absolute difference 15 events (was 3,944). Not yet implemented in
-`src/core`. FlowJo 11.2 differs (truncated vertices, cell-corner lattice);
+Implemented in `src/core/gateGrid.ts` (wsp-imported and app-drawn polygons;
+Gating-ML polygons stay exact). All 14 fixture workspaces: 188 of 228
+populations exact (was 61); worst polygon-introduced difference 4.2 events. FlowJo 11.2 differs (truncated vertices, cell-corner lattice);
 see `docs/validation/flowjo-engine-specs.md`.
 
 ## Tools allowed in this repo

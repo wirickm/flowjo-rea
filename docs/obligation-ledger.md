@@ -46,7 +46,7 @@ Two parts:
 
 | ID | Claim | Status | Blocking evidence |
 |---|---|---|---|
-| wsp.polygon-counts | Polygon counts equal FlowJo's | blocked (about 0.25% gap) | FlowJo event-level export of a polygon population |
+| wsp.polygon-counts | Polygon counts equal FlowJo's | implemented: FlowJo 10 gate grid (`src/core/gateGrid.ts`); 47 of 75 fixture polygons exact, worst introduced 4.2 events (flowjo-file authority, `docs/validation/wsp-counts.md`) | Exact FlowJo 10 transform lookup tables (residuals); open stays until every fixture polygon is exact |
 | wsp.logicle-ellipse | Logicle ellipse counts equal FlowJo's | blocked (2-3% gap) | Same, for the ellipse |
 | stats.flowjo-conventions | Median/percentile/robust CV match FlowJo | blocked | FlowJo statistic output on a known population |
 | wsp.export | Exported .wsp opens in FlowJo with equal counts | blocked | Open in FlowJo |

@@ -90,7 +90,7 @@ WRITE_REPORT=1 npx vitest run tests/wsp-report.test.ts
 DIAG=1 npx vitest run tests/diagnostics/polygon.test.ts
 ```
 
-### Results by gate type and FlowJo axis scale (228 populations, 61 exact)
+### Results by gate type and FlowJo axis scale (228 populations, 188 exact)
 
 "Introduced" = the part of the difference attributable to the gate itself:
 our parent x (our frequency of parent - FlowJo frequency of parent).
@@ -105,20 +105,18 @@ which events differ.
 | ellipse [linear,linear] | 1 | 1 | 0 | 0 | Exact (one 51-event fixture) |
 | boolean AND | 1 | 1 | 0 | 0 | Exact (one fixture) |
 | rect [linear,linear] | 21 | 14 | 88 | 0.031 pp | All 7 non-exact rows are the FlowJo 10.10.0 Time-gate chain for E05 (see below) |
-| rect [logicle,logicle] | 99 | 29 | 9.9 | 0.012 pp | Non-exact rows are children of polygon gates; introduced part <= 10 events |
-| boolean NOT / OR | 12 | 0 | 10.9 | 0.013 pp | Operands inherit polygon differences |
-| polygon [linear,linear] | 17 | 0 | 684 | 0.236 pp | **Gap**: FlowJo always higher |
-| polygon [logicle,linear] | 34 | 0 | 189 | 0.080 pp | **Gap**: FlowJo always higher |
-| polygon [logicle,logicle] | 24 | 0 | 37 | 0.028 pp | **Gap**: FlowJo always higher |
+| rect [logicle,logicle] | 99 | 99 | 0.1 | 0 | Exact (tested fixtures) |
+| boolean NOT / OR | 12 | 10 | 0 | 0 | Non-exact rows inherit polygon residuals |
+| polygon [linear,linear] | 17 | 10 | 2.1 | 0.001 pp | Near-exact with the FlowJo 10 gate grid (`docs/validation/flowjo-engine-specs.md` section 1) |
+| polygon [logicle,linear] | 34 | 20 | 2.4 | 0.001 pp | Near-exact; residuals from the approximated logicle lookup table |
+| polygon [logicle,logicle] | 24 | 17 | 4.2 | 0.003 pp | Near-exact; same residual source |
 | ellipse [logicle,logicle] | 3 | 0 | 222 | 0.166 pp | **Gap**: FlowJo higher by 124-232 events (2.0-3.2% of the population) |
 
-The earlier "0.25%" figure was the Singlets polygon's difference relative to
-FlowJo's Singlets count (E03: 236,780 vs 237,375, -595 = -0.25% of the
-population; parent counts equal, so all of it is introduced by that gate).
-Downstream, the same events are a larger share of small populations: IL2+
-under CD4+ (E03, 8_color_ICS.wsp) is 64 vs 74, -10 events = **-13.5% of that
-population**, of which about 0.1 events is inherited and about 9.9 introduced
-at the IL2+ rectangle itself (its parent CD4+ already differs by 135 events).
+Before the FlowJo 10 gate grid (exact point-in-polygon test) the polygon rows
+had 0 exact populations, worst introduced difference 684 events (Singlets,
+-0.25% of the population) and downstream effects up to -13.5% of small
+populations (IL2+ under CD4+). The grid rule was taken from FlowJo 10.6.2's
+native engine; see the specs doc.
 
 ### FlowJo reference counts are not stable across FlowJo versions
 
@@ -131,31 +129,16 @@ count is 284,933. Likewise E03 CD4+ is 81,990 in the 10.6.2 save and
 logicle parameters. Some reference differences therefore reflect FlowJo
 version behavior (or stale saved counts), not a single fixed truth.
 
-### Polygon diagnostic (existing evidence only)
+### Polygon diagnostic (historical)
 
-`docs/validation/polygon-diagnostics.md`. For the Singlets polygon (linear
-axes; parent equal to FlowJo, so no inheritance), FlowJo's extra events equal
-all parent events lying outside our polygon within 0.078, 0.083 and 0.094
-display bins (1 bin = 1/256 of the axis) on the three samples. FlowJo is
-higher for every polygon on every sample. This is consistent with FlowJo
-including a thin outer band, but these aggregate counts cannot distinguish
-between: (a) a dilated or inclusive-boundary test, (b) rasterised gating at a
-finer resolution, (c) FlowJo using unrounded vertices while the .wsp stores
-values snapped to 1/256 of the axis (all Singlets vertices are multiples of
-1024), (d) version-specific recomputation. No implementation change was made
-on this basis.
-
-**Reference data that would resolve it** (each item independent):
-1. For one sample, FlowJo's event-level membership of Singlets and of one
-   logicle polygon (e.g. CD3+): FlowJo "Export Population" as CSV including an
-   event-number column, or a derived parameter of gate membership. Shows
-   exactly which events differ and where they sit relative to the edges.
-2. A synthetic FCS file with events on a regular grid crossing a polygon edge,
-   a polygon drawn in FlowJo, and the FlowJo-saved .wsp with counts plus the
-   exported member events. Separates (a), (b) and (c).
-3. The same workspace saved by two FlowJo versions after forcing
-   recalculation, to quantify (d).
-4. For the logicle ellipse, the same event-level export for ellipse1.
+`docs/validation/polygon-diagnostics.md` records the band analysis done
+before the gate grid was known (FlowJo's extra events lay within about 0.08
+display bins outside the exact polygon). It is superseded by the FlowJo 10
+gate grid, which explains those counts; it is kept as history. Remaining
+polygon residuals (at most 4.2 events introduced per gate) are attributed to
+the approximated transform lookup table and rounding ties, pending a finer
+analysis of FlowJo 10's table construction. Item 4 below still applies to the
+logicle ellipse: FlowJo event-level export of ellipse1.
 
 ### Construct coverage
 

@@ -4,6 +4,8 @@ import { compensate, invert, isSpectral, spilloverFromFcs, unmix, type Spillover
 import { AppError, fail } from './errors';
 import type { FcsFile } from './fcs';
 import type { DerivedParameter, Dimension, Gate, Population, SampleState, Workspace } from './model';
+import { axesFromGate } from './ellipse';
+import { ellipseLatticePolygon, eventCell, gridCoord, latticeMask, polygonGridMask, vertexCoord } from './gateGrid';
 import { splineDividers } from './spline';
 import { makeTransform } from './transforms';
 
@@ -192,6 +194,20 @@ export class SampleEngine {
         if (g.vertices.length < 3) fail('GATE_INVALID', 'Polygon gate needs at least 3 vertices');
         const xs = this.dimension(g.dims[0]);
         const ys = this.dimension(g.dims[1]);
+        if (g.grid) {
+          const R = g.grid.resolution;
+          if (!(Number.isInteger(R) && R >= 2 && R <= 4096)) fail('GATE_INVALID', `Polygon gate resolution ${R} is not an integer in 2..4096`);
+          const [ax, ay] = g.grid.axes;
+          if (!(ax.max > ax.min && ay.max > ay.min)) fail('GATE_INVALID', 'Polygon gate grid range is empty');
+          const cells = polygonGridMask(g.grid, g.vertices);
+          for (let i = 0; i < n; i++) {
+            const x = xs[i];
+            const y = ys[i];
+            if (Number.isNaN(x) || Number.isNaN(y)) continue;
+            out[i] = cells[eventCell(ax, R, x) * R + eventCell(ay, R, y)];
+          }
+          return out;
+        }
         const vx = g.vertices.map((v) => v[0]);
         const vy = g.vertices.map((v) => v[1]);
         const m = vx.length;
@@ -214,6 +230,30 @@ export class SampleEngine {
         return out;
       }
       case 'ellipsoid': {
+        if (g.grid && g.dims.length === 2) {
+          const R = g.grid.resolution;
+          const [ax, ay] = g.grid.axes;
+          let edges = g.edges;
+          if (!edges || edges.length !== 4) {
+            const e = axesFromGate(g.mean, g.cov, g.distanceSquare);
+            const c = Math.cos(e.theta), s = Math.sin(e.theta);
+            edges = [[e.cx + e.a * c, e.cy + e.a * s], [e.cx - e.a * c, e.cy - e.a * s], [e.cx - e.b * s, e.cy + e.b * c], [e.cx + e.b * s, e.cy - e.b * c]];
+          }
+          const out0 = ellipseLatticePolygon(edges.map(([x, y]) => [gridCoord(ax, R, x), gridCoord(ay, R, y)] as [number, number]));
+          // FlowJo converts each outline pixel back to a data value and places
+          // it on the grid like any polygon vertex.
+          const back = (a: typeof ax, px: number) => vertexCoord(a, R, a.min + (px * (a.max - a.min)) / R);
+          const vx = out0.vx.map((px) => back(ax, px));
+          const vy = out0.vy.map((py) => back(ay, py));
+          const cells = latticeMask(R, vx, vy);
+          const xs = this.dimension(g.dims[0]);
+          const ys = this.dimension(g.dims[1]);
+          for (let i = 0; i < n; i++) {
+            if (Number.isNaN(xs[i]) || Number.isNaN(ys[i])) continue;
+            out[i] = cells[eventCell(ax, R, xs[i]) * R + eventCell(ay, R, ys[i])];
+          }
+          return out;
+        }
         const k = g.dims.length;
         if (g.mean.length !== k || g.cov.length !== k) fail('GATE_INVALID', 'Ellipsoid gate dimensions mismatch');
         let inv: number[][];

@@ -5,7 +5,7 @@ import { invert } from './compensation';
 import type { SpilloverMatrix } from './compensation';
 import { axesFromGate } from './ellipse';
 import { fail } from './errors';
-import type { Dimension, Gate, Population, Workspace } from './model';
+import type { Dimension, Gate, Group, KeywordRule, Population, Workspace } from './model';
 import { makeTransform, type TransformSpec } from './transforms';
 import { esc } from './xml';
 
@@ -21,7 +21,7 @@ const PREFIX = 'Comp-';
 // timestep: the sample's $TIMESTEP. Coordinates are written in this app's
 // scale units (Time in seconds), so Time gets gain = $TIMESTEP, which the
 // reader (and, per observed files, FlowJo) turns into a unit factor.
-function fjTransform(spec: TransformSpec | undefined, warn: (m: string) => void, ch: string, timestep: number): { xml: (name: string) => string; spec: TransformSpec; length: number } {
+function fjTransform(spec: TransformSpec | undefined, warn: (m: string) => void, ch: string, timestep: number, range?: [number, number]): { xml: (name: string) => string; spec: TransformSpec; length: number } {
   const isTime = /^time$/i.test(ch) && timestep > 0;
   const gain = isTime ? timestep : 1;
   const param = (name: string) => `<data-type:parameter data-type:name="${esc(name)}" />`;
@@ -36,10 +36,10 @@ function fjTransform(spec: TransformSpec | undefined, warn: (m: string) => void,
     case 'flowjo-log':
       return { spec: s, length: 256, xml: (n) => `<transforms:log transforms:length="256" transforms:offset="${s.offset}" transforms:decades="${s.decades}">${param(n)}</transforms:log>` };
     case 'linear':
-      return { spec: { kind: 'none' }, length: 256, xml: (n) => `<transforms:linear transforms:minRange="0" transforms:maxRange="${s.T}" gain="${gain}">${param(n)}</transforms:linear>` };
+      return { spec: { kind: 'none' }, length: 256, xml: (n) => `<transforms:linear transforms:minRange="${range?.[0] ?? 0}" transforms:maxRange="${range?.[1] ?? s.T}" gain="${gain}">${param(n)}</transforms:linear>` };
     default:
       if (s.kind !== 'none') warn(`${ch}: ${s.kind} scale has no observed FlowJo equivalent; written as linear`);
-      return { spec: { kind: 'none' }, length: 256, xml: (n) => `<transforms:linear transforms:minRange="0" transforms:maxRange="262144" gain="${gain}">${param(n)}</transforms:linear>` };
+      return { spec: { kind: 'none' }, length: 256, xml: (n) => `<transforms:linear transforms:minRange="${range?.[0] ?? 0}" transforms:maxRange="${range?.[1] ?? 262144}" gain="${gain}">${param(n)}</transforms:linear>` };
   }
 }
 
@@ -64,7 +64,7 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
     // One FlowJo scale per parameter name: the workspace display scale.
     const scales = new Map<string, ReturnType<typeof fjTransform>>();
     const scaleFor = (name: string, channel: string) => {
-      if (!scales.has(name)) scales.set(name, fjTransform(ws.channelTransforms[channel], warn, channel, parseFloat(s.keywordsSnapshot['$TIMESTEP'] ?? '') || 0));
+      if (!scales.has(name)) scales.set(name, fjTransform(ws.channelTransforms[channel], warn, channel, parseFloat(s.keywordsSnapshot['$TIMESTEP'] ?? '') || 0, s.flowjoLinearRanges?.[name]));
       return scales.get(name)!;
     };
     // Channels from the FCS file, or from the workspace scales when the
@@ -73,6 +73,8 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
       scaleFor(ch, ch);
       if (square?.channels.includes(ch)) scaleFor(`${PREFIX}${ch}`, ch);
     }
+    // Axes whose FlowJo range was imported (e.g. Time) keep that range.
+    for (const name of Object.keys(s.flowjoLinearRanges ?? {})) scaleFor(name, name.startsWith(PREFIX) ? name.slice(PREFIX.length) : name);
     const byId = new Map(s.populations.map((p) => [p.id, p]));
     const path = (p: Population): string => (p.parentId ? `${path(byId.get(p.parentId)!)}/${p.name}` : p.name);
     const counts = input.counts?.(s.id);
@@ -117,7 +119,7 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
         if (!same) warn(`"${path(p)}" was drawn on a ${d.transform.kind} scale but ${names[k]} is exported with a ${fj.spec.kind} scale; FlowJo may interpret the shape differently`);
       });
       if (g.type === 'polygon') {
-        return `<gating:PolygonGate eventsInside="${inside}" gateResolution="256">${dimXml(names[0])}${dimXml(names[1])}${g.vertices.map(([a, b]) => `<gating:vertex>${coord(raw(a, dims[0]))}${coord(raw(b, dims[1]))}</gating:vertex>`).join('')}</gating:PolygonGate>`;
+        return `<gating:PolygonGate eventsInside="${inside}" gateResolution="${g.grid?.resolution ?? 256}">${dimXml(names[0])}${dimXml(names[1])}${g.vertices.map(([a, b]) => `<gating:vertex>${coord(raw(a, dims[0]))}${coord(raw(b, dims[1]))}</gating:vertex>`).join('')}</gating:PolygonGate>`;
       }
       if (g.type === 'ellipsoid') {
         if (dims.length !== 2) {
@@ -141,8 +143,12 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
         const ct = Math.cos(e.theta), st = Math.sin(e.theta);
         const pts = [
           [e.cx + c * ct, e.cy + c * st], [e.cx - c * ct, e.cy - c * st], // foci
-          [e.cx + e.a * ct, e.cy + e.a * st], [e.cx - e.a * ct, e.cy - e.a * st], // major ends
-          [e.cx - e.b * st, e.cy + e.b * ct], [e.cx + e.b * st, e.cy - e.b * ct], // minor ends
+          // Edge points: major ends, then minor ends (FlowJo's order); imported
+          // FlowJo edges are written back unchanged.
+          ...(g.edges?.length === 4 ? g.edges : [
+            [e.cx + e.a * ct, e.cy + e.a * st], [e.cx - e.a * ct, e.cy - e.a * st],
+            [e.cx - e.b * st, e.cy + e.b * ct], [e.cx + e.b * st, e.cy - e.b * ct],
+          ]),
         ].map(([x, y]) => [toDisplay(x, 0), toDisplay(y, 1)]);
         const v = (q: number[]) => `<gating:vertex>${coord(q[0])}${coord(q[1])}</gating:vertex>`;
         // gating:distance semantics in FlowJo are unknown (not 2a in observed files); 2a written.
@@ -185,8 +191,24 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
       `<Sample><DataSet uri="file:/${esc(encodeURIComponent(s.fileName))}" sampleID="${sid}" />${matrixXml}<Transformations>${tx}</Transformations><Keywords>${kw}</Keywords><SampleNode name="${esc(s.fileName)}" count="${total}" sampleID="${sid}">${tree}</SampleNode></Sample>`,
     );
   });
+  // Live keyword groups are written as FlowJo criteria (plus their current
+  // members, as FlowJo saves them); "group by" on an annotation has no FlowJo
+  // keyword and is written as members only.
+  const FJ_FUNCTION: Record<KeywordRule['op'], string> = { contains: 'Contains', notContains: 'DoesNotContain', equals: 'Equals', notEquals: 'DoesNotEqual', startsWith: 'StartsWith', endsWith: 'EndsWith' };
+  const isKeyword = (k: string) => ws.samples.some((s) => k in s.keywordsSnapshot);
+  const criteriaXml = (g: Group): string => {
+    const c = g.criteria;
+    let rules: KeywordRule[] = [];
+    if (c && 'rules' in c) rules = c.rules;
+    else if (c && c.value !== null && isKeyword(c.key)) rules = [{ connector: 'and', keyword: c.key, op: 'equals', value: c.value }];
+    if (!rules.length) return '';
+    return `<Criteria>${rules.map((r, i) => `<Criterion connector="${i === 0 || r.connector === 'and' ? 'And' : 'Or'}" keyword="${esc(r.keyword)}" function="${FJ_FUNCTION[r.op]}" value="${esc(r.value)}" />`).join('')}</Criteria>`;
+  };
   const groups = ws.groups
-    .map((g) => `<GroupNode name="${esc(g.name)}"><Group name="${esc(g.name)}"><SampleRefs>${g.sampleIds.map((id) => `<SampleRef sampleID="${ws.samples.findIndex((s) => s.id === id) + 1}" />`).join('')}</SampleRefs></Group></GroupNode>`)
+    .map((g) => {
+      const crit = g.id === 'all' ? '' : criteriaXml(g);
+      return `<GroupNode name="${esc(g.name)}"><Group name="${esc(g.name)}"${crit ? ' live="1"' : ''}>${crit}<SampleRefs>${g.sampleIds.map((id) => `<SampleRef sampleID="${ws.samples.findIndex((s) => s.id === id) + 1}" />`).join('')}</SampleRefs></Group></GroupNode>`;
+    })
     .join('');
   if (!ws.samples.length) fail('WORKSPACE_INVALID', 'Workspace has no samples to export');
   const xml = `<?xml version="1.0" encoding="UTF-8"?>

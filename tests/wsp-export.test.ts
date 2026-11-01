@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { SampleEngine } from '../src/core/analysis';
 import { spilloverFromFcs } from '../src/core/compensation';
 import { parseFcs } from '../src/core/fcs';
+import { defaultGrid } from '../src/core/gateGrid';
 import { emptyWorkspace, populationPath, type Workspace } from '../src/core/model';
 import { parseWsp } from '../src/core/wsp';
 import { writeWsp } from '../src/core/wspWriter';
@@ -53,8 +54,8 @@ describe.skipIf(!haveFixtures)('wsp export round trip (own reader)', () => {
       id: 's1', fileName, fileSize: 0, fingerprint: '', datasetIndex: 0, compensation: 'm1', keywordsSnapshot: {}, channelNames: fcs.channels.map((c) => c.name), eventCount: fcs.eventCount,
       populations: [
         { id: 'cells', name: 'Cells', parentId: null, gate: { type: 'rect', dims: [d('FSC-A', lin), d('SSC-A', lin)], min: [0.15, 0.04], max: [0.85, 0.6] } },
-        { id: 'poly', name: 'CD3+CD4+', parentId: 'cells', gate: { type: 'polygon', dims: [d('CD3 APC-H7 FLR-A', L), d('CD4 PE-Cy7 FLR-A', L)], vertices: [[0.55, 0.45], [0.95, 0.45], [0.95, 0.95], [0.55, 0.95]] } },
-        { id: 'ell', name: 'Ell', parentId: 'cells', gate: { type: 'ellipsoid', dims: [d('CD3 APC-H7 FLR-A', L), d('CD4 PE-Cy7 FLR-A', L)], mean: [0.45, 0.4], cov: [[0.012, 0.005], [0.005, 0.006]], distanceSquare: 1 } },
+        { id: 'poly', name: 'CD3+CD4+', parentId: 'cells', gate: { type: 'polygon', dims: [d('CD3 APC-H7 FLR-A', L), d('CD4 PE-Cy7 FLR-A', L)], vertices: [[0.55, 0.45], [0.95, 0.45], [0.95, 0.95], [0.55, 0.95]], grid: defaultGrid([d('CD3 APC-H7 FLR-A', L), d('CD4 PE-Cy7 FLR-A', L)]) } },
+        { id: 'ell', name: 'Ell', parentId: 'cells', gate: { type: 'ellipsoid', dims: [d('CD3 APC-H7 FLR-A', L), d('CD4 PE-Cy7 FLR-A', L)], mean: [0.45, 0.4], cov: [[0.012, 0.005], [0.005, 0.006]], distanceSquare: 1, grid: defaultGrid([d('CD3 APC-H7 FLR-A', L), d('CD4 PE-Cy7 FLR-A', L)]) } },
         ...[0, 1].flatMap((sx) => [0, 1].map((sy) => ({ id: `q${sx}${sy}`, name: `Q${sx}${sy}`, parentId: 'cells', gate: { type: 'quadrant' as const, dims: [d('CD3 APC-H7 FLR-A', L), d('CD4 PE-Cy7 FLR-A', L)], dividers: [[0.5], [0.5]], side: [sx, sy] } }))),
         { id: 'or', name: 'Ell or poly', parentId: 'cells', gate: { type: 'boolean', op: 'or', operands: [{ ref: 'ell' }, { ref: 'poly' }] } },
         { id: 'not', name: 'not poly', parentId: 'cells', gate: { type: 'boolean', op: 'not', operands: [{ ref: 'poly' }] } },
@@ -79,5 +80,24 @@ describe.skipIf(!haveFixtures)('wsp export round trip (own reader)', () => {
     const { warnings } = writeWsp({ ws, sampleMatrix: () => null });
     expect(warnings.join(' ')).toMatch(/hyperlog scale has no observed FlowJo equivalent/);
     expect(warnings.join(' ')).toMatch(/ratio dimension/);
+  });
+});
+
+describe('wsp export of live groups', () => {
+  it('writes keyword-rule groups as FlowJo criteria that re-import as live groups', () => {
+    const ws = emptyWorkspace();
+    const sample = (id: string, fil: string) => ({ id, fileName: `${id}.fcs`, fileSize: 0, fingerprint: '', datasetIndex: 0, compensation: 'none', keywordsSnapshot: { $FIL: fil, TUBE: id }, channelNames: [], eventCount: 1, populations: [] });
+    ws.samples.push(sample('a', 'Comp_unstained.fcs'), sample('b', 'Specimen_001.fcs'), sample('c', 'comp_CD3.fcs'));
+    ws.groups[0].sampleIds = ['a', 'b', 'c'];
+    ws.groups.push({ id: 'g1', name: 'Compensation', sampleIds: ['a', 'c'], criteria: { rules: [{ connector: 'and', keyword: '$FIL', op: 'contains', value: 'unstained' }, { connector: 'or', keyword: '$FIL', op: 'startsWith', value: 'comp' }] } });
+    ws.groups.push({ id: 'g2', name: 'TUBE: b', sampleIds: ['b'], criteria: { key: 'TUBE', value: 'b' } });
+    const { xml } = writeWsp({ ws, sampleMatrix: () => null });
+    expect(xml).toContain('<Criterion connector="Or" keyword="$FIL" function="StartsWith" value="comp" />');
+    const back = parseWsp(xml).workspace;
+    const comp = back.groups.find((g) => g.name === 'Compensation')!;
+    expect(comp.criteria).toEqual(ws.groups[1].criteria);
+    expect(comp.sampleIds.map((id) => back.samples.find((s) => s.id === id)!.fileName)).toEqual(['a.fcs', 'c.fcs']);
+    const tube = back.groups.find((g) => g.name === 'TUBE: b')!;
+    expect(tube.criteria).toEqual({ rules: [{ connector: 'and', keyword: 'TUBE', op: 'equals', value: 'b' }] });
   });
 });

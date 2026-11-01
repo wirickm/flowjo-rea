@@ -38,6 +38,7 @@ Two parts:
 | wsp.keyword-groups | FlowJo keyword-criteria groups import as live groups | `src/core/wsp.ts`; `src/core/project.ts` `matchRules` | positive (14 fixtures), negative (no match) | `tests/import-gaps.test.ts` | flowjo-file (membership empty in every fixture) | flowjo-file | implemented | A FlowJo workspace whose criteria select samples; case-sensitivity check |
 | platform.cell-cycle | Dean-Jett-Fox and Watson G1/S/G2 fractions | `src/core/cellcycle.ts` `fitCellCycle` | positive, negative (G1-only), malformed (empty) | `tests/cellcycle.test.ts`; E2E "cell cycle" | synthetic | flowjo-file | implemented | FlowJo or ModFit fit of the same histogram |
 | platform.proliferation | Generation fit and division/proliferation/expansion indices | `src/core/proliferation.ts` `fitProliferation` | positive, negative (undivided), malformed (nonpositive) | `tests/proliferation.test.ts`; E2E "proliferation" | synthetic | flowjo-file | implemented | FlowJo proliferation platform output on the same data |
+| gate.rect-open-bounds | Rectangle bounds on or beyond a linear axis edge (4096 channels) are open, as in FlowJo 10 | `src/core/wsp.ts` `parseWsp` | positive (E01 Time), negative (quad-gate bounds stay closed) | `tests/wsp.test.ts` | flowjo-file | flowjo-file | verified on fixtures | A fixture with an open upper bound |
 | platform.kinetics | Statistic per time bin | `src/core/kinetics.ts` `kinetics` | positive, boundary (empty bin), malformed (bad options) | `tests/kinetics.test.ts`; E2E "kinetics" | hand | hand | verified | - |
 | app.local-only | No network transmission of event data | whole app | negative (no request construction) | REA `analyze-javascript-application` request family; source grep | static analysis (partial coverage) | runtime capture | implemented | Browser capture of a full session with no outbound requests (see residual below) |
 | app.offline-build | Single-file build runs from `file://` | `vite.config.ts`; `src/ui/workerClient.ts` | positive | E2E on `dist/index.html` from `file://` (46/46, Chromium) | runtime (Chromium) | runtime (Chromium, Firefox, Safari) | blocked | Run in Firefox and Safari (not installable here) |
@@ -46,21 +47,20 @@ Two parts:
 
 | ID | Claim | Status | Blocking evidence |
 |---|---|---|---|
-| wsp.polygon-counts | Polygon counts equal FlowJo's | blocked (about 0.25% gap) | FlowJo event-level export of a polygon population |
-| wsp.logicle-ellipse | Logicle ellipse counts equal FlowJo's | blocked (2-3% gap) | Same, for the ellipse |
-| stats.flowjo-conventions | Median/percentile/robust CV match FlowJo | blocked | FlowJo statistic output on a known population |
+| wsp.polygon-counts | Polygon counts equal FlowJo's | verified on fixtures: FlowJo 10 gate grid (`src/core/gateGrid.ts`); every fixture polygon exact except pinned FlowJo version differences (`tests/wsp.test.ts`), flowjo-file authority | A FlowJo-saved polygon on non-logicle transformed axes (biex, arcsinh) |
+| wsp.logicle-ellipse | Logicle ellipse counts equal FlowJo's | verified on fixtures: FlowJo 10 outline polygon; all 4 fixture ellipses exact (`tests/wsp.test.ts`), flowjo-file authority | - |
+| stats.flowjo-conventions | Median/percentile/robust CV match FlowJo | implemented from the FlowJo 10.6.2 engine (`src/core/flowjoStats.ts`, specs section 4); verifier `tests/flowjo-stats.test.ts` (hand authority) | FlowJo statistic output on a known population (flowjo-file authority) |
 | wsp.export | Exported .wsp opens in FlowJo with equal counts | blocked | Open in FlowJo |
 | unmix.vendor | OLS unmixing matches vendor output | blocked | Vendor-unmixed reference data |
 
 ## Residuals found while building this ledger
 
-- The single-file bundle contains one `fetch(` call: Vite's module-preload
-  polyfill, which fetches `<link rel="modulepreload">` targets. The
-  single-file build has no such links, so it never runs a request, but it is
-  dead code that weakens a static local-only claim. Removable with
-  `build.modulePreload.polyfill: false` (not changed in this milestone).
-- .wsp export writes keyword groups as their current members (SampleRefs),
-  not as criteria.
+- Resolved: the single-file bundle used to contain one `fetch(` call (Vite's
+  module-preload polyfill, never run); `build.modulePreload.polyfill: false`
+  removes it, and `dist/index.html` now contains no `fetch(`.
+- Resolved: .wsp export writes keyword-rule groups (and "group by" keyword
+  groups) as FlowJo `<Criteria>` plus their current members; "group by"
+  annotation groups are written as members only (no FlowJo keyword).
 - REA could not analyze the minified single-file bundle within its default
   limits (1 GiB heap exhausted; 5-minute per-source deadline with 4 GiB), so
   the REA run uses the tsc-compiled, unbundled modules. That covers this
@@ -95,7 +95,38 @@ Result (`docs/validation/rea-ledger-summary.json`):
   package `main` field; this is a static inference and wrong for this
   browser app.
 
-Closing REA obligations needs manifest bindings with owner digests and
-verifier proofs bound to them (REA "proof applicability"). That proof
-producer does not exist yet for this repository; building it is the next
-step if REA-verified closure is wanted.
+## REA proof producer
+
+`npm run rea-proof` (`tools/reaProof.ts`, obligations in
+`tools/rea-obligations.json`) runs the verifier tests through vitest's JSON
+reporter and writes `docs/validation/rea-proof.json`:
+
+- one Evidence record with predicate `rea.reconstruction-proof` and operation
+  `verify_reconstruction_obligations`, whose `normalized_result.bindings`
+  follow REA's `reconstructionObligationProofSchema` (obligation id and
+  version, `owner_sha256`, per-fixture `(fixture_id, case_kind, passed)`, per
+  verifier `(verifier_id, claim_id, passed)`); its `evidence_id` is
+  `ev_` + SHA-256 of the record's canonical JSON (REA's identity rule,
+  reimplemented here);
+- REA manifest bindings for the same obligations, referencing that record.
+
+`owner_sha256` = SHA-256 of the canonical JSON of
+`[{path, sha256(file bytes)}]` over the owner's files, sorted by path (the
+file list is in `tools/rea-obligations.json`). Changing any owner file
+changes the digest and makes the retained proof inapplicable, as REA
+requires; regenerate after code changes.
+
+Obligations covered: `wsp.polygon-counts`, `wsp.logicle-ellipse`,
+`gate.rect-open-bounds`, `stats.flowjo-conventions`, `platform.kinetics`;
+all fixtures and verifiers pass at the time of writing.
+
+Limitations (closure is not claimed):
+
+- `original_cases` are empty: the FlowJo observations (FlowJo-saved counts,
+  the FlowJo 10.6.2 engine analysis) are not yet expressed as REA Evidence,
+  so REA keeps these obligations open.
+- Proof authority is `controlled-replay` (local vitest process); fixture and
+  verifier authority `integration`.
+- The output has not been fed to `rea build-reconstruction-obligation-ledger`
+  in this session (REA was used for its methods and conventions only); its
+  acceptance by REA is untested.

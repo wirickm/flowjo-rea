@@ -48,7 +48,7 @@ hand-computed expectations; **E2E** = `e2e/workflow.mjs` through the real UI.
 | 5 | Hierarchical gating, rename, delete (blocked when a boolean depends on it), undo/redo of every workspace edit | - | Done | E2E; unit tests | History is in memory only (not saved with the workspace) |
 | 5 | Gating-ML 2.0 import | spec | Done | ISAC: 46 files, every truth file, 0 mismatched events | Pre-inverted matrices unsupported; non-square spectrum matrices are unmixed by OLS (no ISAC truth exercises them) |
 | 5 | Gating-ML 2.0 export | spec | Partial | round trip (identical counts) | FlowJo biex/log and ratio dimensions are not representable and are rejected |
-| 6 | Count, % parent, % grandparent, % total, mean, median, geometric mean, SD, CV, robust SD/CV, MAD, min, max, percentile | hand | Done | hand-computed tests; E2E table | Values on compensated, untransformed data. FlowJo's exact median/percentile and robust CV conventions are unknown (not verified against FlowJo) |
+| 6 | Count, % parent, % grandparent, % total, mean, median, geometric mean, SD, CV, robust SD/CV, MAD, min, max, percentile | observed (FlowJo 10.6.2 engine, specs section 4); hand | Implemented, tested | Hand-computed tests of the FlowJo histogram rules (`tests/flowjo-stats.test.ts`) and of the exact definitions; E2E table | Median, percentile, robust SD/CV follow FlowJo 10's 4096-channel histogram rules when the channel's FlowJo scale is linear or logicle; other channels and MAD use exact definitions. **Not compared with FlowJo-computed statistics** (none in the fixtures). Values on compensated, untransformed data |
 | 6 | Cell cycle: Dean-Jett-Fox (G1/G2 Gaussians, broadened 2nd-order S phase, Poisson-weighted NNLS + Nelder-Mead) and Watson pragmatic on a linear DNA histogram | derived (published models) | Implemented, tested | Synthetic 55/30/15: DJF within 0.5 pp (unit), 2.0 pp (E2E); Watson within 3.2 pp; G1-only gives S+G2 < 1% | Synthetic only; not compared with FlowJo or ModFit; debris and aggregates flagged, not modelled |
 | 6 | Proliferation: dye-dilution generations (log-space Gaussians at 2-fold spacing), % divided, division / proliferation / expansion indices, precursor frequency | derived (published definitions) | Implemented, tested | Synthetic 6 generations: per-generation % within 0.15 pp, indices within 0.2% (unit); E2E % divided 80.2 vs 80 | Synthetic only; assumes exact 2-fold dilution and equal widths; FlowJo's older "proliferation index" definition differs (here: expansion index) |
 | 6 | Kinetics: count, mean, median or % above threshold per equal-width time bin | - | Implemented, tested | Hand-built exact cases (unit); E2E bin counts sum to the population | Equal-width bins only; no smoothing or curve fitting |
@@ -90,7 +90,7 @@ WRITE_REPORT=1 npx vitest run tests/wsp-report.test.ts
 DIAG=1 npx vitest run tests/diagnostics/polygon.test.ts
 ```
 
-### Results by gate type and FlowJo axis scale (228 populations, 61 exact)
+### Results by gate type and FlowJo axis scale (228 populations, 221 exact)
 
 "Introduced" = the part of the difference attributable to the gate itself:
 our parent x (our frequency of parent - FlowJo frequency of parent).
@@ -104,21 +104,19 @@ which events differ.
 | rect [asinh,asinh] | 2 | 2 | 0 | 0 | Exact (tested fixtures) |
 | ellipse [linear,linear] | 1 | 1 | 0 | 0 | Exact (one 51-event fixture) |
 | boolean AND | 1 | 1 | 0 | 0 | Exact (one fixture) |
-| rect [linear,linear] | 21 | 14 | 88 | 0.031 pp | All 7 non-exact rows are the FlowJo 10.10.0 Time-gate chain for E05 (see below) |
-| rect [logicle,logicle] | 99 | 29 | 9.9 | 0.012 pp | Non-exact rows are children of polygon gates; introduced part <= 10 events |
-| boolean NOT / OR | 12 | 0 | 10.9 | 0.013 pp | Operands inherit polygon differences |
-| polygon [linear,linear] | 17 | 0 | 684 | 0.236 pp | **Gap**: FlowJo always higher |
-| polygon [logicle,linear] | 34 | 0 | 189 | 0.080 pp | **Gap**: FlowJo always higher |
-| polygon [logicle,logicle] | 24 | 0 | 37 | 0.028 pp | **Gap**: FlowJo always higher |
-| ellipse [logicle,logicle] | 3 | 0 | 222 | 0.166 pp | **Gap**: FlowJo higher by 124-232 events (2.0-3.2% of the population) |
+| rect [linear,linear] | 21 | 20 | 88 | 0.031 pp | The non-exact row is FlowJo 10.10.0's Time count for E05; its 10.6.2 and 10.8.1 saves match us. Bounds at the axis edge are open (specs section 3) |
+| rect [logicle,logicle] | 99 | 99 | 0.1 | 0 | Exact (tested fixtures) |
+| boolean NOT / OR | 12 | 12 | 0 | 0 | Exact (tested fixtures) |
+| polygon [linear,linear] | 17 | 16 | 2.1 | 0.001 pp | Exact except the E05 FlowJo 10.10.0 Time chain (inherited) |
+| polygon [logicle,linear] | 34 | 32 | 2.4 | 0.001 pp | Exact except the same 10.10.0 chain |
+| polygon [logicle,logicle] | 24 | 21 | 4.2 | 0.003 pp | Exact except the 10.10.0 chain and E03 CD4+ (+2 vs 10.6.2; the 10.8.1/10.10.0 saves match us) |
+| ellipse [logicle,logicle] | 3 | 3 | 0 | 0 | Exact: FlowJo 10's outline polygon (specs section 2) |
 
-The earlier "0.25%" figure was the Singlets polygon's difference relative to
-FlowJo's Singlets count (E03: 236,780 vs 237,375, -595 = -0.25% of the
-population; parent counts equal, so all of it is introduced by that gate).
-Downstream, the same events are a larger share of small populations: IL2+
-under CD4+ (E03, 8_color_ICS.wsp) is 64 vs 74, -10 events = **-13.5% of that
-population**, of which about 0.1 events is inherited and about 9.9 introduced
-at the IL2+ rectangle itself (its parent CD4+ already differs by 135 events).
+Before the FlowJo 10 gate grid (exact point-in-polygon test) the polygon rows
+had 0 exact populations, worst introduced difference 684 events (Singlets,
+-0.25% of the population) and downstream effects up to -13.5% of small
+populations (IL2+ under CD4+). The grid rule was taken from FlowJo 10.6.2's
+native engine; see the specs doc.
 
 ### FlowJo reference counts are not stable across FlowJo versions
 
@@ -131,31 +129,14 @@ count is 284,933. Likewise E03 CD4+ is 81,990 in the 10.6.2 save and
 logicle parameters. Some reference differences therefore reflect FlowJo
 version behavior (or stale saved counts), not a single fixed truth.
 
-### Polygon diagnostic (existing evidence only)
+### Polygon diagnostic (historical)
 
-`docs/validation/polygon-diagnostics.md`. For the Singlets polygon (linear
-axes; parent equal to FlowJo, so no inheritance), FlowJo's extra events equal
-all parent events lying outside our polygon within 0.078, 0.083 and 0.094
-display bins (1 bin = 1/256 of the axis) on the three samples. FlowJo is
-higher for every polygon on every sample. This is consistent with FlowJo
-including a thin outer band, but these aggregate counts cannot distinguish
-between: (a) a dilated or inclusive-boundary test, (b) rasterised gating at a
-finer resolution, (c) FlowJo using unrounded vertices while the .wsp stores
-values snapped to 1/256 of the axis (all Singlets vertices are multiples of
-1024), (d) version-specific recomputation. No implementation change was made
-on this basis.
-
-**Reference data that would resolve it** (each item independent):
-1. For one sample, FlowJo's event-level membership of Singlets and of one
-   logicle polygon (e.g. CD3+): FlowJo "Export Population" as CSV including an
-   event-number column, or a derived parameter of gate membership. Shows
-   exactly which events differ and where they sit relative to the edges.
-2. A synthetic FCS file with events on a regular grid crossing a polygon edge,
-   a polygon drawn in FlowJo, and the FlowJo-saved .wsp with counts plus the
-   exported member events. Separates (a), (b) and (c).
-3. The same workspace saved by two FlowJo versions after forcing
-   recalculation, to quantify (d).
-4. For the logicle ellipse, the same event-level export for ellipse1.
+`docs/validation/polygon-diagnostics.md` records the band analysis done
+before the gate grid was known (FlowJo's extra events lay within about 0.08
+display bins outside the exact polygon). It is superseded by the FlowJo 10
+gate grid, which explains those counts; it is kept as history. With the
+grid, the outline-polygon ellipse and open rectangle bounds, every fixture
+count matches FlowJo except 7 rows where FlowJo versions disagree.
 
 ### Construct coverage
 

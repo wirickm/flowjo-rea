@@ -2,6 +2,8 @@
 
 - State and next steps: `docs/progress.md`. Feature status: `docs/compatibility-matrix.md`.
 - Test fixtures: `./scripts/fetch-fixtures.sh`, then `npm test`, `npx tsc -p .`.
+- REA proof records: `npm run rea-proof` -> `docs/validation/rea-proof.json`
+  (regenerate after changing an owner file listed in `tools/rea-obligations.json`).
 - Write findings as behavioral specs in `docs/validation/flowjo-engine-specs.md`
   and implement independently; never commit FlowJo binaries, disassembly or
   decompiled code.
@@ -33,13 +35,17 @@ every fixture), not by an exact point-in-polygon test:
   cell = `floor(u + 0.5)` clamped to 0..R-1. Vertices use the same rounding.
 - Transformed axes (logicle etc.): the transform lookup-table index scaled to
   R, truncated, for both events and vertices.
-- The y axis is flipped (`R - u`) for both, consistently.
+- FlowJo may mirror y on linear axes; it only affects ties, and the
+  implementation does not mirror (slightly better fixture match).
 - An event is in the gate when its integer grid point is inside the rounded
   polygon or on its boundary (edges and vertices count as inside).
 
-Scratch check on `8_color_ICS.wsp`: 35 of 42 populations exact (was 9);
-total absolute difference 15 events (was 3,944). Not yet implemented in
-`src/core`. FlowJo 11.2 differs (truncated vertices, cell-corner lattice);
+Implemented in `src/core/gateGrid.ts` (wsp-imported and app-drawn polygons
+and ellipses; Gating-ML gates stay exact). Ellipses are gated as FlowJo 10's
+180-vertex outline polygon; rectangle bounds at a linear axis edge are open.
+All 14 fixture workspaces: 221 of 228 populations exact (was 61); the other
+7 are pinned FlowJo version differences (`tests/wsp.test.ts`). Full spec:
+`docs/validation/flowjo-engine-specs.md`. FlowJo 11.2 differs (truncated vertices, cell-corner lattice);
 see `docs/validation/flowjo-engine-specs.md`.
 
 ## Tools allowed in this repo

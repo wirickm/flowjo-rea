@@ -5,33 +5,35 @@ import { describe, expect, it } from 'vitest';
 import { haveFixtures } from './fixtures';
 import { compareWsp, WSP_CASES } from './wspCompare';
 
-// Workspaces where every FlowJo-computed count is reproduced exactly.
-const EXACT = new Set([
-  'simple_diamond_example/simple_diamond_example_quad_gate.wsp',
-  'simple_diamond_example/test_data_diamond_asinh_rect.wsp',
-  'simple_diamond_example/test_data_diamond_asinh_rect2.wsp',
-  'simple_diamond_example/test_data_diamond_biex_rect.wsp',
-  'simple_line_example/single_ellipse_51_events.wsp',
-  '8_color_data_set/reused_quad_gate_with_child.wsp',
-]);
+// Every FlowJo-recorded count is reproduced exactly, except these, where a
+// save by another FlowJo version of the same gate records this app's count
+// (docs/compatibility-matrix.md, "FlowJo reference counts are not stable").
+// Value = ours - FlowJo, pinned exactly.
+const VERSION_DIFFERENCES: Record<string, number> = {
+  // FlowJo 10.6.2 save; the 10.8.1 and 10.10.0 saves record 81,992.
+  '8_color_data_set/8_color_ICS.wsp|E03_009|Time/Singlets/aAmine-/CD3+/CD4+': 2,
+  // FlowJo 10.10.0 save; the 10.6.2 and 10.8.1 saves record Time = 284,933.
+  '8_color_data_set/8_color_ICS_dot_gate_name.wsp|E05_010|Time': 88,
+  '8_color_data_set/8_color_ICS_dot_gate_name.wsp|E05_010|Time/Singlets': 75,
+  '8_color_data_set/8_color_ICS_dot_gate_name.wsp|E05_010|Time/Singlets/aAmine-': 51,
+  '8_color_data_set/8_color_ICS_dot_gate_name.wsp|E05_010|Time/Singlets/aAmine-/CD3+': 44,
+  '8_color_data_set/8_color_ICS_dot_gate_name.wsp|E05_010|Time/Singlets/aAmine-/CD3+/CD4+': 23,
+  '8_color_data_set/8_color_ICS_dot_gate_name.wsp|E05_010|Time/Singlets/aAmine-/CD3+/CD8+': 17,
+};
 
 describe.skipIf(!haveFixtures)('FlowJo .wsp import reproduces FlowJo-recorded counts', () => {
   for (const c of WSP_CASES) {
     it(c, () => {
       const { rows } = compareWsp(c);
-      if (EXACT.has(c)) {
-        for (const r of rows) expect(r.ours, `${r.sample} ${r.path}`).toBe(r.flowjo);
-      } else {
-        // Known gaps, see docs/validation/wsp-counts.md for every population.
-        // Regression bound measured on the current implementation, not a
-        // compatibility claim: |diff| <= 1% of FlowJo count + 10 events.
-        // The ellipse on logicle axes in 8_color_ICS_with_ellipse differs by
-        // 2-3.2%; bounded separately at 4%.
-        for (const r of rows) {
-          const rel = r.path.endsWith('ellipse1') ? 0.04 : 0.01;
-          expect(Math.abs(r.ours - r.flowjo), `${r.sample} ${r.path}`).toBeLessThanOrEqual(rel * r.flowjo + 10);
-        }
+      for (const r of rows) {
+        const key = `${c}|${r.sample.slice(16, 23)}|${r.path}`;
+        expect(r.ours - r.flowjo, key).toBe(VERSION_DIFFERENCES[key] ?? 0);
       }
     });
   }
+  it('lists only version differences that still occur', () => {
+    const seen = new Set<string>();
+    for (const c of WSP_CASES) for (const r of compareWsp(c).rows) seen.add(`${c}|${r.sample.slice(16, 23)}|${r.path}`);
+    for (const k of Object.keys(VERSION_DIFFERENCES)) expect(seen.has(k), k).toBe(true);
+  });
 });

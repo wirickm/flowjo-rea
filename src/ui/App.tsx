@@ -5,6 +5,7 @@ import { emptyWorkspace, newId, populationPath, type Gate, type KeywordRule, typ
 import { applySubtree, criteriaLabel, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
 import type { PlotResult, SampleMeta } from '../core/service';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL } from '../core/stats';
+import { statScales } from '../core/flowjoStats';
 import { formatStat, statsCsv } from '../core/statsTable';
 import { makeTransform, type TransformSpec } from '../core/transforms';
 import { parseWsp } from '../core/wsp';
@@ -288,7 +289,7 @@ export function App() {
       for (const s of groupSamples) {
         if (!meta[s.id]) continue;
         run(async () => {
-          const v = await client.stats({ sampleId: s.id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters, columns: ws.statColumns });
+          const v = await client.stats({ sampleId: s.id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters, columns: ws.statColumns, scales: statScales(ws.channelTransforms, s.flowjoLinearRanges, ws.statColumns.map((c) => c.channel)) });
           if (live && v) setStats((x) => ({ ...x, [s.id]: v }));
         });
       }
@@ -369,7 +370,7 @@ export function App() {
         const s = ws.samples.find((x) => x.id === id);
         if (!s) continue;
         if (!cache.has(id)) {
-          const v = meta[id] ? await run(() => client.stats({ sampleId: id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters, columns: ws.statColumns })) : undefined;
+          const v = meta[id] ? await run(() => client.stats({ sampleId: id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters, columns: ws.statColumns, scales: statScales(ws.channelTransforms, s.flowjoLinearRanges, ws.statColumns.map((c) => c.channel)) })) : undefined;
           cache.set(id, v ?? ws.statColumns.map(() => 'data not loaded'));
         }
         rows.push({ group: g.name, sample: s.fileName, annotations: allAnn.map((k) => s.annotations?.[k] ?? ''), values: cache.get(id)! });

@@ -10,12 +10,32 @@ export type Dimension =
   | { kind: 'channel'; channel: string; transform: TransformSpec; compensation?: string }
   | { kind: 'ratio'; num: string; den: string; A: number; B: number; C: number; transform: TransformSpec; compensation?: string };
 
+// One axis of a FlowJo gate grid, in gate (dimension) units: 'round' for
+// linear axes, 'floor' for transformed axes; [min, max] spans the R cells.
+// logicle: parameters of a logicle axis; gate vertices on such an axis are
+// placed through FlowJo's single-precision logicle lookup table.
+export interface GridAxis {
+  mode: 'round' | 'floor';
+  min: number;
+  max: number;
+  logicle?: { T: number; W: number; M: number; A: number };
+}
+export interface GateGrid {
+  resolution: number;
+  axes: [GridAxis, GridAxis];
+}
+
 export type Gate =
   // Each bound may be null (open). Membership: min <= x < max (Gating-ML 2.0).
   | { type: 'rect'; dims: Dimension[]; min: (number | null)[]; max: (number | null)[] }
-  | { type: 'polygon'; dims: [Dimension, Dimension]; vertices: [number, number][] }
+  // grid: evaluate on FlowJo 10's gate grid (src/core/gateGrid.ts); absent =
+  // exact point-in-polygon (Gating-ML semantics).
+  | { type: 'polygon'; dims: [Dimension, Dimension]; vertices: [number, number][]; grid?: GateGrid }
   // (x-mean)^T inv(cov) (x-mean) <= distanceSquare
-  | { type: 'ellipsoid'; dims: Dimension[]; mean: number[]; cov: number[][]; distanceSquare: number }
+  // grid (2-D only): evaluate as FlowJo 10 does, on the outline polygon of the
+  // ellipse whose axis endpoints are edges (gate units; derived from mean/cov
+  // when absent). Without grid: exact (Gating-ML semantics).
+  | { type: 'ellipsoid'; dims: Dimension[]; mean: number[]; cov: number[][]; distanceSquare: number; grid?: GateGrid; edges?: [number, number][] }
   // One quadrant of a split. side[i] = index of the interval of dims[i] split by
   // dividers[i] (sorted). Interval k is [dividers[k-1], dividers[k]).
   | { type: 'quadrant'; dims: Dimension[]; dividers: number[][]; side: number[] }
@@ -47,6 +67,10 @@ export interface SampleState {
   annotations?: Record<string, string>; // user-entered sample metadata
   channelNames: string[];
   eventCount: number;
+  // FlowJo linear axis ranges of an imported .wsp sample, per FlowJo parameter
+  // name, in this app's raw units. Written back on .wsp export so FlowJo's
+  // channel-dependent rules (open rectangle bounds, gate grid) see the same axes.
+  flowjoLinearRanges?: Record<string, [number, number]>;
 }
 
 export interface Group {

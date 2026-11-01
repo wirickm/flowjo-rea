@@ -12,10 +12,13 @@ export type Dimension =
 
 // One axis of a FlowJo gate grid, in gate (dimension) units: 'round' for
 // linear axes, 'floor' for transformed axes; [min, max] spans the R cells.
+// logicle: parameters of a logicle axis; gate vertices on such an axis are
+// placed through FlowJo's single-precision logicle lookup table.
 export interface GridAxis {
   mode: 'round' | 'floor';
   min: number;
   max: number;
+  logicle?: { T: number; W: number; M: number; A: number };
 }
 export interface GateGrid {
   resolution: number;
@@ -64,6 +67,10 @@ export interface SampleState {
   annotations?: Record<string, string>; // user-entered sample metadata
   channelNames: string[];
   eventCount: number;
+  // FlowJo linear axis ranges of an imported .wsp sample, per FlowJo parameter
+  // name, in this app's raw units. Written back on .wsp export so FlowJo's
+  // channel-dependent rules (open rectangle bounds, gate grid) see the same axes.
+  flowjoLinearRanges?: Record<string, [number, number]>;
 }
 
 export interface Group {

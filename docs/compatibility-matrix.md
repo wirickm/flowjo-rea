@@ -90,7 +90,7 @@ WRITE_REPORT=1 npx vitest run tests/wsp-report.test.ts
 DIAG=1 npx vitest run tests/diagnostics/polygon.test.ts
 ```
 
-### Results by gate type and FlowJo axis scale (228 populations, 188 exact)
+### Results by gate type and FlowJo axis scale (228 populations, 221 exact)
 
 "Introduced" = the part of the difference attributable to the gate itself:
 our parent x (our frequency of parent - FlowJo frequency of parent).
@@ -104,13 +104,13 @@ which events differ.
 | rect [asinh,asinh] | 2 | 2 | 0 | 0 | Exact (tested fixtures) |
 | ellipse [linear,linear] | 1 | 1 | 0 | 0 | Exact (one 51-event fixture) |
 | boolean AND | 1 | 1 | 0 | 0 | Exact (one fixture) |
-| rect [linear,linear] | 21 | 14 | 88 | 0.031 pp | All 7 non-exact rows are the FlowJo 10.10.0 Time-gate chain for E05 (see below) |
+| rect [linear,linear] | 21 | 20 | 88 | 0.031 pp | The non-exact row is FlowJo 10.10.0's Time count for E05; its 10.6.2 and 10.8.1 saves match us. Bounds at the axis edge are open (specs section 3) |
 | rect [logicle,logicle] | 99 | 99 | 0.1 | 0 | Exact (tested fixtures) |
-| boolean NOT / OR | 12 | 10 | 0 | 0 | Non-exact rows inherit polygon residuals |
-| polygon [linear,linear] | 17 | 10 | 2.1 | 0.001 pp | Near-exact with the FlowJo 10 gate grid (`docs/validation/flowjo-engine-specs.md` section 1) |
-| polygon [logicle,linear] | 34 | 20 | 2.4 | 0.001 pp | Near-exact; residuals from the approximated logicle lookup table |
-| polygon [logicle,logicle] | 24 | 17 | 4.2 | 0.003 pp | Near-exact; same residual source |
-| ellipse [logicle,logicle] | 3 | 0 | 18.9 | 0.014 pp | Near-exact (7-19 events, was 124-232): FlowJo 10 gates the 180-vertex outline polygon (specs section 2) |
+| boolean NOT / OR | 12 | 12 | 0 | 0 | Exact (tested fixtures) |
+| polygon [linear,linear] | 17 | 16 | 2.1 | 0.001 pp | Exact except the E05 FlowJo 10.10.0 Time chain (inherited) |
+| polygon [logicle,linear] | 34 | 32 | 2.4 | 0.001 pp | Exact except the same 10.10.0 chain |
+| polygon [logicle,logicle] | 24 | 21 | 4.2 | 0.003 pp | Exact except the 10.10.0 chain and E03 CD4+ (+2 vs 10.6.2; the 10.8.1/10.10.0 saves match us) |
+| ellipse [logicle,logicle] | 3 | 3 | 0 | 0 | Exact: FlowJo 10's outline polygon (specs section 2) |
 
 Before the FlowJo 10 gate grid (exact point-in-polygon test) the polygon rows
 had 0 exact populations, worst introduced difference 684 events (Singlets,
@@ -134,11 +134,9 @@ version behavior (or stale saved counts), not a single fixed truth.
 `docs/validation/polygon-diagnostics.md` records the band analysis done
 before the gate grid was known (FlowJo's extra events lay within about 0.08
 display bins outside the exact polygon). It is superseded by the FlowJo 10
-gate grid, which explains those counts; it is kept as history. Remaining
-polygon residuals (at most 4.2 events introduced per gate) are attributed to
-the approximated transform lookup table and rounding ties, pending a finer
-analysis of FlowJo 10's table construction. Item 4 below still applies to the
-logicle ellipse residual: FlowJo event-level export of ellipse1.
+gate grid, which explains those counts; it is kept as history. With the
+grid, the outline-polygon ellipse and open rectangle bounds, every fixture
+count matches FlowJo except 7 rows where FlowJo versions disagree.
 
 ### Construct coverage
 

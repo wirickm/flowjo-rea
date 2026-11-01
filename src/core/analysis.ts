@@ -5,7 +5,7 @@ import { AppError, fail } from './errors';
 import type { FcsFile } from './fcs';
 import type { DerivedParameter, Dimension, Gate, Population, SampleState, Workspace } from './model';
 import { axesFromGate } from './ellipse';
-import { ellipseLatticePolygon, eventCell, gridCoord, latticeMask, polygonGridMask } from './gateGrid';
+import { ellipseLatticePolygon, eventCell, gridCoord, latticeMask, polygonGridMask, vertexCoord } from './gateGrid';
 import { splineDividers } from './spline';
 import { makeTransform } from './transforms';
 
@@ -239,7 +239,12 @@ export class SampleEngine {
             const c = Math.cos(e.theta), s = Math.sin(e.theta);
             edges = [[e.cx + e.a * c, e.cy + e.a * s], [e.cx - e.a * c, e.cy - e.a * s], [e.cx - e.b * s, e.cy + e.b * c], [e.cx + e.b * s, e.cy - e.b * c]];
           }
-          const { vx, vy } = ellipseLatticePolygon(edges.map(([x, y]) => [gridCoord(ax, R, x), gridCoord(ay, R, y)] as [number, number]));
+          const out0 = ellipseLatticePolygon(edges.map(([x, y]) => [gridCoord(ax, R, x), gridCoord(ay, R, y)] as [number, number]));
+          // FlowJo converts each outline pixel back to a data value and places
+          // it on the grid like any polygon vertex.
+          const back = (a: typeof ax, px: number) => vertexCoord(a, R, a.min + (px * (a.max - a.min)) / R);
+          const vx = out0.vx.map((px) => back(ax, px));
+          const vy = out0.vy.map((py) => back(ay, py));
           const cells = latticeMask(R, vx, vy);
           const xs = this.dimension(g.dims[0]);
           const ys = this.dimension(g.dims[1]);

@@ -38,9 +38,12 @@ every fixture), not by an exact point-in-polygon test:
 - An event is in the gate when its integer grid point is inside the rounded
   polygon or on its boundary (edges and vertices count as inside).
 
-Implemented in `src/core/gateGrid.ts` (wsp-imported and app-drawn polygons;
-Gating-ML polygons stay exact). All 14 fixture workspaces: 188 of 228
-populations exact (was 61); worst polygon-introduced difference 4.2 events. FlowJo 11.2 differs (truncated vertices, cell-corner lattice);
+Implemented in `src/core/gateGrid.ts` (wsp-imported and app-drawn polygons
+and ellipses; Gating-ML gates stay exact). Ellipses are gated as FlowJo 10's
+180-vertex outline polygon; rectangle bounds at a linear axis edge are open.
+All 14 fixture workspaces: 221 of 228 populations exact (was 61); the other
+7 are pinned FlowJo version differences (`tests/wsp.test.ts`). Full spec:
+`docs/validation/flowjo-engine-specs.md`. FlowJo 11.2 differs (truncated vertices, cell-corner lattice);
 see `docs/validation/flowjo-engine-specs.md`.
 
 ## Tools allowed in this repo

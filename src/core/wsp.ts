@@ -25,6 +25,8 @@ export interface WspImport {
   warnings: string[];
 }
 
+const RECT_CHANNELS = 4096;
+
 interface ScaleInfo {
   spec: TransformSpec; // used for gate evaluation
   displayLength: number; // FlowJo display resolution for ellipse coordinates
@@ -170,7 +172,23 @@ export function parseWsp(xml: string): WspImport {
             const sp = scaleOf(n).spec;
             return { kind: 'channel', channel: r.channel, compensation: r.comp, transform: sp.kind === 'scale' ? sp : { kind: 'none' } };
           });
-          return { type: 'rect', dims, min: dimEls.map((d) => numAttr(d, 'min') ?? null), max: dimEls.map((d) => numAttr(d, 'max') ?? null) };
+          // FlowJo 10 treats a bound that falls on or beyond the first or last
+          // channel of a linear axis (4096 channels) as open
+          // (docs/validation/flowjo-engine-specs.md section 3).
+          const chan = (k: number, v: number) => {
+            const lr = scaleOf(names[k]).linearRange!;
+            return Math.floor(((v - lr[0]) * RECT_CHANNELS) / (lr[1] - lr[0]) + 0.5);
+          };
+          const lin = (k: number) => scaleOf(names[k]).linearRange !== undefined;
+          const min = dimEls.map((d, k) => {
+            const v = numAttr(d, 'min');
+            return v === undefined || (lin(k) && chan(k, v) <= 0) ? null : v;
+          });
+          const max = dimEls.map((d, k) => {
+            const v = numAttr(d, 'max');
+            return v === undefined || (lin(k) && chan(k, v) >= RECT_CHANNELS) ? null : v;
+          });
+          return { type: 'rect', dims, min, max };
         }
         case 'PolygonGate': {
           if (names.length !== 2) fail('WORKSPACE_INVALID', `Polygon gate "${popName}" is not 2-D`);
@@ -190,7 +208,9 @@ export function parseWsp(xml: string): WspImport {
           const axis = (k: number): GridAxis => {
             const lr = sc[k].linearRange;
             if (lr) return { mode: 'round', min: lr[0], max: lr[1] };
-            return { mode: 'floor', min: tf[k].displayMin, max: tf[k].displayMax };
+            const sp = sc[k].spec;
+            const logicle = sp.kind === 'logicle' ? { logicle: { T: sp.T, W: sp.W, M: sp.M, A: sp.A } } : {};
+            return { mode: 'floor', min: tf[k].displayMin, max: tf[k].displayMax, ...logicle };
           };
           const resolution = numAttr(g, 'gateResolution') ?? 256;
           return { type: 'polygon', dims, vertices, grid: { resolution, axes: [axis(0), axis(1)] } };
@@ -355,6 +375,13 @@ export function parseWsp(xml: string): WspImport {
       channelNames: [],
       eventCount: numAttr(node, 'count') ?? 0,
     };
+    const ranges: Record<string, [number, number]> = {};
+    for (const [name, sc] of scales) {
+      if (!sc.linearRange) continue;
+      const f = sc.spec.kind === 'scale' ? sc.spec.factor : 1;
+      ranges[name] = [sc.linearRange[0] / f, sc.linearRange[1] / f];
+    }
+    if (Object.keys(ranges).length) sample.flowjoLinearRanges = ranges;
     ws.samples.push(sample);
     flowjoCounts[fileName] = counts;
     for (const [ch, sc] of scales) {

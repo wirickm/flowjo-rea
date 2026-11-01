@@ -21,7 +21,7 @@ const PREFIX = 'Comp-';
 // timestep: the sample's $TIMESTEP. Coordinates are written in this app's
 // scale units (Time in seconds), so Time gets gain = $TIMESTEP, which the
 // reader (and, per observed files, FlowJo) turns into a unit factor.
-function fjTransform(spec: TransformSpec | undefined, warn: (m: string) => void, ch: string, timestep: number): { xml: (name: string) => string; spec: TransformSpec; length: number } {
+function fjTransform(spec: TransformSpec | undefined, warn: (m: string) => void, ch: string, timestep: number, range?: [number, number]): { xml: (name: string) => string; spec: TransformSpec; length: number } {
   const isTime = /^time$/i.test(ch) && timestep > 0;
   const gain = isTime ? timestep : 1;
   const param = (name: string) => `<data-type:parameter data-type:name="${esc(name)}" />`;
@@ -36,10 +36,10 @@ function fjTransform(spec: TransformSpec | undefined, warn: (m: string) => void,
     case 'flowjo-log':
       return { spec: s, length: 256, xml: (n) => `<transforms:log transforms:length="256" transforms:offset="${s.offset}" transforms:decades="${s.decades}">${param(n)}</transforms:log>` };
     case 'linear':
-      return { spec: { kind: 'none' }, length: 256, xml: (n) => `<transforms:linear transforms:minRange="0" transforms:maxRange="${s.T}" gain="${gain}">${param(n)}</transforms:linear>` };
+      return { spec: { kind: 'none' }, length: 256, xml: (n) => `<transforms:linear transforms:minRange="${range?.[0] ?? 0}" transforms:maxRange="${range?.[1] ?? s.T}" gain="${gain}">${param(n)}</transforms:linear>` };
     default:
       if (s.kind !== 'none') warn(`${ch}: ${s.kind} scale has no observed FlowJo equivalent; written as linear`);
-      return { spec: { kind: 'none' }, length: 256, xml: (n) => `<transforms:linear transforms:minRange="0" transforms:maxRange="262144" gain="${gain}">${param(n)}</transforms:linear>` };
+      return { spec: { kind: 'none' }, length: 256, xml: (n) => `<transforms:linear transforms:minRange="${range?.[0] ?? 0}" transforms:maxRange="${range?.[1] ?? 262144}" gain="${gain}">${param(n)}</transforms:linear>` };
   }
 }
 
@@ -64,7 +64,7 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
     // One FlowJo scale per parameter name: the workspace display scale.
     const scales = new Map<string, ReturnType<typeof fjTransform>>();
     const scaleFor = (name: string, channel: string) => {
-      if (!scales.has(name)) scales.set(name, fjTransform(ws.channelTransforms[channel], warn, channel, parseFloat(s.keywordsSnapshot['$TIMESTEP'] ?? '') || 0));
+      if (!scales.has(name)) scales.set(name, fjTransform(ws.channelTransforms[channel], warn, channel, parseFloat(s.keywordsSnapshot['$TIMESTEP'] ?? '') || 0, s.flowjoLinearRanges?.[name]));
       return scales.get(name)!;
     };
     // Channels from the FCS file, or from the workspace scales when the
@@ -73,6 +73,8 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
       scaleFor(ch, ch);
       if (square?.channels.includes(ch)) scaleFor(`${PREFIX}${ch}`, ch);
     }
+    // Axes whose FlowJo range was imported (e.g. Time) keep that range.
+    for (const name of Object.keys(s.flowjoLinearRanges ?? {})) scaleFor(name, name.startsWith(PREFIX) ? name.slice(PREFIX.length) : name);
     const byId = new Map(s.populations.map((p) => [p.id, p]));
     const path = (p: Population): string => (p.parentId ? `${path(byId.get(p.parentId)!)}/${p.name}` : p.name);
     const counts = input.counts?.(s.id);

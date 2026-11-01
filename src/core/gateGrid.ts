@@ -1,13 +1,54 @@
 // FlowJo 10 gate grid: polygon membership on an R x R lattice.
 // Behavioral spec: docs/validation/flowjo-engine-specs.md, section 1.
 import type { Dimension, GateGrid, GridAxis } from './model';
-import { makeTransform } from './transforms';
+import { logicleInverse, logicleParams, makeTransform } from './transforms';
 
 // Grid coordinate of a value on one axis. 'round' (linear axes) rounds to the
 // nearest lattice point; 'floor' (transformed axes) takes the cell index.
 export function gridCoord(a: GridAxis, resolution: number, v: number): number {
   const u = ((v - a.min) * resolution) / (a.max - a.min);
   return a.mode === 'round' ? Math.floor(u + 0.5) : Math.floor(u);
+}
+
+// Lattice coordinate of a gate vertex. On logicle axes FlowJo converts the
+// vertex to a data value and looks it up in its 4096-entry logicle table,
+// built from single-precision parameters; the index is scaled to the grid.
+export function vertexCoord(a: GridAxis, resolution: number, v: number): number {
+  if (!a.logicle) return gridCoord(a, resolution, v);
+  const { T, W, M, A } = a.logicle;
+  const raw = logicleInverse(logicleParams(T, W, M, A), (v - a.min) / (a.max - a.min));
+  return Math.trunc((tableIndex(logicleTable(T, W, M, A), raw) * resolution) / TABLE_SIZE);
+}
+
+const TABLE_SIZE = 4096;
+const tables = new Map<string, Float64Array>();
+// FlowJo 10 logicle table: entry i = inverse(x_i), x_0 = 0, x_{i+1} = x_i + 1/4096
+// (accumulated), parameters rounded to single precision.
+function logicleTable(T: number, W: number, M: number, A: number): Float64Array {
+  const key = `${T},${W},${M},${A}`;
+  let t = tables.get(key);
+  if (t) return t;
+  const p = logicleParams(Math.fround(T), Math.fround(W), Math.fround(M), Math.fround(A));
+  const out: number[] = [];
+  let x = 0;
+  for (let i = 0; i < TABLE_SIZE && x < 1; i++, x += 1 / TABLE_SIZE) out.push(logicleInverse(p, x));
+  t = Float64Array.from(out);
+  tables.set(key, t);
+  return t;
+}
+
+// Largest entry at or below the value (compared as a 32-bit float).
+function tableIndex(t: Float64Array, v: number): number {
+  const f = Math.fround(v);
+  if (!(f >= t[0])) return 0;
+  let lo = 0, hi = t.length - 1;
+  if (f >= t[hi]) return hi;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (t[mid] <= f) lo = mid;
+    else hi = mid;
+  }
+  return lo;
 }
 
 // Lattice point of an event, clamped into the grid. Linear axes see the value
@@ -39,8 +80,8 @@ export function insideOrOnPolygon(px: number, py: number, vx: number[], vy: numb
 // R x R membership mask (index x * R + y) for a polygon in gate units.
 export function polygonGridMask(grid: GateGrid, vertices: [number, number][]): Uint8Array {
   const R = grid.resolution;
-  const vx = vertices.map((v) => gridCoord(grid.axes[0], R, v[0]));
-  const vy = vertices.map((v) => gridCoord(grid.axes[1], R, v[1]));
+  const vx = vertices.map((v) => vertexCoord(grid.axes[0], R, v[0]));
+  const vy = vertices.map((v) => vertexCoord(grid.axes[1], R, v[1]));
   return latticeMask(R, vx, vy);
 }
 
@@ -88,7 +129,9 @@ export function defaultGrid(dims: [Dimension, Dimension], resolution = 256): Gat
   const axes = dims.map((d): GridAxis | null => {
     const t = makeTransform(d.transform);
     if (!(Number.isFinite(t.displayMin) && Number.isFinite(t.displayMax) && t.displayMax > t.displayMin)) return null;
-    return { mode: d.transform.kind === 'linear' ? 'round' : 'floor', min: t.displayMin, max: t.displayMax };
+    const s = d.transform;
+    const logicle = s.kind === 'logicle' ? { logicle: { T: s.T, W: s.W, M: s.M, A: s.A } } : {};
+    return { mode: s.kind === 'linear' ? 'round' : 'floor', min: t.displayMin, max: t.displayMax, ...logicle };
   });
   if (!axes[0] || !axes[1]) return undefined;
   return { resolution, axes: [axes[0], axes[1]] };

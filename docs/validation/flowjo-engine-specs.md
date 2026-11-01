@@ -29,9 +29,13 @@ on the 14 fixture workspaces (`docs/validation/wsp-counts.md`).
      FlowJo units = stored value x gain); lattice coordinate
      `floor(u + 0.5)`. Event values are read as 32-bit floats.
    - Transformed axes (logicle, biex, arcsinh, log): the index of the value
-     in the transform's lookup table (largest table entry at or below the
-     value), scaled to `R` and truncated; equivalently the display cell
-     `floor(display * R)` up to table resolution.
+     in the transform's 4096-entry lookup table (largest entry at or below
+     the value, compared as a 32-bit float), scaled to `R` and truncated.
+     For events this equals the display cell `floor(display * R)` on every
+     fixture, which the implementation uses. For vertices on logicle axes the
+     table matters: it is built from T, W, M, A rounded to single precision,
+     with entry `i = inverse(x_i)`, `x_0 = 0`, `x_{i+1} = x_i + 1/4096`
+     (accumulated); the implementation reproduces it (`vertexCoord`).
    - Event coordinates are clamped to `0..R-1`; vertex coordinates are not.
    - FlowJo can mirror the y axis (`R - u`) for linear axes; because events
      and vertices use the same mapping this changes only rounding ties. The
@@ -44,10 +48,10 @@ on the 14 fixture workspaces (`docs/validation/wsp-counts.md`).
 4. **Membership.** An event is in the gate when its lattice point is in the
    mask. Events with a NaN coordinate are outside.
 
-Reference result (all 14 workspaces): 47 of 75 polygon populations exact,
-worst difference introduced by a polygon 4.2 events (previously 684 with an
-exact point-in-polygon test). Residuals are open: the transform lookup-table
-definition (table size and edges) and rounding ties are approximated.
+Reference result (all 14 workspaces): every polygon population matches
+FlowJo exactly except where saves by different FlowJo versions of the same
+gate disagree (see `docs/compatibility-matrix.md`); previously the worst
+difference introduced by a polygon was 684 events.
 
 Scope in this app: polygons imported from .wsp and polygons drawn in the app
 use the grid; Gating-ML polygons keep exact point-in-polygon membership,
@@ -74,22 +78,44 @@ exactly like a polygon (section 1) on that outline:
    `r = a sqrt((1 - e^2) / (1 - e^2 cos^2 t))`; vertex
    `(round(cx + r cos(t + angle)), round(cy + r sin(t + angle)))` with
    `round(x) = floor(x + 0.5)`. Consecutive duplicate vertices are dropped.
-4. **Membership.** The outline (already on the lattice) is gated with the
-   section 1 grid rule at the ellipse's axes.
+4. **Back to data values.** Each outline vertex (a pixel) is converted to a
+   data value (`channelToScale` of `px * width / 256`) and then placed on the
+   grid like any polygon vertex (section 1, step 2), so on logicle axes a
+   vertex can move one cell through the single-precision lookup table.
+5. **Membership.** The resulting polygon is gated with the section 1 rule.
 
-Reference result: logicle ellipse populations (3, 8_color_ICS_with_ellipse.wsp)
-now differ by 7 to 19 events (0.1 to 0.3% of the population; previously 124 to
-232 events, 2 to 3%); the linear 51-event ellipse stays exact. Residual source:
-the same approximated transform lookup table as for polygons.
+Reference result: all 4 fixture ellipses exact (3 logicle in
+8_color_ICS_with_ellipse.wsp, previously 124 to 232 events off; 1 linear).
+Without step 4 the logicle ellipses were 7 to 19 events off. FlowJo 10.8.1
+(which saved that file) builds the outline identically to 10.6.2.
 
 Scope in this app: ellipses imported from .wsp (with their stored edge points)
 and ellipses drawn in the app (edge points derived from the axes, then
 snapped to the lattice) use this rule; Gating-ML ellipsoids stay exact.
 
-## 3. Open items
+## 3. Rectangle gates (FlowJo 10.6.2)
+
+Status: *observed* (native `FGate::GetRectRangeInScale`); implemented in the
+.wsp importer; reference-compared.
+
+- Membership is `min <= v < max` on each dimension, as before.
+- A bound is treated as open when it falls on or beyond the edge of a linear
+  axis: with channel `c = floor((b - min) * C / (max - min) + 0.5)` and
+  `C = 4096` (FlowJo uses the parameter's channel range, at least 4096), a
+  lower bound with `c <= 0` becomes `-infinity` and an upper bound with
+  `c >= C` becomes `+infinity`. `[min, max]` is the sample's
+  `transforms:linear` range.
+- Effect on the fixtures: E01's Time gate (lower bound 1.28, axis minimum
+  1.2747, its first event) keeps the two earliest events, as FlowJo does.
+- The importer keeps each sample's FlowJo linear ranges
+  (`SampleState.flowjoLinearRanges`) and the .wsp writer writes them back, so
+  FlowJo applies the same rule to exported files.
+- Not applied to transformed axes (no fixture exercises it there).
+
+## 4. Open items
 
 - Statistic conventions (median, percentiles, robust CV).
-- Exact lookup-table definition for transformed axes (polygon residuals).
+- Channel range above 4096 (FlowJo reads it from a keyword); not exercised.
 
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 

@@ -43,7 +43,7 @@ describe('FlowJo 10 gate grid', () => {
       { kind: 'channel', channel: 'CD3', transform: { kind: 'logicle', T: 262144, W: 0.5, M: 4.5, A: 0 } },
     ])!;
     expect(g.axes[0]).toEqual({ mode: 'round', min: 0, max: 1 });
-    expect(g.axes[1]).toEqual({ mode: 'floor', min: 0, max: 1 });
+    expect(g.axes[1]).toEqual({ mode: 'floor', min: 0, max: 1, logicle: { T: 262144, W: 0.5, M: 4.5, A: 0 } });
     expect(defaultGrid([
       { kind: 'channel', channel: 'FSC-A', transform: { kind: 'none' } },
       { kind: 'channel', channel: 'SSC-A', transform: { kind: 'none' } },

@@ -24,7 +24,7 @@ const TABLE_SIZE = 4096;
 const tables = new Map<string, Float64Array>();
 // FlowJo 10 logicle table: entry i = inverse(x_i), x_0 = 0, x_{i+1} = x_i + 1/4096
 // (accumulated), parameters rounded to single precision.
-function logicleTable(T: number, W: number, M: number, A: number): Float64Array {
+export function logicleTable(T: number, W: number, M: number, A: number): Float64Array {
   const key = `${T},${W},${M},${A}`;
   let t = tables.get(key);
   if (t) return t;
@@ -38,7 +38,7 @@ function logicleTable(T: number, W: number, M: number, A: number): Float64Array 
 }
 
 // Largest entry at or below the value (compared as a 32-bit float).
-function tableIndex(t: Float64Array, v: number): number {
+export function tableIndex(t: Float64Array, v: number): number {
   const f = Math.fround(v);
   if (!(f >= t[0])) return 0;
   let lo = 0, hi = t.length - 1;

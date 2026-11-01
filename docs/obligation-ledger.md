@@ -48,7 +48,7 @@ Two parts:
 |---|---|---|---|
 | wsp.polygon-counts | Polygon counts equal FlowJo's | verified on fixtures: FlowJo 10 gate grid (`src/core/gateGrid.ts`); every fixture polygon exact except pinned FlowJo version differences (`tests/wsp.test.ts`), flowjo-file authority | A FlowJo-saved polygon on non-logicle transformed axes (biex, arcsinh) |
 | wsp.logicle-ellipse | Logicle ellipse counts equal FlowJo's | verified on fixtures: FlowJo 10 outline polygon; all 4 fixture ellipses exact (`tests/wsp.test.ts`), flowjo-file authority | - |
-| stats.flowjo-conventions | Median/percentile/robust CV match FlowJo | blocked | FlowJo statistic output on a known population |
+| stats.flowjo-conventions | Median/percentile/robust CV match FlowJo | implemented from the FlowJo 10.6.2 engine (`src/core/flowjoStats.ts`, specs section 4); verifier `tests/flowjo-stats.test.ts` (hand authority) | FlowJo statistic output on a known population (flowjo-file authority) |
 | wsp.export | Exported .wsp opens in FlowJo with equal counts | blocked | Open in FlowJo |
 | unmix.vendor | OLS unmixing matches vendor output | blocked | Vendor-unmixed reference data |
 

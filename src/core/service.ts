@@ -10,6 +10,7 @@ import { writeFcs } from './fcsWriter';
 import type { DerivedParameter, Dimension, Population, StatColumn } from './model';
 import { populationPath } from './model';
 import { fingerprint } from './project';
+import type { ChannelScale } from './flowjoStats';
 import { computeStat, gather } from './stats';
 import { makeTransform } from './transforms';
 import { fitCellCycle, type CellCycleFit } from './cellcycle';
@@ -61,6 +62,8 @@ export interface PlotResult {
 
 export interface StatsRequest extends AnalyzeRequest {
   columns: StatColumn[];
+  // FlowJo channel scales (by channel name) for FlowJo-convention statistics.
+  scales?: Record<string, ChannelScale>;
 }
 
 export interface WizardRequest {
@@ -220,7 +223,7 @@ export class AnalysisService {
         const mask = p ? eng.masks.get(p.id)! : eng.root;
         let values: Float64Array | null = null;
         if (c.channel) values = gather(eng.column(c.channel), mask);
-        return computeStat(c.stat, values, { count, parent, grandparent: grand, total }, c.percentile);
+        return computeStat(c.stat, values, { count, parent, grandparent: grand, total }, c.percentile, c.channel ? r.scales?.[c.channel] : undefined);
       } catch (e) {
         if (e instanceof AppError) return `error: ${e.message}`;
         throw e;

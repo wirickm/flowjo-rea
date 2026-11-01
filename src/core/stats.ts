@@ -1,6 +1,8 @@
 // Population statistics on compensated, untransformed channel values.
-// Definitions are documented in docs/compatibility-matrix.md; FlowJo's exact
-// conventions for median/percentiles are not established (see gaps).
+// Definitions are documented in docs/compatibility-matrix.md. With a FlowJo
+// channel scale, median, percentiles, robust SD and robust CV follow FlowJo
+// 10's histogram conventions (src/core/flowjoStats.ts).
+import { flowjoPercentile, flowjoRobustCv, flowjoRobustSd, type ChannelScale } from './flowjoStats';
 import type { StatKind } from './model';
 
 export function gather(col: Float64Array, mask: Uint8Array): Float64Array {
@@ -26,6 +28,7 @@ export function computeStat(
   values: Float64Array | null,
   counts: { count: number; parent: number; grandparent: number; total: number },
   percentile = 50,
+  scale?: ChannelScale,
 ): number {
   switch (kind) {
     case 'count':
@@ -38,6 +41,12 @@ export function computeStat(
       return counts.total > 0 ? (100 * counts.count) / counts.total : NaN;
   }
   if (!values || values.length === 0) return NaN;
+  if (scale) {
+    if (kind === 'median') return flowjoPercentile(values, scale, 50);
+    if (kind === 'percentile') return flowjoPercentile(values, scale, percentile);
+    if (kind === 'robustSd') return flowjoRobustSd(values, scale);
+    if (kind === 'robustCv') return flowjoRobustCv(values, scale);
+  }
   const n = values.length;
   let sum = 0;
   for (let i = 0; i < n; i++) sum += values[i];

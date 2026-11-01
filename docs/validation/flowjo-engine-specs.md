@@ -112,10 +112,48 @@ Status: *observed* (native `FGate::GetRectRangeInScale`); implemented in the
   FlowJo applies the same rule to exported files.
 - Not applied to transformed axes (no fixture exercises it there).
 
-## 4. Open items
+## 4. Statistics (FlowJo 10.6.2)
 
-- Statistic conventions (median, percentiles, robust CV).
+Status: *observed* (native `GParameter::Median/Percentile/RobustSD/RobustCV`,
+`BasicHistogram`); implemented in `src/core/flowjoStats.ts`; **not
+reference-validated** (the fixtures contain no FlowJo-computed median,
+percentile or robust statistic; only Count statistic nodes).
+
+1. **Histogram.** The population is binned into 4096 channels on the
+   parameter's scale with the same mapping as gating: linear axes
+   `floor((v - min) * 4096 / (max - min) + 0.5)` clamped to 0..4095 (value as
+   a 32-bit float); logicle axes the 4096-entry single-precision lookup table
+   index (section 1).
+2. **Percentile p** (median: p = 50). Target `t = float(float(n * p) * 0.01)`
+   in single precision; the result channel is the first channel `k` (from 0)
+   whose cumulative count, as a 32-bit float, is `>= t`; if none of the first
+   4095 channels reaches it, 4095; if `t <= 0`, channel 0. The value is the
+   channel converted back to data units: linear `min + k * (max - min) / 4096`,
+   logicle table entry `k`. No interpolation.
+3. **Robust SD.** With channels `c16`, `c84` for p = 15.87 and 84.13 and data
+   values `lo`, `hi`, `med` (single precision):
+   - `c84 > 4094` (top saturated): `med - lo`;
+   - else, `c16 < 1` (bottom saturated): `hi - med`;
+   - else, if `0.75 (hi - med) > med - lo` and (`med < 0` or
+     `c16 < 0.05 * 4096`): `hi - med`;
+   - otherwise `(hi - lo) / 2`.
+4. **Robust CV** = `100 * robust SD / median` (median not made absolute);
+   0 when the population has fewer than 6 events.
+5. Mean, SD, CV, geometric mean, min, max are not histogram-based (not
+   analysed further). MAD uses a histogram median and then the deviations of
+   the individual events; its final step is not decoded, so this app keeps
+   its exact MAD.
+
+Scope in this app: statistics use these conventions when the channel's
+FlowJo scale is known: an imported FlowJo linear range (per sample), or a
+workspace display scale that is linear or logicle. Other channels (arcsinh,
+biex, hyperlog, raw) keep exact order statistics (type-7 interpolation).
+
+## 5. Open items
+
 - Channel range above 4096 (FlowJo reads it from a keyword); not exercised.
+- Statistic conventions for arcsinh/biex axes and MAD's final step.
+- FlowJo-computed median/percentile/robust values to validate section 4.
 
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 

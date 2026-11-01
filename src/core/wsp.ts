@@ -12,6 +12,7 @@ import type { SpilloverMatrix } from './compensation';
 import { fail } from './errors';
 import { emptyWorkspace, type Dimension, type Gate, type GridAxis, type Group, type KeywordRule, type Population, type SampleState, type StatKind, type Workspace } from './model';
 import { syncLiveGroups } from './project';
+import { defaultGrid } from './gateGrid';
 import { STAT_NEEDS_CHANNEL } from './stats';
 import { makeTransform, type TransformSpec } from './transforms';
 import { attr, kid, kids, local, numAttr, parseXml, type El } from './xml';
@@ -239,7 +240,10 @@ export function parseWsp(xml: string): WspImport {
             [a2 * ct * ct + b2 * st * st, (a2 - b2) * ct * st],
             [(a2 - b2) * ct * st, a2 * st * st + b2 * ct * ct],
           ];
-          return { type: 'ellipsoid', dims, mean: [cx, cy], cov, distanceSquare: 1 };
+          // FlowJo 10 gates the ellipse as an outline polygon built from the
+          // integer edge points (docs/validation/flowjo-engine-specs.md section 2).
+          const grid = edge.length === 4 ? defaultGrid([dims[0], dims[1]]) : undefined;
+          return { type: 'ellipsoid', dims, mean: [cx, cy], cov, distanceSquare: 1, ...(grid ? { grid, edges: edge.map((q) => [q[0], q[1]] as [number, number]) } : {}) };
         }
         default:
           sw.push(`Gate type ${local(g)} in "${popName}" is not supported`);

@@ -141,8 +141,12 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
         const ct = Math.cos(e.theta), st = Math.sin(e.theta);
         const pts = [
           [e.cx + c * ct, e.cy + c * st], [e.cx - c * ct, e.cy - c * st], // foci
-          [e.cx + e.a * ct, e.cy + e.a * st], [e.cx - e.a * ct, e.cy - e.a * st], // major ends
-          [e.cx - e.b * st, e.cy + e.b * ct], [e.cx + e.b * st, e.cy - e.b * ct], // minor ends
+          // Edge points: major ends, then minor ends (FlowJo's order); imported
+          // FlowJo edges are written back unchanged.
+          ...(g.edges?.length === 4 ? g.edges : [
+            [e.cx + e.a * ct, e.cy + e.a * st], [e.cx - e.a * ct, e.cy - e.a * st],
+            [e.cx - e.b * st, e.cy + e.b * ct], [e.cx + e.b * st, e.cy - e.b * ct],
+          ]),
         ].map(([x, y]) => [toDisplay(x, 0), toDisplay(y, 1)]);
         const v = (q: number[]) => `<gating:vertex>${coord(q[0])}${coord(q[1])}</gating:vertex>`;
         // gating:distance semantics in FlowJo are unknown (not 2a in observed files); 2a written.

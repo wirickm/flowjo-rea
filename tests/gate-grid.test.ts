@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultGrid, eventCell, gridCoord, insideOrOnPolygon, polygonGridMask } from '../src/core/gateGrid';
+import { defaultGrid, ellipseLatticePolygon, eventCell, gridCoord, insideOrOnPolygon, latticeMask, polygonGridMask } from '../src/core/gateGrid';
 import type { GateGrid } from '../src/core/model';
 
 const lin: GateGrid = { resolution: 256, axes: [{ mode: 'round', min: 0, max: 262144 }, { mode: 'round', min: 0, max: 262144 }] };
@@ -48,5 +48,31 @@ describe('FlowJo 10 gate grid', () => {
       { kind: 'channel', channel: 'FSC-A', transform: { kind: 'none' } },
       { kind: 'channel', channel: 'SSC-A', transform: { kind: 'none' } },
     ])).toBeUndefined();
+  });
+
+  it('outlines an ellipse with at most 180 integer vertices on the true curve', () => {
+    // Circle of radius 20 centred at (100, 60).
+    const { vx, vy } = ellipseLatticePolygon([[120, 60], [80, 60], [100, 80], [100, 40]]);
+    expect(vx.length).toBeLessThanOrEqual(180);
+    expect(vx.length).toBeGreaterThan(100);
+    for (let i = 0; i < vx.length; i++) {
+      expect(Number.isInteger(vx[i]) && Number.isInteger(vy[i])).toBe(true);
+      expect(Math.abs(Math.hypot(vx[i] - 100, vy[i] - 60) - 20)).toBeLessThanOrEqual(Math.SQRT1_2 + 1e-9);
+    }
+    // No two consecutive vertices repeat.
+    for (let i = 1; i < vx.length; i++) expect(vx[i] !== vx[i - 1] || vy[i] !== vy[i - 1]).toBe(true);
+    // Lattice points inside or on the outline: close to pi r^2 + boundary.
+    const n = latticeMask(256, vx, vy).reduce((a, b) => a + b, 0);
+    expect(n).toBeGreaterThan(Math.PI * 400);
+    expect(n).toBeLessThan(Math.PI * 21 * 21);
+  });
+
+  it('rotates the outline with the major axis (atan of the endpoint slope)', () => {
+    // Major axis along the diagonal from (90, 90) to (110, 110); minor half-length 3.
+    const { vx, vy } = ellipseLatticePolygon([[90, 90], [110, 110], [102, 98], [98, 102]]);
+    const far = vx.map((x, i) => Math.hypot(x - 100, vy[i] - 100)).reduce((a, b) => Math.max(a, b));
+    expect(far).toBeGreaterThan(13.5);
+    const i = vx.findIndex((x, k) => Math.hypot(x - 100, vy[k] - 100) === far);
+    expect(Math.sign(vx[i] - 100)).toBe(Math.sign(vy[i] - 100));
   });
 });

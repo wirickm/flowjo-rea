@@ -55,7 +55,7 @@ describe.skipIf(!haveFixtures)('wsp export round trip (own reader)', () => {
       populations: [
         { id: 'cells', name: 'Cells', parentId: null, gate: { type: 'rect', dims: [d('FSC-A', lin), d('SSC-A', lin)], min: [0.15, 0.04], max: [0.85, 0.6] } },
         { id: 'poly', name: 'CD3+CD4+', parentId: 'cells', gate: { type: 'polygon', dims: [d('CD3 APC-H7 FLR-A', L), d('CD4 PE-Cy7 FLR-A', L)], vertices: [[0.55, 0.45], [0.95, 0.45], [0.95, 0.95], [0.55, 0.95]], grid: defaultGrid([d('CD3 APC-H7 FLR-A', L), d('CD4 PE-Cy7 FLR-A', L)]) } },
-        { id: 'ell', name: 'Ell', parentId: 'cells', gate: { type: 'ellipsoid', dims: [d('CD3 APC-H7 FLR-A', L), d('CD4 PE-Cy7 FLR-A', L)], mean: [0.45, 0.4], cov: [[0.012, 0.005], [0.005, 0.006]], distanceSquare: 1 } },
+        { id: 'ell', name: 'Ell', parentId: 'cells', gate: { type: 'ellipsoid', dims: [d('CD3 APC-H7 FLR-A', L), d('CD4 PE-Cy7 FLR-A', L)], mean: [0.45, 0.4], cov: [[0.012, 0.005], [0.005, 0.006]], distanceSquare: 1, grid: defaultGrid([d('CD3 APC-H7 FLR-A', L), d('CD4 PE-Cy7 FLR-A', L)]) } },
         ...[0, 1].flatMap((sx) => [0, 1].map((sy) => ({ id: `q${sx}${sy}`, name: `Q${sx}${sy}`, parentId: 'cells', gate: { type: 'quadrant' as const, dims: [d('CD3 APC-H7 FLR-A', L), d('CD4 PE-Cy7 FLR-A', L)], dividers: [[0.5], [0.5]], side: [sx, sy] } }))),
         { id: 'or', name: 'Ell or poly', parentId: 'cells', gate: { type: 'boolean', op: 'or', operands: [{ ref: 'ell' }, { ref: 'poly' }] } },
         { id: 'not', name: 'not poly', parentId: 'cells', gate: { type: 'boolean', op: 'not', operands: [{ ref: 'poly' }] } },

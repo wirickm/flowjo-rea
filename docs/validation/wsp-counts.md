@@ -63,7 +63,7 @@ is compatible in general.
 | polygon[logicle,linear] | 34 | 20 | 2.4 | 0.001 pp |
 | polygon[logicle,logicle] | 24 | 17 | 4.2 | 0.003 pp |
 | rect[logicle,logicle] | 99 | 99 | 0.1 | 0.000 pp |
-| ellipsoid[logicle,logicle] | 3 | 0 | 211.9 | 0.158 pp |
+| ellipsoid[logicle,logicle] | 3 | 0 | 18.9 | 0.014 pp |
 | boolean-or | 3 | 3 | 0.0 | 0.000 pp |
 | boolean-not | 9 | 7 | 0.0 | 0.000 pp |
 | boolean-and | 1 | 1 | 0.0 | 0.000 pp |
@@ -148,7 +148,7 @@ is compatible in general.
 | 8_color_ICS_with_ellipse | E03_009 | Time/Singlets/aAmine-/CD3+/CD8+/IFNg+ | rect[logicle,logicle] | 47046 | 47046 | 1229 | 1229 | 0 | 0.00% | 2.61% | 2.61% | 0.0 | 0.0 |
 | 8_color_ICS_with_ellipse | E03_009 | Time/Singlets/aAmine-/CD3+/CD8+/IL2+ | rect[logicle,logicle] | 47046 | 47046 | 129 | 129 | 0 | 0.00% | 0.27% | 0.27% | 0.0 | 0.0 |
 | 8_color_ICS_with_ellipse | E03_009 | Time/Singlets/aAmine-/CD3+/CD8+/TNFa+ | rect[logicle,logicle] | 47046 | 47046 | 827 | 827 | 0 | 0.00% | 1.76% | 1.76% | 0.0 | 0.0 |
-| 8_color_ICS_with_ellipse | E03_009 | Time/Singlets/aAmine-/CD3+/ellipse1 | ellipsoid[logicle,logicle] | 132388 | 132388 | 6002 | 5885 | -117 | -1.95% | 4.53% | 4.45% | 0.0 | -117.0 |
+| 8_color_ICS_with_ellipse | E03_009 | Time/Singlets/aAmine-/CD3+/ellipse1 | ellipsoid[logicle,logicle] | 132388 | 132388 | 6002 | 5995 | -7 | -0.12% | 4.53% | 4.53% | 0.0 | -7.0 |
 | 8_color_ICS_with_ellipse | E05_010 | Time | rect[linear,linear] | 285290 | 285290 | 284933 | 284933 | 0 | 0.00% | 99.87% | 99.87% | 0.0 | 0.0 |
 | 8_color_ICS_with_ellipse | E05_010 | Time/Singlets | polygon[linear,linear] | 284933 | 284933 | 236035 | 236035 | 0 | 0.00% | 82.84% | 82.84% | 0.0 | 0.0 |
 | 8_color_ICS_with_ellipse | E05_010 | Time/Singlets/aAmine- | polygon[logicle,linear] | 236035 | 236035 | 161247 | 161247 | 0 | 0.00% | 68.31% | 68.31% | 0.0 | 0.0 |
@@ -163,7 +163,7 @@ is compatible in general.
 | 8_color_ICS_with_ellipse | E05_010 | Time/Singlets/aAmine-/CD3+/CD8+/IFNg+ | rect[logicle,logicle] | 46627 | 46627 | 350 | 350 | 0 | 0.00% | 0.75% | 0.75% | 0.0 | 0.0 |
 | 8_color_ICS_with_ellipse | E05_010 | Time/Singlets/aAmine-/CD3+/CD8+/IL2+ | rect[logicle,logicle] | 46627 | 46627 | 65 | 65 | 0 | 0.00% | 0.14% | 0.14% | 0.0 | 0.0 |
 | 8_color_ICS_with_ellipse | E05_010 | Time/Singlets/aAmine-/CD3+/CD8+/TNFa+ | rect[logicle,logicle] | 46627 | 46627 | 337 | 337 | 0 | 0.00% | 0.72% | 0.72% | 0.0 | 0.0 |
-| 8_color_ICS_with_ellipse | E05_010 | Time/Singlets/aAmine-/CD3+/ellipse1 | ellipsoid[logicle,logicle] | 131510 | 131510 | 6133 | 6024 | -109 | -1.78% | 4.66% | 4.58% | 0.0 | -109.0 |
+| 8_color_ICS_with_ellipse | E05_010 | Time/Singlets/aAmine-/CD3+/ellipse1 | ellipsoid[logicle,logicle] | 131510 | 131510 | 6133 | 6126 | -7 | -0.11% | 4.66% | 4.66% | 0.0 | -7.0 |
 | 8_color_ICS_with_ellipse | E01_008 | Time | rect[linear,linear] | 290172 | 290172 | 290172 | 290170 | -2 | -0.00% | 100.00% | 100.00% | 0.0 | -2.0 |
 | 8_color_ICS_with_ellipse | E01_008 | Time/Singlets | polygon[linear,linear] | 290172 | 290170 | 239691 | 239689 | -2 | -0.00% | 82.60% | 82.60% | -1.7 | -0.3 |
 | 8_color_ICS_with_ellipse | E01_008 | Time/Singlets/aAmine- | polygon[logicle,linear] | 239691 | 239689 | 164942 | 164940 | -2 | -0.00% | 68.81% | 68.81% | -1.4 | -0.6 |
@@ -178,7 +178,7 @@ is compatible in general.
 | 8_color_ICS_with_ellipse | E01_008 | Time/Singlets/aAmine-/CD3+/CD8+/IFNg+ | rect[logicle,logicle] | 47241 | 47241 | 2 | 2 | 0 | 0.00% | 0.00% | 0.00% | 0.0 | 0.0 |
 | 8_color_ICS_with_ellipse | E01_008 | Time/Singlets/aAmine-/CD3+/CD8+/IL2+ | rect[logicle,logicle] | 47241 | 47241 | 11 | 11 | 0 | 0.00% | 0.02% | 0.02% | 0.0 | 0.0 |
 | 8_color_ICS_with_ellipse | E01_008 | Time/Singlets/aAmine-/CD3+/CD8+/TNFa+ | rect[logicle,logicle] | 47241 | 47241 | 8 | 8 | 0 | 0.00% | 0.02% | 0.02% | 0.0 | 0.0 |
-| 8_color_ICS_with_ellipse | E01_008 | Time/Singlets/aAmine-/CD3+/ellipse1 | ellipsoid[logicle,logicle] | 133860 | 133859 | 7256 | 7044 | -212 | -2.92% | 5.42% | 5.26% | -0.1 | -211.9 |
+| 8_color_ICS_with_ellipse | E01_008 | Time/Singlets/aAmine-/CD3+/ellipse1 | ellipsoid[logicle,logicle] | 133860 | 133859 | 7256 | 7237 | -19 | -0.26% | 5.42% | 5.41% | -0.1 | -18.9 |
 | 8_color_ICS_boolean_gate_testing | E03_009 | Time | rect[linear,linear] | 283969 | 283969 | 283968 | 283968 | 0 | 0.00% | 100.00% | 100.00% | 0.0 | 0.0 |
 | 8_color_ICS_boolean_gate_testing | E03_009 | Time/Singlets | polygon[linear,linear] | 283968 | 283968 | 237375 | 237375 | 0 | 0.00% | 83.59% | 83.59% | 0.0 | 0.0 |
 | 8_color_ICS_boolean_gate_testing | E03_009 | Time/Singlets/aAmine- | polygon[logicle,linear] | 237375 | 237375 | 162117 | 162117 | 0 | 0.00% | 68.30% | 68.30% | 0.0 | 0.0 |

@@ -55,11 +55,39 @@ because the Gating-ML standard and its ISAC truth data define it that way.
 
 ## 2. Ellipse gates (FlowJo 10.6.2)
 
-Status: not yet analysed for FlowJo 10 (see Appendix A.2 for FlowJo 11).
+Status: *observed* (FlowJo 10.6.2 Java classes, read with the JDK's `javap`);
+implemented in `src/core/gateGrid.ts`; reference-compared on the fixtures.
+
+FlowJo 10's native engine has no ellipse gate. The Java layer converts every
+ellipse to a polygon before sending it to the engine, so an ellipse is gated
+exactly like a polygon (section 1) on that outline:
+
+1. **Edge points.** The .wsp `gating:edge` holds four integer points in
+   display units (0..255 on the 256-pixel graph frame): the major-axis
+   endpoints `p0`, `p1`, then the minor-axis endpoints `p2`, `p3`. The foci
+   and `gating:distance` are not used for gating.
+2. **Shape.** `a = |p0 p1| / 2`, `b = |p2 p3| / 2` (swapped if `a < b`);
+   centre = midpoint of `p0 p1`; angle = `atan((p0.y - p1.y) / (p0.x - p1.x))`
+   (plain arctangent, not atan2); `e^2 = 1 - b^2 / a^2`.
+3. **Outline.** For `i = 0..179`: `t = 2 pi (i / 180)` with the fraction
+   `i / 180` computed in single precision; polar radius
+   `r = a sqrt((1 - e^2) / (1 - e^2 cos^2 t))`; vertex
+   `(round(cx + r cos(t + angle)), round(cy + r sin(t + angle)))` with
+   `round(x) = floor(x + 0.5)`. Consecutive duplicate vertices are dropped.
+4. **Membership.** The outline (already on the lattice) is gated with the
+   section 1 grid rule at the ellipse's axes.
+
+Reference result: logicle ellipse populations (3, 8_color_ICS_with_ellipse.wsp)
+now differ by 7 to 19 events (0.1 to 0.3% of the population; previously 124 to
+232 events, 2 to 3%); the linear 51-event ellipse stays exact. Residual source:
+the same approximated transform lookup table as for polygons.
+
+Scope in this app: ellipses imported from .wsp (with their stored edge points)
+and ellipses drawn in the app (edge points derived from the axes, then
+snapped to the lattice) use this rule; Gating-ML ellipsoids stay exact.
 
 ## 3. Open items
 
-- FlowJo 10 ellipse gates (logicle ellipse gap 2-3%).
 - Statistic conventions (median, percentiles, robust CV).
 - Exact lookup-table definition for transformed axes (polygon residuals).
 

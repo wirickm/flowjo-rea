@@ -41,11 +41,44 @@ export function polygonGridMask(grid: GateGrid, vertices: [number, number][]): U
   const R = grid.resolution;
   const vx = vertices.map((v) => gridCoord(grid.axes[0], R, v[0]));
   const vy = vertices.map((v) => gridCoord(grid.axes[1], R, v[1]));
+  return latticeMask(R, vx, vy);
+}
+
+// R x R mask of the lattice points inside or on a polygon given in lattice units.
+export function latticeMask(R: number, vx: number[], vy: number[]): Uint8Array {
   const mask = new Uint8Array(R * R);
   const x0 = Math.max(0, Math.min(...vx)), x1 = Math.min(R - 1, Math.max(...vx));
   const y0 = Math.max(0, Math.min(...vy)), y1 = Math.min(R - 1, Math.max(...vy));
   for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) if (insideOrOnPolygon(x, y, vx, vy)) mask[x * R + y] = 1;
   return mask;
+}
+
+// FlowJo 10 draws an ellipse as a 180-vertex outline on the 256-pixel graph
+// frame and gates on that polygon. edges = major-axis endpoints, then
+// minor-axis endpoints, in lattice units (FlowJo stores them as integers).
+// Spec: docs/validation/flowjo-engine-specs.md, section 2.
+export function ellipseLatticePolygon(edges: [number, number][]): { vx: number[]; vy: number[] } {
+  const [p0, p1, p2, p3] = edges;
+  let a = Math.hypot(p0[0] - p1[0], p0[1] - p1[1]) / 2;
+  let b = Math.hypot(p2[0] - p3[0], p2[1] - p3[1]) / 2;
+  if (a < b) [a, b] = [b, a];
+  const angle = Math.atan((p0[1] - p1[1]) / (p0[0] - p1[0]));
+  const cx = (p0[0] + p1[0]) / 2;
+  const cy = (p0[1] + p1[1]) / 2;
+  const e2 = a === 0 ? 0 : 1 - (b * b) / (a * a);
+  const vx: number[] = [];
+  const vy: number[] = [];
+  let lx = 0, ly = 0;
+  for (let i = 0; i < 180; i++) {
+    // The angle fraction is computed in single precision.
+    const t = Math.fround(Math.fround(i) / Math.fround(180)) * 2 * Math.PI;
+    const r = a * Math.sqrt((1 - e2) / (1 - e2 * Math.cos(t) * Math.cos(t)));
+    const x = Math.floor(cx + r * Math.cos(t + angle) + 0.5);
+    const y = Math.floor(cy + r * Math.sin(t + angle) + 0.5);
+    if (x !== lx || y !== ly) { vx.push(x); vy.push(y); }
+    lx = x; ly = y;
+  }
+  return { vx, vy };
 }
 
 // Grid for a polygon drawn in this app: FlowJo's default resolution over each

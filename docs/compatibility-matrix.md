@@ -110,7 +110,7 @@ which events differ.
 | polygon [linear,linear] | 17 | 10 | 2.1 | 0.001 pp | Near-exact with the FlowJo 10 gate grid (`docs/validation/flowjo-engine-specs.md` section 1) |
 | polygon [logicle,linear] | 34 | 20 | 2.4 | 0.001 pp | Near-exact; residuals from the approximated logicle lookup table |
 | polygon [logicle,logicle] | 24 | 17 | 4.2 | 0.003 pp | Near-exact; same residual source |
-| ellipse [logicle,logicle] | 3 | 0 | 222 | 0.166 pp | **Gap**: FlowJo higher by 124-232 events (2.0-3.2% of the population) |
+| ellipse [logicle,logicle] | 3 | 0 | 18.9 | 0.014 pp | Near-exact (7-19 events, was 124-232): FlowJo 10 gates the 180-vertex outline polygon (specs section 2) |
 
 Before the FlowJo 10 gate grid (exact point-in-polygon test) the polygon rows
 had 0 exact populations, worst introduced difference 684 events (Singlets,
@@ -138,7 +138,7 @@ gate grid, which explains those counts; it is kept as history. Remaining
 polygon residuals (at most 4.2 events introduced per gate) are attributed to
 the approximated transform lookup table and rounding ties, pending a finer
 analysis of FlowJo 10's table construction. Item 4 below still applies to the
-logicle ellipse: FlowJo event-level export of ellipse1.
+logicle ellipse residual: FlowJo event-level export of ellipse1.
 
 ### Construct coverage
 

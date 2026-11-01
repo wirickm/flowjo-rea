@@ -29,7 +29,10 @@ export type Gate =
   // exact point-in-polygon (Gating-ML semantics).
   | { type: 'polygon'; dims: [Dimension, Dimension]; vertices: [number, number][]; grid?: GateGrid }
   // (x-mean)^T inv(cov) (x-mean) <= distanceSquare
-  | { type: 'ellipsoid'; dims: Dimension[]; mean: number[]; cov: number[][]; distanceSquare: number }
+  // grid (2-D only): evaluate as FlowJo 10 does, on the outline polygon of the
+  // ellipse whose axis endpoints are edges (gate units; derived from mean/cov
+  // when absent). Without grid: exact (Gating-ML semantics).
+  | { type: 'ellipsoid'; dims: Dimension[]; mean: number[]; cov: number[][]; distanceSquare: number; grid?: GateGrid; edges?: [number, number][] }
   // One quadrant of a split. side[i] = index of the interval of dims[i] split by
   // dividers[i] (sorted). Interval k is [dividers[k-1], dividers[k]).
   | { type: 'quadrant'; dims: Dimension[]; dividers: number[][]; side: number[] }

@@ -1,5 +1,33 @@
 # Progress and handoff
 
+## State (2026-11-01, milestone 7)
+
+Target is FlowJo 10 (every reference count comes from FlowJo 10.6.2 to
+10.10.0). Gating and statistics rules were taken from FlowJo 10.6.2's native
+engine (official installer; see `CLAUDE.md`) and written as behavioral specs
+in `docs/validation/flowjo-engine-specs.md`, then implemented independently:
+
+- polygons on FlowJo's gate grid (`src/core/gateGrid.ts`);
+- ellipses as FlowJo's 180-vertex outline polygon;
+- logicle vertices through FlowJo's single-precision lookup table;
+- open rectangle bounds at a linear axis edge;
+- median, percentiles, robust SD/CV from FlowJo's 4096-channel histogram
+  (no FlowJo-computed statistics exist in the fixtures to validate against);
+- .wsp export keeps FlowJo linear axis ranges and writes keyword groups as
+  criteria; the offline build no longer contains `fetch(`;
+- REA proof producer (`npm run rea-proof`, `docs/validation/rea-proof.json`).
+
+FlowJo count report: 221 of 228 populations exact (was 61); the other 7 are
+FlowJo version differences pinned in `tests/wsp.test.ts`.
+
+Checks run: `npx tsc -p .` clean; `npm test` 196 passed, 2 skipped;
+`npm run e2e` 46/46 on the dev server and 46/46 from `file://` (Chromium).
+
+Next steps: express the FlowJo observations as REA Evidence (original cases)
+and run REA's ledger over `docs/validation/rea-proof.json`; FlowJo-computed
+statistics to validate section 4 of the specs; Firefox/Safari run of the
+offline build.
+
 ## State (2026-10-31, milestone 6)
 
 Milestone 6 delivered: multi-data-set selection; cell cycle (Dean-Jett-Fox,

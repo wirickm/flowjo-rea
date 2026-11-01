@@ -2,6 +2,8 @@
 
 - State and next steps: `docs/progress.md`. Feature status: `docs/compatibility-matrix.md`.
 - Test fixtures: `./scripts/fetch-fixtures.sh`, then `npm test`, `npx tsc -p .`.
+- REA proof records: `npm run rea-proof` -> `docs/validation/rea-proof.json`
+  (regenerate after changing an owner file listed in `tools/rea-obligations.json`).
 - Write findings as behavioral specs in `docs/validation/flowjo-engine-specs.md`
   and implement independently; never commit FlowJo binaries, disassembly or
   decompiled code.

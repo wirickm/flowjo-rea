@@ -24,19 +24,23 @@ const pct = (v: number) => `${v.toFixed(2)}%`;
 
 // Observed histogram (bars) with model curves (lines) as inline SVG.
 function Chart(p: { observed: ArrayLike<number>; lines: { values: ArrayLike<number>; color: string }[]; testId: string; xLabel?: string }) {
-  const W = 420, H = 180, n = p.observed.length;
-  let max = 1;
-  for (let i = 0; i < n; i++) max = Math.max(max, p.observed[i]);
-  for (const l of p.lines) for (let i = 0; i < l.values.length; i++) if (Number.isFinite(l.values[i])) max = Math.max(max, l.values[i]);
+  // Bins come from the bars, or from the lines when there are no bars.
+  const W = 420, H = 180, n = Math.max(p.observed.length, ...p.lines.map((l) => l.values.length));
+  let max = p.observed.length ? 1 : -Infinity;
+  // Line-only charts scale from the data minimum so variation stays visible.
+  let min = p.observed.length ? 0 : Infinity;
+  for (let i = 0; i < p.observed.length; i++) max = Math.max(max, p.observed[i]);
+  for (const l of p.lines) for (let i = 0; i < l.values.length; i++) if (Number.isFinite(l.values[i])) { max = Math.max(max, l.values[i]); min = Math.min(min, l.values[i]); }
+  if (!(max > min)) { min = Number.isFinite(min) ? min - 1 : 0; max = min + 2; }
   const x = (i: number) => (i / Math.max(1, n)) * W;
-  const y = (v: number) => H - (v / max) * (H - 6);
+  const y = (v: number) => H - ((v - min) / (max - min)) * (H - 6);
   const path = (vals: ArrayLike<number>) => {
     let d = '';
     for (let i = 0; i < vals.length; i++) if (Number.isFinite(vals[i])) d += `${d ? 'L' : 'M'}${x(i + 0.5).toFixed(1)},${y(vals[i]).toFixed(1)}`;
     return d;
   };
   const bars: string[] = [];
-  for (let i = 0; i < n; i++) if (p.observed[i] > 0) bars.push(`M${x(i).toFixed(1)},${H}V${y(p.observed[i]).toFixed(1)}H${x(i + 1).toFixed(1)}V${H}`);
+  for (let i = 0; i < p.observed.length; i++) if (p.observed[i] > 0) bars.push(`M${x(i).toFixed(1)},${H}V${y(p.observed[i]).toFixed(1)}H${x(i + 1).toFixed(1)}V${H}`);
   return (
     <svg width={W} height={H + 16} data-testid={p.testId} style={{ border: '1px solid #ccc', background: '#fff' }}>
       <path d={bars.join('')} fill="#b8c4d6" />

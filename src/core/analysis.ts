@@ -4,6 +4,7 @@ import { compensate, invert, isSpectral, spilloverFromFcs, unmix, type Spillover
 import { AppError, fail } from './errors';
 import type { FcsFile } from './fcs';
 import type { DerivedParameter, Dimension, Gate, Population, SampleState, Workspace } from './model';
+import { splineDividers } from './spline';
 import { makeTransform } from './transforms';
 
 export interface PopulationResult {
@@ -145,6 +146,7 @@ export class SampleEngine {
           if (!r) fail('GATE_INVALID', `Boolean gate references missing population ${ref}`);
           return evalPop(r);
         });
+        if (p.exclude) for (let i = 0; i < mask.length; i++) mask[i] = 1 - mask[i];
         for (let i = 0; i < mask.length; i++) mask[i] &= parentMask[i];
       } catch (e) {
         if (!(e instanceof AppError)) throw e;
@@ -240,6 +242,21 @@ export class SampleEngine {
           const hi = side >= div.length ? Infinity : div[side];
           for (let i = 0; i < n; i++) if (!(c[i] >= lo && c[i] < hi)) out[i] = 0;
         });
+        return out;
+      }
+      case 'splineQuadrant': {
+        if (g.xDivider.length < 1 || g.yDivider.length < 1) fail('GATE_INVALID', 'Spline quadrant needs control points on both dividers');
+        const xs = this.dimension(g.dims[0]);
+        const ys = this.dimension(g.dims[1]);
+        const { xAt, yAt } = splineDividers(g.xDivider, g.yDivider);
+        for (let i = 0; i < n; i++) {
+          const x = xs[i];
+          const y = ys[i];
+          if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+          const rx = x >= xAt(y) ? 1 : 0;
+          const ry = y >= yAt(x) ? 1 : 0;
+          out[i] = rx === g.side[0] && ry === g.side[1] ? 1 : 0;
+        }
         return out;
       }
       case 'boolean': {

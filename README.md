@@ -15,7 +15,7 @@ validated against FlowJo output and what still differs.
 npm run build
 ```
 
-This writes one self-contained file, `dist/index.html` (about 330 KB: app,
+This writes one self-contained file, `dist/index.html` (about 400 KB: app,
 styles and analysis worker inlined). Open it by double-clicking; it runs
 offline from disk and FCS files never leave the browser. Verified in Chromium
 from `file://` with the full E2E run; Firefox and Safari not yet verified.
@@ -56,6 +56,8 @@ npm run e2e
   evidence, validation, limitations
 - [docs/validation/wsp-counts.md](docs/validation/wsp-counts.md): per-population
   comparison with FlowJo-saved counts
+- [docs/obligation-ledger.md](docs/obligation-ledger.md): claims, owners,
+  verifiers and closure state (REA obligation model)
 - [docs/progress.md](docs/progress.md): handoff log
 
 ## Licensing

@@ -1,5 +1,23 @@
 # Progress and handoff
 
+## State (2026-10-31, milestone 6)
+
+Milestone 6 delivered: multi-data-set selection; cell cycle (Dean-Jett-Fox,
+Watson), proliferation and kinetics platforms; spline (curved) quadrant
+gates; exclusion gates; keyword-rule live groups; .wsp import of exclusion
+gates, statistic nodes and keyword-criteria groups. Obligations, owners and
+closure state: `docs/obligation-ledger.md` (REA obligation model, plus an
+REA-generated ledger over this app's code).
+
+Checks run: `npx tsc -p .` clean; `npm test` 174 passed, 2 skipped after an E2E run (169 passed, 7 skipped without E2E outputs);
+`npm run build` -> `dist/index.html` (about 400 KB); `npm run e2e` 46/46 on
+the dev server and 46/46 from `file://` (Chromium). All new numerics are
+validated synthetically only.
+
+Next steps: FlowJo-side evidence for the blocked obligations in the ledger;
+an REA proof producer (owner digests + verifier results) to close REA
+obligations; Firefox/Safari run of the offline build.
+
 ## State (2026-11, milestone 5, in progress)
 
 Milestone 5 delivered: compensation wizard (spillover from single-stain

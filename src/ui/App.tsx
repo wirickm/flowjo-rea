@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PopulationResult } from '../core/analysis';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../core/gatingml';
-import { emptyWorkspace, newId, populationPath, type Gate, type PlotSettings, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
-import { applySubtree, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
+import { emptyWorkspace, newId, populationPath, type Gate, type KeywordRule, type PlotSettings, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
+import { applySubtree, criteriaLabel, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
 import type { PlotResult, SampleMeta } from '../core/service';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL } from '../core/stats';
 import { formatStat, statsCsv } from '../core/statsTable';
@@ -12,6 +12,7 @@ import { writeWsp } from '../core/wspWriter';
 import { defaultTransform, isScatterOrTime, makeAxis, sampleChannels } from './axes';
 import { CompensationDialog, DerivedDialog, KeywordsDialog, TransformDialog } from './Dialogs';
 import { LayoutView } from './Layout';
+import { PlatformsDialog } from './Platforms';
 import type { Axis } from './gateGeometry';
 import { Plot, type PlotKind, type Tool } from './Plot';
 import { PLOT, renderPlot } from './renderPlot';
@@ -23,7 +24,7 @@ import { createAnalysisClient } from './workerClient';
 const client = createAnalysisClient();
 
 type Analysis = { results: PopulationResult[]; total: number; compError?: string };
-type Dialog = null | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export' } | { kind: 'layout' } | { kind: 'derived' };
+type Dialog = null | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export' } | { kind: 'layout' } | { kind: 'derived' } | { kind: 'platforms' };
 
 function download(name: string, data: BlobPart, type = 'application/octet-stream') {
   const url = URL.createObjectURL(new Blob([data], { type }));
@@ -70,6 +71,7 @@ export function App() {
   const [annVal, setAnnVal] = useState('');
   const [syncGroup, setSyncGroup] = useState(false);
   const [checked, setChecked] = useState<string[]>([]);
+  const [rule, setRule] = useState<{ keyword: string; op: KeywordRule['op']; value: string }>({ keyword: '', op: 'contains', value: '' });
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -423,7 +425,7 @@ export function App() {
                   onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
                 />
               ) : (
-                <span className="pname">{p.gate.type === 'boolean' ? `[${p.gate.op}] ` : ''}{p.name}</span>
+                <span className="pname">{p.gate.type === 'boolean' ? `[${p.gate.op}] ` : ''}{p.exclude ? '[excl] ' : ''}{p.name}</span>
               )}
               <span className="pcount" data-testid={`count-${p.name}`}>{r2?.error ? 'error' : r ? r.count.toLocaleString() : '-'}</span>
               <span className="ppct">{pct && `${pct}%`}</span>
@@ -450,6 +452,7 @@ export function App() {
         <button disabled={!sMeta} onClick={() => setDialog({ kind: 'keywords' })} data-testid="open-keywords">Keywords</button>
         <button disabled={!sMeta} onClick={() => setDialog({ kind: 'derived' })} data-testid="open-derived">Derived ({ws.derivedParameters?.length ?? 0})</button>
         <button disabled={!sample} onClick={() => setDialog({ kind: 'export' })} data-testid="open-export">Export</button>
+        <button disabled={!sMeta} onClick={() => setDialog({ kind: 'platforms' })} data-testid="open-platforms">Platforms</button>
         <button onClick={() => setDialog({ kind: 'layout' })} data-testid="open-layout">Layout ({ws.layout?.length ?? 0})</button>
         <span className="sep" />
         <span className="status" data-testid="busy">{busy > 0 ? 'Working...' : 'Ready'}</span>
@@ -471,7 +474,7 @@ export function App() {
                 ) : (
                   <span className="pname">{g.name}</span>
                 )}
-                {g.criteria && <span className="muted" title={`live: ${g.criteria.key} = ${g.criteria.value ?? '(missing)'}`}>live</span>}
+                {g.criteria && <span className="muted" title={`live: ${criteriaLabel(g.criteria)}`}>live</span>}
                 <span className="pcount">{g.sampleIds.length}</span>
               </div>
             ))}
@@ -494,6 +497,26 @@ export function App() {
               note('info', `Live groups by ${groupKey} created; they update as samples and annotations change`);
             }}>Make groups</button>
           </div>
+          <div className="row">
+            <select value={rule.keyword} onChange={(e) => setRule({ ...rule, keyword: e.target.value })} data-testid="rule-key" style={{ maxWidth: 100 }}>
+              <option value="">keyword...</option>
+              {groupKeys.map((k) => <option key={k} value={k}>{k}</option>)}
+            </select>
+            <select value={rule.op} onChange={(e) => setRule({ ...rule, op: e.target.value as KeywordRule['op'] })} data-testid="rule-op">
+              <option value="contains">contains</option>
+              <option value="notContains">does not contain</option>
+              <option value="equals">equals</option>
+              <option value="notEquals">does not equal</option>
+              <option value="startsWith">starts with</option>
+              <option value="endsWith">ends with</option>
+            </select>
+            <input placeholder="value" value={rule.value} onChange={(e) => setRule({ ...rule, value: e.target.value })} style={{ width: 70 }} data-testid="rule-value" />
+            <button disabled={!rule.keyword} data-testid="rule-group" onClick={() => {
+              const r: KeywordRule = { connector: 'and', ...rule };
+              updateWs((w) => { w.groups.push({ id: newId('grp'), name: `${rule.keyword} ${rule.op} ${rule.value}`, sampleIds: [], criteria: { rules: [r] } }); });
+              note('info', `Live keyword group "${rule.keyword} ${rule.op} ${rule.value}" created`);
+            }}>Rule group</button>
+          </div>
           <h3>Samples ({groupSamples.length})</h3>
           {groupSamples.map((s) => (
             <div key={s.id} className={`node ${s.id === sel.sampleId ? 'sel' : ''}`} data-testid={`sample-${s.fileName}`} onClick={() => setSel({ sampleId: s.id, popId: s.id === sel.sampleId ? sel.popId : null })}>
@@ -503,6 +526,25 @@ export function App() {
             </div>
           ))}
           {!ws.samples.length && <p className="muted">Add FCS files to begin. Data stays on this computer.</p>}
+          {sample && sMeta && sMeta.datasetCount > 1 && (
+            <div className="row">
+              Data set <select value={sMeta.datasetIndex} data-testid="dataset-select" onChange={(e) => {
+                const idx = Number(e.target.value);
+                run(async () => {
+                  const m = await client.selectDataset(sample.id, idx);
+                  setMeta((x) => ({ ...x, [sample.id]: m }));
+                  updateWs((w) => {
+                    const t = w.samples.find((x) => x.id === sample.id)!;
+                    Object.assign(t, { datasetIndex: idx, eventCount: m.eventCount, channelNames: m.channels.map((c) => c.name) });
+                    for (const c of m.channels) if (!w.channelTransforms[c.name]) w.channelTransforms[c.name] = defaultTransform(c, m.keywords);
+                  });
+                  note('info', `${sample.fileName}: data set ${idx + 1} of ${m.datasetCount} (${m.eventCount.toLocaleString()} events)`);
+                });
+              }}>
+                {Array.from({ length: sMeta.datasetCount }, (_, i) => <option key={i} value={i}>{i + 1} of {sMeta.datasetCount}</option>)}
+              </select>
+            </div>
+          )}
           {sample && (
             <>
               <h3>Annotations - {sample.fileName}</h3>
@@ -538,6 +580,12 @@ export function App() {
                 <button disabled={multi.length < 2} onClick={() => makeBoolean('or')}>OR</button>
                 <button disabled={multi.length !== 1} onClick={() => makeBoolean('not')}>NOT</button>
                 <button disabled={!sel.popId} onClick={() => deletePop(sel.popId!)} data-testid="delete-pop">Delete</button>
+                <button
+                  disabled={!sel.popId || sample.populations.find((p) => p.id === sel.popId)?.gate.type === 'boolean'}
+                  data-testid="toggle-exclude"
+                  title="Population = parent events outside the gate (FlowJo exclusion gate)"
+                  onClick={() => updateWs((w) => { const q = w.samples.find((x) => x.id === sample.id)!.populations.find((x) => x.id === sel.popId)!; if (q.exclude) delete q.exclude; else q.exclude = true; })}
+                >Exclude</button>
               </div>
               <div className="row">
                 <button disabled={!sel.popId} data-testid="apply-group" onClick={() => {
@@ -589,11 +637,11 @@ export function App() {
                 </div>
               )}
               <div className="row tools">
-                {(kind === 'histogram' ? (['select', 'range'] as Tool[]) : (['select', 'rect', 'polygon', 'ellipse', 'quadrant'] as Tool[])).map((t) => (
+                {(kind === 'histogram' ? (['select', 'range'] as Tool[]) : (['select', 'rect', 'polygon', 'ellipse', 'quadrant', 'spline'] as Tool[])).map((t) => (
                   <button key={t} className={tool === t ? 'active' : ''} onClick={() => setTool(t)} data-testid={`tool-${t}`}>{t}</button>
                 ))}
                 <span className="muted">
-                  {tool === 'polygon' ? 'click vertices; click first vertex or double-click to close' : tool === 'select' ? 'drag gates or vertices to edit' : tool === 'quadrant' ? 'click the quadrant centre' : 'drag to draw'}
+                  {tool === 'polygon' ? 'click vertices; click first vertex or double-click to close' : tool === 'select' ? 'drag gates or vertices to edit' : tool === 'quadrant' ? 'click the quadrant centre' : tool === 'spline' ? 'click the centre, then drag the divider points (select tool) to curve them' : 'drag to draw'}
                 </span>
               </div>
               <Plot
@@ -723,6 +771,20 @@ export function App() {
           onClose={() => setDialog(null)}
         />
       )}
+      {dialog?.kind === 'platforms' && sample && sMeta && (() => {
+        const base = { sampleId: sample.id, compensation: sample.compensation, populations: sample.populations, matrices: ws.matrices, derived: ws.derivedParameters, popId: selPopValid ? sel.popId : null };
+        return (
+          <PlatformsDialog
+            popLabel={popPath || 'All events'}
+            channels={channels.map((c) => c.name)}
+            timeChannel={channels.find((c) => /^time$/i.test(c.name))?.name ?? null}
+            onClose={() => setDialog(null)}
+            runCellCycle={(channel, model, bins) => run(() => client.cellCycle({ ...base, channel, model, bins }))}
+            runProliferation={(channel, maxGenerations) => run(() => client.proliferation({ ...base, channel, maxGenerations }))}
+            runKinetics={(channel, stat, bins, threshold) => run(() => client.kinetics({ ...base, channel, stat, bins, threshold, timeChannel: channels.find((c) => /^time$/i.test(c.name))!.name }))}
+          />
+        );
+      })()}
       {dialog?.kind === 'keywords' && sMeta && <KeywordsDialog meta={sMeta} onClose={() => setDialog(null)} />}
       {dialog?.kind === 'derived' && sMeta && (
         <DerivedDialog

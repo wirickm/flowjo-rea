@@ -2,6 +2,7 @@
 // transforms) and a plot's axis display space.
 import type { Dimension, Gate, Population } from '../core/model';
 import { axesFromGate, handles, outline, type EllipseAxes } from '../core/ellipse';
+import { splineDividers } from '../core/spline';
 import { makeTransform, type Transform, type TransformSpec } from '../core/transforms';
 
 export interface Axis {
@@ -24,6 +25,8 @@ function tf(spec: TransformSpec): Transform {
 
 export const dimToAxis = (v: number, d: Dimension, a: Axis) => (sameScale(d.transform, a.spec) ? v : a.t.apply(tf(d.transform).inverse(v)));
 
+export const axisToDim = (v: number, d: Dimension, a: Axis) => (sameScale(d.transform, a.spec) ? v : tf(d.transform).apply(a.t.inverse(v)));
+
 export function sameScale(a: TransformSpec, b: TransformSpec) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
@@ -38,7 +41,10 @@ export type Drawable =
   | { pop: Population; kind: 'polygon'; pts: [number, number][] }
   // axes are in gate space; editable when both plot scales equal the gate's.
   | { pop: Population; kind: 'ellipse'; pts: [number, number][]; cx: number; cy: number; axes: EllipseAxes; editable: boolean; handles: [number, number][] }
-  | { pop: Population; kind: 'quadrant'; x: number; y: number };
+  | { pop: Population; kind: 'quadrant'; x: number; y: number }
+  // Control points and sampled divider curves in axis space; editable when
+  // both plot scales equal the gate's.
+  | { pop: Population; kind: 'spline'; xPts: [number, number][]; yPts: [number, number][]; xCurve: [number, number][]; yCurve: [number, number][]; editable: boolean };
 
 // Gates of child populations drawable on this plot.
 export function drawableGates(pops: Population[], parentId: string | null, x: Axis, y: Axis | null): Drawable[] {
@@ -70,6 +76,8 @@ export function drawableGates(pops: Population[], parentId: string | null, x: Ax
       out.push({ pop: p, kind: 'polygon', pts: g.vertices.map(([a, b]) => [dimToAxis(a, g.dims[0], x), dimToAxis(b, g.dims[1], y)]) });
     } else if (g.type === 'ellipsoid' && y && g.dims.length === 2 && ch[0] === x.channel && ch[1] === y.channel) {
       out.push(ellipseDrawable(p, axesFromGate(g.mean, g.cov, g.distanceSquare), x, y));
+    } else if (g.type === 'splineQuadrant' && y && ch[0] === x.channel && ch[1] === y.channel) {
+      out.push(splineDrawable(p, g.xDivider, g.yDivider, x, y));
     } else if (g.type === 'quadrant' && y && g.dims.length === 2 && ch[0] === x.channel && ch[1] === y.channel && g.dividers[0].length === 1 && g.dividers[1].length === 1) {
       out.push({ pop: p, kind: 'quadrant', x: dimToAxis(g.dividers[0][0], g.dims[0], x), y: dimToAxis(g.dividers[1][0], g.dims[1], y) });
     }
@@ -92,11 +100,37 @@ export function ellipseDrawable(pop: Population, axes: EllipseAxes, x: Axis, y: 
   };
 }
 
+// xDivider/yDivider are in gate space; returns axis-space geometry.
+export function splineDrawable(pop: Population, xDivider: [number, number][], yDivider: [number, number][], x: Axis, y: Axis): Extract<Drawable, { kind: 'spline' }> {
+  const g = pop.gate as Extract<Gate, { type: 'splineQuadrant' }>;
+  const [dx, dy] = g.dims;
+  const { xAt, yAt } = splineDividers(xDivider, yDivider);
+  const N = 64;
+  const xCurve: [number, number][] = [];
+  const yCurve: [number, number][] = [];
+  for (let i = 0; i <= N; i++) {
+    const vy = y.range[0] + ((y.range[1] - y.range[0]) * i) / N; // axis units
+    const gy = axisToDim(vy, dy, y);
+    xCurve.push([dimToAxis(xAt(gy), dx, x), vy]);
+    const vx = x.range[0] + ((x.range[1] - x.range[0]) * i) / N;
+    const gx = axisToDim(vx, dx, x);
+    yCurve.push([vx, dimToAxis(yAt(gx), dy, y)]);
+  }
+  const toAxis = ([a, b]: [number, number]): [number, number] => [dimToAxis(a, dx, x), dimToAxis(b, dy, y)];
+  return { pop, kind: 'spline', xPts: xDivider.map(toAxis), yPts: yDivider.map(toAxis), xCurve, yCurve, editable: sameScale(dx.transform, x.spec) && sameScale(dy.transform, y.spec) };
+}
+
+// Populations sharing one quadrant split (moved and edited together).
 export function quadrantSiblings(pops: Population[], p: Population): Population[] {
-  const g = p.gate;
-  if (g.type !== 'quadrant') return [p];
-  const key = JSON.stringify([g.dims, g.dividers]);
-  return pops.filter((q) => q.parentId === p.parentId && q.gate.type === 'quadrant' && JSON.stringify([q.gate.dims, q.gate.dividers]) === key);
+  const key = (q: Population) => {
+    const g = q.gate;
+    if (g.type === 'quadrant') return JSON.stringify(['q', g.dims, g.dividers]);
+    if (g.type === 'splineQuadrant') return JSON.stringify(['s', g.dims, g.xDivider, g.yDivider]);
+    return null;
+  };
+  const k = key(p);
+  if (k === null) return [p];
+  return pops.filter((q) => q.parentId === p.parentId && key(q) === k);
 }
 
 export function pointInPolygon(x: number, y: number, pts: [number, number][]) {

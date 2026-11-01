@@ -10,7 +10,9 @@
 //  - AndNode/OrNode/NotNode populations reference operands by path.
 import type { SpilloverMatrix } from './compensation';
 import { fail } from './errors';
-import { emptyWorkspace, type Dimension, type Gate, type Group, type Population, type SampleState, type Workspace } from './model';
+import { emptyWorkspace, type Dimension, type Gate, type Group, type KeywordRule, type Population, type SampleState, type StatKind, type Workspace } from './model';
+import { syncLiveGroups } from './project';
+import { STAT_NEEDS_CHANNEL } from './stats';
 import { makeTransform, type TransformSpec } from './transforms';
 import { attr, kid, kids, local, numAttr, parseXml, type El } from './xml';
 
@@ -155,7 +157,6 @@ export function parseWsp(xml: string): WspImport {
     const gateFrom = (gEl: El, popName: string): Gate | null => {
       const g = kids(gEl)[0];
       if (!g) return null;
-      if (attr(g, 'eventsInside') === '0') sw.push(`Gate "${popName}" uses eventsInside=0 (exclusion); not supported, imported as inclusive`);
       const dimEls = kids(g, 'dimension');
       const names = dimEls.map((d) => attr(kid(d, 'fcs-dimension') ?? d, 'name') ?? '');
       switch (local(g)) {
@@ -258,12 +259,37 @@ export function parseWsp(xml: string): WspImport {
       plots[path] = { x, y: kind === 'histogram' ? null : axis('y'), kind };
     };
 
+    // Statistic nodes become statistics-table columns (deduplicated across
+    // samples). Only name="Count" is observed in the fixtures; the other name
+    // mappings and the channel attribute ("id") are assumptions.
+    const statNode = (st: El, path: string) => {
+      const sname = attr(st, 'name') ?? '';
+      const stat = WSP_STATS[sname];
+      if (!stat) {
+        sw.push(`Statistic "${sname}" on "${path || 'All events'}" is not supported; skipped`);
+        return;
+      }
+      const raw = attr(st, 'id') ?? '';
+      const channel = STAT_NEEDS_CHANNEL(stat) ? (raw ? resolveDim(raw).channel : '') : undefined;
+      if (channel === '') {
+        sw.push(`Statistic "${sname}" on "${path || 'All events'}" names no parameter; skipped`);
+        return;
+      }
+      const percentile = stat === 'percentile' ? Number(attr(st, 'percent') ?? 50) : undefined;
+      const dup = ws.statColumns.some((c) => c.populationPath === path && c.stat === stat && c.channel === channel && c.percentile === percentile);
+      if (!dup) ws.statColumns.push({ id: `col${ws.statColumns.length + 1}`, populationPath: path, stat, channel, percentile });
+    };
+
     const walk = (container: El, parentId: string | null, parentPath: string) => {
       graphOf(container, parentPath);
       const sub = kid(container, 'Subpopulations');
       if (!sub) return;
       for (const p of kids(sub)) {
         const kind = local(p);
+        if (kind === 'Statistic') {
+          statNode(p, parentPath);
+          continue;
+        }
         if (!['Population', 'AndNode', 'OrNode', 'NotNode'].includes(kind)) continue;
         const name = attr(p, 'name') ?? '';
         const path = parentPath ? `${parentPath}/${name}` : name;
@@ -278,7 +304,9 @@ export function parseWsp(xml: string): WspImport {
             sw.push(`Population "${path}" has no supported gate; skipped with its children`);
             continue;
           }
-          pops.push({ id, name, parentId, gate });
+          // eventsInside="0" (exclusion): the population is the events outside the gate.
+          const exclude = attr(kids(gEl!)[0], 'eventsInside') === '0';
+          pops.push({ id, name, parentId, gate, ...(exclude ? { exclude: true } : {}) });
         } else {
           const deps = kids(kid(p, 'Dependents') ?? p, 'Dependent').map((d) => attr(d, 'name') ?? '');
           const op = kind === 'AndNode' ? 'and' : kind === 'OrNode' ? 'or' : 'not';
@@ -333,12 +361,58 @@ export function parseWsp(xml: string): WspImport {
     const grp = kid(g, 'Group');
     const refs = grp ? kids(kid(grp, 'SampleRefs') ?? grp, 'SampleRef').map((r) => attr(r, 'sampleID') ?? '') : [];
     const ids = refs.map((r) => sampleIdMap.get(r)).filter((x): x is string => !!x);
-    groups.push({ id: gname === 'All Samples' ? 'all' : `g${groups.length + 1}`, name: gname, sampleIds: gname === 'All Samples' ? ws.samples.map((s) => s.id) : ids });
+    const group: Group = { id: gname === 'All Samples' ? 'all' : `g${groups.length + 1}`, name: gname, sampleIds: gname === 'All Samples' ? ws.samples.map((s) => s.id) : ids };
+    const crit = grp ? kid(grp, 'Criteria') : undefined;
+    if (crit && group.id !== 'all') {
+      if (attr(crit, 'refGroupName')) warnings.push(`Group "${gname}": criteria referencing group "${attr(crit, 'refGroupName')}" are not supported; membership kept as saved`);
+      const rules: KeywordRule[] = [];
+      for (const c of kids(crit, 'Criterion')) {
+        const op = WSP_CRITERIA[attr(c, 'function') ?? ''];
+        if (!op) {
+          warnings.push(`Group "${gname}": criterion function "${attr(c, 'function')}" is not supported; membership kept as saved`);
+          rules.length = 0;
+          break;
+        }
+        rules.push({ connector: (attr(c, 'connector') ?? 'And').toLowerCase() === 'or' ? 'or' : 'and', keyword: (attr(c, 'keyword') ?? '').toUpperCase(), op, value: attr(c, 'value') ?? '' });
+      }
+      if (rules.length) group.criteria = { rules };
+    }
+    groups.push(group);
   }
   if (!groups.some((g) => g.id === 'all')) groups.unshift({ id: 'all', name: 'All Samples', sampleIds: ws.samples.map((s) => s.id) });
   ws.groups = groups;
+  // Live keyword groups are recomputed from the imported keywords; the saved
+  // SampleRefs are replaced (a difference is reported).
+  const saved = new Map(groups.map((g) => [g.id, g.sampleIds.join()]));
+  syncLiveGroups(ws);
+  for (const g of groups) if (g.criteria && saved.get(g.id) !== g.sampleIds.join()) warnings.push(`Group "${g.name}": keyword criteria select ${g.sampleIds.length} samples, unlike the membership saved by FlowJo`);
   ws.plots = plots;
   const flowjoVersion = attr(root, 'flowJoVersion') ?? 'unknown';
   ws.provenance = { importedFrom: `FlowJo workspace (FlowJo ${flowjoVersion}, wsp version ${attr(root, 'version') ?? '?'})`, warnings };
   return { workspace: ws, flowjoCounts, flowjoVersion, warnings };
 }
+
+const WSP_STATS: Record<string, StatKind> = {
+  Count: 'count',
+  'Freq. of Parent': 'freqParent',
+  'Freq. of Grandparent': 'freqGrandparent',
+  'Freq. of Total': 'freqTotal',
+  Mean: 'mean',
+  Median: 'median',
+  'Geometric Mean': 'geomean',
+  SD: 'sd',
+  CV: 'cv',
+  'Robust SD': 'robustSd',
+  'Robust CV': 'robustCv',
+  'Median Abs Dev': 'mad',
+  Percentile: 'percentile',
+};
+
+const WSP_CRITERIA: Record<string, KeywordRule['op']> = {
+  Contains: 'contains',
+  DoesNotContain: 'notContains',
+  Equals: 'equals',
+  DoesNotEqual: 'notEquals',
+  StartsWith: 'startsWith',
+  EndsWith: 'endsWith',
+};

@@ -3,10 +3,10 @@ import type { Gate, Population } from '../core/model';
 import type { PlotResult } from '../core/service';
 import { dragHandle, gateFromAxes } from '../core/ellipse';
 import { PLOT, ph, pw, renderPlot } from './renderPlot';
-import { channelDim, drawableGates, ellipseDrawable, pointInPolygon, quadrantSiblings, type Axis, type Drawable } from './gateGeometry';
+import { channelDim, drawableGates, ellipseDrawable, pointInPolygon, quadrantSiblings, splineDrawable, type Axis, type Drawable } from './gateGeometry';
 
 export type PlotKind = 'pseudocolor' | 'density' | 'zebra' | 'dot' | 'contour' | 'histogram';
-export type Tool = 'select' | 'rect' | 'polygon' | 'ellipse' | 'quadrant' | 'range';
+export type Tool = 'select' | 'rect' | 'polygon' | 'ellipse' | 'quadrant' | 'spline' | 'range';
 
 interface Props {
   kind: PlotKind;
@@ -104,6 +104,10 @@ export function Plot(p: Props) {
         if (pointInPolygon(pt[0], pt[1], g.pts)) return { g };
       } else if (g.kind === 'quadrant') {
         if (pxDist([g.x, g.y], pt) < 10) return { g, vertex: 0 };
+      } else if (g.kind === 'spline') {
+        // Vertices 0..n-1: x divider points; n..: y divider points.
+        const v = [...g.xPts, ...g.yPts].findIndex((q) => pxDist(q, pt) < 7);
+        if (v >= 0) return { g, vertex: v };
       }
     }
     return null;
@@ -139,11 +143,11 @@ export function Plot(p: Props) {
       const h = hit(pt);
       if (h) {
         p.onSelect(h.g.pop.id);
-        if (h.g.kind === 'ellipse' && !h.g.editable) {
+        if ((h.g.kind === 'ellipse' || h.g.kind === 'spline') && !h.g.editable) {
           p.onRefuse?.(`"${h.g.pop.name}" was drawn on a different axis scale; set this plot's axes to the gate's scales to edit it`);
           return;
         }
-        const group = h.g.kind === 'quadrant' ? gates.filter((g) => quadrantSiblings(p.populations, h.g.pop).some((q) => q.id === g.pop.id)) : [h.g];
+        const group = h.g.kind === 'quadrant' || h.g.kind === 'spline' ? gates.filter((g) => quadrantSiblings(p.populations, h.g.pop).some((q) => q.id === g.pop.id)) : [h.g];
         setDrag({ mode: h.vertex !== undefined ? 'vertex' : 'move', start: pt, original: group, vertex: h.vertex });
       }
       return;
@@ -153,6 +157,19 @@ export function Plot(p: Props) {
       const Y = channelDim(p.y);
       const mk = (sxi: number, syi: number, name: string) => ({ name, gate: { type: 'quadrant' as const, dims: [X, Y], dividers: [[pt[0]], [pt[1]]], side: [sxi, syi] } });
       p.onCreate([mk(0, 1, `Q1: ${p.x.channel}- , ${p.y.channel}+`), mk(1, 1, `Q2: ${p.x.channel}+ , ${p.y.channel}+`), mk(1, 0, `Q3: ${p.x.channel}+ , ${p.y.channel}-`), mk(0, 0, `Q4: ${p.x.channel}- , ${p.y.channel}-`)]);
+      return;
+    }
+    if (p.tool === 'spline' && p.y) {
+      // Curved quadrant: each divider starts straight through the click with
+      // three control points (ends at the axis limits) to drag into a curve.
+      const X = channelDim(p.x);
+      const Y = channelDim(p.y);
+      const [y0, y1] = p.y.range;
+      const [x0, x1] = p.x.range;
+      const xDivider: [number, number][] = [[pt[0], y0], [pt[0], pt[1]], [pt[0], y1]];
+      const yDivider: [number, number][] = [[x0, pt[1]], [pt[0], pt[1]], [x1, pt[1]]];
+      const mk = (a: number, b: number, name: string) => ({ name, gate: { type: 'splineQuadrant' as const, dims: [X, Y] as [typeof X, typeof Y], xDivider, yDivider, side: [a, b] as [number, number] } });
+      p.onCreate([mk(0, 1, `SQ1: ${p.x.channel}- , ${p.y.channel}+`), mk(1, 1, `SQ2: ${p.x.channel}+ , ${p.y.channel}+`), mk(1, 0, `SQ3: ${p.x.channel}+ , ${p.y.channel}-`), mk(0, 0, `SQ4: ${p.x.channel}- , ${p.y.channel}-`)]);
       return;
     }
     if (p.tool === 'polygon') {
@@ -192,6 +209,14 @@ export function Plot(p: Props) {
         return ellipseDrawable(o.pop, axes, p.x, p.y);
       }
       if (o.kind === 'quadrant') return { ...o, x: o.x + dx, y: o.y + dy };
+      if (o.kind === 'spline' && p.y) {
+        // Editable splines share the plot's scales: axis space = gate space.
+        const n = o.xPts.length;
+        const v = drag.vertex!;
+        const xs = o.xPts.map((q, i) => (i === v ? [q[0] + dx, q[1] + dy] : q) as [number, number]);
+        const ys = o.yPts.map((q, i) => (i + n === v ? [q[0] + dx, q[1] + dy] : q) as [number, number]);
+        return splineDrawable(o.pop, xs, ys, p.x, p.y);
+      }
       return g;
     }));
   };
@@ -222,6 +247,7 @@ export function Plot(p: Props) {
             ups.push({ id: g.pop.id, gate: keepDims({ type: 'rect', dims: [X], min: [open(Math.min(g.x0, g.x1))], max: [open(Math.max(g.x0, g.x1))] }) });
           }
           if (g.kind === 'ellipse' && old.type === 'ellipsoid' && g.editable) ups.push({ id: g.pop.id, gate: { ...old, ...gateFromAxes(g.axes) } });
+          if (g.kind === 'spline' && old.type === 'splineQuadrant' && g.editable) ups.push({ id: g.pop.id, gate: { ...old, xDivider: g.xPts, yDivider: g.yPts } });
           if (g.kind === 'quadrant' && Y && old.type === 'quadrant') ups.push({ id: g.pop.id, gate: keepDims({ ...old, dims: [X, Y], dividers: [[g.x], [g.y]] }) });
         }
         if (ups.length) p.onUpdate(ups);

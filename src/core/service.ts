@@ -12,6 +12,9 @@ import { populationPath } from './model';
 import { fingerprint } from './project';
 import { computeStat, gather } from './stats';
 import { makeTransform } from './transforms';
+import { fitCellCycle, type CellCycleFit } from './cellcycle';
+import { fitProliferation, type ProliferationFit } from './proliferation';
+import { kinetics, type KineticsResult } from './kinetics';
 
 export interface SampleMeta {
   sampleId: string;
@@ -26,6 +29,7 @@ export interface SampleMeta {
   hasSpillover: boolean;
   spillover: SpilloverMatrix | null;
   datasetCount: number;
+  datasetIndex: number;
 }
 
 export interface AnalyzeRequest {
@@ -75,12 +79,19 @@ export interface ExportRequest extends AnalyzeRequest {
   compensated: boolean;
 }
 
+export interface PlatformRequest extends AnalyzeRequest {
+  popId: string | null;
+  channel: string;
+}
+
 export class AnalysisService {
   private files = new Map<string, FcsFile>();
+  private bytes = new Map<string, { fileName: string; bytes: Uint8Array }>();
   private engines = new Map<string, { key: string; engine: SampleEngine }>();
 
   async load(sampleId: string, fileName: string, bytes: Uint8Array, datasetIndex = 0): Promise<SampleMeta> {
     const f = parseFcs(bytes, { datasetIndex });
+    this.bytes.set(sampleId, { fileName, bytes });
     this.files.set(sampleId, f);
     this.engines.delete(sampleId);
     let spill: SpilloverMatrix | null = null;
@@ -104,10 +115,19 @@ export class AnalysisService {
       hasSpillover: !!spill,
       spillover: spill,
       datasetCount: f.datasetOffsets.length,
+      datasetIndex,
     };
   }
 
+  // Switch a loaded sample to another data set ($NEXTDATA) of the same file.
+  async selectDataset(sampleId: string, datasetIndex: number): Promise<SampleMeta> {
+    const b = this.bytes.get(sampleId);
+    if (!b) throw new AppError('WORKSPACE_INVALID', 'Sample data is not loaded');
+    return this.load(sampleId, b.fileName, b.bytes, datasetIndex);
+  }
+
   unload(sampleId: string) {
+    this.bytes.delete(sampleId);
     this.files.delete(sampleId);
     this.engines.delete(sampleId);
   }
@@ -271,6 +291,39 @@ export class AnalysisService {
     // readers do not compensate twice.
     if (!r.compensated && f.keywords['$SPILLOVER']) extra['$SPILLOVER'] = f.keywords['$SPILLOVER'];
     return writeFcs(chans, extra);
+  }
+
+  private platformData(r: PlatformRequest) {
+    const eng = this.engine(r);
+    const mask = r.popId ? eng.masks.get(r.popId) : eng.root;
+    if (!mask) throw new AppError('GATE_INVALID', 'Population not found');
+    return { eng, mask, values: gather(eng.column(r.channel), mask) };
+  }
+
+  // Cell cycle on a linear DNA histogram: bin k covers [k*w, (k+1)*w) of the
+  // compensated channel, w = channel range / bins (FCS $PnR, 1024 if unknown).
+  cellCycle(r: PlatformRequest & { bins: number; model: 'dean-jett-fox' | 'watson'; constrainG2?: boolean }): CellCycleFit & { binWidth: number; histogram: Float64Array } {
+    const { values } = this.platformData(r);
+    const f = this.files.get(r.sampleId)!;
+    const range = f.channels.find((c) => c.name === r.channel)?.range || 1024;
+    const w = range / r.bins;
+    const hist = new Float64Array(r.bins);
+    for (const v of values) {
+      const k = Math.floor(v / w);
+      if (k >= 0 && k < r.bins) hist[k]++;
+    }
+    const fit = fitCellCycle(hist, { model: r.model, constrainG2: r.constrainG2 ?? true });
+    return { ...fit, binWidth: w, histogram: hist };
+  }
+
+  proliferation(r: PlatformRequest & { maxGenerations?: number }): ProliferationFit {
+    return fitProliferation(this.platformData(r).values, { maxGenerations: r.maxGenerations });
+  }
+
+  kinetics(r: PlatformRequest & { timeChannel: string; bins: number; stat: 'count' | 'mean' | 'median' | 'pctPositive'; threshold?: number }): KineticsResult {
+    const { eng, mask } = this.platformData(r);
+    const values = r.stat === 'count' ? null : eng.column(r.channel);
+    return kinetics(eng.column(r.timeChannel), values, mask, { bins: r.bins, stat: r.stat, threshold: r.threshold });
   }
 
   // Display-space values of one event dimension, for tests and tooling.

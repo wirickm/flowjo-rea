@@ -15,7 +15,8 @@ export type ErrorCode =
   | 'CHANNEL_MISSING'
   | 'WORKSPACE_INVALID'
   | 'XML_INVALID'
-  | 'UNSUPPORTED_FEATURE';
+  | 'UNSUPPORTED_FEATURE'
+  | 'FIT_INVALID';
 
 export class AppError extends Error {
   constructor(

@@ -209,8 +209,13 @@ export function exportGatingMl(pops: Population[], matrices: SpilloverMatrix[], 
   const coord = (v: number) => `<gating:coordinate data-type:value="${v}"/>`;
   for (const p of pops) {
     const g = p.gate;
-    const head = `gating:id="${esc(p.id)}"${p.parentId ? ` gating:parent_id="${esc(p.parentId)}"` : ''}`;
-    const nameInfo = `<data-type:custom_info><name>${esc(p.name)}</name></data-type:custom_info>`;
+    // An exclusion population is written as its inclusive gate plus a NOT
+    // boolean carrying the population's id (re-imports as two populations).
+    const gid = p.exclude ? `${p.id}_incl` : p.id;
+    if (p.exclude && g.type === 'boolean') fail('UNSUPPORTED_FEATURE', `Exclusion flag on boolean population "${p.name}" is not exported`);
+    if (g.type === 'splineQuadrant') fail('UNSUPPORTED_FEATURE', `Spline quadrant "${p.name}" has no Gating-ML 2.0 representation`);
+    const head = `gating:id="${esc(gid)}"${p.parentId ? ` gating:parent_id="${esc(p.parentId)}"` : ''}`;
+    const nameInfo = `<data-type:custom_info><name>${esc(p.exclude ? `${p.name} (gate)` : p.name)}</name></data-type:custom_info>`;
     if (g.type === 'rect') {
       const dims = g.dims
         .map((d, k) => dimXml(d, (g.min[k] !== null ? ` gating:min="${g.min[k]}"` : '') + (g.max[k] !== null ? ` gating:max="${g.max[k]}"` : '')))
@@ -241,10 +246,14 @@ export function exportGatingMl(pops: Population[], matrices: SpilloverMatrix[], 
           return `<gating:position gating:divider_ref="${esc(p.id)}_d${k}" gating:location="${loc}"/>`;
         })
         .join('');
-      parts.push(`<gating:QuadrantGate gating:id="${esc(p.id)}_q"${p.parentId ? ` gating:parent_id="${esc(p.parentId)}"` : ''}>${divs}<gating:Quadrant gating:id="${esc(p.id)}">${pos}</gating:Quadrant></gating:QuadrantGate>`);
+      parts.push(`<gating:QuadrantGate gating:id="${esc(p.id)}_q"${p.parentId ? ` gating:parent_id="${esc(p.parentId)}"` : ''}>${divs}<gating:Quadrant gating:id="${esc(gid)}">${pos}</gating:Quadrant></gating:QuadrantGate>`);
     } else {
       const refs = g.operands.map((o) => `<gating:gateReference gating:ref="${esc(o.ref)}"${o.complement ? ' gating:use-as-complement="true"' : ''}/>`).join('');
       parts.push(`<gating:BooleanGate ${head}>${nameInfo}<gating:${g.op}>${refs}</gating:${g.op}></gating:BooleanGate>`);
+    }
+    if (p.exclude) {
+      const h = `gating:id="${esc(p.id)}"${p.parentId ? ` gating:parent_id="${esc(p.parentId)}"` : ''}`;
+      parts.push(`<gating:BooleanGate ${h}><data-type:custom_info><name>${esc(p.name)}</name></data-type:custom_info><gating:not><gating:gateReference gating:ref="${esc(gid)}"/></gating:not></gating:BooleanGate>`);
     }
   }
   const mx = [...usedMatrices].map((id) => {

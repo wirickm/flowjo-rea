@@ -54,13 +54,12 @@ Two parts:
 
 ## Residuals found while building this ledger
 
-- The single-file bundle contains one `fetch(` call: Vite's module-preload
-  polyfill, which fetches `<link rel="modulepreload">` targets. The
-  single-file build has no such links, so it never runs a request, but it is
-  dead code that weakens a static local-only claim. Removable with
-  `build.modulePreload.polyfill: false` (not changed in this milestone).
-- .wsp export writes keyword groups as their current members (SampleRefs),
-  not as criteria.
+- Resolved: the single-file bundle used to contain one `fetch(` call (Vite's
+  module-preload polyfill, never run); `build.modulePreload.polyfill: false`
+  removes it, and `dist/index.html` now contains no `fetch(`.
+- Resolved: .wsp export writes keyword-rule groups (and "group by" keyword
+  groups) as FlowJo `<Criteria>` plus their current members; "group by"
+  annotation groups are written as members only (no FlowJo keyword).
 - REA could not analyze the minified single-file bundle within its default
   limits (1 GiB heap exhausted; 5-minute per-source deadline with 4 GiB), so
   the REA run uses the tsc-compiled, unbundled modules. That covers this

@@ -5,7 +5,7 @@ import { invert } from './compensation';
 import type { SpilloverMatrix } from './compensation';
 import { axesFromGate } from './ellipse';
 import { fail } from './errors';
-import type { Dimension, Gate, Population, Workspace } from './model';
+import type { Dimension, Gate, Group, KeywordRule, Population, Workspace } from './model';
 import { makeTransform, type TransformSpec } from './transforms';
 import { esc } from './xml';
 
@@ -191,8 +191,24 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
       `<Sample><DataSet uri="file:/${esc(encodeURIComponent(s.fileName))}" sampleID="${sid}" />${matrixXml}<Transformations>${tx}</Transformations><Keywords>${kw}</Keywords><SampleNode name="${esc(s.fileName)}" count="${total}" sampleID="${sid}">${tree}</SampleNode></Sample>`,
     );
   });
+  // Live keyword groups are written as FlowJo criteria (plus their current
+  // members, as FlowJo saves them); "group by" on an annotation has no FlowJo
+  // keyword and is written as members only.
+  const FJ_FUNCTION: Record<KeywordRule['op'], string> = { contains: 'Contains', notContains: 'DoesNotContain', equals: 'Equals', notEquals: 'DoesNotEqual', startsWith: 'StartsWith', endsWith: 'EndsWith' };
+  const isKeyword = (k: string) => ws.samples.some((s) => k in s.keywordsSnapshot);
+  const criteriaXml = (g: Group): string => {
+    const c = g.criteria;
+    let rules: KeywordRule[] = [];
+    if (c && 'rules' in c) rules = c.rules;
+    else if (c && c.value !== null && isKeyword(c.key)) rules = [{ connector: 'and', keyword: c.key, op: 'equals', value: c.value }];
+    if (!rules.length) return '';
+    return `<Criteria>${rules.map((r, i) => `<Criterion connector="${i === 0 || r.connector === 'and' ? 'And' : 'Or'}" keyword="${esc(r.keyword)}" function="${FJ_FUNCTION[r.op]}" value="${esc(r.value)}" />`).join('')}</Criteria>`;
+  };
   const groups = ws.groups
-    .map((g) => `<GroupNode name="${esc(g.name)}"><Group name="${esc(g.name)}"><SampleRefs>${g.sampleIds.map((id) => `<SampleRef sampleID="${ws.samples.findIndex((s) => s.id === id) + 1}" />`).join('')}</SampleRefs></Group></GroupNode>`)
+    .map((g) => {
+      const crit = g.id === 'all' ? '' : criteriaXml(g);
+      return `<GroupNode name="${esc(g.name)}"><Group name="${esc(g.name)}"${crit ? ' live="1"' : ''}>${crit}<SampleRefs>${g.sampleIds.map((id) => `<SampleRef sampleID="${ws.samples.findIndex((s) => s.id === id) + 1}" />`).join('')}</SampleRefs></Group></GroupNode>`;
+    })
     .join('');
   if (!ws.samples.length) fail('WORKSPACE_INVALID', 'Workspace has no samples to export');
   const xml = `<?xml version="1.0" encoding="UTF-8"?>

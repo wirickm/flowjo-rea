@@ -134,12 +134,59 @@ Negative controls run against REA: changing one owner digest gives
 `implemented`); removing an original case gives `missing-original-case`;
 editing a record without re-hashing is rejected (`evidence_integrity_mismatch`).
 
+### REA-native original cases (static analysis with REA's own tools)
+
+`tools/reaObserveFlowjo.mjs` runs one REA MCP session per artifact:
+the engine with REA's Ghidra provider (Ghidra 12.1.4; `open_binary`,
+`inspect_artifact`, `analyze_function` for the nine functions in
+`tools/rea-native-observations.json`), and the jar with `inspect_artifact`
+(member inventory with verified digests). Each session is exported as an REA
+Evidence bundle. The bundles contain Ghidra's decompilation of FlowJo code and
+are kept outside the repository (`*.bundle.json` is git-ignored).
+
+`REA_ORIGINALS_DIR=<bundle dir> REA_CLI=... npm run rea-proof` then uses the
+REA-produced records as original cases and writes
+`docs/validation/rea-ledger-result.native.json` (statuses, Evidence IDs and
+the function each original case observes; no code). Result: all four
+obligations **verified**, ledger `ready`:
+
+- polygon, rectangle and statistics obligations rest on REA
+  `analyze_function` records (`shipped-artifact`, `observed`, Ghidra
+  provider) of the exact FlowJo functions;
+- the ellipse obligation still rests on the analyst `javap` record: REA has
+  no route to desktop Java bytecode (its JADX provider analyzes Android
+  packages). That record now links to REA's `inspect_artifact` of the jar,
+  which verifies the classes and their digests, and to the REA polygon
+  records the ellipse is gated with.
+
+Export and replay (REA stage `export-replay`):
+
+- the ledger rerun on the same request gives the same closure digest and
+  ledger Evidence ID;
+- the exported engine bundle validates with `rea inspect-evidence-bundle` and
+  imports into a fresh REA MCP session with all 21 Evidence IDs unchanged.
+
+CLI/MCP parity:
+
+- `analyze_function` (Ghidra): the one-shot CLI (`rea function`, its own
+  fresh import) and the MCP session give the **same Evidence ID** for
+  `ScalePointSet::PointInPoly` (`ev_787aad1b...`); only `caller_input_path`
+  differs, which REA excludes from identity. Two independent Ghidra imports
+  therefore produced identical analysis.
+- `inspect_artifact` (REA finding): identical observations
+  (`normalized_result`, `raw_result`, subject, provider) but different
+  Evidence IDs, because the CLI records `input_path` in `parameters` and MCP
+  records `detail`. This is REA adapter behavior, not a difference in
+  analysis.
+
 Limits of this closure:
 
-- REA checks integrity, authority and applicability, not truth. The
-  original-case records are this project's own statements of what the
-  FlowJo binary does (read from disassembly and bytecode); REA cannot
-  re-derive them.
+- REA checks integrity, authority and applicability, not truth. Analyst
+  original-case records are this project's statements of what the FlowJo
+  binary does; REA-native records are REA's own analysis output, but which
+  function supports which rule is still this project's reading.
+- Runtime observation of FlowJo (REA stage `reactive-scenarios`) is not
+  done: FlowJo 10 is a macOS application and cannot run here.
 - The verifiers compare against FlowJo-saved counts (FlowJo 10.6.2 to
   10.10.0); statistics have no FlowJo-computed reference values.
 - `platform.kinetics` is this app's own definition (no FlowJo original), so it

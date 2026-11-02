@@ -47,11 +47,17 @@ export function spilloverFromFcs(f: FcsFile): SpilloverMatrix | null {
 
 // CSV with a header row of channel names followed by an n x n numeric block.
 // An optional leading label column is accepted (FlowJo / FlowKit exports).
+// A header line that starts with "#" (FlowKit's matrix CSV) is used with the
+// "#" removed; other "#" lines are comments. FlowJo 10 has no CSV matrix
+// import, so this is our own rule (specs section 6.4; UAT a3-01).
 export function parseSpilloverCsv(text: string, name = 'CSV matrix'): SpilloverMatrix {
-  const rows = text
+  const lines = text
     .split(/\r?\n/)
     .map((l) => l.trim())
-    .filter((l) => l !== '')
+    .filter((l) => l !== '');
+  if (lines[0]?.startsWith('#')) lines[0] = lines[0].replace(/^#\s*/, '');
+  const rows = lines
+    .filter((l, i) => i === 0 || !l.startsWith('#'))
     .map((l) => l.split(/[,\t]/).map((s) => s.trim().replace(/^"|"$/g, '')));
   if (rows.length < 2) fail('COMP_INVALID', 'Matrix CSV needs a header row and at least one data row');
   let header = rows[0];

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { haveFixtures, readText } from './fixtures';
 import { compensate, invert, parseSpilloverCsv, parseSpilloverKeyword } from '../src/core/compensation';
 import { computeStat, gather } from '../src/core/stats';
 
@@ -28,6 +29,18 @@ describe('compensation', () => {
     const m = parseSpilloverCsv(',A,B\nA,1,0.1\nB,0.2,1');
     expect(m.channels).toEqual(['A', 'B']);
     expect(m.values).toEqual([[1, 0.1], [0.2, 1]]);
+  });
+  // UAT a3-01: FlowKit's den_comp.csv starts its header with "# ", which became
+  // part of the first channel name ("# TNFa FITC FLR-A"), so it never matched.
+  it('reads a "#"-prefixed header (FlowKit matrix CSV) and skips other comment lines', () => {
+    const m = parseSpilloverCsv('# A,B\n# exported by tool\n1,0.1\n0.2,1');
+    expect(m.channels).toEqual(['A', 'B']);
+    expect(m.values).toEqual([[1, 0.1], [0.2, 1]]);
+  });
+  it.skipIf(!haveFixtures)('reads FlowKit den_comp.csv with real channel names', () => {
+    const m = parseSpilloverCsv(readText('8_color_data_set/den_comp.csv'));
+    expect(m.channels[0]).toBe('TNFa FITC FLR-A');
+    expect(m.values.length).toBe(8);
   });
 });
 

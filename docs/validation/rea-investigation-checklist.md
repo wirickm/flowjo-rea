@@ -40,4 +40,4 @@ digests: `tools/rea-originals.json`.
 | compare-authority-candidate | Done | FlowJo-saved counts vs this app (`docs/validation/wsp-counts.md`) |
 | preserve-contradictions | Done | 7 FlowJo version differences pinned in `tests/wsp.test.ts` |
 | verify-reconstruction-closure | Done | REA ledger: 4 obligations verified, analyst and REA-native original cases (`docs/validation/rea-ledger-result*.json`) |
-| export-replay | Done, with one REA finding | Bundles exported; ledger replay deterministic; bundle import restores identical IDs; CLI/MCP parity: see `docs/obligation-ledger.md` |
+| export-replay | Done, with one REA finding | Bundles exported; ledger replay deterministic; bundle import restores identical IDs; CLI and MCP `analyze_function` give the same Evidence ID; `inspect_artifact` IDs differ by adapter parameters (`docs/obligation-ledger.md`) |

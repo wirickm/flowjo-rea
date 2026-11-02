@@ -166,12 +166,18 @@ Export and replay (REA stage `export-replay`):
 - the exported engine bundle validates with `rea inspect-evidence-bundle` and
   imports into a fresh REA MCP session with all 21 Evidence IDs unchanged.
 
-REA finding (CLI/MCP parity): for the same artifact, `inspect_artifact` over
-the CLI and over MCP gives identical observations (`normalized_result`,
-`raw_result`, subject, provider) but different Evidence IDs, because the CLI
-records `input_path` in `parameters` and MCP records `detail`. Evidence IDs
-of the two adapters therefore cannot match for this operation; this is
-REA adapter behavior, not a difference in analysis.
+CLI/MCP parity:
+
+- `analyze_function` (Ghidra): the one-shot CLI (`rea function`, its own
+  fresh import) and the MCP session give the **same Evidence ID** for
+  `ScalePointSet::PointInPoly` (`ev_787aad1b...`); only `caller_input_path`
+  differs, which REA excludes from identity. Two independent Ghidra imports
+  therefore produced identical analysis.
+- `inspect_artifact` (REA finding): identical observations
+  (`normalized_result`, `raw_result`, subject, provider) but different
+  Evidence IDs, because the CLI records `input_path` in `parameters` and MCP
+  records `detail`. This is REA adapter behavior, not a difference in
+  analysis.
 
 Limits of this closure:
 

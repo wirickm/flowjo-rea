@@ -98,7 +98,7 @@ export function evidence(fields: Record<string, unknown> & { subject: Subject | 
 
 const base = { analysis_profile: null, raw_result: null, relationship_coverage: null, evidence_links: [] as string[] };
 
-export function originalRecords(o: Originals): Map<string, EvidenceRecord> {
+export function originalRecords(o: Originals, links?: Map<string, string[]>): Map<string, EvidenceRecord> {
   const out = new Map<string, EvidenceRecord>();
   for (const ob of o.observations) {
     out.set(ob.key, evidence({
@@ -114,6 +114,7 @@ export function originalRecords(o: Originals): Map<string, EvidenceRecord> {
       environment: null,
       limitations: ['Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained.'],
       locations: ob.locations,
+      evidence_links: [...(links?.get(ob.key) ?? [])].sort(),
     }));
   }
   return out;
@@ -175,12 +176,39 @@ export function bundle(records: EvidenceRecord[]) {
   };
 }
 
-export function buildRequest(specs: ObligationSpec[], originals: Originals, outcomes: TestOutcome[], read: (p: string) => Buffer, env: Env) {
-  const orig = originalRecords(originals);
-  const id = (key: string) => {
+// REA-produced original-case Evidence (tools/reaObserveFlowjo.mjs): the
+// records of exported REA bundles and, per observation key, the REA records
+// that observe it. Observations REA cannot analyze (Java bytecode) keep the
+// analyst record, linked to the REA records it rests on.
+export interface NativeOriginals { records: EvidenceRecord[]; byObservation: Map<string, string[]>; links: Map<string, string[]> }
+
+export function nativeOriginals(bundles: { records: EvidenceRecord[] }[], spec: { observations: Record<string, string[]> }): NativeOriginals {
+  const records = bundles.flatMap((b) => b.records);
+  const fn = (address: string) => {
+    const r = records.find((x) => x.operation === 'analyze_function' && (x.parameters as { procedure?: string })?.procedure === address && (x.normalized_result as { procedure?: unknown })?.procedure);
+    if (!r) throw new Error(`no REA analyze_function record for ${address}`);
+    return r.evidence_id;
+  };
+  const jar = records.find((x) => x.operation === 'inspect_artifact' && x.subject?.format === 'zip');
+  const byObservation = new Map<string, string[]>();
+  const links = new Map<string, string[]>();
+  for (const [key, refs] of Object.entries(spec.observations)) {
+    if (refs.includes('jar')) {
+      if (!jar) throw new Error('no REA inspect_artifact record for the jar');
+      links.set(key, [jar.evidence_id, ...(spec.observations['polygon-mask'] ?? []).map(fn)]);
+    } else byObservation.set(key, refs.map(fn));
+  }
+  return { records, byObservation, links };
+}
+
+export function buildRequest(specs: ObligationSpec[], originals: Originals, outcomes: TestOutcome[], read: (p: string) => Buffer, env: Env, native?: NativeOriginals) {
+  const orig = originalRecords(originals, native?.links);
+  const ids = (key: string): string[] => {
+    const n = native?.byObservation.get(key);
+    if (n) return n;
     const r = orig.get(key);
     if (!r) throw new Error(`unknown observation ${key}`);
-    return r.evidence_id;
+    return [r.evidence_id];
   };
   const bindings = specs.map((o) => ({
     obligation_id: o.obligation_id,
@@ -190,7 +218,7 @@ export function buildRequest(specs: ObligationSpec[], originals: Originals, outc
     verifiers: [{ verifier_id: o.verifier.verifier_id, claim_id: o.verifier.claim_id, passed: verifierPassed(o.verifier, outcomes) }],
   }));
   const proof = proofRecord(bindings, env);
-  const reviews = specs.map((o) => reviewRecord(o, [...new Set([...o.original_cases.map((c) => id(c.observation)), ...o.supporting_observations.map(id)])]));
+  const reviews = specs.map((o) => reviewRecord(o, [...new Set([...o.original_cases.flatMap((c) => ids(c.observation)), ...o.supporting_observations.flatMap(ids)])]));
   const reviewed_obligations = specs.map((o, i) => ({
     obligation_id: o.obligation_id,
     obligation_version: o.obligation_version,
@@ -216,7 +244,7 @@ export function buildRequest(specs: ObligationSpec[], originals: Originals, outc
       obligation_id: o.obligation_id,
       owner: { module_path: o.owner.module_path, symbol: o.owner.symbol, owner_sha256: bindings[i].owner_sha256 },
       parser_type: null,
-      original_cases: o.original_cases.map((c) => ({ kind: c.kind, evidence_id: id(c.observation), location: c.location })),
+      original_cases: o.original_cases.flatMap((c) => ids(c.observation).map((evidence_id) => ({ kind: c.kind, evidence_id, location: c.location }))),
       fixtures: o.fixtures.map((f) => ({ fixture_id: f.fixture_id, case_kind: f.case_kind, authority: 'integration', evidence_ids: [proof.evidence_id] })),
       verifier: {
         verifier_id: o.verifier.verifier_id,
@@ -231,7 +259,9 @@ export function buildRequest(specs: ObligationSpec[], originals: Originals, outc
     })),
     contradictions: [],
   };
-  return { evidence_bundle: bundle([...orig.values(), ...reviews, proof]), reviewed_obligations, manifest };
+  const used = new Set(specs.flatMap((o) => [...o.original_cases.map((c) => c.observation), ...o.supporting_observations]));
+  const analyst = [...orig.entries()].filter(([k]) => !native || (used.has(k) && !native.byObservation.has(k))).map(([, r]) => r);
+  return { evidence_bundle: bundle([...(native?.records ?? []), ...analyst, ...reviews, proof]), reviewed_obligations, manifest };
 }
 
 function main() {
@@ -247,8 +277,17 @@ function main() {
   const report = JSON.parse(readFileSync(out, 'utf8')) as { testResults: { name: string; assertionResults: { fullName: string; status: string }[] }[] };
   const root = process.cwd() + '/';
   const outcomes: TestOutcome[] = report.testResults.flatMap((t) => t.assertionResults.map((a) => ({ file: t.name.replace(root, ''), name: a.fullName, status: a.status })));
-  const request = buildRequest(specs, originals, outcomes, (p) => readFileSync(p), { platform: process.platform, architecture: process.arch, node: process.version });
-  const requestPath = 'docs/validation/rea-ledger-request.json';
+  // REA-native mode: original cases from REA bundles (tools/reaObserveFlowjo.mjs).
+  // The request then contains decompiled FlowJo code and stays outside the repo.
+  const nativeDir = process.env.REA_ORIGINALS_DIR;
+  const native = nativeDir
+    ? nativeOriginals(
+        ['flowjo-engine.bundle.json', 'flowjo-jar.bundle.json'].map((f) => JSON.parse(readFileSync(`${nativeDir}/${f}`, 'utf8'))),
+        JSON.parse(readFileSync('tools/rea-native-observations.json', 'utf8')),
+      )
+    : undefined;
+  const request = buildRequest(specs, originals, outcomes, (p) => readFileSync(p), { platform: process.platform, architecture: process.arch, node: process.version }, native);
+  const requestPath = nativeDir ? `${nativeDir}/rea-ledger-request.native.json` : 'docs/validation/rea-ledger-request.json';
   writeFileSync(requestPath, JSON.stringify(request, null, 2) + '\n');
   const failed = request.manifest.bindings.filter((b) => b.verifier.status !== 'pass').map((b) => b.obligation_id);
   console.log(`rea-ledger-request: ${request.manifest.bindings.length} obligations, ${request.evidence_bundle.records.length} Evidence records${failed.length ? `, FAILED: ${failed.join(', ')}` : ''}`);
@@ -257,15 +296,27 @@ function main() {
   if (cli) {
     const ledger = JSON.parse(execFileSync(process.env.REA_NODE ?? process.execPath, [cli, 'build-reconstruction-obligation-ledger', requestPath, '--json'], { maxBuffer: 1 << 28 }).toString());
     const r = ledger.normalized_result;
+    type LedgerObligation = { obligation_id: string; status: string; diagnostics: { code: string; detail: string }[]; observed_cases: { kind: string; evidence_id: string; location: string }[] };
+    const records = new Map(request.evidence_bundle.records.map((x) => [x.evidence_id, x]));
     const summary = {
-      note: 'Generated by REA_CLI=<rea/scripts/rea.mjs> node tools/reaProof.ts. Do not edit by hand.',
+      note: `Generated by REA_CLI=<rea/scripts/rea.mjs> ${nativeDir ? 'REA_ORIGINALS_DIR=<REA bundles> ' : ''}node tools/reaProof.ts. Do not edit by hand.`,
+      mode: nativeDir ? 'rea-native original cases (REA analyze_function / inspect_artifact Evidence)' : 'analyst original cases (tools/rea-originals.json)',
       ledger_evidence_id: ledger.evidence_id,
       ledger_id: r.ledger_id,
       closure_digest: r.closure_digest,
       ledger_status: r.summary?.status ?? r.status,
-      obligations: r.obligations.map((o: { obligation_id: string; status: string; diagnostics: { code: string; detail: string }[] }) => ({ obligation_id: o.obligation_id, status: o.status, diagnostics: o.diagnostics })),
+      obligations: r.obligations.map((o: LedgerObligation) => ({
+        obligation_id: o.obligation_id,
+        status: o.status,
+        diagnostics: o.diagnostics,
+        original_cases: o.observed_cases.map((c) => {
+          const rec = records.get(c.evidence_id);
+          const proc = (rec?.normalized_result as { procedure?: { name?: string; address?: string } } | undefined)?.procedure;
+          return { kind: c.kind, evidence_id: c.evidence_id, operation: rec?.operation, provider: (rec?.provider as { id?: string } | undefined)?.id, observes: proc ? `${proc.name} @ ${proc.address}` : c.location };
+        }),
+      })),
     };
-    writeFileSync('docs/validation/rea-ledger-result.json', JSON.stringify(summary, null, 2) + '\n');
+    writeFileSync(nativeDir ? 'docs/validation/rea-ledger-result.native.json' : 'docs/validation/rea-ledger-result.json', JSON.stringify(summary, null, 2) + '\n');
     console.log(`REA ledger: ${summary.obligations.map((o: { obligation_id: string; status: string }) => `${o.obligation_id}=${o.status}`).join(', ')}`);
   }
 }

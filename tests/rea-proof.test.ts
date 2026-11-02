@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { buildRequest, bundle, canonicalJson, evidence, fixturePassed, ownerDigest, verifierPassed, type ObligationSpec, type Originals } from '../tools/reaProof';
+import { buildRequest, bundle, canonicalJson, evidence, fixturePassed, nativeOriginals, ownerDigest, verifierPassed, type ObligationSpec, type Originals } from '../tools/reaProof';
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 const spec: ObligationSpec = {
@@ -93,5 +93,22 @@ describe('REA ledger request producer', () => {
     expect(JSON.stringify(again)).toBe(JSON.stringify(req.evidence_bundle));
     expect(req.evidence_bundle.artifacts).toEqual([{ digest: { sha256: 'a'.repeat(64) }, format: 'mach-o', architecture: 'x86_64' }]);
     expect(req.evidence_bundle.scenarios.map((s) => s.authority)).toEqual(['controlled-replay']);
+  });
+
+  it('native mode uses REA-produced records as original cases and links analyst records to REA Evidence', () => {
+    const base = { provider: { id: 'ghidra', name: 'Ghidra', version: '12.1.4' }, analysis_profile: null, raw_result: null, confidence: 'observed', authority: 'shipped-artifact', environment: null, limitations: [], relationship_coverage: null, locations: [], evidence_links: [] };
+    const fnRec = evidence({ ...base, subject: originals.subjects.engine, predicate_type: 'rea.analysis', operation: 'analyze_function', parameters: { procedure: '0x10' }, normalized_result: { procedure: { name: 'demo', address: '0x10' } } });
+    const summaryRec = evidence({ ...base, subject: originals.subjects.engine, predicate_type: 'rea.analysis', operation: 'analyze_function', parameters: { procedure: '0x10' }, normalized_result: { parent_evidence_id: fnRec.evidence_id } });
+    const jarRec = evidence({ ...base, subject: { name: 'x.jar', sha256: 'b'.repeat(64), format: 'zip', architecture: null, local_path: 'x.jar' }, predicate_type: 'rea.analysis', operation: 'inspect_artifact', parameters: {}, normalized_result: {} });
+    const native = nativeOriginals([{ records: [summaryRec, fnRec] }, { records: [jarRec] }], { observations: { obs: ['0x10'], 'polygon-mask': ['0x10'], java: ['jar'] } });
+    expect(native.byObservation.get('obs')).toEqual([fnRec.evidence_id]);
+    expect(native.links.get('java')).toEqual([jarRec.evidence_id, fnRec.evidence_id]);
+    const req = buildRequest([spec], originals, passing, read, env, native);
+    expect(req.manifest.bindings[0].original_cases.map((c) => c.evidence_id)).toEqual([fnRec.evidence_id, fnRec.evidence_id]);
+    const ids = req.evidence_bundle.records.map((r) => r.evidence_id);
+    expect(ids).toContain(fnRec.evidence_id);
+    // The analyst record for an observation REA analyzed is not bundled.
+    expect(req.evidence_bundle.records.some((r) => r.predicate_type === 'flowjo-rea.static-behavior')).toBe(false);
+    expect(() => nativeOriginals([{ records: [] }], { observations: { obs: ['0x99'] } })).toThrow(/no REA analyze_function record/);
   });
 });

@@ -197,12 +197,23 @@ export function App() {
     });
   };
 
-  const updateWs = (fn: (w: Workspace) => void) =>
+  // Edits must not have side effects: React may run the updater twice
+  // (StrictMode). Messages raised during an edit go through `say` and are
+  // posted once, after the update.
+  type Say = (level: 'info' | 'warn' | 'error', text: string) => void;
+  const updateWs = (fn: (w: Workspace, say: Say) => void) => {
+    let posted = false;
     setWs((w0) => {
       const w = structuredClone(w0);
-      fn(w);
+      const msgs: [Parameters<Say>[0], string][] = [];
+      fn(w, (level, text) => msgs.push([level, text]));
+      if (!posted) {
+        posted = true;
+        queueMicrotask(() => msgs.forEach(([level, text]) => note(level, text)));
+      }
       return w;
     });
+  };
 
   // --- analysis -------------------------------------------------------------
   useEffect(() => {
@@ -304,19 +315,19 @@ export function App() {
     return out;
   }, [analysis, sample]);
 
-  const syncRoots = (w: Workspace, sampleId: string, popIds: string[]) => {
+  const syncRoots = (w: Workspace, sampleId: string, popIds: string[], say: Say) => {
     if (!syncGroup) return;
     const targets = (w.groups.find((g) => g.id === groupId)?.sampleIds ?? []).filter((x) => x !== sampleId);
-    for (const id of popIds) for (const msg of applySubtree(w, sampleId, id, targets)) note('warn', msg);
+    for (const id of popIds) for (const msg of applySubtree(w, sampleId, id, targets)) say('warn', msg);
   };
 
   const createGates = (gates: { name: string; gate: Gate }[]) => {
     if (!sample) return;
     const ids = gates.map(() => newId('pop'));
-    updateWs((w) => {
+    updateWs((w, say) => {
       const s = w.samples.find((x) => x.id === sample.id)!;
       gates.forEach((g, i) => s.populations.push({ id: ids[i], name: g.name, parentId: sel.popId, gate: g.gate }));
-      syncRoots(w, sample.id, ids);
+      syncRoots(w, sample.id, ids, say);
     });
     setTool('select');
     note('info', `Created ${gates.map((g) => g.name).join(', ')}`);
@@ -324,10 +335,10 @@ export function App() {
 
   const updateGates = (ups: { id: string; gate: Gate }[]) => {
     if (!sample) return;
-    updateWs((w) => {
+    updateWs((w, say) => {
       const s = w.samples.find((x) => x.id === sample.id)!;
       for (const u of ups) s.populations.find((p) => p.id === u.id)!.gate = u.gate;
-      syncRoots(w, sample.id, ups.map((u) => u.id));
+      syncRoots(w, sample.id, ups.map((u) => u.id), say);
     });
   };
 
@@ -342,17 +353,16 @@ export function App() {
     setMulti([]);
   };
 
-  const deletePop = (id: string) =>
-    updateWs((w) => {
-      const s = w.samples.find((x) => x.id === sample!.id)!;
-      const dependants = s.populations.filter((p) => p.gate.type === 'boolean' && p.gate.operands.some((o) => o.ref === id));
-      if (dependants.length) {
-        note('warn', `Cannot delete: used by boolean gate(s) ${dependants.map((d) => d.name).join(', ')}`);
-        return;
-      }
-      removePopulation(s, id);
-      if (sel.popId === id) setSel({ sampleId: sample!.id, popId: null });
-    });
+  const deletePop = (id: string) => {
+    if (!sample) return;
+    const dependants = sample.populations.filter((p) => p.gate.type === 'boolean' && p.gate.operands.some((o) => o.ref === id));
+    if (dependants.length) {
+      note('warn', `Cannot delete: used by boolean gate(s) ${dependants.map((d) => d.name).join(', ')}`);
+      return;
+    }
+    updateWs((w) => removePopulation(w.samples.find((x) => x.id === sample.id)!, id));
+    if (sel.popId === id) setSel({ sampleId: sample.id, popId: null });
+  };
 
   // --- exports --------------------------------------------------------------------
   const exportStatsCsv = () => {
@@ -590,9 +600,9 @@ export function App() {
               </div>
               <div className="row">
                 <button disabled={!sel.popId} data-testid="apply-group" onClick={() => {
-                  updateWs((w) => {
+                  updateWs((w, say) => {
                     const msgs = applySubtree(w, sample.id, sel.popId!, w.groups.find((g) => g.id === groupId)!.sampleIds);
-                    msgs.forEach((m) => note('warn', m));
+                    msgs.forEach((m) => say('warn', m));
                   });
                   note('info', `Applied "${popPath}" and its children to group ${group?.name}`);
                 }}>Copy gate tree to group</button>

@@ -20,6 +20,27 @@ function ramp(t: number): [number, number, number] {
 }
 
 // Draws "10^4" as 10 with a superscript exponent.
+// Gate label placement: kept inside the plot area and moved down (then up)
+// in line steps until it does not overlap a label already placed.
+export interface LabelBox { x: number; y: number; w: number }
+const LINE = 13;
+export function placeLabel(placed: LabelBox[], w: number, x: number, y: number, area: { x0: number; y0: number; x1: number; y1: number }): LabelBox {
+  const px = Math.max(area.x0, Math.min(x, area.x1 - w));
+  const py = Math.max(area.y0, Math.min(y, area.y1));
+  const free = (cy: number) => placed.every((b) => cy <= b.y - LINE || cy >= b.y + LINE || px + w <= b.x || px >= b.x + b.w);
+  for (let k = 0; k < 40; k++) {
+    for (const cy of k === 0 ? [py] : [py + k * LINE, py - k * LINE]) {
+      if (cy < area.y0 || cy > area.y1 || !free(cy)) continue;
+      const box = { x: px, y: cy, w };
+      placed.push(box);
+      return box;
+    }
+  }
+  const box = { x: px, y: py, w };
+  placed.push(box);
+  return box;
+}
+
 function drawLabel(ctx: CanvasRenderingContext2D, label: string, x: number, y: number, align: 'center' | 'right') {
   const m = /^(-?10)\^(\d+)$/.exec(label);
   ctx.save();
@@ -223,6 +244,7 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
     ctx.clip();
     ctx.font = '11px sans-serif';
     ctx.textAlign = 'left';
+    const placed: LabelBox[] = [];
     for (const g of o.gates) {
       const sel = g.pop.id === o.selectedId;
       ctx.strokeStyle = sel ? '#d0021b' : '#111';
@@ -259,7 +281,9 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
       if (g.kind === 'ellipse' && sel && g.editable) for (const [a, b] of g.handles) ctx.strokeRect(sx(a) - 3, sy(b) - 3, 6, 6);
       if (g.kind === 'spline' && sel && g.editable) for (const [a, b] of [...g.xPts, ...g.yPts]) ctx.strokeRect(sx(a) - 3, sy(b) - 3, 6, 6);
       ctx.fillStyle = sel ? '#d0021b' : '#111';
-      ctx.fillText(`${g.pop.name} ${pct}`, Math.max(PLOT.ml + 2, lx), Math.max(PLOT.mt + 11, ly));
+      const text = `${g.pop.name} ${pct}`;
+      const p = placeLabel(placed, ctx.measureText(text).width, lx, ly, { x0: PLOT.ml + 2, y0: PLOT.mt + 11, x1: PLOT.ml + pw - 2, y1: PLOT.mt + ph - 2 });
+      ctx.fillText(text, p.x, p.y);
     }
   ctx.restore();
   return contourSegments;

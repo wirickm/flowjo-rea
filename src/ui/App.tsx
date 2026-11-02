@@ -790,7 +790,7 @@ export function App() {
             channels={channels.map((c) => c.name)}
             timeChannel={channels.find((c) => /^time$/i.test(c.name))?.name ?? null}
             onClose={() => setDialog(null)}
-            runCellCycle={(channel, model, bins) => run(() => client.cellCycle({ ...base, channel, model, bins }))}
+            runCellCycle={(channel, model) => run(() => client.cellCycle({ ...base, channel, model }))}
             runProliferation={(channel, maxGenerations) => run(() => client.proliferation({ ...base, channel, maxGenerations }))}
             runKinetics={(channel, stat, bins, threshold) => run(() => client.kinetics({ ...base, channel, stat, bins, threshold, timeChannel: channels.find((c) => /^time$/i.test(c.name))!.name }))}
           />

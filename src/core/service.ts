@@ -304,16 +304,18 @@ export class AnalysisService {
   }
 
   // Cell cycle on a linear DNA histogram: bin k covers [k*w, (k+1)*w) of the
-  // compensated channel, w = channel range / bins (FCS $PnR, 1024 if unknown).
-  cellCycle(r: PlatformRequest & { bins: number; model: 'dean-jett-fox' | 'watson'; constrainG2?: boolean }): CellCycleFit & { binWidth: number; histogram: Float64Array } {
+  // compensated channel, w = channel range / channels. The channel count is
+  // FlowJo 10's: min(channel range, 1024), not user-set (specs section 6.1).
+  cellCycle(r: PlatformRequest & { model: 'dean-jett-fox' | 'watson'; constrainG2?: boolean }): CellCycleFit & { binWidth: number; histogram: Float64Array } {
     const { values } = this.platformData(r);
     const f = this.files.get(r.sampleId)!;
     const range = f.channels.find((c) => c.name === r.channel)?.range || 1024;
-    const w = range / r.bins;
-    const hist = new Float64Array(r.bins);
+    const bins = cellCycleChannels(range);
+    const w = range / bins;
+    const hist = new Float64Array(bins);
     for (const v of values) {
       const k = Math.floor(v / w);
-      if (k >= 0 && k < r.bins) hist[k]++;
+      if (k >= 0 && k < bins) hist[k]++;
     }
     const fit = fitCellCycle(hist, { model: r.model, constrainG2: r.constrainG2 ?? true });
     return { ...fit, binWidth: w, histogram: hist };
@@ -333,6 +335,13 @@ export class AnalysisService {
   dimensionValues(r: AnalyzeRequest, d: Dimension): Float64Array {
     return this.engine(r).dimension(d);
   }
+}
+
+// FlowJo 10's cell cycle histogram resolution: the channel range, capped at
+// 1024 channels (FlowJo CCNode.HISTOGRAM_CHANNELS; specs section 6.1).
+export const CELL_CYCLE_MAX_CHANNELS = 1024;
+export function cellCycleChannels(range: number): number {
+  return Math.max(1, Math.min(CELL_CYCLE_MAX_CHANNELS, Math.floor(range)));
 }
 
 export { makeTransform };

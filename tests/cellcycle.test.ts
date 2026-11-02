@@ -2,6 +2,8 @@
 // G1 at 200 (CV 4%), G2 at 400, S uniform between, same CV for every cell.
 import { describe, expect, it } from 'vitest';
 import { fitCellCycle } from '../src/core/cellcycle';
+import { writeFcs } from '../src/core/fcsWriter';
+import { AnalysisService, cellCycleChannels } from '../src/core/service';
 
 function mulberry32(seed: number) {
   return () => {
@@ -70,3 +72,34 @@ describe('cell cycle fitting', () => {
     expect(() => fitCellCycle([], { model: 'watson' })).toThrow();
   });
 });
+
+// FlowJo 10 builds the cell cycle histogram with min(channel range, 1024)
+// channels and gives the user no resolution setting (specs section 6.1). The
+// cap also bounds fit time: a 262144-range channel used to be fitted at any
+// user-typed bin count (UAT a4-01: 16384 bins never finished).
+describe('cell cycle histogram resolution (FlowJo 10 rule)', () => {
+  it('uses the channel range, capped at 1024 channels', () => {
+    expect(cellCycleChannels(262144)).toBe(1024);
+    expect(cellCycleChannels(1024)).toBe(1024);
+    expect(cellCycleChannels(256)).toBe(256);
+    expect(cellCycleChannels(0.5)).toBe(1);
+  });
+  it('fits a wide-range channel on 1024 channels', async () => {
+    const rnd = mulberry32(7);
+    const normal = () => Math.sqrt(-2 * Math.log(1 - rnd())) * Math.cos(2 * Math.PI * rnd());
+    const N = 20000, scale = 256; // G1 at 51200 on a 262144 range
+    const dna = new Float64Array(N);
+    for (let k = 0; k < N; k++) {
+      const u = rnd();
+      const v = u < 0.55 ? 200 : u < 0.85 ? 200 + 200 * rnd() : 400;
+      dna[k] = v * scale * (1 + 0.04 * normal());
+    }
+    const svc = new AnalysisService();
+    await svc.load('s', 'wide.fcs', writeFcs([{ name: 'DNA', range: 262144, values: dna }]));
+    const r = svc.cellCycle({ sampleId: 's', compensation: 'none', populations: [], matrices: [], popId: null, channel: 'DNA', model: 'dean-jett-fox' });
+    expect(r.histogram.length).toBe(1024);
+    expect(r.binWidth).toBe(256);
+    expect(Math.abs(r.g1Pct - 55)).toBeLessThan(2.5);
+  });
+});
+

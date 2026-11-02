@@ -15,7 +15,7 @@ interface Props {
   channels: string[];
   timeChannel: string | null;
   onClose: () => void;
-  runCellCycle: (channel: string, model: 'dean-jett-fox' | 'watson', bins: number) => Promise<CellCycleResult | undefined>;
+  runCellCycle: (channel: string, model: 'dean-jett-fox' | 'watson') => Promise<CellCycleResult | undefined>;
   runProliferation: (channel: string, maxGenerations: number) => Promise<ProliferationFit | undefined>;
   runKinetics: (channel: string, stat: KStat, bins: number, threshold: number) => Promise<KineticsResult | undefined>;
 }
@@ -54,7 +54,6 @@ export function PlatformsDialog(p: Props) {
   const [platform, setPlatform] = useState<Platform>('cellcycle');
   const [channel, setChannel] = useState(p.channels[0] ?? '');
   const [model, setModel] = useState<'dean-jett-fox' | 'watson'>('dean-jett-fox');
-  const [bins, setBins] = useState(256);
   const [gens, setGens] = useState(8);
   const [kstat, setKstat] = useState<KStat>('count');
   const [kbins, setKbins] = useState(50);
@@ -67,7 +66,7 @@ export function PlatformsDialog(p: Props) {
   const go = async () => {
     setRunning(true);
     try {
-      if (platform === 'cellcycle') setCc((await p.runCellCycle(channel, model, bins)) ?? null);
+      if (platform === 'cellcycle') setCc((await p.runCellCycle(channel, model)) ?? null);
       if (platform === 'proliferation') setPr((await p.runProliferation(channel, gens)) ?? null);
       if (platform === 'kinetics') setKn((await p.runKinetics(channel, kstat, kbins, threshold)) ?? null);
     } finally {
@@ -95,7 +94,7 @@ export function PlatformsDialog(p: Props) {
                   <option value="dean-jett-fox">Dean-Jett-Fox</option>
                   <option value="watson">Watson pragmatic</option>
                 </select>
-                bins <input type="number" min={64} max={1024} value={bins} onChange={(e) => setBins(Number(e.target.value))} style={{ width: 64 }} />
+                <span title="As in FlowJo 10: channel range, at most 1024 channels">histogram: up to 1024 channels</span>
               </>
             )}
             {platform === 'proliferation' && <>max generations <input type="number" min={1} max={12} value={gens} onChange={(e) => setGens(Number(e.target.value))} style={{ width: 50 }} /></>}

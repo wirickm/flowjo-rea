@@ -1,0 +1,1053 @@
+{
+  "evidence_bundle": {
+    "artifacts": [
+      {
+        "digest": {
+          "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+        },
+        "format": "zip",
+        "architecture": null
+      },
+      {
+        "digest": {
+          "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
+        },
+        "format": "mach-o",
+        "architecture": "x86_64"
+      }
+    ],
+    "providers": [
+      {
+        "id": "flowjo-rea.proof",
+        "name": "flowjo-rea proof producer",
+        "version": "2"
+      },
+      {
+        "id": "flowjo-rea.review",
+        "name": "flowjo-rea obligation review",
+        "version": "1"
+      },
+      {
+        "id": "javap",
+        "name": "OpenJDK javap (analyst reading of bytecode)",
+        "version": "21.0.12"
+      },
+      {
+        "id": "llvm-objdump",
+        "name": "LLVM objdump (analyst reading of disassembly)",
+        "version": "18.1.3"
+      }
+    ],
+    "environments": [
+      {
+        "id": "node-v22.23.4",
+        "platform": "linux",
+        "architecture": "x64",
+        "isolation": "process"
+      }
+    ],
+    "scenarios": [
+      {
+        "evidence_id": "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2",
+        "operation": "verify_reconstruction_obligations",
+        "authority": "controlled-replay"
+      }
+    ],
+    "captures": [],
+    "unknowns": [],
+    "records": [
+      {
+        "evidence_id": "ev_276f7886135cbaa91fc8d3bc855b7f3369303019589dcdd9e65aab3c7ce13d84",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_3caabaaa55400c8d00b3236e99c7e4fa6bfdb3c695ea9f9097a23932c34fc7c6",
+          "ev_a013155b82a39c0d3594d65480c08cb06d085c568f07ae8652d007b56640391c"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "wsp.logicle-ellipse",
+          "obligation_version": 2
+        },
+        "normalized_result": {
+          "title": "Ellipse gate membership equals FlowJo 10's outline-polygon membership",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/gateGrid.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.proof",
+          "name": "flowjo-rea proof producer",
+          "version": "2"
+        },
+        "predicate_type": "rea.reconstruction-proof",
+        "operation": "verify_reconstruction_obligations",
+        "parameters": {
+          "node": "v22.23.4"
+        },
+        "normalized_result": {
+          "bindings": [
+            {
+              "obligation_id": "wsp.polygon-counts",
+              "obligation_version": 2,
+              "owner_sha256": "9ddbc1916622174413a440534b2215cfa115eb38ee4c4c81349a89e44bec2b0d",
+              "fixtures": [
+                {
+                  "fixture_id": "wsp.polygon-counts.fixtures",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "wsp.polygon-counts.edges",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "wsp.polygon-counts.outside",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "wsp.flowjo-counts",
+                  "claim_id": "wsp.polygon-counts.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "wsp.logicle-ellipse",
+              "obligation_version": 2,
+              "owner_sha256": "9ddbc1916622174413a440534b2215cfa115eb38ee4c4c81349a89e44bec2b0d",
+              "fixtures": [
+                {
+                  "fixture_id": "wsp.logicle-ellipse.fixtures",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "wsp.logicle-ellipse.outline",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "wsp.flowjo-counts",
+                  "claim_id": "wsp.logicle-ellipse.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gate.rect-open-bounds",
+              "obligation_version": 2,
+              "owner_sha256": "5ca224f7514742783047601d9cd1f08a6d38a3903945e8d961c4c39723b803b8",
+              "fixtures": [
+                {
+                  "fixture_id": "gate.rect-open-bounds.time",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gate.rect-open-bounds.closed",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "wsp.flowjo-counts",
+                  "claim_id": "gate.rect-open-bounds.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "stats.flowjo-conventions",
+              "obligation_version": 2,
+              "owner_sha256": "fcc66d115660479ea9c745e69bd64ed578481d6216114411303504544d764346",
+              "fixtures": [
+                {
+                  "fixture_id": "stats.median",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.clamp",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.small",
+                  "case_kind": "malformed",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "stats.flowjo-histogram",
+                  "claim_id": "stats.flowjo-conventions.v2",
+                  "passed": true
+                }
+              ]
+            }
+          ]
+        },
+        "confidence": "observed",
+        "authority": "controlled-replay",
+        "environment": {
+          "id": "node-v22.23.4",
+          "platform": "linux",
+          "architecture": "x64",
+          "isolation": "process"
+        },
+        "limitations": [
+          "Verifiers are this repository’s vitest suites run in one local process; FlowJo reference counts come from FlowJo-saved .wsp files (FlowJo 10.6.2 to 10.10.0)."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_36fd0ebf6e20ea0a87d2a59c83e609ac9a10de42b24654f54bdfe2037af98be5",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_39899fa8eeac55108dc8bbd53475231faf8072748953353901c623ba0c0c6dd7",
+          "ev_89699b91f5e6a9c7eeb423b5baa867fe4bd231763b0c5a62ffa46a0380494d50",
+          "ev_e9cc1e0fc9b96146262e7b220bc2b19ee83e8c40550a5d99d73e5ead6c1b4f77"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "stats.flowjo-conventions",
+          "obligation_version": 2
+        },
+        "normalized_result": {
+          "title": "Median, percentiles and robust CV follow FlowJo 10's histogram conventions",
+          "required_case_kinds": [
+            "positive",
+            "negative",
+            "malformed"
+          ],
+          "owner": "src/core/flowjoStats.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_39899fa8eeac55108dc8bbd53475231faf8072748953353901c623ba0c0c6dd7",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "libNativeEngine-3.6.2.jnilib",
+          "digest": {
+            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
+          "format": "mach-o",
+          "architecture": "x86_64"
+        },
+        "provider": {
+          "id": "llvm-objdump",
+          "name": "LLVM objdump (analyst reading of disassembly)",
+          "version": "18.1.3"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_native_functions",
+        "parameters": {
+          "symbols": [
+            "BasicHistogram::Build1DHistogram(long, long)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Histogram channels are floor(u + 0.5) clamped to the first and last channel, so off-scale values fall into channel 0 or the last channel.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 4"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "address-range",
+            "start": "0xe3ca0",
+            "end": "0xe6ee0"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_3caabaaa55400c8d00b3236e99c7e4fa6bfdb3c695ea9f9097a23932c34fc7c6",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "libNativeEngine-3.6.2.jnilib",
+          "digest": {
+            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
+          "format": "mach-o",
+          "architecture": "x86_64"
+        },
+        "provider": {
+          "id": "llvm-objdump",
+          "name": "LLVM objdump (analyst reading of disassembly)",
+          "version": "18.1.3"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_native_functions",
+        "parameters": {
+          "symbols": [
+            "PolyGateHistogram2D::Build2DPolyGateHistogram(ScalePointSet**, int, bool)",
+            "ScalePointSet::PointInPoly(float, float, bool&)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "The polygon gate mask has gateResolution x gateResolution cells; cell (x, y) is set exactly when the integer point (x, y) lies inside the vertex-rounded polygon (even-odd crossings with the half-open rule y1 < y <= y2) or on one of its edges or vertices.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 1"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "address-range",
+            "start": "0x29a930",
+            "end": "0x29ab40"
+          },
+          {
+            "kind": "address-range",
+            "start": "0x1c8350",
+            "end": "0x1c8530"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_4bc3a190be4f40021296127fa5857fb1468dfb70d10fd4935b3637ef38462f97",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "libNativeEngine-3.6.2.jnilib",
+          "digest": {
+            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
+          "format": "mach-o",
+          "architecture": "x86_64"
+        },
+        "provider": {
+          "id": "llvm-objdump",
+          "name": "LLVM objdump (analyst reading of disassembly)",
+          "version": "18.1.3"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_native_functions",
+        "parameters": {
+          "symbols": [
+            "ScalePointSet::ScaleToChannel(TransformedParameter*, TransformedParameter*, int, int)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Vertices (and, in the gate computation, event values) map to the grid as floor((v - min) * R / (max - min) + 0.5) on linear axes, and as the lookup-table index scaled to R and truncated on table axes; values are read as 32-bit floats.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 1"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "address-range",
+            "start": "0x1c86a0",
+            "end": "0x1c8b20"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_6b030ef57ed02c11a7a99fa78975a3e7993102f1668e2bbd70a03c6a92ddfd61",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_997c1dbb15d2fd8c7cf786bd5b41dad21b9171ea859546cd2c97d72e4c390fc7"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "gate.rect-open-bounds",
+          "obligation_version": 2
+        },
+        "normalized_result": {
+          "title": "Rectangle bounds at a linear axis edge are open, as in FlowJo 10",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/wsp.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_89699b91f5e6a9c7eeb423b5baa867fe4bd231763b0c5a62ffa46a0380494d50",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "libNativeEngine-3.6.2.jnilib",
+          "digest": {
+            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
+          "format": "mach-o",
+          "architecture": "x86_64"
+        },
+        "provider": {
+          "id": "llvm-objdump",
+          "name": "LLVM objdump (analyst reading of disassembly)",
+          "version": "18.1.3"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_native_functions",
+        "parameters": {
+          "symbols": [
+            "GParameter::Median(ActivePopulation*, bool)",
+            "BasicHistogram::ChannelMedian(bool)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "The median is read from a 4096-channel histogram: the first channel whose cumulative count (single precision) reaches n * 50 * 0.01, converted back to a data value; no interpolation.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 4"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "address-range",
+            "start": "0x15cfb0",
+            "end": "0x15d050"
+          },
+          {
+            "kind": "address-range",
+            "start": "0xe9fe0",
+            "end": "0xea170"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_997c1dbb15d2fd8c7cf786bd5b41dad21b9171ea859546cd2c97d72e4c390fc7",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "libNativeEngine-3.6.2.jnilib",
+          "digest": {
+            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
+          "format": "mach-o",
+          "architecture": "x86_64"
+        },
+        "provider": {
+          "id": "llvm-objdump",
+          "name": "LLVM objdump (analyst reading of disassembly)",
+          "version": "18.1.3"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_native_functions",
+        "parameters": {
+          "symbols": [
+            "FGate::GetRectRangeInScale(double&, double&, double&, double&, TransformedParameter*, TransformedParameter*)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "A rectangle bound whose channel floor((b - min) * C / (max - min) + 0.5), C = max(channel range, 4096), is <= 0 (lower) or >= C (upper) is replaced by an open bound; other bounds are kept.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 3"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "address-range",
+            "start": "0x804d0",
+            "end": "0x807c0"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_a013155b82a39c0d3594d65480c08cb06d085c568f07ae8652d007b56640391c",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "com.treestar.flowjo.core.gates.EllipseGate.writeQuery",
+            "com.treestar.flowjo.core.gates.PolyGate.<init>(EllipseGate)",
+            "com.treestar.layout.presentation.FigGatingEllipse.updateShape"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "An ellipse is sent to the engine as a polygon: 180 outline points at angles 2 pi (i / 180) (fraction in single precision), polar radius a sqrt((1 - e^2) / (1 - e^2 cos^2 t)) from the integer major/minor edge points, rounded to integer frame pixels, consecutive duplicates dropped, converted back to data values; the engine then gates it as a polygon.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 2"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/core/gates/EllipseGate.class"
+          },
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/layout/presentation/FigGatingEllipse.class"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_e9cc1e0fc9b96146262e7b220bc2b19ee83e8c40550a5d99d73e5ead6c1b4f77",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "libNativeEngine-3.6.2.jnilib",
+          "digest": {
+            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
+          "format": "mach-o",
+          "architecture": "x86_64"
+        },
+        "provider": {
+          "id": "llvm-objdump",
+          "name": "LLVM objdump (analyst reading of disassembly)",
+          "version": "18.1.3"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_native_functions",
+        "parameters": {
+          "symbols": [
+            "BasicHistogram::ScaleRobustCV()",
+            "BasicHistogram::ScaleRobustSD()"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Robust CV is 0 for populations of fewer than 6 events; otherwise 100 x robust SD / median, robust SD being (P84.13 - P15.87) / 2 with one-sided fallbacks at saturation.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 4"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "address-range",
+            "start": "0xeaaf0",
+            "end": "0xeabf0"
+          },
+          {
+            "kind": "address-range",
+            "start": "0xeabf0",
+            "end": "0xeae80"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_f54893712fad5b36fd1984b42e5d0b2c3d846a8ddcfceeec1682a7a98f799e7f",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_3caabaaa55400c8d00b3236e99c7e4fa6bfdb3c695ea9f9097a23932c34fc7c6",
+          "ev_4bc3a190be4f40021296127fa5857fb1468dfb70d10fd4935b3637ef38462f97"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "wsp.polygon-counts",
+          "obligation_version": 2
+        },
+        "normalized_result": {
+          "title": "Polygon gate membership equals FlowJo 10's gate-grid membership",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/gateGrid.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      }
+    ]
+  },
+  "reviewed_obligations": [
+    {
+      "obligation_id": "wsp.polygon-counts",
+      "obligation_version": 2,
+      "title": "Polygon gate membership equals FlowJo 10's gate-grid membership",
+      "application_layer": "application",
+      "family": "gating",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "PolyGateHistogram2D::Build2DPolyGateHistogram"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_f54893712fad5b36fd1984b42e5d0b2c3d846a8ddcfceeec1682a7a98f799e7f"
+      ]
+    },
+    {
+      "obligation_id": "wsp.logicle-ellipse",
+      "obligation_version": 2,
+      "title": "Ellipse gate membership equals FlowJo 10's outline-polygon membership",
+      "application_layer": "application",
+      "family": "gating",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "com.treestar.flowjo.core.gates.EllipseGate.writeQuery"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_276f7886135cbaa91fc8d3bc855b7f3369303019589dcdd9e65aab3c7ce13d84"
+      ]
+    },
+    {
+      "obligation_id": "gate.rect-open-bounds",
+      "obligation_version": 2,
+      "title": "Rectangle bounds at a linear axis edge are open, as in FlowJo 10",
+      "application_layer": "application",
+      "family": "gating",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "FGate::GetRectRangeInScale"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_6b030ef57ed02c11a7a99fa78975a3e7993102f1668e2bbd70a03c6a92ddfd61"
+      ]
+    },
+    {
+      "obligation_id": "stats.flowjo-conventions",
+      "obligation_version": 2,
+      "title": "Median, percentiles and robust CV follow FlowJo 10's histogram conventions",
+      "application_layer": "application",
+      "family": "statistics",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "BasicHistogram::ChannelMedian"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative",
+        "malformed"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_36fd0ebf6e20ea0a87d2a59c83e609ac9a10de42b24654f54bdfe2037af98be5"
+      ]
+    }
+  ],
+  "manifest": {
+    "bindings": [
+      {
+        "obligation_id": "wsp.polygon-counts",
+        "owner": {
+          "module_path": "src/core/gateGrid.ts",
+          "symbol": "polygonGridMask",
+          "owner_sha256": "9ddbc1916622174413a440534b2215cfa115eb38ee4c4c81349a89e44bec2b0d"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_3caabaaa55400c8d00b3236e99c7e4fa6bfdb3c695ea9f9097a23932c34fc7c6",
+            "location": "lattice point inside or on the rounded polygon is in"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_3caabaaa55400c8d00b3236e99c7e4fa6bfdb3c695ea9f9097a23932c34fc7c6",
+            "location": "lattice point outside the rounded polygon is out"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "wsp.polygon-counts.fixtures",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2"
+            ]
+          },
+          {
+            "fixture_id": "wsp.polygon-counts.edges",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2"
+            ]
+          },
+          {
+            "fixture_id": "wsp.polygon-counts.outside",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "wsp.flowjo-counts",
+          "claim_id": "wsp.polygon-counts.v2",
+          "command": "npx vitest run tests/wsp.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2",
+          "enumerated_obligation_ids": [
+            "wsp.polygon-counts"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "wsp.logicle-ellipse",
+        "owner": {
+          "module_path": "src/core/gateGrid.ts",
+          "symbol": "ellipseLatticePolygon",
+          "owner_sha256": "9ddbc1916622174413a440534b2215cfa115eb38ee4c4c81349a89e44bec2b0d"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_a013155b82a39c0d3594d65480c08cb06d085c568f07ae8652d007b56640391c",
+            "location": "lattice point inside or on the 180-vertex outline is in"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_a013155b82a39c0d3594d65480c08cb06d085c568f07ae8652d007b56640391c",
+            "location": "lattice point outside the outline is out"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "wsp.logicle-ellipse.fixtures",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2"
+            ]
+          },
+          {
+            "fixture_id": "wsp.logicle-ellipse.outline",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "wsp.flowjo-counts",
+          "claim_id": "wsp.logicle-ellipse.v2",
+          "command": "npx vitest run tests/wsp.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2",
+          "enumerated_obligation_ids": [
+            "wsp.logicle-ellipse"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "gate.rect-open-bounds",
+        "owner": {
+          "module_path": "src/core/wsp.ts",
+          "symbol": "parseWsp",
+          "owner_sha256": "5ca224f7514742783047601d9cd1f08a6d38a3903945e8d961c4c39723b803b8"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_997c1dbb15d2fd8c7cf786bd5b41dad21b9171ea859546cd2c97d72e4c390fc7",
+            "location": "bound on or beyond the first or last channel becomes open"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_997c1dbb15d2fd8c7cf786bd5b41dad21b9171ea859546cd2c97d72e4c390fc7",
+            "location": "bound inside the axis range is kept"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "gate.rect-open-bounds.time",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2"
+            ]
+          },
+          {
+            "fixture_id": "gate.rect-open-bounds.closed",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "wsp.flowjo-counts",
+          "claim_id": "gate.rect-open-bounds.v2",
+          "command": "npx vitest run tests/wsp.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2",
+          "enumerated_obligation_ids": [
+            "gate.rect-open-bounds"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "stats.flowjo-conventions",
+        "owner": {
+          "module_path": "src/core/flowjoStats.ts",
+          "symbol": "flowjoPercentile",
+          "owner_sha256": "fcc66d115660479ea9c745e69bd64ed578481d6216114411303504544d764346"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_89699b91f5e6a9c7eeb423b5baa867fe4bd231763b0c5a62ffa46a0380494d50",
+            "location": "median is the first channel reaching n/2, no interpolation"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_39899fa8eeac55108dc8bbd53475231faf8072748953353901c623ba0c0c6dd7",
+            "location": "off-scale values do not extend the channel range"
+          },
+          {
+            "kind": "malformed",
+            "evidence_id": "ev_e9cc1e0fc9b96146262e7b220bc2b19ee83e8c40550a5d99d73e5ead6c1b4f77",
+            "location": "fewer than 6 events give robust CV 0"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "stats.median",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2"
+            ]
+          },
+          {
+            "fixture_id": "stats.clamp",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2"
+            ]
+          },
+          {
+            "fixture_id": "stats.small",
+            "case_kind": "malformed",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "stats.flowjo-histogram",
+          "claim_id": "stats.flowjo-conventions.v2",
+          "command": "npx vitest run tests/flowjo-stats.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2",
+          "enumerated_obligation_ids": [
+            "stats.flowjo-conventions"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      }
+    ],
+    "contradictions": []
+  }
+}

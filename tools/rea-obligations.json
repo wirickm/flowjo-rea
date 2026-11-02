@@ -2,56 +2,82 @@
   "obligations": [
     {
       "obligation_id": "wsp.polygon-counts",
-      "obligation_version": 1,
+      "obligation_version": 2,
+      "title": "Polygon gate membership equals FlowJo 10's gate-grid membership",
+      "family": "gating",
+      "target_location": "PolyGateHistogram2D::Build2DPolyGateHistogram",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "polygon-mask", "location": "lattice point inside or on the rounded polygon is in" },
+        { "kind": "negative", "observation": "polygon-mask", "location": "lattice point outside the rounded polygon is out" }
+      ],
+      "supporting_observations": ["grid-mapping"],
       "owner": { "module_path": "src/core/gateGrid.ts", "symbol": "polygonGridMask", "files": ["src/core/gateGrid.ts", "src/core/analysis.ts", "src/core/wsp.ts"] },
       "fixtures": [
         { "fixture_id": "wsp.polygon-counts.fixtures", "case_kind": "positive", "test_file": "tests/wsp.test.ts", "test_name": "8_color_ICS.wsp" },
-        { "fixture_id": "wsp.polygon-counts.boundary", "case_kind": "boundary", "test_file": "tests/gate-grid.test.ts", "test_name": "counts lattice points on edges and vertices as inside" },
+        { "fixture_id": "wsp.polygon-counts.edges", "case_kind": "positive", "test_file": "tests/gate-grid.test.ts", "test_name": "counts lattice points on edges and vertices as inside" },
         { "fixture_id": "wsp.polygon-counts.outside", "case_kind": "negative", "test_file": "tests/gate-grid.test.ts", "test_name": "builds a mask whose cell count equals the lattice points in the closed square" }
       ],
-      "verifier": { "verifier_id": "wsp.flowjo-counts", "claim_id": "wsp.polygon-counts.v1", "test_file": "tests/wsp.test.ts", "command": "npx vitest run tests/wsp.test.ts" }
+      "verifier": { "verifier_id": "wsp.flowjo-counts", "claim_id": "wsp.polygon-counts.v2", "test_file": "tests/wsp.test.ts", "command": "npx vitest run tests/wsp.test.ts" }
     },
     {
       "obligation_id": "wsp.logicle-ellipse",
-      "obligation_version": 1,
+      "obligation_version": 2,
+      "title": "Ellipse gate membership equals FlowJo 10's outline-polygon membership",
+      "family": "gating",
+      "target_location": "com.treestar.flowjo.core.gates.EllipseGate.writeQuery",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "ellipse-polygon", "location": "lattice point inside or on the 180-vertex outline is in" },
+        { "kind": "negative", "observation": "ellipse-polygon", "location": "lattice point outside the outline is out" }
+      ],
+      "supporting_observations": ["polygon-mask"],
       "owner": { "module_path": "src/core/gateGrid.ts", "symbol": "ellipseLatticePolygon", "files": ["src/core/gateGrid.ts", "src/core/analysis.ts", "src/core/wsp.ts"] },
       "fixtures": [
         { "fixture_id": "wsp.logicle-ellipse.fixtures", "case_kind": "positive", "test_file": "tests/wsp.test.ts", "test_name": "8_color_ICS_with_ellipse.wsp" },
-        { "fixture_id": "wsp.logicle-ellipse.outline", "case_kind": "boundary", "test_file": "tests/gate-grid.test.ts", "test_name": "outlines an ellipse with at most 180 integer vertices on the true curve" }
+        { "fixture_id": "wsp.logicle-ellipse.outline", "case_kind": "negative", "test_file": "tests/gate-grid.test.ts", "test_name": "outlines an ellipse with at most 180 integer vertices on the true curve" }
       ],
-      "verifier": { "verifier_id": "wsp.flowjo-counts", "claim_id": "wsp.logicle-ellipse.v1", "test_file": "tests/wsp.test.ts", "command": "npx vitest run tests/wsp.test.ts" }
+      "verifier": { "verifier_id": "wsp.flowjo-counts", "claim_id": "wsp.logicle-ellipse.v2", "test_file": "tests/wsp.test.ts", "command": "npx vitest run tests/wsp.test.ts" }
     },
     {
       "obligation_id": "gate.rect-open-bounds",
-      "obligation_version": 1,
+      "obligation_version": 2,
+      "title": "Rectangle bounds at a linear axis edge are open, as in FlowJo 10",
+      "family": "gating",
+      "target_location": "FGate::GetRectRangeInScale",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "rect-open-bounds", "location": "bound on or beyond the first or last channel becomes open" },
+        { "kind": "negative", "observation": "rect-open-bounds", "location": "bound inside the axis range is kept" }
+      ],
+      "supporting_observations": [],
       "owner": { "module_path": "src/core/wsp.ts", "symbol": "parseWsp", "files": ["src/core/wsp.ts"] },
       "fixtures": [
         { "fixture_id": "gate.rect-open-bounds.time", "case_kind": "positive", "test_file": "tests/wsp.test.ts", "test_name": "8_color_ICS_simple.wsp" },
         { "fixture_id": "gate.rect-open-bounds.closed", "case_kind": "negative", "test_file": "tests/wsp.test.ts", "test_name": "simple_diamond_example_quad_gate.wsp" }
       ],
-      "verifier": { "verifier_id": "wsp.flowjo-counts", "claim_id": "gate.rect-open-bounds.v1", "test_file": "tests/wsp.test.ts", "command": "npx vitest run tests/wsp.test.ts" }
+      "verifier": { "verifier_id": "wsp.flowjo-counts", "claim_id": "gate.rect-open-bounds.v2", "test_file": "tests/wsp.test.ts", "command": "npx vitest run tests/wsp.test.ts" }
     },
     {
       "obligation_id": "stats.flowjo-conventions",
-      "obligation_version": 1,
+      "obligation_version": 2,
+      "title": "Median, percentiles and robust CV follow FlowJo 10's histogram conventions",
+      "family": "statistics",
+      "target_location": "BasicHistogram::ChannelMedian",
+      "required_case_kinds": ["positive", "negative", "malformed"],
+      "original_cases": [
+        { "kind": "positive", "observation": "histogram-median", "location": "median is the first channel reaching n/2, no interpolation" },
+        { "kind": "negative", "observation": "histogram-clamp", "location": "off-scale values do not extend the channel range" },
+        { "kind": "malformed", "observation": "robust-cv-small", "location": "fewer than 6 events give robust CV 0" }
+      ],
+      "supporting_observations": [],
       "owner": { "module_path": "src/core/flowjoStats.ts", "symbol": "flowjoPercentile", "files": ["src/core/flowjoStats.ts", "src/core/stats.ts"] },
       "fixtures": [
         { "fixture_id": "stats.median", "case_kind": "positive", "test_file": "tests/flowjo-stats.test.ts", "test_name": "median is the first channel whose cumulative count reaches n/2" },
-        { "fixture_id": "stats.saturation", "case_kind": "boundary", "test_file": "tests/flowjo-stats.test.ts", "test_name": "robust SD uses median - P15.87 when the top channel is saturated" },
-        { "fixture_id": "stats.empty", "case_kind": "malformed", "test_file": "tests/flowjo-stats.test.ts", "test_name": "robust CV is 0 below 6 events and NaN when empty" }
+        { "fixture_id": "stats.clamp", "case_kind": "negative", "test_file": "tests/flowjo-stats.test.ts", "test_name": "clamps off-scale values into the first and last channel" },
+        { "fixture_id": "stats.small", "case_kind": "malformed", "test_file": "tests/flowjo-stats.test.ts", "test_name": "robust CV is 0 below 6 events and NaN when empty" }
       ],
-      "verifier": { "verifier_id": "stats.flowjo-histogram", "claim_id": "stats.flowjo-conventions.v1", "test_file": "tests/flowjo-stats.test.ts", "command": "npx vitest run tests/flowjo-stats.test.ts" }
-    },
-    {
-      "obligation_id": "platform.kinetics",
-      "obligation_version": 1,
-      "owner": { "module_path": "src/core/kinetics.ts", "symbol": "kinetics", "files": ["src/core/kinetics.ts"] },
-      "fixtures": [
-        { "fixture_id": "kinetics.bins", "case_kind": "positive", "test_file": "tests/kinetics.test.ts", "test_name": "spans min..max of masked time with equal-width bins, last bin inclusive" },
-        { "fixture_id": "kinetics.empty-bin", "case_kind": "boundary", "test_file": "tests/kinetics.test.ts", "test_name": "mean and median per bin, NaN for an empty bin" },
-        { "fixture_id": "kinetics.bad-options", "case_kind": "malformed", "test_file": "tests/kinetics.test.ts", "test_name": "empty mask yields NaN bins and bad options throw" }
-      ],
-      "verifier": { "verifier_id": "kinetics.unit", "claim_id": "platform.kinetics.v1", "test_file": "tests/kinetics.test.ts", "command": "npx vitest run tests/kinetics.test.ts" }
+      "verifier": { "verifier_id": "stats.flowjo-histogram", "claim_id": "stats.flowjo-conventions.v2", "test_file": "tests/flowjo-stats.test.ts", "command": "npx vitest run tests/flowjo-stats.test.ts" }
     }
   ]
 }

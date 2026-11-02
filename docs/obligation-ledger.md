@@ -38,7 +38,7 @@ Two parts:
 | wsp.keyword-groups | FlowJo keyword-criteria groups import as live groups | `src/core/wsp.ts`; `src/core/project.ts` `matchRules` | positive (14 fixtures), negative (no match) | `tests/import-gaps.test.ts` | flowjo-file (membership empty in every fixture) | flowjo-file | implemented | A FlowJo workspace whose criteria select samples; case-sensitivity check |
 | platform.cell-cycle | Dean-Jett-Fox and Watson G1/S/G2 fractions | `src/core/cellcycle.ts` `fitCellCycle` | positive, negative (G1-only), malformed (empty) | `tests/cellcycle.test.ts`; E2E "cell cycle" | synthetic | flowjo-file | implemented | FlowJo or ModFit fit of the same histogram |
 | platform.proliferation | Generation fit and division/proliferation/expansion indices | `src/core/proliferation.ts` `fitProliferation` | positive, negative (undivided), malformed (nonpositive) | `tests/proliferation.test.ts`; E2E "proliferation" | synthetic | flowjo-file | implemented | FlowJo proliferation platform output on the same data |
-| gate.rect-open-bounds | Rectangle bounds on or beyond a linear axis edge (4096 channels) are open, as in FlowJo 10 | `src/core/wsp.ts` `parseWsp` | positive (E01 Time), negative (quad-gate bounds stay closed) | `tests/wsp.test.ts` | flowjo-file | flowjo-file | verified on fixtures | A fixture with an open upper bound |
+| gate.rect-open-bounds | Rectangle bounds on or beyond a linear axis edge (4096 channels) are open, as in FlowJo 10 | `src/core/wsp.ts` `parseWsp` | positive (E01 Time), negative (quad-gate bounds stay closed) | `tests/wsp.test.ts` | flowjo-file | flowjo-file | REA verified; verified on fixtures | A fixture with an open upper bound |
 | platform.kinetics | Statistic per time bin | `src/core/kinetics.ts` `kinetics` | positive, boundary (empty bin), malformed (bad options) | `tests/kinetics.test.ts`; E2E "kinetics" | hand | hand | verified | - |
 | app.local-only | No network transmission of event data | whole app | negative (no request construction) | REA `analyze-javascript-application` request family; source grep | static analysis (partial coverage) | runtime capture | implemented | Browser capture of a full session with no outbound requests (see residual below) |
 | app.offline-build | Single-file build runs from `file://` | `vite.config.ts`; `src/ui/workerClient.ts` | positive | E2E on `dist/index.html` from `file://` (46/46, Chromium) | runtime (Chromium) | runtime (Chromium, Firefox, Safari) | blocked | Run in Firefox and Safari (not installable here) |
@@ -47,9 +47,9 @@ Two parts:
 
 | ID | Claim | Status | Blocking evidence |
 |---|---|---|---|
-| wsp.polygon-counts | Polygon counts equal FlowJo's | verified on fixtures: FlowJo 10 gate grid (`src/core/gateGrid.ts`); every fixture polygon exact except pinned FlowJo version differences (`tests/wsp.test.ts`), flowjo-file authority | A FlowJo-saved polygon on non-logicle transformed axes (biex, arcsinh) |
-| wsp.logicle-ellipse | Logicle ellipse counts equal FlowJo's | verified on fixtures: FlowJo 10 outline polygon; all 4 fixture ellipses exact (`tests/wsp.test.ts`), flowjo-file authority | - |
-| stats.flowjo-conventions | Median/percentile/robust CV match FlowJo | implemented from the FlowJo 10.6.2 engine (`src/core/flowjoStats.ts`, specs section 4); verifier `tests/flowjo-stats.test.ts` (hand authority) | FlowJo statistic output on a known population (flowjo-file authority) |
+| wsp.polygon-counts | Polygon counts equal FlowJo's | REA verified (see REA closure); verified on fixtures: FlowJo 10 gate grid (`src/core/gateGrid.ts`); every fixture polygon exact except pinned FlowJo version differences (`tests/wsp.test.ts`), flowjo-file authority | A FlowJo-saved polygon on non-logicle transformed axes (biex, arcsinh) |
+| wsp.logicle-ellipse | Logicle ellipse counts equal FlowJo's | REA verified; verified on fixtures: FlowJo 10 outline polygon; all 4 fixture ellipses exact (`tests/wsp.test.ts`), flowjo-file authority | - |
+| stats.flowjo-conventions | Median/percentile/robust CV match FlowJo | REA verified against static FlowJo 10.6.2 observations; implemented from the FlowJo 10.6.2 engine (`src/core/flowjoStats.ts`, specs section 4); verifier `tests/flowjo-stats.test.ts` (hand authority) | FlowJo statistic output on a known population (flowjo-file authority) |
 | wsp.export | Exported .wsp opens in FlowJo with equal counts | blocked | Open in FlowJo |
 | unmix.vendor | OLS unmixing matches vendor output | blocked | Vendor-unmixed reference data |
 
@@ -95,38 +95,52 @@ Result (`docs/validation/rea-ledger-summary.json`):
   package `main` field; this is a static inference and wrong for this
   browser app.
 
-## REA proof producer
+## REA closure (reconstruction obligation ledger)
 
-`npm run rea-proof` (`tools/reaProof.ts`, obligations in
-`tools/rea-obligations.json`) runs the verifier tests through vitest's JSON
-reporter and writes `docs/validation/rea-proof.json`:
+`npm run rea-proof` (`tools/reaProof.ts`) writes
+`docs/validation/rea-ledger-request.json`, a complete input for
+`rea build-reconstruction-obligation-ledger`. With
+`REA_CLI=<rea>/scripts/rea.mjs REA_NODE=<node 24>` it also runs REA and writes
+`docs/validation/rea-ledger-result.json`.
 
-- one Evidence record with predicate `rea.reconstruction-proof` and operation
-  `verify_reconstruction_obligations`, whose `normalized_result.bindings`
-  follow REA's `reconstructionObligationProofSchema` (obligation id and
-  version, `owner_sha256`, per-fixture `(fixture_id, case_kind, passed)`, per
-  verifier `(verifier_id, claim_id, passed)`); its `evidence_id` is
-  `ev_` + SHA-256 of the record's canonical JSON (REA's identity rule,
-  reimplemented here);
-- REA manifest bindings for the same obligations, referencing that record.
+Result (REA built from wirickm/rea, ledger status `ready`): all four
+reviewed obligations **verified** with no diagnostics:
+`wsp.polygon-counts`, `wsp.logicle-ellipse`, `gate.rect-open-bounds`,
+`stats.flowjo-conventions` (obligation version 2).
+
+What the request contains:
+
+- **Original cases** (`tools/rea-originals.json`): seven static observations
+  of FlowJo 10.6.2, each an Evidence record with `confidence: observed`,
+  `authority: shipped-artifact`, the digest of the observed file
+  (`libNativeEngine-3.6.2.jnilib` or `FlowJo-10.6.2.jar` from the official
+  installer), the function or class locations, and the behavior in words.
+  This meets REA's `static` original authority.
+- **Reviews**: one record per obligation (`analyst-inference`), linking the
+  observations; marked as AI-assisted, with no human review attested.
+- **Proof**: one `rea.reconstruction-proof` record (`controlled-replay`)
+  from running the verifier tests, bound to each obligation's version and
+  `owner_sha256`; fixture and verifier authority `integration`.
+- **Manifest** bindings: owner, original cases per required case kind,
+  fixtures, verifier.
 
 `owner_sha256` = SHA-256 of the canonical JSON of
-`[{path, sha256(file bytes)}]` over the owner's files, sorted by path (the
-file list is in `tools/rea-obligations.json`). Changing any owner file
-changes the digest and makes the retained proof inapplicable, as REA
-requires; regenerate after code changes.
+`[{path, sha256(file bytes)}]` over the owner's files (listed in
+`tools/rea-obligations.json`), sorted by path. Changing an owner file makes
+the retained proof inapplicable; regenerate after code changes.
 
-Obligations covered: `wsp.polygon-counts`, `wsp.logicle-ellipse`,
-`gate.rect-open-bounds`, `stats.flowjo-conventions`, `platform.kinetics`;
-all fixtures and verifiers pass at the time of writing.
+Negative controls run against REA: changing one owner digest gives
+`inapplicable-fixture-proof`/`inapplicable-verifier-proof` (status
+`implemented`); removing an original case gives `missing-original-case`;
+editing a record without re-hashing is rejected (`evidence_integrity_mismatch`).
 
-Limitations (closure is not claimed):
+Limits of this closure:
 
-- `original_cases` are empty: the FlowJo observations (FlowJo-saved counts,
-  the FlowJo 10.6.2 engine analysis) are not yet expressed as REA Evidence,
-  so REA keeps these obligations open.
-- Proof authority is `controlled-replay` (local vitest process); fixture and
-  verifier authority `integration`.
-- The output has not been fed to `rea build-reconstruction-obligation-ledger`
-  in this session (REA was used for its methods and conventions only); its
-  acceptance by REA is untested.
+- REA checks integrity, authority and applicability, not truth. The
+  original-case records are this project's own statements of what the
+  FlowJo binary does (read from disassembly and bytecode); REA cannot
+  re-derive them.
+- The verifiers compare against FlowJo-saved counts (FlowJo 10.6.2 to
+  10.10.0); statistics have no FlowJo-computed reference values.
+- `platform.kinetics` is this app's own definition (no FlowJo original), so it
+  is not in the REA request.

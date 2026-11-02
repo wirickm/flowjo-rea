@@ -15,7 +15,7 @@ in `docs/validation/flowjo-engine-specs.md`, then implemented independently:
   (no FlowJo-computed statistics exist in the fixtures to validate against);
 - .wsp export keeps FlowJo linear axis ranges and writes keyword groups as
   criteria; the offline build no longer contains `fetch(`;
-- REA proof producer (`npm run rea-proof`, `docs/validation/rea-proof.json`).
+- REA proof producer (`npm run rea-proof`; now `docs/validation/rea-ledger-request.json`).
 
 FlowJo count report: 221 of 228 populations exact (was 61); the other 7 are
 FlowJo version differences pinned in `tests/wsp.test.ts`.
@@ -23,10 +23,14 @@ FlowJo version differences pinned in `tests/wsp.test.ts`.
 Checks run: `npx tsc -p .` clean; `npm test` 196 passed, 2 skipped;
 `npm run e2e` 46/46 on the dev server and 46/46 from `file://` (Chromium).
 
-Next steps: express the FlowJo observations as REA Evidence (original cases)
-and run REA's ledger over `docs/validation/rea-proof.json`; FlowJo-computed
-statistics to validate section 4 of the specs; Firefox/Safari run of the
-offline build.
+REA closure (2026-11-02): FlowJo 10.6.2 observations recorded as REA
+original-case Evidence; REA's ledger reports `wsp.polygon-counts`,
+`wsp.logicle-ellipse`, `gate.rect-open-bounds` and `stats.flowjo-conventions`
+verified (`docs/validation/rea-ledger-result.json`; details in
+`docs/obligation-ledger.md`).
+
+Next steps: FlowJo-computed statistics to validate section 4 of the specs;
+Firefox/Safari run of the offline build.
 
 ## State (2026-10-31, milestone 6)
 

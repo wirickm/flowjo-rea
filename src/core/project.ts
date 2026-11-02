@@ -185,3 +185,20 @@ export function criteriaLabel(c: NonNullable<Workspace['groups'][number]['criter
   if ('rules' in c) return c.rules.map((r, i) => `${i ? `${r.connector} ` : ''}${r.keyword} ${r.op} "${r.value}"`).join(' ');
   return `${c.key} = ${c.value ?? '(missing)'}`;
 }
+
+// What uses a derived parameter: gates (by population path), statistic
+// columns and other derived parameters. Shown before deleting it (UAT a3-03).
+// FlowJo 10 only asks a generic "are you sure"; listing users is our own
+// improvement (specs section 6.6). Nothing is deleted in cascade.
+export function derivedParameterUsers(ws: Workspace, name: string): string[] {
+  const gates = new Set<string>();
+  for (const s of ws.samples) {
+    for (const p of s.populations) {
+      if (p.gate.type !== 'boolean' && p.gate.dims.some((d) => d.kind === 'channel' && d.channel === name)) gates.add(populationPath(s.populations, p.id));
+    }
+  }
+  const out = [...gates].map((g) => `gate "${g}"`);
+  for (const c of ws.statColumns) if (c.channel === name) out.push(`statistic "${c.stat} (${name})" on "${c.populationPath || 'All events'}"`);
+  for (const d of ws.derivedParameters ?? []) if (d.name !== name && (d.num === name || d.den === name)) out.push(`derived parameter "${d.name}"`);
+  return out;
+}

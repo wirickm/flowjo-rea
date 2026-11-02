@@ -323,10 +323,19 @@ export function CompensationDialog(p: {
 export function DerivedDialog(p: {
   params: DerivedParameter[];
   channels: string[];
+  usersOf: (name: string) => string[];
   onClose: () => void;
   onChange: (params: DerivedParameter[]) => void;
 }) {
   const [name, setName] = useState('');
+  // Deleting a parameter that gates or statistics use asks first (UAT a3-03).
+  const [pending, setPending] = useState<{ name: string; users: string[] } | null>(null);
+  const remove = (n: string) => p.onChange(p.params.filter((x) => x.name !== n));
+  const askRemove = (n: string) => {
+    const users = p.usersOf(n);
+    if (users.length === 0) remove(n);
+    else setPending({ name: n, users });
+  };
   const [num, setNum] = useState(p.channels[0] ?? '');
   const [den, setDen] = useState(p.channels[1] ?? p.channels[0] ?? '');
   const [a, setA] = useState(1);
@@ -353,11 +362,19 @@ export function DerivedDialog(p: {
               <tr key={d.name}>
                 <td>{d.name}</td>
                 <td>{d.A} x ({d.num} - {d.B}) / ({d.den} - {d.C})</td>
-                <td><button className="x" aria-label={`remove ${d.name}`} onClick={() => p.onChange(p.params.filter((x) => x.name !== d.name))}>x</button></td>
+                <td><button className="x" aria-label={`remove ${d.name}`} onClick={() => askRemove(d.name)}>x</button></td>
               </tr>
             ))}
           </tbody>
         </table>
+      )}
+      {pending && (
+        <div className="warn" role="alertdialog" data-testid="derived-confirm">
+          <p>"{pending.name}" is used by {pending.users.length} item(s). They will show an error until it is restored (Undo restores it):</p>
+          <ul>{pending.users.map((u) => <li key={u}>{u}</li>)}</ul>
+          <button onClick={() => { remove(pending.name); setPending(null); }} data-testid="derived-confirm-delete">Delete anyway</button>
+          <button onClick={() => setPending(null)}>Cancel</button>
+        </div>
       )}
       <div className="row">
         <input placeholder="name" value={name} onChange={(e) => setName(e.target.value)} data-testid="derived-name" style={{ width: 120 }} />

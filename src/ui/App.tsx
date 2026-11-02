@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PopulationResult } from '../core/analysis';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../core/gatingml';
 import { emptyWorkspace, newId, populationPath, type Gate, type KeywordRule, type PlotSettings, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
-import { applySubtree, criteriaLabel, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
+import { applySubtree, criteriaLabel, derivedParameterUsers, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
 import type { PlotResult, SampleMeta } from '../core/service';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL } from '../core/stats';
 import { statScales } from '../core/flowjoStats';
@@ -801,6 +801,7 @@ export function App() {
         <DerivedDialog
           params={ws.derivedParameters ?? []}
           channels={sMeta.channels.map((c) => c.name)}
+          usersOf={(n) => derivedParameterUsers(ws, n)}
           onClose={() => setDialog(null)}
           onChange={(dp) => updateWs((w) => { w.derivedParameters = dp; })}
         />

@@ -41,3 +41,20 @@ describe('derived parameters', () => {
     expect(() => eng2.column('y')).toThrow(/not in this sample/);
   });
 });
+
+// UAT a3-03: deleting a derived parameter that gates/statistics use broke them
+// silently. The dialog now lists the users first (specs section 6.6).
+describe('derived parameter users', () => {
+  it('lists gates, statistics and derived parameters that use it', async () => {
+    const { emptyWorkspace } = await import('../src/core/model');
+    const { derivedParameterUsers } = await import('../src/core/project');
+    const ws = emptyWorkspace();
+    ws.derivedParameters = [{ name: 'r', num: 'A', den: 'B', A: 1, B: 0, C: 0 }, { name: 'r2', num: 'r', den: 'B', A: 1, B: 0, C: 0 }];
+    ws.samples.push({ id: 's', fileName: 'f.fcs', fileSize: 0, fingerprint: '', datasetIndex: 0, compensation: 'none', keywordsSnapshot: {}, channelNames: ['A', 'B'], eventCount: 0,
+      populations: [{ id: 'g', name: 'High r', parentId: null, gate: { type: 'rect', dims: [{ kind: 'channel', channel: 'r', transform: { kind: 'none' } }], min: [1], max: [null] } }] } as never);
+    ws.statColumns.push({ id: 'c', populationPath: 'High r', stat: 'median', channel: 'r' });
+    const users = derivedParameterUsers(ws, 'r');
+    expect(users).toEqual(['gate "High r"', 'statistic "median (r)" on "High r"', 'derived parameter "r2"']);
+    expect(derivedParameterUsers(ws, 'r2')).toEqual([]);
+  });
+});

@@ -133,7 +133,7 @@ describe('exclusion populations export', () => {
     expect(engineFor(xs, xs, pops).results.get('p1')!.count).toBe(70);
   });
   it('Gating-ML: written as gate + NOT boolean; re-import reproduces the count', () => {
-    const doc = parseGatingMl(exportGatingMl(pops, [], 'none'));
+    const doc = parseGatingMl(exportGatingMl(pops, [], 'none').xml);
     const p = doc.populations.find((q) => q.id === 'p1')!;
     expect(p.gate.type).toBe('boolean');
     expect(engineFor(xs, xs, doc.populations.map((q) => ({ id: q.id, name: q.name, parentId: q.parentId, gate: q.gate }))).results.get('p1')!.count).toBe(70);

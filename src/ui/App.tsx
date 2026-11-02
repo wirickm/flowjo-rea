@@ -884,7 +884,9 @@ export function App() {
           }}
           onGatingMl={() => {
             try {
-              download(`${sample.fileName.replace(/\.fcs$/i, '')}_gates.xml`, exportGatingMl(sample.populations, ws.matrices, sample.compensation), 'application/xml');
+              const { xml, warnings } = exportGatingMl(sample.populations, ws.matrices, sample.compensation);
+              for (const w of warnings) note('warn', `Gating-ML export: ${w}`);
+              download(`${sample.fileName.replace(/\.fcs$/i, '')}_gates.xml`, xml, 'application/xml');
             } catch (e) {
               note('error', `Gating-ML export: ${(e as Error).message}`);
             }

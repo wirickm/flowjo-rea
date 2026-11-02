@@ -54,11 +54,49 @@ describe.skipIf(!haveFixtures)('Gating-ML export round trip', () => {
     const pops = doc.populations.filter((p) => p.gate.type === 'boolean' || !p.gate.dims.some((d) => d.kind === 'ratio'));
     const keep = new Set(pops.map((p) => p.id));
     const exportable = pops.filter((p) => p.gate.type !== 'boolean' || p.gate.operands.every((o) => keep.has(o.ref)));
-    const xml = exportGatingMl(exportable, doc.matrices, 'uncompensated');
+    const { xml } = exportGatingMl(exportable, doc.matrices, 'uncompensated');
     const back = parseGatingMl(xml);
     const a = new SampleEngine(fcs, { compensation: 'uncompensated', populations: exportable }, doc.matrices).run();
     const b = new SampleEngine(fcs, { compensation: 'uncompensated', populations: back.populations }, back.matrices).run();
     expect(back.populations.length).toBe(exportable.length);
     for (const p of exportable) expect(b.results.get(p.id)?.count, p.id).toBe(a.results.get(p.id)!.count);
+  });
+});
+
+// UAT a5-01: one unrepresentable gate used to abort the whole export, so a
+// FlowJo workspace with a Time gate could never be exported. Now: skip and
+// warn per population (plus dependants); linear-gain ('scale') gates such as
+// Time are written in raw units (specs section 6.5).
+describe.skipIf(!haveFixtures)('Gating-ML export skips what it cannot write', () => {
+  it('skips ratio gates and their dependants with warnings and writes the rest', async () => {
+    const { exportGatingMl } = await import('../src/core/gatingml');
+    const doc = parseGatingMl(readText('gate_ref/gml/gml_all_gates.xml'));
+    const { xml, warnings } = exportGatingMl(doc.populations, doc.matrices, 'uncompensated');
+    const back = parseGatingMl(xml);
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings.some((w) => /Ratio/.test(w))).toBe(true);
+    expect(back.populations.length).toBeGreaterThan(0);
+    expect(back.populations.length + warnings.length).toBe(doc.populations.length);
+  });
+
+  it('exports a FlowJo workspace with a Time gate; re-import gives identical counts', async () => {
+    const { exportGatingMl } = await import('../src/core/gatingml');
+    const { parseWsp } = await import('../src/core/wsp');
+    const { workspace: ws } = parseWsp(readText('8_color_data_set/8_color_ICS.wsp'));
+    const s = ws.samples.find((x) => x.fileName === '101_DEN084Y5_15_E01_008_clean.fcs')!;
+    expect(s.populations.some((p) => p.gate.type !== 'boolean' && p.gate.dims.some((d) => d.kind === 'channel' && d.transform.kind === 'scale'))).toBe(true);
+    const { xml, warnings } = exportGatingMl(s.populations, ws.matrices, s.compensation);
+    expect(warnings).toEqual([]);
+    const back = parseGatingMl(xml);
+    const fcs = parseFcs(readBytes(`8_color_data_set/fcs_files/${s.fileName}`));
+    const a = new SampleEngine(fcs, s, ws.matrices).run();
+    const b = new SampleEngine(fcs, { compensation: s.compensation, populations: back.populations }, back.matrices).run();
+    expect(back.populations.length).toBe(s.populations.length);
+    // Linear-gain (Time) gates round-trip exactly. Polygons imported from .wsp
+    // use FlowJo's gate grid, which Gating-ML cannot express (written as exact
+    // polygons), so only the Time gates are compared here.
+    const timeGates = s.populations.filter((p) => p.gate.type === 'rect' && p.gate.dims.some((d) => d.kind === 'channel' && d.transform.kind === 'scale'));
+    expect(timeGates.length).toBeGreaterThan(0);
+    for (const p of timeGates) expect(b.results.get(p.id)?.count, p.name).toBe(a.results.get(p.id)!.count);
   });
 });

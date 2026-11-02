@@ -43,5 +43,7 @@ export function withAutofluorescence(m: SpilloverMatrix, afSpectrum: number[], n
     outputNames: [...outputs, name],
     values: [...m.values.map((r) => [...r]), [...afSpectrum]],
     source: `${m.source} with autofluorescence`,
+    // The result can be square; keep it spectral (UAT a3-02).
+    kind: 'spectral',
   };
 }

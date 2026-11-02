@@ -2,7 +2,7 @@
 // an extra unmixing row recovers true fluorochrome abundances despite AF,
 // where omitting it does not. Synthetic data only.
 import { describe, expect, it } from 'vitest';
-import { unmix } from '../src/core/compensation';
+import { isSpectral, unmix, validateMatrix } from '../src/core/compensation';
 import { AF_NAME, estimateAfSpectrum, withAutofluorescence } from '../src/core/autofluorescence';
 
 const DET = ['D1', 'D2', 'D3', 'D4'];
@@ -63,5 +63,28 @@ describe('autofluorescence', () => {
     expect(() => withAutofluorescence({ ...baseMatrix, values: [[1, 0], [0, 1]], channels: ['A', 'B'], outputNames: ['A', 'B'] }, [1, 1])).toThrow(/spectral/);
     expect(() => withAutofluorescence(baseMatrix, [1, 2])).toThrow(/detectors/);
     expect(() => withAutofluorescence(withAutofluorescence(baseMatrix, AF), AF)).toThrow(/already has an output/);
+  });
+});
+
+// UAT a3-02: 2 dyes + AF on 3 detectors is a square matrix. Decided by shape it
+// was applied as spillover (detector columns overwritten, no Dye/AF channels).
+// FlowJo 10 marks spectral matrices with an explicit flag (specs section 6.3).
+describe('square spectral matrix (2 dyes + AF on 3 detectors)', () => {
+  it('stays spectral: unmixed outputs are new channels, detectors stay raw', () => {
+    const det = ['FITC-A', 'PE-A', 'APC-A'];
+    const m = { id: 's', name: 'spec', channels: det, outputNames: ['Dye1', 'Dye2'], values: [[1, 0.3, 0.1], [0.2, 1, 0.5]], source: 'csv (spectral)', kind: 'spectral' as const };
+    const m2 = withAutofluorescence(m, [0.6, 0.5, 0.4]);
+    expect(m2.values.length).toBe(m2.channels.length);
+    expect(isSpectral(m2)).toBe(true);
+    expect(validateMatrix(m2, det)).toEqual([]);
+    const cols = det.map((_, j) => Float64Array.from([1000 * [1, 0.3, 0.1][j] + 500 * [0.6, 0.5, 0.4][j]]));
+    const out = unmix(cols, det, m2);
+    expect([...out.keys()]).toEqual(['Dye1', 'Dye2', 'Autofluorescence']);
+    expect(out.get('Dye1')![0]).toBeCloseTo(1000, 6);
+    expect(out.get('Dye2')![0]).toBeCloseTo(0, 6);
+    expect(out.get('Autofluorescence')![0]).toBeCloseTo(500, 6);
+  });
+  it('a square matrix without a kind is still spillover (shape fallback)', () => {
+    expect(isSpectral({ id: 'f', name: 'f', channels: ['A', 'B'], values: [[1, 0.1], [0, 1]], source: 'keyword' })).toBe(false);
   });
 });

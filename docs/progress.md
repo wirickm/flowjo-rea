@@ -1,5 +1,30 @@
 # Progress and handoff
 
+## State (2026-11-02, acceptance test and step 1 fixes)
+
+Front-end acceptance test (five browser operators, five datasets): 234
+controls, 153 pass, 24 fail, 56 observations, no crashes. Each defect was
+investigated against FlowJo 10.6.2 by static reading (REA checklist Q12-Q18;
+behaviors in specs section 6). Decisions and reasons, per defect:
+`docs/validation/uat-2026-11-02.md`.
+
+Step 1 (severe defects) fixed, one commit and test each:
+- cell cycle histogram at FlowJo's min(channel range, 1024) channels (S1 hang);
+- .wsp quadrants imported as one quadrant split (centre drag moves all four);
+- explicit spectral matrix kind (AF row no longer applied as spillover);
+- "#"-prefixed matrix CSV headers (FlowKit den_comp.csv);
+- Gating-ML export skips and warns per gate; Time gates in raw units;
+- derived parameter delete lists dependent gates and statistics.
+
+Checks run: `npx tsc -p .` clean; `npm test` 215 passed, 2 skipped; `npm run
+e2e` all pass. REA ledger regenerated in analyst mode after the `wsp.ts`
+change: 4 obligations verified (`docs/validation/rea-ledger-result.json`).
+The REA-native ledger (`rea-ledger-result.native.json`) was not regenerated:
+it needs Ghidra-produced REA bundles that were not available in this session.
+
+Next steps: step 2 (medium defects, match FlowJo; list in the UAT record),
+then step 3 (own UX choices); REA-native ledger rerun with Ghidra.
+
 ## State (2026-11-01, milestone 7)
 
 Target is FlowJo 10 (every reference count comes from FlowJo 10.6.2 to

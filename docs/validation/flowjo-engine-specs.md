@@ -155,6 +155,107 @@ biex, hyperlog, raw) keep exact order statistics (type-7 interpolation).
 - Statistic conventions for arcsinh/biex axes and MAD's final step.
 - FlowJo-computed median/percentile/robust values to validate section 4.
 
+## 6. Application behaviors (FlowJo 10.6.2, static reading)
+
+Source: the Java classes in `FlowJo-10.6.2.jar` (read with `javap`: names,
+signatures, constants) and the native engine's symbols, from the same
+verified installer. Investigated on 2026-11-02 for the front-end acceptance
+test (`docs/validation/uat-2026-11-02.md`, which records each decision and
+its reason). FlowJo was not run (macOS app); every item is *observed* from
+static reading only, not from runtime (checklist Q10). Each item says
+whether this app **matches** FlowJo or uses **its own rule** where FlowJo
+has none or is weaker.
+
+### 6.1 Cell cycle histogram resolution (matches)
+
+- FlowJo fits cell cycle models on a histogram of the DNA parameter with
+  `min(parameter channel range, 1024)` channels (`CCNode.HISTOGRAM_CHANNELS =
+  1024`; engine `CellCycle::ProcessQuery` takes the minimum with
+  `GParameter::GetChannelRange`). The user cannot set the resolution.
+- The fit is Levenberg-Marquardt; it stops when damping reaches 1e4 or
+  chi-square improves by less than 0.1 (medium confidence). No cancel control.
+- This app: same resolution rule (`cellCycleChannels`, `src/core/service.ts`);
+  the bins input is removed. The fitter stays this app's own (Nelder-Mead +
+  NNLS). Measured on a 262144-range channel: 1024 channels 1.7 s, 4096
+  channels 23 s, so the cap also bounds run time.
+
+### 6.2 Quadrant gates (matches)
+
+- FlowJo has no quadrant object. A quad is a 2-D rectangle gate with exactly
+  one open bound per axis (`RectGate.isQuad`/`getQuadID`; tool tip "Four
+  rectangular gates sharing a common center point").
+- Dragging the shared centre moves the inner corner of every quad on the
+  plot to the release point, clamped to the plot (`QuadLayer.moveQuads`,
+  `QuadDrag.pinVal`). Deleting one quad from the tree also deletes its
+  siblings on the same parameter pair (`NodeList.addSiblingQuads`).
+- This app: the .wsp importer turns such a rectangle into a `quadrant` gate
+  (identical `[lo, hi)` membership), so siblings with the same corner move
+  together. Sibling delete is not yet matched (6.7).
+
+### 6.3 Spillover versus spectral matrices (matches the flag)
+
+- FlowJo marks a spectral (unmixing) matrix with an explicit `spectral`
+  attribute (`"1"` or `"true"`) and never infers the type from the matrix
+  shape. It has an autofluorescence option. Its unmixing is weighted least
+  squares (weights not decoded).
+- This app: `SpilloverMatrix.kind` (`'spillover' | 'spectral'`). CSV spectral
+  import and the autofluorescence row set it; without it the shape decides,
+  as before. Unmixing stays ordinary least squares (own, documented).
+
+### 6.4 Compensation matrix files (own rule)
+
+- FlowJo imports matrices only from `.mtx` files (XML
+  `transforms:spilloverMatrix`, or an older tab-separated text form) and
+  matches channel names exactly on `$PnN`. It has no CSV matrix import.
+- This app: CSV import, with its own rule that a header line starting with
+  `#` (FlowKit's format) is read with the `#` removed and other `#` lines are
+  comments. Channel matching stays exact on `$PnN`, as in FlowJo.
+
+### 6.5 Gating-ML export (own rule)
+
+- FlowJo 10.6.2 has no Gating-ML 2.0 export of its own (only a side file of
+  raw workspace gate elements). Nothing to match.
+- This app: populations that Gating-ML 2.0 cannot represent are skipped with
+  a warning (with their descendants and booleans that use them), as the .wsp
+  export does. FlowJo linear-gain gates (Time) are written in raw units,
+  which is exact. Polygons and ellipses imported from .wsp are written as
+  exact shapes; FlowJo's gate grid (sections 1-2) has no Gating-ML form, so
+  their counts can differ after a round trip.
+
+### 6.6 Deleting a derived parameter (own rule, stricter than FlowJo)
+
+- FlowJo deletes a derived parameter as a tree node after one generic
+  confirmation. It does not check or list dependent gates or statistics and
+  does not cascade.
+- This app: before deleting, lists the gates, statistic columns and other
+  derived parameters that use it; no cascade; Undo restores.
+
+### 6.7 Further observed behaviors (not yet implemented here)
+
+Recorded for the next fixes (`docs/validation/uat-2026-11-02.md`, step 2):
+
+- Linear axis range is `0..$PnR` (1024 when missing); changing the scale type
+  keeps the range.
+- Histogram overlays show raw counts on a shared axis by default; "Normalized
+  To Mode" is an option and relabels the axis.
+- Sibling gate names are unique: new gates get a `-N` suffix; the rename
+  dialog refuses a duplicate ("Name must be unique."). New shapes 10 px or
+  smaller are discarded.
+- Importing a gate whose name a sibling already has replaces it (silently if
+  equivalent, otherwise after a "Replace?" question); never a duplicate.
+- Relinking a data file needs matching keywords (`$TOT`, `$BTIM`, ...);
+  samples can be removed after a confirmation; the same path is not added
+  twice.
+- Percentile is an integer 0..100 (table editor 1..99); invalid input is
+  blocked. Proliferation "Number of Peaks" is an integer 0..10, default 4.
+- Statistics that need recalculation show "-"; export recalculates first.
+- Platform errors are shown in the platform window; table templates are named
+  and saved in the workspace.
+- Tree delete always confirms (with a "don't ask again" option). NOT applies
+  to the normal selection. Escape cancels only the naming/rename dialog.
+- Live keyword groups re-evaluate membership; they do not create new groups.
+  Opening a .wsp opens a new window instead of replacing the open workspace.
+
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 
 Source: static analysis of `libNativeEngine.dylib` from the public FlowJo

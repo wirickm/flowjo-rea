@@ -27,6 +27,13 @@ digests: `tools/rea-originals.json`.
 | 9 | Does FlowJo 11 behave the same? | FlowJo 11 engine analysis | FlowJo 11.2 engine: different vertex snapping and lattice | Answered (it does not) |
 | 10 | Does runtime FlowJo behave as the static reading says? | REA runtime observation (LLDB, process capture, Frida) of FlowJo running | None: FlowJo 10 is a macOS app and cannot run in this Linux environment | Unresolved: needs a Mac with FlowJo |
 | 11 | MAD, arcsinh/biex statistics, arcsinh/biex lookup tables | Engine functions; FlowJo output | Not analysed | Unresolved (out of current scope) |
+| 12 | What histogram resolution does FlowJo 10 use for cell cycle fits, and can the user set it? (UAT a4-01) | Java cell cycle classes; engine query handling | `CCNode.HISTOGRAM_CHANNELS = 1024`; engine `CellCycle::ProcessQuery` takes min with the parameter channel range; no resolution field in `cellcycle.ui.*` | Answered (static); specs 6.1 |
+| 13 | How does FlowJo 10 model quadrants, and what does a centre drag move? (UAT a2-01) | Gate and editor classes; fixture .wsp | `RectGate.isQuad/getQuadID`, `QuadLayer.moveQuads`, `QuadDrag.pinVal`, `NodeList.addSiblingQuads`; `reused_quad_gate_with_child.wsp` corners | Answered (static); specs 6.2 |
+| 14 | How does FlowJo 10 tell spectral from spillover matrices? (UAT a3-02) | Matrix classes; workspace attributes | Explicit `spectral` attribute ("1"/"true"); no shape test found | Answered for the flag; WLS weights unresolved; specs 6.3 |
+| 15 | Which matrix file formats does FlowJo 10 import, and how are channels matched? (UAT a3-01) | Import classes | `.mtx` only (XML or older tab text); exact `$PnN` match; CSV is export only | Answered (static); specs 6.4 |
+| 16 | What does FlowJo 10 export as Gating-ML, and what happens to unsupported gates? (UAT a5-01) | Gating-ML classes | `GatingMLUtil`/flowdx: no Gating-ML 2.0 writer, raw gate elements only | Answered (static); specs 6.5 |
+| 17 | Does FlowJo 10 check dependants before deleting a derived parameter? (UAT a3-03) | Derived parameter and tree delete classes | Generic tree-node delete with one confirmation; no dependency check, no cascade | Partially answered (medium); specs 6.6 |
+| 18 | Remaining UAT behaviors (linear range, overlays, names, re-import, relink, percentile and peak limits, stale stats, errors, templates, delete, NOT, Escape, live groups, opening a .wsp) | Java UI, dialog and model classes | Recorded in specs 6.7 with evidence in the UAT record | Answered or partially answered (static); not yet implemented |
 
 ## REA reconstruction stages
 

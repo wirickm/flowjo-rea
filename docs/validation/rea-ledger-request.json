@@ -48,7 +48,7 @@
     ],
     "scenarios": [
       {
-        "evidence_id": "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2",
+        "evidence_id": "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde",
         "operation": "verify_reconstruction_obligations",
         "authority": "controlled-replay"
       }
@@ -90,146 +90,6 @@
         "environment": null,
         "limitations": [
           "AI-assisted review (Claude Code session); no human review is attested."
-        ],
-        "locations": []
-      },
-      {
-        "evidence_id": "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [],
-        "subject": null,
-        "provider": {
-          "id": "flowjo-rea.proof",
-          "name": "flowjo-rea proof producer",
-          "version": "2"
-        },
-        "predicate_type": "rea.reconstruction-proof",
-        "operation": "verify_reconstruction_obligations",
-        "parameters": {
-          "node": "v22.23.4"
-        },
-        "normalized_result": {
-          "bindings": [
-            {
-              "obligation_id": "wsp.polygon-counts",
-              "obligation_version": 2,
-              "owner_sha256": "9ddbc1916622174413a440534b2215cfa115eb38ee4c4c81349a89e44bec2b0d",
-              "fixtures": [
-                {
-                  "fixture_id": "wsp.polygon-counts.fixtures",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "wsp.polygon-counts.edges",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "wsp.polygon-counts.outside",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "wsp.flowjo-counts",
-                  "claim_id": "wsp.polygon-counts.v2",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "wsp.logicle-ellipse",
-              "obligation_version": 2,
-              "owner_sha256": "9ddbc1916622174413a440534b2215cfa115eb38ee4c4c81349a89e44bec2b0d",
-              "fixtures": [
-                {
-                  "fixture_id": "wsp.logicle-ellipse.fixtures",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "wsp.logicle-ellipse.outline",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "wsp.flowjo-counts",
-                  "claim_id": "wsp.logicle-ellipse.v2",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "gate.rect-open-bounds",
-              "obligation_version": 2,
-              "owner_sha256": "5ca224f7514742783047601d9cd1f08a6d38a3903945e8d961c4c39723b803b8",
-              "fixtures": [
-                {
-                  "fixture_id": "gate.rect-open-bounds.time",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gate.rect-open-bounds.closed",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "wsp.flowjo-counts",
-                  "claim_id": "gate.rect-open-bounds.v2",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "stats.flowjo-conventions",
-              "obligation_version": 2,
-              "owner_sha256": "fcc66d115660479ea9c745e69bd64ed578481d6216114411303504544d764346",
-              "fixtures": [
-                {
-                  "fixture_id": "stats.median",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.clamp",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.small",
-                  "case_kind": "malformed",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "stats.flowjo-histogram",
-                  "claim_id": "stats.flowjo-conventions.v2",
-                  "passed": true
-                }
-              ]
-            }
-          ]
-        },
-        "confidence": "observed",
-        "authority": "controlled-replay",
-        "environment": {
-          "id": "node-v22.23.4",
-          "platform": "linux",
-          "architecture": "x64",
-          "isolation": "process"
-        },
-        "limitations": [
-          "Verifiers are this repository’s vitest suites run in one local process; FlowJo reference counts come from FlowJo-saved .wsp files (FlowJo 10.6.2 to 10.10.0)."
         ],
         "locations": []
       },
@@ -412,6 +272,146 @@
             "end": "0x1c8b20"
           }
         ]
+      },
+      {
+        "evidence_id": "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.proof",
+          "name": "flowjo-rea proof producer",
+          "version": "2"
+        },
+        "predicate_type": "rea.reconstruction-proof",
+        "operation": "verify_reconstruction_obligations",
+        "parameters": {
+          "node": "v22.23.4"
+        },
+        "normalized_result": {
+          "bindings": [
+            {
+              "obligation_id": "wsp.polygon-counts",
+              "obligation_version": 2,
+              "owner_sha256": "deffb97091009b419f7dbf79bfe0cdf49e3b0070e0a23a6a3425750e3d412ec5",
+              "fixtures": [
+                {
+                  "fixture_id": "wsp.polygon-counts.fixtures",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "wsp.polygon-counts.edges",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "wsp.polygon-counts.outside",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "wsp.flowjo-counts",
+                  "claim_id": "wsp.polygon-counts.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "wsp.logicle-ellipse",
+              "obligation_version": 2,
+              "owner_sha256": "deffb97091009b419f7dbf79bfe0cdf49e3b0070e0a23a6a3425750e3d412ec5",
+              "fixtures": [
+                {
+                  "fixture_id": "wsp.logicle-ellipse.fixtures",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "wsp.logicle-ellipse.outline",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "wsp.flowjo-counts",
+                  "claim_id": "wsp.logicle-ellipse.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gate.rect-open-bounds",
+              "obligation_version": 2,
+              "owner_sha256": "f22eab0214c6e341656368366a111ad530636fdff5ee4ab0849a0a1c8ac7b344",
+              "fixtures": [
+                {
+                  "fixture_id": "gate.rect-open-bounds.time",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gate.rect-open-bounds.closed",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "wsp.flowjo-counts",
+                  "claim_id": "gate.rect-open-bounds.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "stats.flowjo-conventions",
+              "obligation_version": 2,
+              "owner_sha256": "fcc66d115660479ea9c745e69bd64ed578481d6216114411303504544d764346",
+              "fixtures": [
+                {
+                  "fixture_id": "stats.median",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.clamp",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.small",
+                  "case_kind": "malformed",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "stats.flowjo-histogram",
+                  "claim_id": "stats.flowjo-conventions.v2",
+                  "passed": true
+                }
+              ]
+            }
+          ]
+        },
+        "confidence": "observed",
+        "authority": "controlled-replay",
+        "environment": {
+          "id": "node-v22.23.4",
+          "platform": "linux",
+          "architecture": "x64",
+          "isolation": "process"
+        },
+        "limitations": [
+          "Verifiers are this repository’s vitest suites run in one local process; FlowJo reference counts come from FlowJo-saved .wsp files (FlowJo 10.6.2 to 10.10.0)."
+        ],
+        "locations": []
       },
       {
         "evidence_id": "ev_6b030ef57ed02c11a7a99fa78975a3e7993102f1668e2bbd70a03c6a92ddfd61",
@@ -815,7 +815,7 @@
         "owner": {
           "module_path": "src/core/gateGrid.ts",
           "symbol": "polygonGridMask",
-          "owner_sha256": "9ddbc1916622174413a440534b2215cfa115eb38ee4c4c81349a89e44bec2b0d"
+          "owner_sha256": "deffb97091009b419f7dbf79bfe0cdf49e3b0070e0a23a6a3425750e3d412ec5"
         },
         "parser_type": null,
         "original_cases": [
@@ -836,7 +836,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2"
+              "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde"
             ]
           },
           {
@@ -844,7 +844,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2"
+              "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde"
             ]
           },
           {
@@ -852,7 +852,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2"
+              "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde"
             ]
           }
         ],
@@ -862,7 +862,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2",
+          "result_evidence_id": "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde",
           "enumerated_obligation_ids": [
             "wsp.polygon-counts"
           ],
@@ -877,7 +877,7 @@
         "owner": {
           "module_path": "src/core/gateGrid.ts",
           "symbol": "ellipseLatticePolygon",
-          "owner_sha256": "9ddbc1916622174413a440534b2215cfa115eb38ee4c4c81349a89e44bec2b0d"
+          "owner_sha256": "deffb97091009b419f7dbf79bfe0cdf49e3b0070e0a23a6a3425750e3d412ec5"
         },
         "parser_type": null,
         "original_cases": [
@@ -898,7 +898,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2"
+              "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde"
             ]
           },
           {
@@ -906,7 +906,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2"
+              "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde"
             ]
           }
         ],
@@ -916,7 +916,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2",
+          "result_evidence_id": "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde",
           "enumerated_obligation_ids": [
             "wsp.logicle-ellipse"
           ],
@@ -931,7 +931,7 @@
         "owner": {
           "module_path": "src/core/wsp.ts",
           "symbol": "parseWsp",
-          "owner_sha256": "5ca224f7514742783047601d9cd1f08a6d38a3903945e8d961c4c39723b803b8"
+          "owner_sha256": "f22eab0214c6e341656368366a111ad530636fdff5ee4ab0849a0a1c8ac7b344"
         },
         "parser_type": null,
         "original_cases": [
@@ -952,7 +952,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2"
+              "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde"
             ]
           },
           {
@@ -960,7 +960,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2"
+              "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde"
             ]
           }
         ],
@@ -970,7 +970,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2",
+          "result_evidence_id": "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde",
           "enumerated_obligation_ids": [
             "gate.rect-open-bounds"
           ],
@@ -1011,7 +1011,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2"
+              "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde"
             ]
           },
           {
@@ -1019,7 +1019,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2"
+              "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde"
             ]
           },
           {
@@ -1027,7 +1027,7 @@
             "case_kind": "malformed",
             "authority": "integration",
             "evidence_ids": [
-              "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2"
+              "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde"
             ]
           }
         ],
@@ -1037,7 +1037,7 @@
           "command": "npx vitest run tests/flowjo-stats.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_2c9662dc695f399babb673264d51cfa6d1abfcb29dc7b6fcdb490bf98b2e10a2",
+          "result_evidence_id": "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde",
           "enumerated_obligation_ids": [
             "stats.flowjo-conventions"
           ],

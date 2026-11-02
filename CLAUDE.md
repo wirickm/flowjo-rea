@@ -2,8 +2,11 @@
 
 - State and next steps: `docs/progress.md`. Feature status: `docs/compatibility-matrix.md`.
 - Test fixtures: `./scripts/fetch-fixtures.sh`, then `npm test`, `npx tsc -p .`.
-- REA proof records: `npm run rea-proof` -> `docs/validation/rea-proof.json`
-  (regenerate after changing an owner file listed in `tools/rea-obligations.json`).
+- REA ledger: `npm run rea-proof` -> `docs/validation/rea-ledger-request.json`;
+  with `REA_CLI=../rea/scripts/rea.mjs REA_NODE=/opt/node24/bin/node` it also runs
+  REA (build rea first: `npm ci && npm run build:cached` under Node 24) and writes
+  `docs/validation/rea-ledger-result.json`. Regenerate after changing an owner
+  file listed in `tools/rea-obligations.json`.
 - Write findings as behavioral specs in `docs/validation/flowjo-engine-specs.md`
   and implement independently; never commit FlowJo binaries, disassembly or
   decompiled code.

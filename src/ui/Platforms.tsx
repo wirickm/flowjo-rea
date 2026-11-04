@@ -64,14 +64,22 @@ export function PlatformsDialog(p: Props) {
   const [pr, setPr] = useState<ProliferationFit | null>(null);
   const [kn, setKn] = useState<KineticsResult | null>(null);
   const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const peaksOk = Number.isInteger(gens) && gens >= 0 && gens <= MAX_PEAKS;
   const go = async () => {
     setRunning(true);
+    setError(null);
     try {
       if (platform === 'cellcycle') setCc((await p.runCellCycle(channel, model)) ?? null);
       if (platform === 'proliferation') setPr((await p.runProliferation(channel, gens)) ?? null);
       if (platform === 'kinetics') setKn((await p.runKinetics(channel, kstat, kbins, threshold)) ?? null);
+    } catch (e) {
+      // Shown in this window, as in FlowJo 10 (specs 6.7); also in the Log.
+      setError((e as Error).message);
+      if (platform === 'cellcycle') setCc(null);
+      if (platform === 'proliferation') setPr(null);
+      if (platform === 'kinetics') setKn(null);
     } finally {
       setRunning(false);
     }
@@ -117,6 +125,7 @@ export function PlatformsDialog(p: Props) {
           </div>
           {platform === 'kinetics' && !p.timeChannel && <p className="error">No Time parameter in this sample.</p>}
           {platform === 'proliferation' && !peaksOk && <p className="error" data-testid="prolif-peaks-error">Number of Peaks must be an integer from 0 to {MAX_PEAKS}.</p>}
+          {error && <p className="error" data-testid="platform-error">{error}</p>}
           <p className="muted">Validated on synthetic data only; not compared with FlowJo, ModFit or other reference output.</p>
 
           {platform === 'cellcycle' && cc && (

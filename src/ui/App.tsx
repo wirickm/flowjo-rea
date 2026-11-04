@@ -68,6 +68,7 @@ export function App() {
   const [gateSel, setGateSel] = useState<string | null>(null);
   const [groupKey, setGroupKey] = useState('');
   const [templateId, setTemplateId] = useState('');
+  const [templateName, setTemplateName] = useState('');
   const [annKey, setAnnKey] = useState('');
   const [annVal, setAnnVal] = useState('');
   const [syncGroup, setSyncGroup] = useState(false);
@@ -99,6 +100,19 @@ export function App() {
     } catch (e) {
       note('error', (e as Error).message);
       return undefined;
+    } finally {
+      setBusy((b) => b - 1);
+    }
+  }, [note]);
+
+  // Like run, but the error also reaches the caller (shown in the window that asked).
+  const runOrThrow = useCallback(async <T,>(fn: () => Promise<T>): Promise<T> => {
+    setBusy((b) => b + 1);
+    try {
+      return await fn();
+    } catch (e) {
+      note('error', (e as Error).message);
+      throw e;
     } finally {
       setBusy((b) => b - 1);
     }
@@ -315,21 +329,28 @@ export function App() {
     return () => { live = false; };
   }, [sample?.id, sample?.compensation, sample?.populations, ws.matrices, meta, sel.popId, xAxis, yAxis, run, plotSettings.overlays]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // statistics table across the current group
+  // Statistics of one sample from the current workspace (never a cached table value).
+  const statsFor = (s: Workspace['samples'][number]) =>
+    client.stats({ sampleId: s.id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters, columns: ws.statColumns, scales: statScales(ws.channelTransforms, s.flowjoLinearRanges, ws.statColumns.map((c) => c.channel)) });
+
+  // statistics table across the current group. Values that need recalculation
+  // are cleared first, so the table shows "-" rather than old values (FlowJo 10,
+  // specs 6.7).
   useEffect(() => {
-    if (!ws.statColumns.length) return setStats({});
+    setStats({});
+    if (!ws.statColumns.length) return;
     let live = true;
     const t = setTimeout(() => {
       for (const s of groupSamples) {
         if (!meta[s.id]) continue;
         run(async () => {
-          const v = await client.stats({ sampleId: s.id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters, columns: ws.statColumns, scales: statScales(ws.channelTransforms, s.flowjoLinearRanges, ws.statColumns.map((c) => c.channel)) });
+          const v = await statsFor(s);
           if (live && v) setStats((x) => ({ ...x, [s.id]: v }));
         });
       }
     }, 150);
     return () => { live = false; clearTimeout(t); };
-  }, [ws.statColumns, ws.samples, ws.matrices, groupId, meta]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ws.statColumns, ws.samples, ws.matrices, ws.derivedParameters, ws.channelTransforms, groupId, meta]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- gate editing ------------------------------------------------------------
   const counts = useMemo(() => {
@@ -406,8 +427,13 @@ export function App() {
   };
 
   // --- exports --------------------------------------------------------------------
-  const exportStatsCsv = () => {
-    const rows = groupSamples.map((s) => ({ sample: s.fileName, annotations: annotationKeys.map((k) => s.annotations?.[k] ?? ''), values: stats[s.id] ?? ws.statColumns.map(() => 'data not loaded') }));
+  // Export recalculates first, so it never writes a stale or missing table value.
+  const exportStatsCsv = async () => {
+    const rows = [];
+    for (const s of groupSamples) {
+      const v = meta[s.id] ? await run(() => statsFor(s)) : undefined;
+      rows.push({ sample: s.fileName, annotations: annotationKeys.map((k) => s.annotations?.[k] ?? ''), values: v ?? ws.statColumns.map(() => 'data not loaded') });
+    }
     download(`${group?.name ?? 'stats'}.csv`, statsCsv({ group: false, annotations: annotationKeys, columns: ws.statColumns.map(colLabel) }, rows), 'text/csv');
   };
 
@@ -421,7 +447,7 @@ export function App() {
         const s = ws.samples.find((x) => x.id === id);
         if (!s) continue;
         if (!cache.has(id)) {
-          const v = meta[id] ? await run(() => client.stats({ sampleId: id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters, columns: ws.statColumns, scales: statScales(ws.channelTransforms, s.flowjoLinearRanges, ws.statColumns.map((c) => c.channel)) })) : undefined;
+          const v = meta[id] ? await run(() => statsFor(s)) : undefined;
           cache.set(id, v ?? ws.statColumns.map(() => 'data not loaded'));
         }
         rows.push({ group: g.name, sample: s.fileName, annotations: allAnn.map((k) => s.annotations?.[k] ?? ''), values: cache.get(id)! });
@@ -791,10 +817,12 @@ export function App() {
             <button disabled={!ws.statColumns.length} onClick={exportAllGroupsCsv} data-testid="export-stats-all">Export all groups</button>
           </div>
           <div className="row">
-            <button disabled={!ws.statColumns.length} data-testid="template-save" onClick={() => {
-              const name = `Template ${(ws.statTemplates?.length ?? 0) + 1}`;
+            <input placeholder="template name" value={templateName} onChange={(e) => setTemplateName(e.target.value)} style={{ width: 110 }} data-testid="template-name" />
+            <button disabled={!ws.statColumns.length || !templateName.trim()} data-testid="template-save" title="Named templates are saved in the workspace file" onClick={() => {
+              const name = uniqueName(templateName.trim(), (ws.statTemplates ?? []).map((t) => t.name));
               updateWs((w) => { w.statTemplates = [...(w.statTemplates ?? []), { id: newId('tpl'), name, columns: structuredClone(w.statColumns) }]; });
-              note('info', `Saved ${ws.statColumns.length} statistic columns as "${name}"`);
+              setTemplateName('');
+              note('info', `Saved ${ws.statColumns.length} statistic columns as template "${name}" (kept when the workspace is saved)`);
             }}>Save columns as template</button>
             <select value={templateId} onChange={(e) => setTemplateId(e.target.value)} data-testid="template-select">
               <option value="">template...</option>
@@ -823,7 +851,7 @@ export function App() {
                     <tr key={s.id}>
                       <td>{s.fileName}</td>
                       {annotationKeys.map((k) => <td key={`ann-${k}`}>{s.annotations?.[k] ?? ''}</td>)}
-                      {ws.statColumns.map((c, i) => <td key={c.id}>{meta[s.id] ? fmtStat(stats[s.id]?.[i] ?? '...') : 'no data'}</td>)}
+                      {ws.statColumns.map((c, i) => <td key={c.id}>{meta[s.id] ? fmtStat(stats[s.id]?.[i] ?? '-') : 'no data'}</td>)}
                     </tr>
                   ))}
                 </tbody>
@@ -869,9 +897,9 @@ export function App() {
             channels={channels.map((c) => c.name)}
             timeChannel={channels.find((c) => /^time$/i.test(c.name))?.name ?? null}
             onClose={() => setDialog(null)}
-            runCellCycle={(channel, model) => run(() => client.cellCycle({ ...base, channel, model }))}
-            runProliferation={(channel, maxGenerations) => run(() => client.proliferation({ ...base, channel, maxGenerations }))}
-            runKinetics={(channel, stat, bins, threshold) => run(() => client.kinetics({ ...base, channel, stat, bins, threshold, timeChannel: channels.find((c) => /^time$/i.test(c.name))!.name }))}
+            runCellCycle={(channel, model) => runOrThrow(() => client.cellCycle({ ...base, channel, model }))}
+            runProliferation={(channel, maxGenerations) => runOrThrow(() => client.proliferation({ ...base, channel, maxGenerations }))}
+            runKinetics={(channel, stat, bins, threshold) => runOrThrow(() => client.kinetics({ ...base, channel, stat, bins, threshold, timeChannel: channels.find((c) => /^time$/i.test(c.name))!.name }))}
           />
         );
       })()}

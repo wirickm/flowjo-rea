@@ -6,7 +6,7 @@ import { channelRange, defaultTransform, specForKind } from '../src/ui/axes';
 import { histogramScale } from '../src/ui/renderPlot';
 import { tooSmall } from '../src/ui/gateGeometry';
 import { emptyWorkspace, uniqueName, type Gate, type Population } from '../src/core/model';
-import { groupByKey, mergeImported, relinkMismatch, removeSample } from '../src/core/project';
+import { deserializeWorkspace, groupByKey, mergeImported, relinkMismatch, removeSample, serializeWorkspace } from '../src/core/project';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../src/core/gatingml';
 import { validPercentile } from '../src/core/stats';
 import { fitProliferation } from '../src/core/proliferation';
@@ -144,5 +144,13 @@ describe('a4-02/a4-03 percentile and Number of Peaks limits', () => {
     expect(f.generations).toHaveLength(1);
     expect(f.pctDivided).toBe(0);
     expect(fitProliferation(v).generations.length).toBeLessThanOrEqual(5); // default 4 peaks
+  });
+});
+
+describe('a4-06 named statistic templates are saved in the workspace', () => {
+  it('survive a save and reopen of the workspace file', () => {
+    const ws = emptyWorkspace();
+    ws.statTemplates = [{ id: 't1', name: 'CD4 panel', columns: [{ id: 'c1', populationPath: 'Cells', stat: 'percentile', channel: 'FSC-A', percentile: 95 }] }];
+    expect(deserializeWorkspace(serializeWorkspace(ws)).statTemplates).toEqual(ws.statTemplates);
   });
 });

@@ -55,6 +55,13 @@ Two parts:
 
 ## Residuals found while building this ledger
 
+- 2026-11-02: `src/core/wsp.ts` (owner of `wsp.polygon-counts` and
+  `wsp.logicle-ellipse`) changed to import FlowJo quadrants as quadrant gates
+  (specs 6.2). Analyst-mode ledger regenerated: all 4 obligations verified.
+  The REA-native result (`rea-ledger-result.native.json`) still carries the
+  previous owner digest; regenerate it with `REA_ORIGINALS_DIR` once
+  Ghidra-produced REA bundles are available.
+
 - Resolved: the single-file bundle used to contain one `fetch(` call (Vite's
   module-preload polyfill, never run); `build.modulePreload.polyfill: false`
   removes it, and `dist/index.html` now contains no `fetch(`.

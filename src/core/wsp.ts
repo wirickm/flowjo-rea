@@ -188,6 +188,16 @@ export function parseWsp(xml: string): WspImport {
             const v = numAttr(d, 'max');
             return v === undefined || (lin(k) && chan(k, v) >= RECT_CHANNELS) ? null : v;
           });
+          // FlowJo 10 has no quadrant object: a quad is a 2-D rectangle with
+          // exactly one open bound per axis, and dragging the shared centre
+          // moves every quad on the plot (specs section 6.2). Import such a
+          // rectangle as one quadrant so the UI moves the four together.
+          // Membership is identical: both use [lo, hi) with an open side.
+          const oneSided = (k: number) => (min[k] === null) !== (max[k] === null);
+          const rawOneSided = (k: number) => (numAttr(dimEls[k], 'min') === undefined) !== (numAttr(dimEls[k], 'max') === undefined);
+          if (dims.length === 2 && [0, 1].every((k) => rawOneSided(k) && oneSided(k))) {
+            return { type: 'quadrant', dims, dividers: [0, 1].map((k) => [(max[k] ?? min[k])!]), side: [0, 1].map((k) => (max[k] !== null ? 0 : 1)) };
+          }
           return { type: 'rect', dims, min, max };
         }
         case 'PolygonGate': {

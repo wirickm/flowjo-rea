@@ -183,9 +183,44 @@ function transformXml(id: string, t: TransformSpec): string {
   }
 }
 
-// Export populations of one sample. FlowJo-specific scales (biex, FlowJo log)
-// and ratio dimensions are rejected rather than approximated.
-export function exportGatingMl(pops: Population[], matrices: SpilloverMatrix[], sampleComp: string): string {
+// Export populations of one sample. A population that Gating-ML 2.0 cannot
+// represent (FlowJo biex/log scales, ratio dimensions, spline quadrants, an
+// exclusion flag on a boolean) is skipped with a warning, together with its
+// descendants and any boolean that uses it; the rest is written (UAT a5-01;
+// same policy as the .wsp export). FlowJo linear-gain gates ('scale', e.g.
+// Time) are written in raw units, which is exact (specs section 6.5).
+export function exportGatingMl(pops: Population[], matrices: SpilloverMatrix[], sampleComp: string): { xml: string; warnings: string[] } {
+  const warnings: string[] = [];
+  const skipped = new Set<string>();
+  const pathOf = (p: Population): string => {
+    const parent = p.parentId ? pops.find((q) => q.id === p.parentId) : undefined;
+    return parent ? `${pathOf(parent)}/${p.name}` : p.name;
+  };
+  // Pass 1 finds populations that cannot be written; pass 2 writes the rest.
+  for (const p of pops) {
+    try {
+      emitAll([p]);
+    } catch (e) {
+      skipped.add(p.id);
+      warnings.push(`"${pathOf(p)}" skipped: ${(e as Error).message}`);
+    }
+  }
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (const p of pops) {
+      if (skipped.has(p.id)) continue;
+      const deps = [p.parentId, ...(p.gate.type === 'boolean' ? p.gate.operands.map((o) => o.ref) : [])].filter((x): x is string => !!x);
+      const bad = deps.find((d) => skipped.has(d));
+      if (bad) {
+        skipped.add(p.id);
+        changed = true;
+        warnings.push(`"${pathOf(p)}" skipped: depends on a skipped population`);
+      }
+    }
+  }
+  return { xml: emitAll(pops.filter((p) => !skipped.has(p.id))), warnings };
+
+  function emitAll(list: Population[]): string {
   const tx = new Map<string, string>();
   const parts: string[] = [];
   const usedMatrices = new Set<string>();
@@ -207,7 +242,14 @@ export function exportGatingMl(pops: Population[], matrices: SpilloverMatrix[], 
     return `<gating:dimension gating:compensation-ref="${esc(compRef(d))}"${tref(d.transform)}${extra}><data-type:fcs-dimension data-type:name="${esc(d.channel)}"/></gating:dimension>`;
   };
   const coord = (v: number) => `<gating:coordinate data-type:value="${v}"/>`;
-  for (const p of pops) {
+  // A FlowJo linear-gain dimension (value x factor) is written in raw units.
+  const gain = (d: Dimension) => {
+    if (d.kind !== 'channel' || d.transform.kind !== 'scale') return 1;
+    if (!(d.transform.factor > 0)) fail('UNSUPPORTED_FEATURE', `Linear gain ${d.transform.factor} on ${d.channel} cannot be written in raw units`);
+    return d.transform.factor;
+  };
+  const unscaled = (d: Dimension): Dimension => (d.kind === 'channel' && d.transform.kind === 'scale' ? { ...d, transform: { kind: 'none' } } : d);
+  for (const p of list) {
     const g = p.gate;
     // An exclusion population is written as its inclusive gate plus a NOT
     // boolean carrying the population's id (re-imports as two populations).
@@ -218,12 +260,12 @@ export function exportGatingMl(pops: Population[], matrices: SpilloverMatrix[], 
     const nameInfo = `<data-type:custom_info><name>${esc(p.exclude ? `${p.name} (gate)` : p.name)}</name></data-type:custom_info>`;
     if (g.type === 'rect') {
       const dims = g.dims
-        .map((d, k) => dimXml(d, (g.min[k] !== null ? ` gating:min="${g.min[k]}"` : '') + (g.max[k] !== null ? ` gating:max="${g.max[k]}"` : '')))
+        .map((d, k) => dimXml(unscaled(d), (g.min[k] !== null ? ` gating:min="${g.min[k]! / gain(d)}"` : '') + (g.max[k] !== null ? ` gating:max="${g.max[k]! / gain(d)}"` : '')))
         .join('');
       parts.push(`<gating:RectangleGate ${head}>${nameInfo}${dims}</gating:RectangleGate>`);
     } else if (g.type === 'polygon') {
-      const v = g.vertices.map((x) => `<gating:vertex>${coord(x[0])}${coord(x[1])}</gating:vertex>`).join('');
-      parts.push(`<gating:PolygonGate ${head}>${nameInfo}${dimXml(g.dims[0])}${dimXml(g.dims[1])}${v}</gating:PolygonGate>`);
+      const v = g.vertices.map((x) => `<gating:vertex>${coord(x[0] / gain(g.dims[0]))}${coord(x[1] / gain(g.dims[1]))}</gating:vertex>`).join('');
+      parts.push(`<gating:PolygonGate ${head}>${nameInfo}${dimXml(unscaled(g.dims[0]))}${dimXml(unscaled(g.dims[1]))}${v}</gating:PolygonGate>`);
     } else if (g.type === 'ellipsoid') {
       const mean = `<gating:mean>${g.mean.map(coord).join('')}</gating:mean>`;
       const cov = `<gating:covarianceMatrix>${g.cov.map((r) => `<gating:row>${r.map((v) => `<gating:entry data-type:value="${v}"/>`).join('')}</gating:row>`).join('')}</gating:covarianceMatrix>`;
@@ -231,14 +273,15 @@ export function exportGatingMl(pops: Population[], matrices: SpilloverMatrix[], 
     } else if (g.type === 'quadrant') {
       // One QuadrantGate per population keeps ids stable; location = interval midpoint.
       const divs = g.dims
-        .map((d, k) => {
+        .map((d0, k) => {
+          const d = unscaled(d0);
           if (d.kind !== 'channel') fail('UNSUPPORTED_FEATURE', 'Ratio dimensions are not exported');
-          return `<gating:divider gating:id="${esc(p.id)}_d${k}" gating:compensation-ref="${esc(compRef(d))}"${tref(d.transform)}><data-type:fcs-dimension data-type:name="${esc(d.channel)}"/>${g.dividers[k].map((v) => `<gating:value>${v}</gating:value>`).join('')}</gating:divider>`;
+          return `<gating:divider gating:id="${esc(p.id)}_d${k}" gating:compensation-ref="${esc(compRef(d))}"${tref(d.transform)}><data-type:fcs-dimension data-type:name="${esc(d.channel)}"/>${g.dividers[k].map((v) => `<gating:value>${v / gain(d0)}</gating:value>`).join('')}</gating:divider>`;
         })
         .join('');
       const pos = g.dims
         .map((_, k) => {
-          const dv = g.dividers[k];
+          const dv = g.dividers[k].map((v) => v / gain(g.dims[k]));
           const s = g.side[k];
           const lo = s === 0 ? dv[0] - 1 : dv[s - 1];
           const hi = s >= dv.length ? dv[dv.length - 1] + 1 : dv[s];
@@ -255,7 +298,7 @@ export function exportGatingMl(pops: Population[], matrices: SpilloverMatrix[], 
       const h = `gating:id="${esc(p.id)}"${p.parentId ? ` gating:parent_id="${esc(p.parentId)}"` : ''}`;
       parts.push(`<gating:BooleanGate ${h}><data-type:custom_info><name>${esc(p.name)}</name></data-type:custom_info><gating:not><gating:gateReference gating:ref="${esc(gid)}"/></gating:not></gating:BooleanGate>`);
     }
-  }
+    }
   const mx = [...usedMatrices].map((id) => {
     const m = matrices.find((x) => x.id === id);
     if (!m) fail('COMP_INVALID', `Matrix ${id} not found`);
@@ -269,6 +312,7 @@ export function exportGatingMl(pops: Population[], matrices: SpilloverMatrix[], 
 ${[...txs, ...mx, ...parts].join('\n')}
 </gating:Gating-ML>
 `;
+  }
 }
 
 // Gating-ML ids are gate ids; restore human names stored in custom_info on re-import.

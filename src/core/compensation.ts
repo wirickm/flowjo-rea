@@ -13,6 +13,10 @@ export interface SpilloverMatrix {
   outputNames?: string[];
   values: number[][]; // spill[i][j]: fraction of channel i signal seen in detector j
   source: string;
+  // Explicit matrix type, as FlowJo 10 marks spectral matrices with a flag and
+  // never infers the type from shape (specs section 6.3). When absent, the
+  // shape decides (older workspaces, $SPILLOVER, Gating-ML, .wsp imports).
+  kind?: 'spillover' | 'spectral';
 }
 
 export function parseSpilloverKeyword(text: string): { channels: string[]; values: number[][] } {
@@ -43,11 +47,17 @@ export function spilloverFromFcs(f: FcsFile): SpilloverMatrix | null {
 
 // CSV with a header row of channel names followed by an n x n numeric block.
 // An optional leading label column is accepted (FlowJo / FlowKit exports).
+// A header line that starts with "#" (FlowKit's matrix CSV) is used with the
+// "#" removed; other "#" lines are comments. FlowJo 10 has no CSV matrix
+// import, so this is our own rule (specs section 6.4; UAT a3-01).
 export function parseSpilloverCsv(text: string, name = 'CSV matrix'): SpilloverMatrix {
-  const rows = text
+  const lines = text
     .split(/\r?\n/)
     .map((l) => l.trim())
-    .filter((l) => l !== '')
+    .filter((l) => l !== '');
+  if (lines[0]?.startsWith('#')) lines[0] = lines[0].replace(/^#\s*/, '');
+  const rows = lines
+    .filter((l, i) => i === 0 || !l.startsWith('#'))
     .map((l) => l.split(/[,\t]/).map((s) => s.trim().replace(/^"|"$/g, '')));
   if (rows.length < 2) fail('COMP_INVALID', 'Matrix CSV needs a header row and at least one data row');
   let header = rows[0];
@@ -59,7 +69,7 @@ export function parseSpilloverCsv(text: string, name = 'CSV matrix'): SpilloverM
   if (labelCol && values.length !== n) {
     // Spectral: rows are fluorochromes (labels), columns detectors (header).
     if (values.some((r) => r.length !== n || r.some((v) => !Number.isFinite(v)))) fail('COMP_INVALID', 'Spectral matrix CSV rows must have one numeric value per detector');
-    return { id: `csv-${Date.now().toString(36)}`, name, channels: header, outputNames: body.map((r) => r[0]), values, source: 'csv (spectral)' };
+    return { id: `csv-${Date.now().toString(36)}`, name, channels: header, outputNames: body.map((r) => r[0]), values, source: 'csv (spectral)', kind: 'spectral' };
   }
   if (values.length !== n || values.some((r) => r.length !== n)) {
     fail('COMP_INVALID', `Matrix CSV is not square: ${n} channel names, ${values.length} rows`);
@@ -92,8 +102,12 @@ export function invert(m: number[][]): number[][] {
   return inv;
 }
 
-// Spectral (unmixing) matrix: fluorochrome rows x detector columns, rows < columns.
+// Spectral (unmixing) matrix: fluorochrome rows x detector columns. The
+// explicit kind wins; without it, rows != columns means spectral. A square
+// spectral matrix (for example 2 dyes + autofluorescence on 3 detectors) must
+// carry kind 'spectral', or it would be applied as spillover (UAT a3-02).
 export function isSpectral(m: SpilloverMatrix): boolean {
+  if (m.kind) return m.kind === 'spectral';
   return m.values.length !== m.channels.length;
 }
 

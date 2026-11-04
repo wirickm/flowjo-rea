@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PopulationResult } from '../core/analysis';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../core/gatingml';
 import { emptyWorkspace, newId, populationPath, type Gate, type KeywordRule, type PlotSettings, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
-import { applySubtree, criteriaLabel, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
+import { applySubtree, criteriaLabel, derivedParameterUsers, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
 import type { PlotResult, SampleMeta } from '../core/service';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL } from '../core/stats';
 import { statScales } from '../core/flowjoStats';
@@ -790,7 +790,7 @@ export function App() {
             channels={channels.map((c) => c.name)}
             timeChannel={channels.find((c) => /^time$/i.test(c.name))?.name ?? null}
             onClose={() => setDialog(null)}
-            runCellCycle={(channel, model, bins) => run(() => client.cellCycle({ ...base, channel, model, bins }))}
+            runCellCycle={(channel, model) => run(() => client.cellCycle({ ...base, channel, model }))}
             runProliferation={(channel, maxGenerations) => run(() => client.proliferation({ ...base, channel, maxGenerations }))}
             runKinetics={(channel, stat, bins, threshold) => run(() => client.kinetics({ ...base, channel, stat, bins, threshold, timeChannel: channels.find((c) => /^time$/i.test(c.name))!.name }))}
           />
@@ -801,6 +801,7 @@ export function App() {
         <DerivedDialog
           params={ws.derivedParameters ?? []}
           channels={sMeta.channels.map((c) => c.name)}
+          usersOf={(n) => derivedParameterUsers(ws, n)}
           onClose={() => setDialog(null)}
           onChange={(dp) => updateWs((w) => { w.derivedParameters = dp; })}
         />
@@ -884,7 +885,9 @@ export function App() {
           }}
           onGatingMl={() => {
             try {
-              download(`${sample.fileName.replace(/\.fcs$/i, '')}_gates.xml`, exportGatingMl(sample.populations, ws.matrices, sample.compensation), 'application/xml');
+              const { xml, warnings } = exportGatingMl(sample.populations, ws.matrices, sample.compensation);
+              for (const w of warnings) note('warn', `Gating-ML export: ${w}`);
+              download(`${sample.fileName.replace(/\.fcs$/i, '')}_gates.xml`, xml, 'application/xml');
             } catch (e) {
               note('error', `Gating-ML export: ${(e as Error).message}`);
             }

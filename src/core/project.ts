@@ -202,3 +202,74 @@ export function derivedParameterUsers(ws: Workspace, name: string): string[] {
   for (const d of ws.derivedParameters ?? []) if (d.name !== name && (d.num === name || d.den === name)) out.push(`derived parameter "${d.name}"`);
   return out;
 }
+
+// Merge imported populations (e.g. Gating-ML) into a sample's tree, as FlowJo
+// 10 imports gates (specs 6.7): an imported population whose name a sibling
+// already has is never added again. An equivalent gate is kept as is; a
+// different gate is a conflict, replaced or kept as `conflicts` says. Roots of
+// the import attach under `rootParent`. Imported ids are remapped; boolean
+// operands follow the mapping.
+export interface MergeResult {
+  populations: Population[];
+  added: string[];
+  same: string[];
+  conflicts: string[]; // names of populations whose gate differs
+}
+export function mergeImported(existing: Population[], imported: Population[], rootParent: string | null, conflicts: 'replace' | 'keep'): MergeResult {
+  const pops = structuredClone(existing);
+  const byId = new Map(imported.map((p) => [p.id, p]));
+  // Parents first.
+  const order: Population[] = [];
+  const seen = new Set<string>();
+  const visit = (p: Population) => {
+    if (seen.has(p.id)) return;
+    seen.add(p.id);
+    const parent = p.parentId ? byId.get(p.parentId) : undefined;
+    if (parent) visit(parent);
+    order.push(p);
+  };
+  imported.forEach(visit);
+  // Pass 1: final id of every imported population (existing sibling by name, or new).
+  const idMap = new Map<string, string>();
+  const match = new Map<string, Population>();
+  const parentOf = new Map<string, string | null>(); // imported id -> final parent id
+  const fresh = new Map<string, string>(); // imported id -> name of a new population
+  const newNames = new Map<string | null, string[]>(); // final parent id -> names added here
+  for (const p of order) {
+    const parentId = p.parentId && byId.has(p.parentId) ? idMap.get(p.parentId)! : rootParent;
+    parentOf.set(p.id, parentId);
+    const used = new Set(match.values());
+    const hit = pops.find((q) => q.parentId === parentId && q.name === p.name && !used.has(q));
+    if (hit) {
+      idMap.set(p.id, hit.id);
+      match.set(p.id, hit);
+    } else {
+      const added = newNames.get(parentId) ?? [];
+      const name = uniqueName(p.name, [...pops.filter((q) => q.parentId === parentId).map((q) => q.name), ...added]);
+      newNames.set(parentId, [...added, name]);
+      fresh.set(p.id, name);
+      idMap.set(p.id, newId('pop'));
+    }
+  }
+  // Pass 2: gates with remapped operands; add, keep or replace.
+  const out: MergeResult = { populations: pops, added: [], same: [], conflicts: [] };
+  for (const p of order) {
+    const gate = structuredClone(p.gate);
+    if (gate.type === 'boolean') gate.operands = gate.operands.map((o) => ({ ...o, ref: idMap.get(o.ref) ?? o.ref }));
+    const hit = match.get(p.id);
+    if (!hit) {
+      pops.push({ id: idMap.get(p.id)!, name: fresh.get(p.id)!, parentId: parentOf.get(p.id)!, gate, ...(p.exclude ? { exclude: true } : {}) });
+      out.added.push(p.name);
+    } else if (JSON.stringify(hit.gate) === JSON.stringify(gate) && !!hit.exclude === !!p.exclude) {
+      out.same.push(p.name);
+    } else {
+      out.conflicts.push(p.name);
+      if (conflicts === 'replace') {
+        hit.gate = gate;
+        if (p.exclude) hit.exclude = true;
+        else delete hit.exclude;
+      }
+    }
+  }
+  return out;
+}

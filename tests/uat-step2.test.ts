@@ -5,8 +5,9 @@ import type { FcsChannel } from '../src/core/fcs';
 import { channelRange, defaultTransform, specForKind } from '../src/ui/axes';
 import { histogramScale } from '../src/ui/renderPlot';
 import { tooSmall } from '../src/ui/gateGeometry';
-import { emptyWorkspace, uniqueName } from '../src/core/model';
-import { groupByKey } from '../src/core/project';
+import { emptyWorkspace, uniqueName, type Gate, type Population } from '../src/core/model';
+import { groupByKey, mergeImported } from '../src/core/project';
+import { exportGatingMl, gatingMlNames, parseGatingMl } from '../src/core/gatingml';
 
 const ch = (name: string, range: number): FcsChannel => ({ index: 1, name, label: '', bits: 32, range, logDecades: 0, logOffset: 0, gain: 1 });
 
@@ -63,5 +64,47 @@ describe('a2-07/a2-08/a1-08 degenerate shapes and unique names', () => {
     ws.groups.push({ id: 'g1', name: 'Tube = A', sampleIds: [] });
     ws.samples.push({ id: 's1', fileName: 'a.fcs', fileSize: 0, fingerprint: '', datasetIndex: 0, compensation: 'none', populations: [], keywordsSnapshot: {}, annotations: { Tube: 'A' }, channelNames: [], eventCount: 0 });
     expect(groupByKey(ws, 'Tube')).toEqual(['Tube = A-1']);
+  });
+});
+
+describe('a1-04/a5-03 re-imported gates replace, never duplicate', () => {
+  const X = { kind: 'channel' as const, channel: 'FSC-A', transform: { kind: 'linear' as const, T: 1024, A: 0 } };
+  const rect = (lo: number): Gate => ({ type: 'rect', dims: [X], min: [lo], max: [500] });
+  const imported: Population[] = [
+    { id: 'i1', name: 'Cells', parentId: null, gate: rect(100) },
+    { id: 'i2', name: 'NOT Cells', parentId: null, gate: { type: 'boolean', op: 'not', operands: [{ ref: 'i1' }] } },
+  ];
+  it('an equivalent re-import changes nothing', () => {
+    const first = mergeImported([], imported, null, 'keep');
+    expect(first.added).toEqual(['Cells', 'NOT Cells']);
+    const again = mergeImported(first.populations, imported, null, 'keep');
+    expect(again.populations).toEqual(first.populations);
+    expect(again.same).toEqual(['Cells', 'NOT Cells']);
+    expect(again.conflicts).toEqual([]);
+  });
+  it('a different gate with the same name is replaced or kept, as asked', () => {
+    const first = mergeImported([], imported, null, 'keep').populations;
+    const changed = [{ ...imported[0], gate: rect(200) }, imported[1]];
+    const keep = mergeImported(first, changed, null, 'keep');
+    expect(keep.conflicts).toEqual(['Cells']);
+    expect(keep.populations).toEqual(first);
+    const rep = mergeImported(first, changed, null, 'replace');
+    expect(rep.populations.length).toBe(2);
+    expect(rep.populations.find((p) => p.name === 'Cells')!.gate).toEqual(rect(200));
+    // The boolean still points at the same (kept) population id.
+    const cellsId = rep.populations.find((p) => p.name === 'Cells')!.id;
+    expect(rep.populations.find((p) => p.name === 'NOT Cells')!.gate).toEqual({ type: 'boolean', op: 'not', operands: [{ ref: cellsId }] });
+  });
+});
+
+describe('a5-04 quadrant names survive a Gating-ML round trip', () => {
+  it('the name is written on the QuadrantGate and read back for its quadrant', () => {
+    const X = { kind: 'channel' as const, channel: 'FSC-A', transform: { kind: 'linear' as const, T: 1024, A: 0 } };
+    const Y = { ...X, channel: 'SSC-A' };
+    const pops: Population[] = [{ id: 'q1', name: 'Q1: FSC-A- , SSC-A+', parentId: null, gate: { type: 'quadrant', dims: [X, Y], dividers: [[300], [400]], side: [0, 1] } }];
+    const { xml } = exportGatingMl(pops, [], 'none');
+    const doc = parseGatingMl(xml);
+    const names = gatingMlNames(xml);
+    expect(doc.populations.map((p) => names.get(p.id))).toEqual(['Q1: FSC-A- , SSC-A+']);
   });
 });

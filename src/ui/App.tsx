@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PopulationResult } from '../core/analysis';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../core/gatingml';
 import { emptyWorkspace, newId, populationPath, uniqueName, type Gate, type KeywordRule, type PlotSettings, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
-import { applySubtree, criteriaLabel, derivedParameterUsers, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
+import { applySubtree, criteriaLabel, mergeImported, derivedParameterUsers, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
 import type { PlotResult, SampleMeta } from '../core/service';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL } from '../core/stats';
 import { statScales } from '../core/flowjoStats';
@@ -74,6 +74,9 @@ export function App() {
   const [checked, setChecked] = useState<string[]>([]);
   const [rule, setRule] = useState<{ keyword: string; op: KeywordRule['op']; value: string }>({ keyword: '', op: 'contains', value: '' });
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // In-app question with labelled answers; resolves to the chosen label or null (cancel).
+  const [question, setQuestion] = useState<{ text: string; choices: string[]; resolve: (c: string | null) => void } | null>(null);
+  const ask = (text: string, choices: string[]) => new Promise<string | null>((resolve) => setQuestion({ text, choices, resolve }));
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -185,15 +188,25 @@ export function App() {
       const pops: Population[] = doc.populations.map((p) => ({
         id: map(p.id),
         name: names.get(p.id) ?? p.name,
-        parentId: p.parentId ? map(p.parentId) : sel.popId,
+        parentId: p.parentId ? map(p.parentId) : null,
         gate: p.gate.type === 'boolean' ? { ...p.gate, operands: p.gate.operands.map((o) => ({ ...o, ref: map(o.ref) })) } : p.gate,
       }));
+      // As in FlowJo 10 (specs 6.7): a gate whose name a sibling has replaces it,
+      // silently when equivalent, after a question otherwise; never a duplicate.
+      const dry = mergeImported(sample.populations, pops, sel.popId, 'keep');
+      let mode: 'replace' | 'keep' = 'keep';
+      if (dry.conflicts.length) {
+        const a = await ask(`${dry.conflicts.length} imported gate(s) have the name of an existing gate but a different shape: ${dry.conflicts.join(', ')}. Replace them?`, ['Replace', 'Keep existing']);
+        if (a === null) return note('info', 'Gating-ML import cancelled');
+        mode = a === 'Replace' ? 'replace' : 'keep';
+      }
+      const res = mergeImported(sample.populations, pops, sel.popId, mode);
       updateWs((w) => {
         w.matrices.push(...doc.matrices.filter((m) => !w.matrices.some((x) => x.id === m.id)));
-        w.samples.find((s) => s.id === sample.id)!.populations.push(...pops);
+        w.samples.find((s) => s.id === sample.id)!.populations = res.populations;
       });
       for (const wmsg of doc.warnings) note('warn', wmsg);
-      note('info', `Imported ${pops.length} Gating-ML gates into ${sample.fileName}`);
+      note('info', `Gating-ML import into ${sample.fileName}: ${res.added.length} added, ${res.same.length} already present${res.conflicts.length ? `, ${res.conflicts.length} ${mode === 'replace' ? 'replaced' : 'kept as they were'}` : ''}`);
     });
   };
 
@@ -801,6 +814,19 @@ export function App() {
         </section>
       </main>
 
+      {question && (
+        <div className="modal-bg">
+          <div className="modal" role="alertdialog" aria-label="Question" data-testid="question">
+            <div className="modal-body">
+              <p>{question.text}</p>
+              <div className="row">
+                {question.choices.map((c) => <button key={c} data-testid={`answer-${c}`} onClick={() => { question.resolve(c); setQuestion(null); }}>{c}</button>)}
+                <button data-testid="answer-cancel" onClick={() => { question.resolve(null); setQuestion(null); }}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {dialog?.kind === 'layout' && (
         <LayoutView
           ws={ws}

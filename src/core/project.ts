@@ -1,6 +1,6 @@
 // Native workspace persistence (.frea.json) and cross-sample operations.
 import { fail } from './errors';
-import { newId, populationPath, uniqueName, type KeywordRule, type Population, type SampleState, type Workspace } from './model';
+import { newId, populationPath, uniqueName, type Gate, type KeywordRule, type Population, type SampleState, type Workspace } from './model';
 
 export function serializeWorkspace(ws: Workspace): string {
   return JSON.stringify(ws, null, 1);
@@ -208,14 +208,25 @@ export function derivedParameterUsers(ws: Workspace, name: string): string[] {
 // already has is never added again. An equivalent gate is kept as is; a
 // different gate is a conflict, replaced or kept as `conflicts` says. Roots of
 // the import attach under `rootParent`. Imported ids are remapped; boolean
-// operands follow the mapping.
+// operands follow the mapping. Equivalence resolves each dimension's
+// compensation against the sample's (`sampleComp`), so a drawn gate equals its
+// own Gating-ML export.
 export interface MergeResult {
   populations: Population[];
   added: string[];
   same: string[];
   conflicts: string[]; // names of populations whose gate differs
 }
-export function mergeImported(existing: Population[], imported: Population[], rootParent: string | null, conflicts: 'replace' | 'keep'): MergeResult {
+function canonicalGate(g: Gate, sampleComp: string): string {
+  if (g.type === 'boolean') return JSON.stringify({ ...g, operands: g.operands.map((o) => ({ ref: o.ref, complement: !!o.complement })) });
+  const comp = (c: string | undefined) => {
+    const r = c ?? sampleComp;
+    return r === 'none' || r === 'uncompensated' ? 'uncompensated' : r === 'file' || r === 'FCS' ? 'FCS' : r;
+  };
+  return JSON.stringify({ ...g, dims: g.dims.map((d) => ({ ...d, compensation: comp(d.compensation) })) });
+}
+
+export function mergeImported(existing: Population[], imported: Population[], rootParent: string | null, conflicts: 'replace' | 'keep', sampleComp = 'none'): MergeResult {
   const pops = structuredClone(existing);
   const byId = new Map(imported.map((p) => [p.id, p]));
   // Parents first.
@@ -260,7 +271,7 @@ export function mergeImported(existing: Population[], imported: Population[], ro
     if (!hit) {
       pops.push({ id: idMap.get(p.id)!, name: fresh.get(p.id)!, parentId: parentOf.get(p.id)!, gate, ...(p.exclude ? { exclude: true } : {}) });
       out.added.push(p.name);
-    } else if (JSON.stringify(hit.gate) === JSON.stringify(gate) && !!hit.exclude === !!p.exclude) {
+    } else if (canonicalGate(hit.gate, sampleComp) === canonicalGate(gate, sampleComp) && !!hit.exclude === !!p.exclude) {
       out.same.push(p.name);
     } else {
       out.conflicts.push(p.name);

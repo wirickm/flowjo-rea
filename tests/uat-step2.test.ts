@@ -168,3 +168,20 @@ describe('a2-11 tree delete confirms with the size of the subtree', () => {
     expect(descendantCount(pops, 'c')).toBe(0);
   });
 });
+
+describe('a1-04 a drawn gate equals its own Gating-ML export', () => {
+  it('re-importing the export of drawn gates adds and asks nothing', () => {
+    const X = { kind: 'channel' as const, channel: 'FSC-A', transform: { kind: 'linear' as const, T: 1024, A: 0 } };
+    const drawn: Population[] = [
+      { id: 'd1', name: 'Rect 1', parentId: null, gate: { type: 'rect', dims: [X, { ...X, channel: 'SSC-A' }], min: [100.5, 200], max: [500, 600.25] } },
+      { id: 'd2', name: 'NOT Rect 1', parentId: null, gate: { type: 'boolean', op: 'not', operands: [{ ref: 'd1' }] } },
+    ];
+    for (const comp of ['none', 'file']) {
+      const { xml } = exportGatingMl(drawn, [], comp);
+      const names = gatingMlNames(xml);
+      const imp = parseGatingMl(xml).populations.map((p) => ({ ...p, name: names.get(p.id) ?? p.name }));
+      const r = mergeImported(drawn, imp, null, 'keep', comp);
+      expect([r.added, r.conflicts, r.same]).toEqual([[], [], ['Rect 1', 'NOT Rect 1']]);
+    }
+  });
+});

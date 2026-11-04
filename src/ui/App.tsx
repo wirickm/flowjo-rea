@@ -223,14 +223,14 @@ export function App() {
       }));
       // As in FlowJo 10 (specs 6.7): a gate whose name a sibling has replaces it,
       // silently when equivalent, after a question otherwise; never a duplicate.
-      const dry = mergeImported(sample.populations, pops, sel.popId, 'keep');
+      const dry = mergeImported(sample.populations, pops, sel.popId, 'keep', sample.compensation);
       let mode: 'replace' | 'keep' = 'keep';
       if (dry.conflicts.length) {
         const a = await ask(`${dry.conflicts.length} imported gate(s) have the name of an existing gate but a different shape: ${dry.conflicts.join(', ')}. Replace them?`, ['Replace', 'Keep existing']);
         if (a === null) return note('info', 'Gating-ML import cancelled');
         mode = a === 'Replace' ? 'replace' : 'keep';
       }
-      const res = mergeImported(sample.populations, pops, sel.popId, mode);
+      const res = mergeImported(sample.populations, pops, sel.popId, mode, sample.compensation);
       updateWs((w) => {
         w.matrices.push(...doc.matrices.filter((m) => !w.matrices.some((x) => x.id === m.id)));
         w.samples.find((s) => s.id === sample.id)!.populations = res.populations;

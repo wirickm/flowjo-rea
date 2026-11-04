@@ -5,6 +5,11 @@
 import { flowjoPercentile, flowjoRobustCv, flowjoRobustSd, type ChannelScale } from './flowjoStats';
 import type { StatKind } from './model';
 
+// FlowJo 10: a percentile is an integer from 0 to 100 (specs 6.7).
+export function validPercentile(p: unknown): p is number {
+  return typeof p === 'number' && Number.isInteger(p) && p >= 0 && p <= 100;
+}
+
 export function gather(col: Float64Array, mask: Uint8Array): Float64Array {
   let n = 0;
   for (let i = 0; i < mask.length; i++) n += mask[i];

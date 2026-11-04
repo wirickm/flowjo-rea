@@ -48,7 +48,7 @@
     ],
     "scenarios": [
       {
-        "evidence_id": "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde",
+        "evidence_id": "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763",
         "operation": "verify_reconstruction_obligations",
         "authority": "controlled-replay"
       }
@@ -274,7 +274,7 @@
         ]
       },
       {
-        "evidence_id": "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde",
+        "evidence_id": "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763",
         "analysis_profile": null,
         "raw_result": null,
         "relationship_coverage": null,
@@ -372,7 +372,7 @@
             {
               "obligation_id": "stats.flowjo-conventions",
               "obligation_version": 2,
-              "owner_sha256": "fcc66d115660479ea9c745e69bd64ed578481d6216114411303504544d764346",
+              "owner_sha256": "a07291e0e9dcec77522b992a649d6f7992598c178b494ba95dbb2b3471433531",
               "fixtures": [
                 {
                   "fixture_id": "stats.median",
@@ -836,7 +836,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde"
+              "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763"
             ]
           },
           {
@@ -844,7 +844,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde"
+              "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763"
             ]
           },
           {
@@ -852,7 +852,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde"
+              "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763"
             ]
           }
         ],
@@ -862,7 +862,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde",
+          "result_evidence_id": "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763",
           "enumerated_obligation_ids": [
             "wsp.polygon-counts"
           ],
@@ -898,7 +898,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde"
+              "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763"
             ]
           },
           {
@@ -906,7 +906,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde"
+              "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763"
             ]
           }
         ],
@@ -916,7 +916,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde",
+          "result_evidence_id": "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763",
           "enumerated_obligation_ids": [
             "wsp.logicle-ellipse"
           ],
@@ -952,7 +952,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde"
+              "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763"
             ]
           },
           {
@@ -960,7 +960,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde"
+              "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763"
             ]
           }
         ],
@@ -970,7 +970,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde",
+          "result_evidence_id": "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763",
           "enumerated_obligation_ids": [
             "gate.rect-open-bounds"
           ],
@@ -985,7 +985,7 @@
         "owner": {
           "module_path": "src/core/flowjoStats.ts",
           "symbol": "flowjoPercentile",
-          "owner_sha256": "fcc66d115660479ea9c745e69bd64ed578481d6216114411303504544d764346"
+          "owner_sha256": "a07291e0e9dcec77522b992a649d6f7992598c178b494ba95dbb2b3471433531"
         },
         "parser_type": null,
         "original_cases": [
@@ -1011,7 +1011,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde"
+              "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763"
             ]
           },
           {
@@ -1019,7 +1019,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde"
+              "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763"
             ]
           },
           {
@@ -1027,7 +1027,7 @@
             "case_kind": "malformed",
             "authority": "integration",
             "evidence_ids": [
-              "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde"
+              "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763"
             ]
           }
         ],
@@ -1037,7 +1037,7 @@
           "command": "npx vitest run tests/flowjo-stats.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_58d7ec34f69e2cec07f56a7a91ce530ed507c024b32c7708b824daaccb47ffde",
+          "result_evidence_id": "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763",
           "enumerated_obligation_ids": [
             "stats.flowjo-conventions"
           ],

@@ -81,7 +81,7 @@ export async function renderLayout(client: Client, ws: Workspace, s: SampleState
     const cv = document.createElement('canvas');
     cv.width = PLOT.w;
     cv.height = PLOT.h;
-    const options: RenderOptions = { kind: item.kind, x, y, data, gates: drawableGates(s.populations, pop?.id ?? null, x, y), counts, contourLevel: item.contourLevel, showOutliers: item.showOutliers, overlays };
+    const options: RenderOptions = { kind: item.kind, x, y, data, gates: drawableGates(s.populations, pop?.id ?? null, x, y), counts, contourLevel: item.contourLevel, showOutliers: item.showOutliers, overlays, normalize: item.normalize };
     renderPlot(cv.getContext('2d')!, options);
     out.push({ item, canvas: cv, options, title: `${s.fileName} / ${label} (${data.count.toLocaleString()} events)` });
   }

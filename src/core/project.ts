@@ -1,6 +1,6 @@
 // Native workspace persistence (.frea.json) and cross-sample operations.
 import { fail } from './errors';
-import { newId, populationPath, type KeywordRule, type Population, type SampleState, type Workspace } from './model';
+import { newId, populationPath, uniqueName, type Gate, type KeywordRule, type Population, type SampleState, type Workspace } from './model';
 
 export function serializeWorkspace(ws: Workspace): string {
   return JSON.stringify(ws, null, 1);
@@ -133,7 +133,7 @@ export function groupByKey(ws: Workspace, key: string): string[] {
   const names: string[] = [];
   for (const value of [...values].sort((a, b) => (a ?? '').localeCompare(b ?? ''))) {
     const existing = ws.groups.find((g) => g.criteria && 'key' in g.criteria && g.criteria.key === key && g.criteria.value === value);
-    const name = `${key} = ${value ?? '(missing)'}`;
+    const name = uniqueName(`${key} = ${value ?? '(missing)'}`, ws.groups.map((g) => g.name));
     if (!existing) ws.groups.push({ id: newId('grp'), name, sampleIds: [], criteria: { key, value } });
     names.push(existing?.name ?? name);
   }
@@ -201,4 +201,123 @@ export function derivedParameterUsers(ws: Workspace, name: string): string[] {
   for (const c of ws.statColumns) if (c.channel === name) out.push(`statistic "${c.stat} (${name})" on "${c.populationPath || 'All events'}"`);
   for (const d of ws.derivedParameters ?? []) if (d.name !== name && (d.num === name || d.den === name)) out.push(`derived parameter "${d.name}"`);
   return out;
+}
+
+// Merge imported populations (e.g. Gating-ML) into a sample's tree, as FlowJo
+// 10 imports gates (specs 6.7): an imported population whose name a sibling
+// already has is never added again. An equivalent gate is kept as is; a
+// different gate is a conflict, replaced or kept as `conflicts` says. Roots of
+// the import attach under `rootParent`. Imported ids are remapped; boolean
+// operands follow the mapping. Equivalence resolves each dimension's
+// compensation against the sample's (`sampleComp`), so a drawn gate equals its
+// own Gating-ML export.
+export interface MergeResult {
+  populations: Population[];
+  added: string[];
+  same: string[];
+  conflicts: string[]; // names of populations whose gate differs
+}
+function canonicalGate(g: Gate, sampleComp: string): string {
+  if (g.type === 'boolean') return JSON.stringify({ ...g, operands: g.operands.map((o) => ({ ref: o.ref, complement: !!o.complement })) });
+  const comp = (c: string | undefined) => {
+    const r = c ?? sampleComp;
+    return r === 'none' || r === 'uncompensated' ? 'uncompensated' : r === 'file' || r === 'FCS' ? 'FCS' : r;
+  };
+  return JSON.stringify({ ...g, dims: g.dims.map((d) => ({ ...d, compensation: comp(d.compensation) })) });
+}
+
+export function mergeImported(existing: Population[], imported: Population[], rootParent: string | null, conflicts: 'replace' | 'keep', sampleComp = 'none'): MergeResult {
+  const pops = structuredClone(existing);
+  const byId = new Map(imported.map((p) => [p.id, p]));
+  // Parents first.
+  const order: Population[] = [];
+  const seen = new Set<string>();
+  const visit = (p: Population) => {
+    if (seen.has(p.id)) return;
+    seen.add(p.id);
+    const parent = p.parentId ? byId.get(p.parentId) : undefined;
+    if (parent) visit(parent);
+    order.push(p);
+  };
+  imported.forEach(visit);
+  // Pass 1: final id of every imported population (existing sibling by name, or new).
+  const idMap = new Map<string, string>();
+  const match = new Map<string, Population>();
+  const parentOf = new Map<string, string | null>(); // imported id -> final parent id
+  const fresh = new Map<string, string>(); // imported id -> name of a new population
+  const newNames = new Map<string | null, string[]>(); // final parent id -> names added here
+  for (const p of order) {
+    const parentId = p.parentId && byId.has(p.parentId) ? idMap.get(p.parentId)! : rootParent;
+    parentOf.set(p.id, parentId);
+    const used = new Set(match.values());
+    const hit = pops.find((q) => q.parentId === parentId && q.name === p.name && !used.has(q));
+    if (hit) {
+      idMap.set(p.id, hit.id);
+      match.set(p.id, hit);
+    } else {
+      const added = newNames.get(parentId) ?? [];
+      const name = uniqueName(p.name, [...pops.filter((q) => q.parentId === parentId).map((q) => q.name), ...added]);
+      newNames.set(parentId, [...added, name]);
+      fresh.set(p.id, name);
+      idMap.set(p.id, newId('pop'));
+    }
+  }
+  // Pass 2: gates with remapped operands; add, keep or replace.
+  const out: MergeResult = { populations: pops, added: [], same: [], conflicts: [] };
+  for (const p of order) {
+    const gate = structuredClone(p.gate);
+    if (gate.type === 'boolean') gate.operands = gate.operands.map((o) => ({ ...o, ref: idMap.get(o.ref) ?? o.ref }));
+    const hit = match.get(p.id);
+    if (!hit) {
+      pops.push({ id: idMap.get(p.id)!, name: fresh.get(p.id)!, parentId: parentOf.get(p.id)!, gate, ...(p.exclude ? { exclude: true } : {}) });
+      out.added.push(p.name);
+    } else if (canonicalGate(hit.gate, sampleComp) === canonicalGate(gate, sampleComp) && !!hit.exclude === !!p.exclude) {
+      out.same.push(p.name);
+    } else {
+      out.conflicts.push(p.name);
+      if (conflicts === 'replace') {
+        hit.gate = gate;
+        if (p.exclude) hit.exclude = true;
+        else delete hit.exclude;
+      }
+    }
+  }
+  return out;
+}
+
+// FlowJo 10's relink test (specs 6.7): does a newly added file belong to a
+// workspace sample whose data is missing? `recorded` = the sample's saved
+// keywords, `file` = the new file's. $TOT must be recorded and equal. Then
+// $DATE, $BTIM and $BEGINDATA in that order: each recorded one must be equal;
+// the first one not recorded ends these checks. Last, $FIL: not recorded, or
+// equal, matches. (FlowJo also accepts a different $FIL when the sample's file
+// exists in the workspace's folder; a browser cannot see folders, so that case
+// does not match here.) Values are compared trimmed.
+export function relinkMatches(recorded: Record<string, string>, file: Record<string, string>): boolean {
+  const rec = (k: string) => (recorded[k] ?? '').trim();
+  const fil = (k: string) => (file[k] ?? '').trim();
+  if (!rec('$TOT') || rec('$TOT') !== fil('$TOT')) return false;
+  for (const k of ['$DATE', '$BTIM', '$BEGINDATA']) {
+    if (!rec(k)) break;
+    if (rec(k) !== fil(k)) return false;
+  }
+  return !rec('$FIL') || rec('$FIL') === fil('$FIL');
+}
+
+// The first sample without data that a new file relinks to (FlowJo 10 tests
+// every such sample in workspace order, whatever its file name), or undefined:
+// the file is then added as a new sample.
+export function relinkTarget(samples: SampleState[], hasData: (id: string) => boolean, fileKeywords: Record<string, string>): SampleState | undefined {
+  return samples.find((s) => !hasData(s.id) && relinkMatches(s.keywordsSnapshot, fileKeywords));
+}
+
+// Remove a sample and its group memberships.
+export function removeSample(ws: Workspace, sampleId: string): void {
+  ws.samples = ws.samples.filter((s) => s.id !== sampleId);
+  for (const g of ws.groups) g.sampleIds = g.sampleIds.filter((id) => id !== sampleId);
+}
+
+// Number of populations below `id` (children, grandchildren, ...).
+export function descendantCount(pops: Population[], id: string): number {
+  return pops.filter((p) => p.parentId === id).reduce((n, p) => n + 1 + descendantCount(pops, p.id), 0);
 }

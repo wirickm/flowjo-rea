@@ -289,7 +289,9 @@ export function exportGatingMl(pops: Population[], matrices: SpilloverMatrix[], 
           return `<gating:position gating:divider_ref="${esc(p.id)}_d${k}" gating:location="${loc}"/>`;
         })
         .join('');
-      parts.push(`<gating:QuadrantGate gating:id="${esc(p.id)}_q"${p.parentId ? ` gating:parent_id="${esc(p.parentId)}"` : ''}>${divs}<gating:Quadrant gating:id="${esc(gid)}">${pos}</gating:Quadrant></gating:QuadrantGate>`);
+      // Quadrant_Type has no custom_info; the name goes on the QuadrantGate,
+      // which holds this one quadrant only.
+      parts.push(`<gating:QuadrantGate gating:id="${esc(p.id)}_q"${p.parentId ? ` gating:parent_id="${esc(p.parentId)}"` : ''}>${nameInfo}${divs}<gating:Quadrant gating:id="${esc(gid)}">${pos}</gating:Quadrant></gating:QuadrantGate>`);
     } else {
       const refs = g.operands.map((o) => `<gating:gateReference gating:ref="${esc(o.ref)}"${o.complement ? ' gating:use-as-complement="true"' : ''}/>`).join('');
       parts.push(`<gating:BooleanGate ${head}>${nameInfo}<gating:${g.op}>${refs}</gating:${g.op}></gating:BooleanGate>`);
@@ -324,6 +326,10 @@ export function gatingMlNames(xml: string): Map<string, string> {
     const n = ci && kid(ci, 'name');
     const id = attr(e, 'id');
     if (id && n) out.set(id, text(n));
+    // A QuadrantGate with one quadrant (this app's export): the name is the quadrant's.
+    const quads = local(e) === 'QuadrantGate' ? kids(e, 'Quadrant') : [];
+    const qid = quads.length === 1 ? attr(quads[0], 'id') : undefined;
+    if (qid && n) out.set(qid, text(n));
   }
   return out;
 }

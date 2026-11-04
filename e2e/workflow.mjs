@@ -225,6 +225,7 @@ check('stats table has both samples with values', table1.includes(F1) && table1.
 const statsCsv = await download(() => page.getByTestId('export-stats').click());
 check('stats CSV exported', readFileSync(statsCsv, 'utf8').split('\n').length >= 3);
 // statistic templates and all-groups export
+await page.getByTestId('template-name').fill('Panel');
 await page.getByTestId('template-save').click();
 await page.getByTestId('stats-table').getByLabel('remove column').first().click();
 const colsAfterRemove = await page.locator('[data-testid=stats-table] thead th').count();

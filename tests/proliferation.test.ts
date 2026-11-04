@@ -35,7 +35,7 @@ describe('proliferation fitting', () => {
     const counts = [3000, 4000, 6000, 8000, 5000, 2500];
     const total = counts.reduce((a, b) => a + b, 0);
     const v = synth(counts);
-    const f = fitProliferation(v);
+    const f = fitProliferation(v, { maxGenerations: 8 });
     const truth = indices(counts);
     expect(Math.abs(Math.log10(f.parentPeak) - 4)).toBeLessThan(0.01);
     expect(Math.abs(f.width - 0.08)).toBeLessThan(0.008);
@@ -50,7 +50,7 @@ describe('proliferation fitting', () => {
   });
   it('an undivided population gives pctDivided below 2%', () => {
     const v = synth([20000], 5);
-    const f = fitProliferation(v, { log10Min: 1.5, log10Max: 5 });
+    const f = fitProliferation(v, { log10Min: 1.5, log10Max: 5, maxGenerations: 8 });
     expect(f.pctDivided).toBeLessThan(0.02);
     expect(f.generations).toHaveLength(9);
   });

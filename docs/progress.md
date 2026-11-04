@@ -1,5 +1,38 @@
 # Progress and handoff
 
+## State (2026-11-04, acceptance test step 2 fixes)
+
+Step 2 (medium defects) fixed: 13 defects (19 UAT ids), each matched to FlowJo 10.6.2
+behavior from specs 6.7, one commit per group, decisions and reasons in
+`docs/validation/uat-2026-11-02.md` section 4:
+- linear range `0..$PnR`, kept across scale types; histogram overlays in raw
+  counts with a "Normalized To Mode" option;
+- shapes of 10 px or less discarded; unique sibling and group names;
+- Gating-ML re-import replaces by name, never duplicates; quadrant names kept;
+- same file not added twice; relink needs matching keywords; sample remove;
+- percentile 0..100 and "Number of Peaks" 0..10 (default 4) enforced;
+- stats show "-" while recalculating, exports recalculate; platform errors in
+  the platform window; named templates;
+- NOT on the selection; tree delete and workspace replace ask first;
+  group-by message corrected.
+
+Checks run: `npx tsc -p .` clean; `npm test` 232 passed, 2 skipped;
+`npm run e2e` 46/46 and `node e2e/step2.mjs` 18/18, each on the dev server and
+from `file://` (Chromium). REA ledger regenerated after the `stats.ts` change
+(analyst mode, REA built from `../rea`): 4 obligations verified.
+
+Confirmed by decompiling FlowJo 10.6.2's jars with Ghidra (REA 6.8.0 cannot
+open JVM classes): shape size is 10 px or less in both directions
+(corrected), relink is FlowJo's keyword test over every sample without data
+and a non-matching file is a new sample (corrected), the `-N` suffix numbers
+from an existing suffix's stem (refined), same file is same path in FlowJo
+(content here, by necessity). Open decision: FlowJo's "Don't Ask Again" box
+on delete.
+
+Next steps: step 3 (own UX choices: Escape, matrix input checks, stale log
+warnings, S4 layout items); quadrant sibling delete (specs 6.2); REA-native
+ledger rerun with Ghidra.
+
 ## State (2026-11-02, acceptance test and step 1 fixes)
 
 Front-end acceptance test (five browser operators, five datasets): 234

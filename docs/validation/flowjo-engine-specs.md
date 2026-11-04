@@ -190,7 +190,7 @@ has none or is weaker.
   siblings on the same parameter pair (`NodeList.addSiblingQuads`).
 - This app: the .wsp importer turns such a rectangle into a `quadrant` gate
   (identical `[lo, hi)` membership), so siblings with the same corner move
-  together. Sibling delete is not yet matched (6.7).
+  together. Sibling delete is not yet matched.
 
 ### 6.3 Spillover versus spectral matrices (matches the flag)
 
@@ -230,31 +230,82 @@ has none or is weaker.
 - This app: before deleting, lists the gates, statistic columns and other
   derived parameters that use it; no cascade; Undo restores.
 
-### 6.7 Further observed behaviors (not yet implemented here)
+### 6.7 Further observed behaviors (matched in UAT step 2)
 
-Recorded for the next fixes (`docs/validation/uat-2026-11-02.md`, step 2):
+Implemented on 2026-11-04 (`docs/validation/uat-2026-11-02.md`, step 2,
+which records each decision). Where this app differs, it says so.
+
+The four rules marked *(decompiled)* were then confirmed by reading the
+verified FlowJo 10.6.2 jars (`FlowJo-10.6.2.jar`, SHA-256 `6a6436c0...`, and
+`fjlib-2.3.0.jar` from the same installer) with Ghidra 12.1.4 headless
+(JVM bytecode decompiler), cross-checked with `javap` where Ghidra's output
+of exception handlers was unclear. REA 6.8.0 does not open JVM class files
+(its Ghidra provider rejects the format; its Java path is JADX for Android),
+so Ghidra was run directly. Only behavior is recorded here; the decompiled
+output stays outside the repository.
 
 - Linear axis range is `0..$PnR` (1024 when missing); changing the scale type
-  keeps the range.
+  keeps the range. Matches.
 - Histogram overlays show raw counts on a shared axis by default; "Normalized
-  To Mode" is an option and relabels the axis.
-- Sibling gate names are unique: new gates get a `-N` suffix; the rename
-  dialog refuses a duplicate ("Name must be unique."). New shapes 10 px or
-  smaller are discarded.
+  To Mode" is an option and relabels the axis. Matches.
+- Sibling gate names are unique: a new gate's default name goes through
+  `ParentNode.uniqueChildName`; the rename dialog refuses a duplicate ("Name
+  must be unique."). Matches; group names follow the same rule here.
+  *(decompiled)* `NameUtil.uniqueName`: an unused name is kept; otherwise
+  the first free `<stem>-N`, N = 1..999, where the stem is the name without
+  a trailing `-` plus up to 3 digits when that dash is after the 3rd
+  character (a copy of `CD4-1` is `CD4-2`); past 999 the time in
+  milliseconds is appended. Names compare exactly (`String.equals` on child
+  names). Matches.
+- *(decompiled)* A newly drawn shape is discarded when `isTooSmall()`
+  (`CreationDrag.complete`, also used by polygons): `Fig` is 10 px or less
+  in both width and height, `FigRange` 10 px or less wide. Matches (the
+  first implementation used "either direction", corrected).
 - Importing a gate whose name a sibling already has replaces it (silently if
   equivalent, otherwise after a "Replace?" question); never a duplicate.
-- Relinking a data file needs matching keywords (`$TOT`, `$BTIM`, ...);
-  samples can be removed after a confirmation; the same path is not added
-  twice.
+  Matches for Gating-ML import.
+- *(decompiled)* Relinking: when a newly added file is read
+  (`Sample.matchesBrokenSample`), FlowJo tests every workspace sample whose
+  data is missing, whatever its file name, with
+  `FCSFinder$SampleKeywordMatcher.keywordsMatch`, and merges the file into
+  the first match (`mergeToOtherSample`); with no match the file is added as
+  a new sample. The test, on the sample's saved keywords against the file's:
+  `$TOT` must be saved (trimmed, non-empty) and equal; then `$DATE`, `$BTIM`,
+  `$BEGINDATA` in turn, each saved one must be equal and the first one not
+  saved ends these checks; last, `$FIL` matches when not saved or equal, or
+  when the sample's file exists in the workspace's folder. Only the first
+  keyword of each group is read (`$PAR`, `@Y2KDATE`, `$ETIM`, `$ENDDATA`,
+  `@SAMPLEID1` and `FILENAME` appear in the code but are never compared).
+  Matches, except the folder fallback (a browser cannot see folders) and
+  values compared trimmed on both sides. (The first implementation matched by
+  file name and compared `$TOT`, `$PAR`, `$BTIM`, `$ETIM`, `$DATE`, refusing
+  a mismatched file; corrected.)
+- *(decompiled)* The same file is not added twice
+  (`WSSampleMgr.sampleShouldBeAdded`): a sample with the same file URI or the
+  same sample ID is skipped silently. This app compares file content
+  (SHA-256) and says so in the Log, because a browser exposes no path; it is
+  stricter only for a byte-identical copy at another path, which FlowJo adds
+  as a second sample. Samples can be removed after a confirmation.
 - Percentile is an integer 0..100 (table editor 1..99); invalid input is
   blocked. Proliferation "Number of Peaks" is an integer 0..10, default 4.
+  Matches (0..100 for percentiles).
 - Statistics that need recalculation show "-"; export recalculates first.
+  Matches.
 - Platform errors are shown in the platform window; table templates are named
-  and saved in the workspace.
-- Tree delete always confirms (with a "don't ask again" option). NOT applies
-  to the normal selection. Escape cancels only the naming/rename dialog.
+  and saved in the workspace. Matches.
+- *(decompiled)* Tree delete (`STreeMgr.deleteSelection`) always calls
+  `confirmNodeDeletion`, a Yes/No question (`SDialogs.confirm` with its
+  "Don't Ask Again" box enabled); the box is remembered per message in the
+  preferences, after which the question is skipped, and Preferences has a
+  reset. The same path adds sibling quads to the selection
+  (`NodeList.addSiblingQuads`, section 6.2). This app asks every time, with
+  no "Don't Ask Again" box yet, and does not delete sibling quads. NOT
+  applies to the normal selection. Matches. Escape
+  cancels only the naming/rename dialog (step 3 decides this app's rule).
 - Live keyword groups re-evaluate membership; they do not create new groups.
-  Opening a .wsp opens a new window instead of replacing the open workspace.
+  Matches (message corrected). Opening a .wsp opens a new window instead of
+  replacing the open workspace; this app has one window and asks before
+  replacing a workspace with work in it.
 
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 

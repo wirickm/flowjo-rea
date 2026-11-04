@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PopulationResult } from '../core/analysis';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../core/gatingml';
-import { emptyWorkspace, newId, populationPath, type Gate, type KeywordRule, type PlotSettings, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
-import { applySubtree, criteriaLabel, derivedParameterUsers, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
+import { emptyWorkspace, newId, populationPath, uniqueName, type Gate, type KeywordRule, type PlotSettings, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
+import { applySubtree, criteriaLabel, descendantCount, fingerprint, mergeImported, relinkTarget, removeSample, derivedParameterUsers, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
 import type { PlotResult, SampleMeta } from '../core/service';
-import { STAT_LABELS, STAT_NEEDS_CHANNEL } from '../core/stats';
+import { STAT_LABELS, STAT_NEEDS_CHANNEL, validPercentile } from '../core/stats';
 import { statScales } from '../core/flowjoStats';
 import { formatStat, statsCsv } from '../core/statsTable';
 import { makeTransform, type TransformSpec } from '../core/transforms';
 import { parseWsp } from '../core/wsp';
 import { writeWsp } from '../core/wspWriter';
-import { defaultTransform, isScatterOrTime, makeAxis, sampleChannels } from './axes';
+import { channelRange, defaultTransform, isScatterOrTime, makeAxis, sampleChannels } from './axes';
 import { CompensationDialog, DerivedDialog, KeywordsDialog, TransformDialog } from './Dialogs';
 import { LayoutView } from './Layout';
 import { PlatformsDialog } from './Platforms';
@@ -68,12 +68,16 @@ export function App() {
   const [gateSel, setGateSel] = useState<string | null>(null);
   const [groupKey, setGroupKey] = useState('');
   const [templateId, setTemplateId] = useState('');
+  const [templateName, setTemplateName] = useState('');
   const [annKey, setAnnKey] = useState('');
   const [annVal, setAnnVal] = useState('');
   const [syncGroup, setSyncGroup] = useState(false);
   const [checked, setChecked] = useState<string[]>([]);
   const [rule, setRule] = useState<{ keyword: string; op: KeywordRule['op']; value: string }>({ keyword: '', op: 'contains', value: '' });
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // In-app question with labelled answers; resolves to the chosen label or null (cancel).
+  const [question, setQuestion] = useState<{ text: string; choices: string[]; resolve: (c: string | null) => void } | null>(null);
+  const ask = (text: string, choices: string[]) => new Promise<string | null>((resolve) => setQuestion({ text, choices, resolve }));
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -101,6 +105,19 @@ export function App() {
     }
   }, [note]);
 
+  // Like run, but the error also reaches the caller (shown in the window that asked).
+  const runOrThrow = useCallback(async <T,>(fn: () => Promise<T>): Promise<T> => {
+    setBusy((b) => b + 1);
+    try {
+      return await fn();
+    } catch (e) {
+      note('error', (e as Error).message);
+      throw e;
+    } finally {
+      setBusy((b) => b - 1);
+    }
+  }, [note]);
+
   const sample = ws.samples.find((s) => s.id === sel.sampleId) ?? null;
   const sMeta = sample ? meta[sample.id] : undefined;
   const group = ws.groups.find((g) => g.id === groupId) ?? ws.groups[0];
@@ -120,10 +137,22 @@ export function App() {
     for (const file of Array.from(files)) {
       await run(async () => {
         const bytes = new Uint8Array(await file.arrayBuffer());
-        // Relink an existing workspace sample with the same file name and no data.
-        const existing = ws.samples.find((s) => s.fileName === file.name && !meta[s.id]);
-        const id = existing?.id ?? newId('s');
-        const m = await client.load(id, file.name, bytes, existing?.datasetIndex ?? 0);
+        // The same file is not added twice (FlowJo 10: same path; here: same content).
+        const sha = await fingerprint(bytes);
+        const dup = ws.samples.find((s) => meta[s.id] && s.fingerprint === sha);
+        if (dup) return note('warn', `${file.name}: already loaded as ${dup.fileName}; not added again`);
+        // Relink to a workspace sample without data when FlowJo 10's keyword test
+        // matches ($TOT, $DATE, $BTIM, $BEGINDATA, $FIL; any file name); otherwise
+        // the file is a new sample (specs 6.7). Keywords come from the file itself.
+        const tmp = newId('s');
+        let m = await client.load(tmp, file.name, bytes);
+        const existing = relinkTarget(ws.samples, (sid) => !!meta[sid], m.keywords);
+        const id = existing?.id ?? tmp;
+        if (existing) {
+          await client.rekey(tmp, id);
+          m = existing.datasetIndex ? await client.selectDataset(id, existing.datasetIndex) : { ...m, sampleId: id };
+          if (existing.fileName !== file.name) note('info', `${file.name}: keywords match workspace sample ${existing.fileName}; relinked`);
+        }
         if (existing?.fingerprint && existing.fingerprint !== m.fingerprint) {
           note('warn', `${file.name}: content differs from the file recorded in the workspace (SHA-256 mismatch); relinked anyway`);
         }
@@ -151,6 +180,12 @@ export function App() {
   };
 
   const openWorkspace = async (file: File) => {
+    // FlowJo 10 opens a .wsp in a new window; here it replaces the open
+    // workspace, so ask first when there is work to lose (specs 6.7).
+    if (ws.samples.length || hist.past.length) {
+      const a = await ask(`Open ${file.name}? It replaces the current workspace; unsaved changes are lost (Save workspace first to keep them).`, ['Open']);
+      if (a !== 'Open') return;
+    }
     await run(async () => {
       const text = await file.text();
       let next: Workspace;
@@ -185,15 +220,25 @@ export function App() {
       const pops: Population[] = doc.populations.map((p) => ({
         id: map(p.id),
         name: names.get(p.id) ?? p.name,
-        parentId: p.parentId ? map(p.parentId) : sel.popId,
+        parentId: p.parentId ? map(p.parentId) : null,
         gate: p.gate.type === 'boolean' ? { ...p.gate, operands: p.gate.operands.map((o) => ({ ...o, ref: map(o.ref) })) } : p.gate,
       }));
+      // As in FlowJo 10 (specs 6.7): a gate whose name a sibling has replaces it,
+      // silently when equivalent, after a question otherwise; never a duplicate.
+      const dry = mergeImported(sample.populations, pops, sel.popId, 'keep', sample.compensation);
+      let mode: 'replace' | 'keep' = 'keep';
+      if (dry.conflicts.length) {
+        const a = await ask(`${dry.conflicts.length} imported gate(s) have the name of an existing gate but a different shape: ${dry.conflicts.join(', ')}. Replace them?`, ['Replace', 'Keep existing']);
+        if (a === null) return note('info', 'Gating-ML import cancelled');
+        mode = a === 'Replace' ? 'replace' : 'keep';
+      }
+      const res = mergeImported(sample.populations, pops, sel.popId, mode, sample.compensation);
       updateWs((w) => {
         w.matrices.push(...doc.matrices.filter((m) => !w.matrices.some((x) => x.id === m.id)));
-        w.samples.find((s) => s.id === sample.id)!.populations.push(...pops);
+        w.samples.find((s) => s.id === sample.id)!.populations = res.populations;
       });
       for (const wmsg of doc.warnings) note('warn', wmsg);
-      note('info', `Imported ${pops.length} Gating-ML gates into ${sample.fileName}`);
+      note('info', `Gating-ML import into ${sample.fileName}: ${res.added.length} added, ${res.same.length} already present${res.conflicts.length ? `, ${res.conflicts.length} ${mode === 'replace' ? 'replaced' : 'kept as they were'}` : ''}`);
     });
   };
 
@@ -292,21 +337,28 @@ export function App() {
     return () => { live = false; };
   }, [sample?.id, sample?.compensation, sample?.populations, ws.matrices, meta, sel.popId, xAxis, yAxis, run, plotSettings.overlays]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // statistics table across the current group
+  // Statistics of one sample from the current workspace (never a cached table value).
+  const statsFor = (s: Workspace['samples'][number]) =>
+    client.stats({ sampleId: s.id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters, columns: ws.statColumns, scales: statScales(ws.channelTransforms, s.flowjoLinearRanges, ws.statColumns.map((c) => c.channel)) });
+
+  // statistics table across the current group. Values that need recalculation
+  // are cleared first, so the table shows "-" rather than old values (FlowJo 10,
+  // specs 6.7).
   useEffect(() => {
-    if (!ws.statColumns.length) return setStats({});
+    setStats({});
+    if (!ws.statColumns.length) return;
     let live = true;
     const t = setTimeout(() => {
       for (const s of groupSamples) {
         if (!meta[s.id]) continue;
         run(async () => {
-          const v = await client.stats({ sampleId: s.id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters, columns: ws.statColumns, scales: statScales(ws.channelTransforms, s.flowjoLinearRanges, ws.statColumns.map((c) => c.channel)) });
+          const v = await statsFor(s);
           if (live && v) setStats((x) => ({ ...x, [s.id]: v }));
         });
       }
     }, 150);
     return () => { live = false; clearTimeout(t); };
-  }, [ws.statColumns, ws.samples, ws.matrices, groupId, meta]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ws.statColumns, ws.samples, ws.matrices, ws.derivedParameters, ws.channelTransforms, groupId, meta]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- gate editing ------------------------------------------------------------
   const counts = useMemo(() => {
@@ -321,16 +373,34 @@ export function App() {
     for (const id of popIds) for (const msg of applySubtree(w, sampleId, id, targets)) say('warn', msg);
   };
 
+  // Names of the selected population's children, plus extra names to reserve.
+  const siblingNames = (parentId: string | null, extra: string[] = []) => [...(sample?.populations.filter((p) => p.parentId === parentId).map((p) => p.name) ?? []), ...extra];
+
   const createGates = (gates: { name: string; gate: Gate }[]) => {
     if (!sample) return;
     const ids = gates.map(() => newId('pop'));
+    // Sibling names stay unique: a taken name gets a "-N" suffix (specs 6.7).
+    const names: string[] = [];
+    for (const g of gates) names.push(uniqueName(g.name, siblingNames(sel.popId, names)));
     updateWs((w, say) => {
       const s = w.samples.find((x) => x.id === sample.id)!;
-      gates.forEach((g, i) => s.populations.push({ id: ids[i], name: g.name, parentId: sel.popId, gate: g.gate }));
+      gates.forEach((g, i) => s.populations.push({ id: ids[i], name: names[i], parentId: sel.popId, gate: g.gate }));
       syncRoots(w, sample.id, ids, say);
     });
     setTool('select');
-    note('info', `Created ${gates.map((g) => g.name).join(', ')}`);
+    note('info', `Created ${names.join(', ')}`);
+  };
+
+  // FlowJo 10's rename dialog refuses a name a sibling already has (specs 6.7).
+  const renamePop = (id: string, name: string) => {
+    if (!sample) return;
+    const p = sample.populations.find((q) => q.id === id);
+    if (!p || !name || name === p.name) return;
+    if (sample.populations.some((q) => q.id !== id && q.parentId === p.parentId && q.name === name)) {
+      note('warn', `Name must be unique: "${name}" is already used by a sibling population`);
+      return;
+    }
+    updateWs((w) => { w.samples.find((s) => s.id === sample.id)!.populations.find((q) => q.id === id)!.name = name; });
   };
 
   const updateGates = (ups: { id: string; gate: Gate }[]) => {
@@ -342,31 +412,44 @@ export function App() {
     });
   };
 
+  // AND/OR take the Ctrl-click multi-selection; NOT takes the multi-selection
+  // of one or, as in FlowJo 10, the normally selected population (specs 6.7).
+  const notOperand = multi.length === 1 ? multi[0] : multi.length === 0 && selPopValid ? sel.popId : null;
   const makeBoolean = (op: 'and' | 'or' | 'not') => {
-    if (!sample || !multi.length) return;
-    const first = sample.populations.find((p) => p.id === multi[0])!;
-    const name = op === 'not' ? `NOT ${first.name}` : multi.map((id) => sample.populations.find((p) => p.id === id)!.name).join(op === 'and' ? ' & ' : ' | ');
+    const operands = op === 'not' ? (notOperand ? [notOperand] : []) : multi;
+    if (!sample || !operands.length) return;
+    const first = sample.populations.find((p) => p.id === operands[0])!;
+    const name = uniqueName(op === 'not' ? `NOT ${first.name}` : operands.map((id) => sample.populations.find((p) => p.id === id)!.name).join(op === 'and' ? ' & ' : ' | '), siblingNames(first.parentId));
     const id = newId('pop');
     updateWs((w) => {
-      w.samples.find((x) => x.id === sample.id)!.populations.push({ id, name, parentId: first.parentId, gate: { type: 'boolean', op, operands: multi.map((ref) => ({ ref })) } });
+      w.samples.find((x) => x.id === sample.id)!.populations.push({ id, name, parentId: first.parentId, gate: { type: 'boolean', op, operands: operands.map((ref) => ({ ref })) } });
     });
     setMulti([]);
   };
 
-  const deletePop = (id: string) => {
+  const deletePop = async (id: string) => {
     if (!sample) return;
     const dependants = sample.populations.filter((p) => p.gate.type === 'boolean' && p.gate.operands.some((o) => o.ref === id));
     if (dependants.length) {
       note('warn', `Cannot delete: used by boolean gate(s) ${dependants.map((d) => d.name).join(', ')}`);
       return;
     }
+    // FlowJo 10 always confirms a tree delete (specs 6.7).
+    const below = descendantCount(sample.populations, id);
+    const a = await ask(`Delete "${populationPath(sample.populations, id)}"${below ? ` and the ${below} population(s) below it` : ''}? Undo restores it.`, ['Delete']);
+    if (a !== 'Delete') return;
     updateWs((w) => removePopulation(w.samples.find((x) => x.id === sample.id)!, id));
     if (sel.popId === id) setSel({ sampleId: sample.id, popId: null });
   };
 
   // --- exports --------------------------------------------------------------------
-  const exportStatsCsv = () => {
-    const rows = groupSamples.map((s) => ({ sample: s.fileName, annotations: annotationKeys.map((k) => s.annotations?.[k] ?? ''), values: stats[s.id] ?? ws.statColumns.map(() => 'data not loaded') }));
+  // Export recalculates first, so it never writes a stale or missing table value.
+  const exportStatsCsv = async () => {
+    const rows = [];
+    for (const s of groupSamples) {
+      const v = meta[s.id] ? await run(() => statsFor(s)) : undefined;
+      rows.push({ sample: s.fileName, annotations: annotationKeys.map((k) => s.annotations?.[k] ?? ''), values: v ?? ws.statColumns.map(() => 'data not loaded') });
+    }
     download(`${group?.name ?? 'stats'}.csv`, statsCsv({ group: false, annotations: annotationKeys, columns: ws.statColumns.map(colLabel) }, rows), 'text/csv');
   };
 
@@ -380,7 +463,7 @@ export function App() {
         const s = ws.samples.find((x) => x.id === id);
         if (!s) continue;
         if (!cache.has(id)) {
-          const v = meta[id] ? await run(() => client.stats({ sampleId: id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters, columns: ws.statColumns, scales: statScales(ws.channelTransforms, s.flowjoLinearRanges, ws.statColumns.map((c) => c.channel)) })) : undefined;
+          const v = meta[id] ? await run(() => statsFor(s)) : undefined;
           cache.set(id, v ?? ws.statColumns.map(() => 'data not loaded'));
         }
         rows.push({ group: g.name, sample: s.fileName, annotations: allAnn.map((k) => s.annotations?.[k] ?? ''), values: cache.get(id)! });
@@ -432,7 +515,7 @@ export function App() {
                   autoFocus
                   defaultValue={p.name}
                   aria-label="Population name"
-                  onBlur={(e) => { const v = e.target.value.trim(); if (v) updateWs((w) => { w.samples.find((s) => s.id === sample.id)!.populations.find((q) => q.id === p.id)!.name = v; }); setRenaming(null); }}
+                  onBlur={(e) => { renamePop(p.id, e.target.value.trim()); setRenaming(null); }}
                   onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
                 />
               ) : (
@@ -479,7 +562,12 @@ export function App() {
                     autoFocus
                     defaultValue={g.name}
                     aria-label="Group name"
-                    onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== g.name) updateWs((w) => { w.groups.find((x) => x.id === g.id)!.name = v; }); setRenaming(null); }}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      if (v && v !== g.name && ws.groups.some((x) => x.id !== g.id && x.name === v)) note('warn', `Name must be unique: a group "${v}" already exists`);
+                      else if (v && v !== g.name) updateWs((w) => { w.groups.find((x) => x.id === g.id)!.name = v; });
+                      setRenaming(null);
+                    }}
                     onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
                   />
                 ) : (
@@ -492,7 +580,7 @@ export function App() {
           </div>
           <div className="row">
             <button disabled={!checked.length} data-testid="new-group" onClick={() => {
-              const name = `Group ${ws.groups.length}`;
+              const name = uniqueName(`Group ${ws.groups.length}`, ws.groups.map((g) => g.name));
               updateWs((w) => { w.groups.push({ id: newId('grp'), name, sampleIds: [...checked] }); });
               setChecked([]);
             }}>New group from checked</button>
@@ -505,7 +593,7 @@ export function App() {
             </select>
             <button disabled={!groupKey} data-testid="group-by" onClick={() => {
               updateWs((w) => { groupByKey(w, groupKey); });
-              note('info', `Live groups by ${groupKey} created; they update as samples and annotations change`);
+              note('info', `Groups by ${groupKey} created; their membership updates as samples and annotations change (a new value does not create a new group)`);
             }}>Make groups</button>
           </div>
           <div className="row">
@@ -524,7 +612,8 @@ export function App() {
             <input placeholder="value" value={rule.value} onChange={(e) => setRule({ ...rule, value: e.target.value })} style={{ width: 70 }} data-testid="rule-value" />
             <button disabled={!rule.keyword} data-testid="rule-group" onClick={() => {
               const r: KeywordRule = { connector: 'and', ...rule };
-              updateWs((w) => { w.groups.push({ id: newId('grp'), name: `${rule.keyword} ${rule.op} ${rule.value}`, sampleIds: [], criteria: { rules: [r] } }); });
+              const name = uniqueName(`${rule.keyword} ${rule.op} ${rule.value}`, ws.groups.map((g) => g.name));
+              updateWs((w) => { w.groups.push({ id: newId('grp'), name, sampleIds: [], criteria: { rules: [r] } }); });
               note('info', `Live keyword group "${rule.keyword} ${rule.op} ${rule.value}" created`);
             }}>Rule group</button>
           </div>
@@ -537,6 +626,18 @@ export function App() {
             </div>
           ))}
           {!ws.samples.length && <p className="muted">Add FCS files to begin. Data stays on this computer.</p>}
+          {sample && (
+            <div className="row">
+              <button data-testid="remove-sample" onClick={async () => {
+                const a = await ask(`Remove sample ${sample.fileName} and its gates from the workspace? Undo restores it.`, ['Remove']);
+                if (a !== 'Remove') return;
+                updateWs((w) => removeSample(w, sample.id));
+                setChecked((c) => c.filter((x) => x !== sample.id));
+                setSel({ sampleId: ws.samples.find((s) => s.id !== sample.id)?.id ?? null, popId: null });
+                note('info', `Removed ${sample.fileName}`);
+              }}>Remove sample</button>
+            </div>
+          )}
           {sample && sMeta && sMeta.datasetCount > 1 && (
             <div className="row">
               Data set <select value={sMeta.datasetIndex} data-testid="dataset-select" onChange={(e) => {
@@ -589,7 +690,7 @@ export function App() {
               <div className="row">
                 <button disabled={multi.length < 2} onClick={() => makeBoolean('and')} title="Ctrl-click populations to multi-select">AND</button>
                 <button disabled={multi.length < 2} onClick={() => makeBoolean('or')}>OR</button>
-                <button disabled={multi.length !== 1} onClick={() => makeBoolean('not')}>NOT</button>
+                <button disabled={!notOperand} onClick={() => makeBoolean('not')} data-testid="bool-not" title="NOT of the selected population">NOT</button>
                 <button disabled={!sel.popId} onClick={() => deletePop(sel.popId!)} data-testid="delete-pop">Delete</button>
                 <button
                   disabled={!sel.popId || sample.populations.find((p) => p.id === sel.popId)?.gate.type === 'boolean'}
@@ -647,6 +748,11 @@ export function App() {
                   <span className="muted">equal-probability contours; not compared with FlowJo's placement</span>
                 </div>
               )}
+              {kind === 'histogram' && (
+                <div className="row">
+                  <label title="FlowJo 10: each curve scaled so its mode is 100; default is raw counts on one axis"><input type="checkbox" checked={!!plotSettings.normalize} onChange={(e) => setPlotSettings({ normalize: e.target.checked })} data-testid="hist-normalize" /> Normalized To Mode</label>
+                </div>
+              )}
               <div className="row tools">
                 {(kind === 'histogram' ? (['select', 'range'] as Tool[]) : (['select', 'rect', 'polygon', 'ellipse', 'quadrant', 'spline'] as Tool[])).map((t) => (
                   <button key={t} className={tool === t ? 'active' : ''} onClick={() => setTool(t)} data-testid={`tool-${t}`}>{t}</button>
@@ -673,6 +779,7 @@ export function App() {
                 overlays={overlayData}
                 contourLevel={plotSettings.contourLevel ?? (kind === 'zebra' ? 10 : 5)}
                 showOutliers={!!plotSettings.showOutliers}
+                normalize={!!plotSettings.normalize}
               />
               <div className="row">
                 <button data-testid="add-to-layout" onClick={() => { updateWs((w) => { w.layout = [...(w.layout ?? []), { id: newId('lay'), populationPath: popPath, ...plotSettings }]; }); note('info', `Added ${popPath || 'All events'} (${plotSettings.x}${kind === 'histogram' ? '' : ` vs ${plotSettings.y}`}) to the layout`); }}>Add to layout</button>
@@ -713,10 +820,11 @@ export function App() {
                 {channels.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
               </select>
             )}
-            {newStat.stat === 'percentile' && <input type="number" min={0} max={100} value={newStat.percentile} onChange={(e) => setNewStat({ ...newStat, percentile: Number(e.target.value) })} style={{ width: 60 }} />}
+            {newStat.stat === 'percentile' && <input type="number" min={0} max={100} step={1} value={Number.isNaN(newStat.percentile) ? '' : newStat.percentile} onChange={(e) => setNewStat({ ...newStat, percentile: e.target.value === '' ? NaN : Number(e.target.value) })} style={{ width: 60 }} data-testid="stat-percentile" title="Integer from 0 to 100" />}
+            {newStat.stat === 'percentile' && !validPercentile(newStat.percentile) && <span className="error" data-testid="percentile-error">integer 0 to 100</span>}
             <button
               data-testid="add-stat"
-              disabled={!sample || (STAT_NEEDS_CHANNEL(newStat.stat) && !newStat.channel)}
+              disabled={!sample || (STAT_NEEDS_CHANNEL(newStat.stat) && !newStat.channel) || (newStat.stat === 'percentile' && !validPercentile(newStat.percentile))}
               onClick={() => updateWs((w) => { w.statColumns.push({ id: newId('col'), populationPath: popPath, stat: newStat.stat, channel: STAT_NEEDS_CHANNEL(newStat.stat) ? newStat.channel : undefined, percentile: newStat.percentile }); })}
             >
               Add for "{popPath || 'All events'}"
@@ -725,10 +833,12 @@ export function App() {
             <button disabled={!ws.statColumns.length} onClick={exportAllGroupsCsv} data-testid="export-stats-all">Export all groups</button>
           </div>
           <div className="row">
-            <button disabled={!ws.statColumns.length} data-testid="template-save" onClick={() => {
-              const name = `Template ${(ws.statTemplates?.length ?? 0) + 1}`;
+            <input placeholder="template name" value={templateName} onChange={(e) => setTemplateName(e.target.value)} style={{ width: 110 }} data-testid="template-name" />
+            <button disabled={!ws.statColumns.length || !templateName.trim()} data-testid="template-save" title="Named templates are saved in the workspace file" onClick={() => {
+              const name = uniqueName(templateName.trim(), (ws.statTemplates ?? []).map((t) => t.name));
               updateWs((w) => { w.statTemplates = [...(w.statTemplates ?? []), { id: newId('tpl'), name, columns: structuredClone(w.statColumns) }]; });
-              note('info', `Saved ${ws.statColumns.length} statistic columns as "${name}"`);
+              setTemplateName('');
+              note('info', `Saved ${ws.statColumns.length} statistic columns as template "${name}" (kept when the workspace is saved)`);
             }}>Save columns as template</button>
             <select value={templateId} onChange={(e) => setTemplateId(e.target.value)} data-testid="template-select">
               <option value="">template...</option>
@@ -757,7 +867,7 @@ export function App() {
                     <tr key={s.id}>
                       <td>{s.fileName}</td>
                       {annotationKeys.map((k) => <td key={`ann-${k}`}>{s.annotations?.[k] ?? ''}</td>)}
-                      {ws.statColumns.map((c, i) => <td key={c.id}>{meta[s.id] ? fmtStat(stats[s.id]?.[i] ?? '...') : 'no data'}</td>)}
+                      {ws.statColumns.map((c, i) => <td key={c.id}>{meta[s.id] ? fmtStat(stats[s.id]?.[i] ?? '-') : 'no data'}</td>)}
                     </tr>
                   ))}
                 </tbody>
@@ -771,6 +881,19 @@ export function App() {
         </section>
       </main>
 
+      {question && (
+        <div className="modal-bg">
+          <div className="modal" role="alertdialog" aria-label="Question" data-testid="question">
+            <div className="modal-body">
+              <p>{question.text}</p>
+              <div className="row">
+                {question.choices.map((c) => <button key={c} data-testid={`answer-${c}`} onClick={() => { question.resolve(c); setQuestion(null); }}>{c}</button>)}
+                <button data-testid="answer-cancel" onClick={() => { question.resolve(null); setQuestion(null); }}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {dialog?.kind === 'layout' && (
         <LayoutView
           ws={ws}
@@ -790,9 +913,9 @@ export function App() {
             channels={channels.map((c) => c.name)}
             timeChannel={channels.find((c) => /^time$/i.test(c.name))?.name ?? null}
             onClose={() => setDialog(null)}
-            runCellCycle={(channel, model) => run(() => client.cellCycle({ ...base, channel, model }))}
-            runProliferation={(channel, maxGenerations) => run(() => client.proliferation({ ...base, channel, maxGenerations }))}
-            runKinetics={(channel, stat, bins, threshold) => run(() => client.kinetics({ ...base, channel, stat, bins, threshold, timeChannel: channels.find((c) => /^time$/i.test(c.name))!.name }))}
+            runCellCycle={(channel, model) => runOrThrow(() => client.cellCycle({ ...base, channel, model }))}
+            runProliferation={(channel, maxGenerations) => runOrThrow(() => client.proliferation({ ...base, channel, maxGenerations }))}
+            runKinetics={(channel, stat, bins, threshold) => runOrThrow(() => client.kinetics({ ...base, channel, stat, bins, threshold, timeChannel: channels.find((c) => /^time$/i.test(c.name))!.name }))}
           />
         );
       })()}
@@ -810,6 +933,7 @@ export function App() {
         <TransformDialog
           channel={dialog.channel}
           spec={ws.channelTransforms[dialog.channel] ?? defaultTransform(channels.find((c) => c.name === dialog.channel)!, sMeta.keywords)}
+          channelTop={channelRange(channels.find((c) => c.name === dialog.channel)!)}
           onClose={() => setDialog(null)}
           onApply={(spec) => { updateWs((w) => { w.channelTransforms[dialog.channel] = spec; }); setDialog(null); }}
         />
@@ -858,7 +982,7 @@ export function App() {
           onSvg={() => {
             if (!xAxis || !plotData) return;
             const svg = new SvgContext(PLOT.w, PLOT.h);
-            renderPlot(asCanvas(svg), { kind, x: xAxis, y: yAxis, data: plotData, gates: drawableGates(sample.populations, sel.popId, xAxis, yAxis), counts, contourLevel: plotSettings.contourLevel, showOutliers: plotSettings.showOutliers, overlays: overlayData });
+            renderPlot(asCanvas(svg), { kind, x: xAxis, y: yAxis, data: plotData, gates: drawableGates(sample.populations, sel.popId, xAxis, yAxis), counts, contourLevel: plotSettings.contourLevel, showOutliers: plotSettings.showOutliers, overlays: overlayData, normalize: plotSettings.normalize });
             download(`${sample.fileName}_${(popPath || 'all').replace(/[^\w.-]+/g, '_')}.svg`, svg.toString(), 'image/svg+xml');
           }}
           onPng={() => canvasRef.current?.toBlob((b) => b && download(`${sample.fileName}_${(popPath || 'all').replace(/[^\w.-]+/g, '_')}.png`, b, 'image/png'))}

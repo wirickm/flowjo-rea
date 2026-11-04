@@ -55,6 +55,11 @@ Two parts:
 
 ## Residuals found while building this ledger
 
+- 2026-11-04: `src/core/stats.ts` (owner of `stats.flowjo-conventions`) gained
+  the FlowJo 10 percentile range check (UAT step 2, a4-02). Analyst-mode
+  ledger regenerated: all 4 obligations verified. The REA-native result is
+  still not regenerated (same reason as below).
+
 - 2026-11-02: `src/core/wsp.ts` (owner of `wsp.polygon-counts` and
   `wsp.logicle-ellipse`) changed to import FlowJo quadrants as quadrant gates
   (specs 6.2). Analyst-mode ledger regenerated: all 4 obligations verified.

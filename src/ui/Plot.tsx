@@ -4,7 +4,7 @@ import type { PlotResult } from '../core/service';
 import { dragHandle, gateFromAxes } from '../core/ellipse';
 import { defaultGrid } from '../core/gateGrid';
 import { PLOT, ph, pw, renderPlot } from './renderPlot';
-import { channelDim, drawableGates, ellipseDrawable, pointInPolygon, quadrantSiblings, splineDrawable, type Axis, type Drawable } from './gateGeometry';
+import { channelDim, drawableGates, ellipseDrawable, MIN_SHAPE_PX, pointInPolygon, quadrantSiblings, splineDrawable, tooSmall, type Axis, type Drawable } from './gateGeometry';
 
 export type PlotKind = 'pseudocolor' | 'density' | 'zebra' | 'dot' | 'contour' | 'histogram';
 export type Tool = 'select' | 'rect' | 'polygon' | 'ellipse' | 'quadrant' | 'spline' | 'range';
@@ -26,6 +26,7 @@ interface Props {
   canvasRef?: React.MutableRefObject<HTMLCanvasElement | null>;
   contourLevel?: number;
   showOutliers?: boolean;
+  normalize?: boolean;
   overlays?: { label: string; data: PlotResult }[];
 }
 
@@ -51,7 +52,7 @@ export function Plot(p: Props) {
     if (!cv) return;
     if (p.canvasRef) p.canvasRef.current = cv;
     const ctx = cv.getContext('2d')!;
-    cv.dataset.contourSegments = String(renderPlot(ctx, { kind: p.kind, x: p.x, y: p.y, data: p.data, gates: shown, counts: p.counts, selectedId: p.selectedId, contourLevel: p.contourLevel, showOutliers: p.showOutliers, overlays: p.overlays }));
+    cv.dataset.contourSegments = String(renderPlot(ctx, { kind: p.kind, x: p.x, y: p.y, data: p.data, gates: shown, counts: p.counts, selectedId: p.selectedId, contourLevel: p.contourLevel, showOutliers: p.showOutliers, overlays: p.overlays, normalize: p.normalize }));
     cv.dataset.overlayPoints = String((p.overlays ?? []).reduce((n, o) => n + (p.y ? o.data.points.length / 2 : o.data.count), 0));
     ctx.save();
     ctx.beginPath();
@@ -118,6 +119,10 @@ export function Plot(p: Props) {
     const X = channelDim(p.x);
     const Y = p.y ? channelDim(p.y) : null;
     const n = p.populations.filter((q) => q.parentId === p.parentId).length + 1;
+    if (tooSmall(pts.map((q) => [sx(q[0]), p.y ? sy(q[1]) : 0]), !!Y && p.tool !== 'range')) {
+      p.onRefuse?.(`Shape ${MIN_SHAPE_PX} px or smaller discarded (as in FlowJo 10)`);
+      return;
+    }
     if (p.tool === 'rect' && Y) {
       const [[a0, b0], [a1, b1]] = pts;
       if (Math.abs(a1 - a0) < 1e-9 || Math.abs(b1 - b0) < 1e-9) return;

@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import type { CellCycleFit } from '../core/cellcycle';
 import type { KineticsResult } from '../core/kinetics';
-import type { ProliferationFit } from '../core/proliferation';
+import { MAX_PEAKS, type ProliferationFit } from '../core/proliferation';
 
 type Platform = 'cellcycle' | 'proliferation' | 'kinetics';
 type KStat = 'count' | 'mean' | 'median' | 'pctPositive';
@@ -20,7 +20,9 @@ interface Props {
   runKinetics: (channel: string, stat: KStat, bins: number, threshold: number) => Promise<KineticsResult | undefined>;
 }
 
-const pct = (v: number) => `${v.toFixed(2)}%`;
+// Undefined results (e.g. indices with no divided cells) show "-", never NaN.
+const pct = (v: number) => (Number.isFinite(v) ? `${v.toFixed(2)}%` : '-');
+const num = (v: number, d: number) => (Number.isFinite(v) ? v.toFixed(d) : '-');
 
 // Observed histogram (bars) with model curves (lines) as inline SVG.
 function Chart(p: { observed: ArrayLike<number>; lines: { values: ArrayLike<number>; color: string }[]; testId: string; xLabel?: string }) {
@@ -54,7 +56,7 @@ export function PlatformsDialog(p: Props) {
   const [platform, setPlatform] = useState<Platform>('cellcycle');
   const [channel, setChannel] = useState(p.channels[0] ?? '');
   const [model, setModel] = useState<'dean-jett-fox' | 'watson'>('dean-jett-fox');
-  const [gens, setGens] = useState(8);
+  const [gens, setGens] = useState(4); // FlowJo 10 "Number of Peaks" default
   const [kstat, setKstat] = useState<KStat>('count');
   const [kbins, setKbins] = useState(50);
   const [threshold, setThreshold] = useState(1000);
@@ -62,13 +64,22 @@ export function PlatformsDialog(p: Props) {
   const [pr, setPr] = useState<ProliferationFit | null>(null);
   const [kn, setKn] = useState<KineticsResult | null>(null);
   const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  const peaksOk = Number.isInteger(gens) && gens >= 0 && gens <= MAX_PEAKS;
   const go = async () => {
     setRunning(true);
+    setError(null);
     try {
       if (platform === 'cellcycle') setCc((await p.runCellCycle(channel, model)) ?? null);
       if (platform === 'proliferation') setPr((await p.runProliferation(channel, gens)) ?? null);
       if (platform === 'kinetics') setKn((await p.runKinetics(channel, kstat, kbins, threshold)) ?? null);
+    } catch (e) {
+      // Shown in this window, as in FlowJo 10 (specs 6.7); also in the Log.
+      setError((e as Error).message);
+      if (platform === 'cellcycle') setCc(null);
+      if (platform === 'proliferation') setPr(null);
+      if (platform === 'kinetics') setKn(null);
     } finally {
       setRunning(false);
     }
@@ -97,7 +108,7 @@ export function PlatformsDialog(p: Props) {
                 <span title="As in FlowJo 10: channel range, at most 1024 channels">histogram: up to 1024 channels</span>
               </>
             )}
-            {platform === 'proliferation' && <>max generations <input type="number" min={1} max={12} value={gens} onChange={(e) => setGens(Number(e.target.value))} style={{ width: 50 }} /></>}
+            {platform === 'proliferation' && <>Number of Peaks <input type="number" min={0} max={MAX_PEAKS} step={1} value={Number.isNaN(gens) ? '' : gens} onChange={(e) => setGens(e.target.value === '' ? NaN : Number(e.target.value))} style={{ width: 50 }} data-testid="prolif-peaks" title={`Integer from 0 to ${MAX_PEAKS}`} /></>}
             {platform === 'kinetics' && (
               <>
                 <select value={kstat} onChange={(e) => setKstat(e.target.value as KStat)} data-testid="kin-stat">
@@ -110,9 +121,11 @@ export function PlatformsDialog(p: Props) {
                 {kstat === 'pctPositive' && <>threshold <input type="number" value={threshold} onChange={(e) => setThreshold(Number(e.target.value))} style={{ width: 80 }} /></>}
               </>
             )}
-            <button onClick={go} disabled={running || !channel || (platform === 'kinetics' && !p.timeChannel)} data-testid="platform-run">{running ? 'Fitting...' : 'Run'}</button>
+            <button onClick={go} disabled={running || !channel || (platform === 'kinetics' && !p.timeChannel) || (platform === 'proliferation' && !peaksOk)} data-testid="platform-run">{running ? 'Fitting...' : 'Run'}</button>
           </div>
           {platform === 'kinetics' && !p.timeChannel && <p className="error">No Time parameter in this sample.</p>}
+          {platform === 'proliferation' && !peaksOk && <p className="error" data-testid="prolif-peaks-error">Number of Peaks must be an integer from 0 to {MAX_PEAKS}.</p>}
+          {error && <p className="error" data-testid="platform-error">{error}</p>}
           <p className="muted">Validated on synthetic data only; not compared with FlowJo, ModFit or other reference output.</p>
 
           {platform === 'cellcycle' && cc && (
@@ -139,9 +152,9 @@ export function PlatformsDialog(p: Props) {
               </table>
               <table className="grid">
                 <tbody>
-                  <tr><th>% divided</th><td data-testid="prolif-divided">{pct(100 * pr.pctDivided)}</td><th>Division index</th><td data-testid="prolif-di">{pr.divisionIndex.toFixed(3)}</td></tr>
-                  <tr><th>Proliferation index</th><td>{pr.proliferationIndex.toFixed(3)}</td><th>Expansion index</th><td>{pr.expansionIndex.toFixed(3)}</td></tr>
-                  <tr><th>Precursor frequency</th><td>{pct(100 * pr.precursorFrequency)}</td><th>RMSD</th><td>{pr.rmsd.toFixed(2)}</td></tr>
+                  <tr><th>% divided</th><td data-testid="prolif-divided">{pct(100 * pr.pctDivided)}</td><th>Division index</th><td data-testid="prolif-di">{num(pr.divisionIndex, 3)}</td></tr>
+                  <tr><th>Proliferation index</th><td>{num(pr.proliferationIndex, 3)}</td><th>Expansion index</th><td>{num(pr.expansionIndex, 3)}</td></tr>
+                  <tr><th>Precursor frequency</th><td>{pct(100 * pr.precursorFrequency)}</td><th>RMSD</th><td>{num(pr.rmsd, 2)}</td></tr>
                 </tbody>
               </table>
               <Chart observed={pr.histogram.observed} testId="prolif-chart" xLabel={`log10 ${channel}`} lines={[{ values: pr.histogram.fitted, color: '#d0021b' }]} />

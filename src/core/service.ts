@@ -11,7 +11,7 @@ import type { DerivedParameter, Dimension, Population, StatColumn } from './mode
 import { populationPath } from './model';
 import { fingerprint } from './project';
 import type { ChannelScale } from './flowjoStats';
-import { computeStat, gather } from './stats';
+import { computeStat, gather, validPercentile } from './stats';
 import { makeTransform } from './transforms';
 import { fitCellCycle, type CellCycleFit } from './cellcycle';
 import { fitProliferation, type ProliferationFit } from './proliferation';
@@ -129,6 +129,17 @@ export class AnalysisService {
     return this.load(sampleId, b.fileName, b.bytes, datasetIndex);
   }
 
+  // Move a loaded sample to another id (a new file relinked to a workspace sample).
+  rekey(from: string, to: string) {
+    const b = this.bytes.get(from);
+    const f = this.files.get(from);
+    if (!b || !f) throw new AppError('WORKSPACE_INVALID', 'Sample data is not loaded');
+    this.unload(from);
+    this.bytes.set(to, b);
+    this.files.set(to, f);
+    this.engines.delete(to);
+  }
+
   unload(sampleId: string) {
     this.bytes.delete(sampleId);
     this.files.delete(sampleId);
@@ -213,6 +224,7 @@ export class AnalysisService {
       try {
         const p = c.populationPath === '' ? null : byPath.get(c.populationPath);
         if (c.populationPath !== '' && !p) return 'missing population';
+        if (c.stat === 'percentile' && !validPercentile(c.percentile)) return 'error: percentile must be an integer from 0 to 100';
         const res = p ? eng.results.get(p.id)! : null;
         if (res?.error) return `error: ${res.error}`;
         const count = res ? res.count : total;

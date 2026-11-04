@@ -127,6 +127,7 @@ export interface PlotSettings {
   kind: 'pseudocolor' | 'density' | 'zebra' | 'dot' | 'contour' | 'histogram';
   contourLevel?: number; // percent per contour step
   showOutliers?: boolean;
+  normalize?: boolean; // histogram "Normalized To Mode" (default raw counts)
   overlays?: string[]; // population paths drawn on top (backgating)
 }
 
@@ -184,6 +185,21 @@ export function emptyWorkspace(name = 'Untitled'): Workspace {
 
 export function newId(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`;
+}
+
+// FlowJo 10 keeps sibling gate names unique (specs 6.7): a taken name gets
+// the first free "-N" suffix, N = 1..999; a name already ending in "-" plus up
+// to 3 digits (dash after the 3rd character) is numbered from its stem, so a
+// copy of "CD4-1" is "CD4-2". Past 999 the time in milliseconds is appended.
+// Names compare exactly. Also used for group names.
+export function uniqueName(name: string, taken: Iterable<string>): string {
+  const t = new Set(taken);
+  if (!t.has(name)) return name;
+  let stem = name;
+  const dash = name.lastIndexOf('-');
+  if (dash > 2 && dash > name.length - 4 && /^\d*$/.test(name.slice(dash + 1))) stem = name.slice(0, dash);
+  for (let k = 1; k <= 999; k++) if (!t.has(`${stem}-${k}`)) return `${stem}-${k}`;
+  return `${name}${Date.now()}`;
 }
 
 export function populationPath(pops: Population[], id: string): string {

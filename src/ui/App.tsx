@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PopulationResult } from '../core/analysis';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../core/gatingml';
-import { emptyWorkspace, newId, populationPath, type Gate, type KeywordRule, type PlotSettings, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
+import { emptyWorkspace, newId, populationPath, uniqueName, type Gate, type KeywordRule, type PlotSettings, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
 import { applySubtree, criteriaLabel, derivedParameterUsers, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
 import type { PlotResult, SampleMeta } from '../core/service';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL } from '../core/stats';
@@ -321,16 +321,34 @@ export function App() {
     for (const id of popIds) for (const msg of applySubtree(w, sampleId, id, targets)) say('warn', msg);
   };
 
+  // Names of the selected population's children, plus extra names to reserve.
+  const siblingNames = (parentId: string | null, extra: string[] = []) => [...(sample?.populations.filter((p) => p.parentId === parentId).map((p) => p.name) ?? []), ...extra];
+
   const createGates = (gates: { name: string; gate: Gate }[]) => {
     if (!sample) return;
     const ids = gates.map(() => newId('pop'));
+    // Sibling names stay unique: a taken name gets a "-N" suffix (specs 6.7).
+    const names: string[] = [];
+    for (const g of gates) names.push(uniqueName(g.name, siblingNames(sel.popId, names)));
     updateWs((w, say) => {
       const s = w.samples.find((x) => x.id === sample.id)!;
-      gates.forEach((g, i) => s.populations.push({ id: ids[i], name: g.name, parentId: sel.popId, gate: g.gate }));
+      gates.forEach((g, i) => s.populations.push({ id: ids[i], name: names[i], parentId: sel.popId, gate: g.gate }));
       syncRoots(w, sample.id, ids, say);
     });
     setTool('select');
-    note('info', `Created ${gates.map((g) => g.name).join(', ')}`);
+    note('info', `Created ${names.join(', ')}`);
+  };
+
+  // FlowJo 10's rename dialog refuses a name a sibling already has (specs 6.7).
+  const renamePop = (id: string, name: string) => {
+    if (!sample) return;
+    const p = sample.populations.find((q) => q.id === id);
+    if (!p || !name || name === p.name) return;
+    if (sample.populations.some((q) => q.id !== id && q.parentId === p.parentId && q.name === name)) {
+      note('warn', `Name must be unique: "${name}" is already used by a sibling population`);
+      return;
+    }
+    updateWs((w) => { w.samples.find((s) => s.id === sample.id)!.populations.find((q) => q.id === id)!.name = name; });
   };
 
   const updateGates = (ups: { id: string; gate: Gate }[]) => {
@@ -345,7 +363,7 @@ export function App() {
   const makeBoolean = (op: 'and' | 'or' | 'not') => {
     if (!sample || !multi.length) return;
     const first = sample.populations.find((p) => p.id === multi[0])!;
-    const name = op === 'not' ? `NOT ${first.name}` : multi.map((id) => sample.populations.find((p) => p.id === id)!.name).join(op === 'and' ? ' & ' : ' | ');
+    const name = uniqueName(op === 'not' ? `NOT ${first.name}` : multi.map((id) => sample.populations.find((p) => p.id === id)!.name).join(op === 'and' ? ' & ' : ' | '), siblingNames(first.parentId));
     const id = newId('pop');
     updateWs((w) => {
       w.samples.find((x) => x.id === sample.id)!.populations.push({ id, name, parentId: first.parentId, gate: { type: 'boolean', op, operands: multi.map((ref) => ({ ref })) } });
@@ -432,7 +450,7 @@ export function App() {
                   autoFocus
                   defaultValue={p.name}
                   aria-label="Population name"
-                  onBlur={(e) => { const v = e.target.value.trim(); if (v) updateWs((w) => { w.samples.find((s) => s.id === sample.id)!.populations.find((q) => q.id === p.id)!.name = v; }); setRenaming(null); }}
+                  onBlur={(e) => { renamePop(p.id, e.target.value.trim()); setRenaming(null); }}
                   onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
                 />
               ) : (
@@ -479,7 +497,12 @@ export function App() {
                     autoFocus
                     defaultValue={g.name}
                     aria-label="Group name"
-                    onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== g.name) updateWs((w) => { w.groups.find((x) => x.id === g.id)!.name = v; }); setRenaming(null); }}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      if (v && v !== g.name && ws.groups.some((x) => x.id !== g.id && x.name === v)) note('warn', `Name must be unique: a group "${v}" already exists`);
+                      else if (v && v !== g.name) updateWs((w) => { w.groups.find((x) => x.id === g.id)!.name = v; });
+                      setRenaming(null);
+                    }}
                     onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
                   />
                 ) : (
@@ -492,7 +515,7 @@ export function App() {
           </div>
           <div className="row">
             <button disabled={!checked.length} data-testid="new-group" onClick={() => {
-              const name = `Group ${ws.groups.length}`;
+              const name = uniqueName(`Group ${ws.groups.length}`, ws.groups.map((g) => g.name));
               updateWs((w) => { w.groups.push({ id: newId('grp'), name, sampleIds: [...checked] }); });
               setChecked([]);
             }}>New group from checked</button>
@@ -524,7 +547,8 @@ export function App() {
             <input placeholder="value" value={rule.value} onChange={(e) => setRule({ ...rule, value: e.target.value })} style={{ width: 70 }} data-testid="rule-value" />
             <button disabled={!rule.keyword} data-testid="rule-group" onClick={() => {
               const r: KeywordRule = { connector: 'and', ...rule };
-              updateWs((w) => { w.groups.push({ id: newId('grp'), name: `${rule.keyword} ${rule.op} ${rule.value}`, sampleIds: [], criteria: { rules: [r] } }); });
+              const name = uniqueName(`${rule.keyword} ${rule.op} ${rule.value}`, ws.groups.map((g) => g.name));
+              updateWs((w) => { w.groups.push({ id: newId('grp'), name, sampleIds: [], criteria: { rules: [r] } }); });
               note('info', `Live keyword group "${rule.keyword} ${rule.op} ${rule.value}" created`);
             }}>Rule group</button>
           </div>

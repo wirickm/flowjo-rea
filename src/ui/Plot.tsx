@@ -4,7 +4,7 @@ import type { PlotResult } from '../core/service';
 import { dragHandle, gateFromAxes } from '../core/ellipse';
 import { defaultGrid } from '../core/gateGrid';
 import { PLOT, ph, pw, renderPlot } from './renderPlot';
-import { channelDim, drawableGates, ellipseDrawable, pointInPolygon, quadrantSiblings, splineDrawable, type Axis, type Drawable } from './gateGeometry';
+import { channelDim, drawableGates, ellipseDrawable, MIN_SHAPE_PX, pointInPolygon, quadrantSiblings, splineDrawable, tooSmall, type Axis, type Drawable } from './gateGeometry';
 
 export type PlotKind = 'pseudocolor' | 'density' | 'zebra' | 'dot' | 'contour' | 'histogram';
 export type Tool = 'select' | 'rect' | 'polygon' | 'ellipse' | 'quadrant' | 'spline' | 'range';
@@ -119,6 +119,10 @@ export function Plot(p: Props) {
     const X = channelDim(p.x);
     const Y = p.y ? channelDim(p.y) : null;
     const n = p.populations.filter((q) => q.parentId === p.parentId).length + 1;
+    if (tooSmall(pts.map((q) => [sx(q[0]), p.y ? sy(q[1]) : 0]), !!Y && p.tool !== 'range')) {
+      p.onRefuse?.(`Shape ${MIN_SHAPE_PX} px or smaller discarded (as in FlowJo 10)`);
+      return;
+    }
     if (p.tool === 'rect' && Y) {
       const [[a0, b0], [a1, b1]] = pts;
       if (Math.abs(a1 - a0) < 1e-9 || Math.abs(b1 - b0) < 1e-9) return;

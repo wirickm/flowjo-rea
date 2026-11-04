@@ -1,6 +1,6 @@
 // Native workspace persistence (.frea.json) and cross-sample operations.
 import { fail } from './errors';
-import { newId, populationPath, type KeywordRule, type Population, type SampleState, type Workspace } from './model';
+import { newId, populationPath, uniqueName, type KeywordRule, type Population, type SampleState, type Workspace } from './model';
 
 export function serializeWorkspace(ws: Workspace): string {
   return JSON.stringify(ws, null, 1);
@@ -133,7 +133,7 @@ export function groupByKey(ws: Workspace, key: string): string[] {
   const names: string[] = [];
   for (const value of [...values].sort((a, b) => (a ?? '').localeCompare(b ?? ''))) {
     const existing = ws.groups.find((g) => g.criteria && 'key' in g.criteria && g.criteria.key === key && g.criteria.value === value);
-    const name = `${key} = ${value ?? '(missing)'}`;
+    const name = uniqueName(`${key} = ${value ?? '(missing)'}`, ws.groups.map((g) => g.name));
     if (!existing) ws.groups.push({ id: newId('grp'), name, sampleIds: [], criteria: { key, value } });
     names.push(existing?.name ?? name);
   }

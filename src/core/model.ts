@@ -187,6 +187,14 @@ export function newId(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`;
 }
 
+// FlowJo 10 keeps sibling gate names unique: a taken name gets a "-N" suffix
+// (specs 6.7). Also used for group names.
+export function uniqueName(base: string, taken: Iterable<string>): string {
+  const t = new Set(taken);
+  if (!t.has(base)) return base;
+  for (let k = 1; ; k++) if (!t.has(`${base}-${k}`)) return `${base}-${k}`;
+}
+
 export function populationPath(pops: Population[], id: string): string {
   const names: string[] = [];
   let cur = pops.find((p) => p.id === id);

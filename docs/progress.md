@@ -1,5 +1,14 @@
 # Progress and handoff
 
+## State (2026-11-04, quad sibling delete)
+
+Deleting one quad deletes its sibling quads on the same x and y parameters,
+as FlowJo 10.6.2 does (`NodeList.addSiblingQuads` and the quad tests read
+with Ghidra; specs 6.2). Checks run: `npx tsc -p .` clean; `npm test` 241
+passed, 2 skipped; `npm run e2e` 46/46 and `node e2e/step2.mjs` 19/19, dev
+server and `file://`. Still open: "Don't Ask Again" on delete; step 3;
+REA-native ledger rerun.
+
 ## State (2026-11-04, acceptance test step 2 fixes)
 
 Step 2 (medium defects) fixed: 13 defects (19 UAT ids), each matched to FlowJo 10.6.2

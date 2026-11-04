@@ -190,7 +190,20 @@ has none or is weaker.
   siblings on the same parameter pair (`NodeList.addSiblingQuads`).
 - This app: the .wsp importer turns such a rectangle into a `quadrant` gate
   (identical `[lo, hi)` membership), so siblings with the same corner move
-  together. Sibling delete is not yet matched.
+  together.
+- Sibling delete, decompiled (Ghidra 12.1.4, as in 6.7): before asking,
+  `STreeMgr.deleteSelection` calls `NodeList.addSiblingQuads`. For each
+  selected population whose gate is a quad (not an And/Or/Not node), every
+  sibling (same parent) whose gate is a quad on the same primary and
+  secondary parameter names is added, wherever its centre is; then each is
+  deleted with its subtree. A gate is a quad when it is a 2-D rectangle with
+  exactly one open bound on each axis (`RectGate.getQuadID`), a 1-D range
+  with an open end (`RangeGate.isQuad`) or a curly quad (`CurlyQuadGate`,
+  always). This app matches (`deletionRoots`, `isQuadGate`,
+  `src/core/project.ts`): quadrant gates count when their interval is an end
+  one on every axis, spline quadrants always; the delete question names every
+  population it removes. Booleans that use any removed population still
+  block the delete, as before.
 
 ### 6.3 Spillover versus spectral matrices (matches the flag)
 
@@ -298,8 +311,8 @@ output stays outside the repository.
   "Don't Ask Again" box enabled); the box is remembered per message in the
   preferences, after which the question is skipped, and Preferences has a
   reset. The same path adds sibling quads to the selection
-  (`NodeList.addSiblingQuads`, section 6.2). This app asks every time, with
-  no "Don't Ask Again" box yet, and does not delete sibling quads. NOT
+  (`NodeList.addSiblingQuads`, section 6.2; matched). This app asks every
+  time, with no "Don't Ask Again" box yet. NOT
   applies to the normal selection. Matches. Escape
   cancels only the naming/rename dialog (step 3 decides this app's rule).
 - Live keyword groups re-evaluate membership; they do not create new groups.

@@ -10,7 +10,7 @@ import { formatStat, statsCsv } from '../core/statsTable';
 import { makeTransform, type TransformSpec } from '../core/transforms';
 import { parseWsp } from '../core/wsp';
 import { writeWsp } from '../core/wspWriter';
-import { defaultTransform, isScatterOrTime, makeAxis, sampleChannels } from './axes';
+import { channelRange, defaultTransform, isScatterOrTime, makeAxis, sampleChannels } from './axes';
 import { CompensationDialog, DerivedDialog, KeywordsDialog, TransformDialog } from './Dialogs';
 import { LayoutView } from './Layout';
 import { PlatformsDialog } from './Platforms';
@@ -810,6 +810,7 @@ export function App() {
         <TransformDialog
           channel={dialog.channel}
           spec={ws.channelTransforms[dialog.channel] ?? defaultTransform(channels.find((c) => c.name === dialog.channel)!, sMeta.keywords)}
+          channelTop={channelRange(channels.find((c) => c.name === dialog.channel)!)}
           onClose={() => setDialog(null)}
           onApply={(spec) => { updateWs((w) => { w.channelTransforms[dialog.channel] = spec; }); setDialog(null); }}
         />

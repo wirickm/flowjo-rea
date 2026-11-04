@@ -7,8 +7,14 @@ export function isScatterOrTime(name: string) {
   return /^(FSC|SSC|Time)/i.test(name) || /^time$/i.test(name);
 }
 
+// FlowJo 10: a parameter's range is 0..$PnR, 1024 when $PnR is missing (specs 6.7).
+export const MISSING_RANGE = 1024;
+export function channelRange(c: FcsChannel): number {
+  return c.range > 0 ? c.range : MISSING_RANGE;
+}
+
 export function defaultTransform(c: FcsChannel, keywords: Record<string, string>): TransformSpec {
-  const range = c.range > 0 ? c.range : 262144;
+  const range = channelRange(c);
   if (/^time$/i.test(c.name)) {
     const ts = parseFloat(keywords['$TIMESTEP'] ?? '');
     return { kind: 'linear', T: range * (ts > 0 ? ts : 1), A: 0 };
@@ -16,6 +22,29 @@ export function defaultTransform(c: FcsChannel, keywords: Record<string, string>
   if (isScatterOrTime(c.name)) return { kind: 'linear', T: range / (c.gain || 1), A: 0 };
   if (c.label === 'derived') return { kind: 'linear', T: range, A: 0 }; // ratio parameter
   return { kind: 'logicle', T: range, W: 0.5, M: 4.5, A: 0 };
+}
+
+// Top of scale of a spec (T, or max for FlowJo biex); null when it has none.
+export function specTop(s: TransformSpec): number | null {
+  if ('T' in s) return s.T;
+  if (s.kind === 'flowjo-biex') return s.max;
+  return null;
+}
+
+// Spec of another scale type for the scale dialog. The range is kept, as in
+// FlowJo 10: the current top of scale, else the channel's 0..$PnR (specs 6.7).
+export function specForKind(kind: string, from: TransformSpec, channelTop: number): TransformSpec {
+  const T = specTop(from) ?? channelTop;
+  switch (kind) {
+    case 'linear': return { kind: 'linear', T, A: 0 };
+    case 'log': return { kind: 'log', T, M: 4.5 };
+    case 'asinh': return { kind: 'asinh', T, M: 4.5, A: 0 };
+    case 'logicle': return { kind: 'logicle', T, W: 0.5, M: 4.5, A: 0 };
+    case 'hyperlog': return { kind: 'hyperlog', T, W: 0.5, M: 4.5, A: 0 };
+    case 'flowjo-biex': return { kind: 'flowjo-biex', max: T, width: -10, pos: 4.418539922, neg: 0, channelRange: 4096 };
+    case 'flowjo-log': return { kind: 'flowjo-log', offset: 1, decades: 4.5 };
+    default: throw new Error(`Unknown scale type ${kind}`);
+  }
 }
 
 export function axisRange(t: Transform): [number, number] {

@@ -5,6 +5,7 @@ import type { SampleMeta } from '../core/service';
 import type { WizardResult } from '../core/compWizard';
 import { withAutofluorescence } from '../core/autofluorescence';
 import type { DerivedParameter } from '../core/model';
+import { specForKind } from './axes';
 
 export function Modal(p: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   return (
@@ -62,18 +63,10 @@ const PARAMS: Record<string, string[]> = {
   'flowjo-log': ['offset', 'decades'],
 };
 
-const DEFAULTS: Record<string, TransformSpec> = {
-  linear: { kind: 'linear', T: 262144, A: 0 },
-  log: { kind: 'log', T: 262144, M: 4.5 },
-  asinh: { kind: 'asinh', T: 262144, M: 4.5, A: 0 },
-  logicle: { kind: 'logicle', T: 262144, W: 0.5, M: 4.5, A: 0 },
-  hyperlog: { kind: 'hyperlog', T: 262144, W: 0.5, M: 4.5, A: 0 },
-  'flowjo-biex': { kind: 'flowjo-biex', max: 262144, width: -10, pos: 4.418539922, neg: 0, channelRange: 4096 },
-  'flowjo-log': { kind: 'flowjo-log', offset: 1, decades: 4.5 },
-};
-
-export function TransformDialog(p: { channel: string; spec: TransformSpec; onApply: (s: TransformSpec) => void; onClose: () => void }) {
-  const [spec, setSpec] = useState<TransformSpec>(p.spec.kind === 'none' ? DEFAULTS.linear : p.spec);
+// channelTop: the channel's 0..$PnR top (1024 when missing), used when the
+// current spec has no top of scale (specs 6.7).
+export function TransformDialog(p: { channel: string; spec: TransformSpec; channelTop: number; onApply: (s: TransformSpec) => void; onClose: () => void }) {
+  const [spec, setSpec] = useState<TransformSpec>(p.spec.kind === 'none' || p.spec.kind === 'scale' ? specForKind('linear', p.spec, p.channelTop) : p.spec);
   let error = '';
   try {
     makeTransform(spec);
@@ -84,7 +77,7 @@ export function TransformDialog(p: { channel: string; spec: TransformSpec; onApp
     <Modal title={`Scale for ${p.channel}`} onClose={p.onClose}>
       <label>
         Type{' '}
-        <select value={spec.kind} onChange={(e) => setSpec(DEFAULTS[e.target.value])} data-testid="transform-kind">
+        <select value={spec.kind} onChange={(e) => setSpec(specForKind(e.target.value, spec, p.channelTop))} data-testid="transform-kind">
           {Object.keys(PARAMS).map((k) => <option key={k} value={k}>{k}</option>)}
         </select>
       </label>

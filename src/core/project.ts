@@ -273,3 +273,17 @@ export function mergeImported(existing: Population[], imported: Population[], ro
   }
   return out;
 }
+
+// FlowJo 10 relinks a data file to a sample only when identifying keywords
+// match (specs 6.7). Returns the keywords that differ; keys missing on either
+// side are not compared.
+export const RELINK_KEYWORDS = ['$TOT', '$PAR', '$BTIM', '$ETIM', '$DATE'];
+export function relinkMismatch(recorded: Record<string, string>, file: Record<string, string>): string[] {
+  return RELINK_KEYWORDS.filter((k) => recorded[k] !== undefined && file[k] !== undefined && recorded[k].trim() !== file[k].trim());
+}
+
+// Remove a sample and its group memberships.
+export function removeSample(ws: Workspace, sampleId: string): void {
+  ws.samples = ws.samples.filter((s) => s.id !== sampleId);
+  for (const g of ws.groups) g.sampleIds = g.sampleIds.filter((id) => id !== sampleId);
+}

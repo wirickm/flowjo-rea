@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PopulationResult } from '../core/analysis';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../core/gatingml';
 import { emptyWorkspace, newId, populationPath, uniqueName, type Gate, type KeywordRule, type PlotSettings, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
-import { applySubtree, criteriaLabel, mergeImported, derivedParameterUsers, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
+import { applySubtree, criteriaLabel, fingerprint, mergeImported, relinkMismatch, removeSample, derivedParameterUsers, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
 import type { PlotResult, SampleMeta } from '../core/service';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL } from '../core/stats';
 import { statScales } from '../core/flowjoStats';
@@ -123,10 +123,20 @@ export function App() {
     for (const file of Array.from(files)) {
       await run(async () => {
         const bytes = new Uint8Array(await file.arrayBuffer());
+        // The same file is not added twice (FlowJo 10: same path; here: same content).
+        const sha = await fingerprint(bytes);
+        const dup = ws.samples.find((s) => meta[s.id] && s.fingerprint === sha);
+        if (dup) return note('warn', `${file.name}: already loaded as ${dup.fileName}; not added again`);
         // Relink an existing workspace sample with the same file name and no data.
         const existing = ws.samples.find((s) => s.fileName === file.name && !meta[s.id]);
         const id = existing?.id ?? newId('s');
         const m = await client.load(id, file.name, bytes, existing?.datasetIndex ?? 0);
+        // Relink only when identifying keywords match, as in FlowJo 10 (specs 6.7).
+        const differ = existing ? relinkMismatch(existing.keywordsSnapshot, m.keywords) : [];
+        if (differ.length) {
+          await client.unload(id);
+          return note('error', `${file.name}: not relinked to the workspace sample of that name; keywords differ (${differ.map((k) => `${k} ${existing!.keywordsSnapshot[k]} vs ${m.keywords[k]}`).join(', ')})`);
+        }
         if (existing?.fingerprint && existing.fingerprint !== m.fingerprint) {
           note('warn', `${file.name}: content differs from the file recorded in the workspace (SHA-256 mismatch); relinked anyway`);
         }
@@ -574,6 +584,18 @@ export function App() {
             </div>
           ))}
           {!ws.samples.length && <p className="muted">Add FCS files to begin. Data stays on this computer.</p>}
+          {sample && (
+            <div className="row">
+              <button data-testid="remove-sample" onClick={async () => {
+                const a = await ask(`Remove sample ${sample.fileName} and its gates from the workspace? Undo restores it.`, ['Remove']);
+                if (a !== 'Remove') return;
+                updateWs((w) => removeSample(w, sample.id));
+                setChecked((c) => c.filter((x) => x !== sample.id));
+                setSel({ sampleId: ws.samples.find((s) => s.id !== sample.id)?.id ?? null, popId: null });
+                note('info', `Removed ${sample.fileName}`);
+              }}>Remove sample</button>
+            </div>
+          )}
           {sample && sMeta && sMeta.datasetCount > 1 && (
             <div className="row">
               Data set <select value={sMeta.datasetIndex} data-testid="dataset-select" onChange={(e) => {

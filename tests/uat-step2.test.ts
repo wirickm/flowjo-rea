@@ -6,7 +6,7 @@ import { channelRange, defaultTransform, specForKind } from '../src/ui/axes';
 import { histogramScale } from '../src/ui/renderPlot';
 import { tooSmall } from '../src/ui/gateGeometry';
 import { emptyWorkspace, uniqueName, type Gate, type Population } from '../src/core/model';
-import { groupByKey, mergeImported } from '../src/core/project';
+import { groupByKey, mergeImported, relinkMismatch, removeSample } from '../src/core/project';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../src/core/gatingml';
 
 const ch = (name: string, range: number): FcsChannel => ({ index: 1, name, label: '', bits: 32, range, logDecades: 0, logOffset: 0, gain: 1 });
@@ -106,5 +106,24 @@ describe('a5-04 quadrant names survive a Gating-ML round trip', () => {
     const doc = parseGatingMl(xml);
     const names = gatingMlNames(xml);
     expect(doc.populations.map((p) => names.get(p.id))).toEqual(['Q1: FSC-A- , SSC-A+']);
+  });
+});
+
+describe('a1-07/a5-02 relink by keywords; remove a sample', () => {
+  it('relinks only when the identifying keywords agree', () => {
+    expect(relinkMismatch({ $TOT: '283969', $BTIM: '10:00:00' }, { $TOT: '283969', $BTIM: '10:00:00 ' })).toEqual([]);
+    expect(relinkMismatch({ $TOT: '283969' }, { $TOT: '1000' })).toEqual(['$TOT']);
+    // Keywords recorded on one side only are not compared.
+    expect(relinkMismatch({ $TOT: '283969' }, { $DATE: '01-JAN-2020' })).toEqual([]);
+  });
+  it('removing a sample drops it from every group', () => {
+    const ws = emptyWorkspace();
+    const s = (id: string) => ({ id, fileName: `${id}.fcs`, fileSize: 0, fingerprint: '', datasetIndex: 0, compensation: 'none', populations: [], keywordsSnapshot: {}, channelNames: [], eventCount: 0 });
+    ws.samples.push(s('a'), s('b'));
+    ws.groups[0].sampleIds = ['a', 'b'];
+    ws.groups.push({ id: 'g', name: 'G', sampleIds: ['a'] });
+    removeSample(ws, 'a');
+    expect(ws.samples.map((x) => x.id)).toEqual(['b']);
+    expect(ws.groups.map((g) => g.sampleIds)).toEqual([['b'], []]);
   });
 });

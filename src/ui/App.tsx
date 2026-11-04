@@ -647,6 +647,11 @@ export function App() {
                   <span className="muted">equal-probability contours; not compared with FlowJo's placement</span>
                 </div>
               )}
+              {kind === 'histogram' && (
+                <div className="row">
+                  <label title="FlowJo 10: each curve scaled so its mode is 100; default is raw counts on one axis"><input type="checkbox" checked={!!plotSettings.normalize} onChange={(e) => setPlotSettings({ normalize: e.target.checked })} data-testid="hist-normalize" /> Normalized To Mode</label>
+                </div>
+              )}
               <div className="row tools">
                 {(kind === 'histogram' ? (['select', 'range'] as Tool[]) : (['select', 'rect', 'polygon', 'ellipse', 'quadrant', 'spline'] as Tool[])).map((t) => (
                   <button key={t} className={tool === t ? 'active' : ''} onClick={() => setTool(t)} data-testid={`tool-${t}`}>{t}</button>
@@ -673,6 +678,7 @@ export function App() {
                 overlays={overlayData}
                 contourLevel={plotSettings.contourLevel ?? (kind === 'zebra' ? 10 : 5)}
                 showOutliers={!!plotSettings.showOutliers}
+                normalize={!!plotSettings.normalize}
               />
               <div className="row">
                 <button data-testid="add-to-layout" onClick={() => { updateWs((w) => { w.layout = [...(w.layout ?? []), { id: newId('lay'), populationPath: popPath, ...plotSettings }]; }); note('info', `Added ${popPath || 'All events'} (${plotSettings.x}${kind === 'histogram' ? '' : ` vs ${plotSettings.y}`}) to the layout`); }}>Add to layout</button>
@@ -859,7 +865,7 @@ export function App() {
           onSvg={() => {
             if (!xAxis || !plotData) return;
             const svg = new SvgContext(PLOT.w, PLOT.h);
-            renderPlot(asCanvas(svg), { kind, x: xAxis, y: yAxis, data: plotData, gates: drawableGates(sample.populations, sel.popId, xAxis, yAxis), counts, contourLevel: plotSettings.contourLevel, showOutliers: plotSettings.showOutliers, overlays: overlayData });
+            renderPlot(asCanvas(svg), { kind, x: xAxis, y: yAxis, data: plotData, gates: drawableGates(sample.populations, sel.popId, xAxis, yAxis), counts, contourLevel: plotSettings.contourLevel, showOutliers: plotSettings.showOutliers, overlays: overlayData, normalize: plotSettings.normalize });
             download(`${sample.fileName}_${(popPath || 'all').replace(/[^\w.-]+/g, '_')}.svg`, svg.toString(), 'image/svg+xml');
           }}
           onPng={() => canvasRef.current?.toBlob((b) => b && download(`${sample.fileName}_${(popPath || 'all').replace(/[^\w.-]+/g, '_')}.png`, b, 'image/png'))}

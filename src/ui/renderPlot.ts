@@ -72,9 +72,26 @@ export interface RenderOptions {
   selectedId?: string | null;
   contourLevel?: number; // percent per contour step
   showOutliers?: boolean;
-  // Populations drawn on top (backgating): dots on 2-D plots, curves normalised
-  // to their own maximum on histograms.
+  // Populations drawn on top (backgating): dots on 2-D plots, curves on
+  // histograms. Histograms share one count axis unless normalize is set.
   overlays?: { label: string; data: PlotResult }[];
+  // Histograms: FlowJo's "Normalized To Mode": every curve scaled so its mode is
+  // 100; the axis is relabelled. Off by default, as in FlowJo 10 (specs 6.7).
+  normalize?: boolean;
+}
+
+const maxOf = (a: ArrayLike<number>) => {
+  let m = 0;
+  for (let i = 0; i < a.length; i++) m = Math.max(m, a[i]);
+  return m;
+};
+
+// Histogram y scale: per-curve factor and the axis maximum. Raw counts share
+// one axis over the base and every overlay; normalized curves peak at 100.
+export function histogramScale(base: ArrayLike<number> | null, overlays: ArrayLike<number>[], normalize: boolean): { factor: (d: ArrayLike<number>) => number; max: number; label: string } {
+  if (normalize) return { factor: (d) => { const m = maxOf(d); return m > 0 ? 100 / m : 0; }, max: 100, label: 'Normalized To Mode' };
+  const max = Math.max(base ? maxOf(base) : 0, ...overlays.map(maxOf)) || 1;
+  return { factor: () => 1, max, label: 'Count' };
 }
 
 export const OVERLAY_COLORS = ['#e6194b', '#3cb44b', '#f58231', '#911eb4', '#008080', '#9a6324'];
@@ -85,12 +102,8 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
   const yAxis: Axis = o.y ?? { channel: '', spec: { kind: 'none' }, t: null!, range: [0, 1] };
   const sx = (v: number) => PLOT.ml + ((v - o.x.range[0]) / (o.x.range[1] - o.x.range[0])) * pw;
   const sy = (v: number) => PLOT.mt + ph - ((v - yAxis.range[0]) / (yAxis.range[1] - yAxis.range[0])) * ph;
-  let histMax = 1;
-  if (o.data && !o.y) {
-    histMax = 0;
-    for (const v of o.data.density) histMax = Math.max(histMax, v);
-    histMax = histMax || 1;
-  }
+  const hs = histogramScale(o.data?.density ?? null, (o.overlays ?? []).map((ov) => ov.data.density), !!o.normalize);
+  const histMax = hs.max;
   const hy = (c: number) => PLOT.mt + ph - (c / (histMax * 1.05)) * ph;
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, PLOT.w, PLOT.h);
@@ -145,12 +158,13 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
         }
       } else {
         const B = d.bins;
+        const f = hs.factor(d.density);
         ctx.beginPath();
         ctx.moveTo(PLOT.ml, PLOT.mt + ph);
         for (let i = 0; i < B; i++) {
           const x0 = PLOT.ml + (i / B) * pw;
-          ctx.lineTo(x0, hy(d.density[i]));
-          ctx.lineTo(x0 + pw / B, hy(d.density[i]));
+          ctx.lineTo(x0, hy(d.density[i] * f));
+          ctx.lineTo(x0 + pw / B, hy(d.density[i] * f));
         }
         ctx.lineTo(PLOT.ml + pw, PLOT.mt + ph);
         ctx.closePath();
@@ -177,15 +191,14 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
           }
         } else {
           const D = ov.data.density;
-          let m = 0;
-          for (const v of D) m = Math.max(m, v);
-          if (m > 0) {
+          const f = hs.factor(D);
+          if (maxOf(D) > 0) {
             ctx.strokeStyle = col;
             ctx.lineWidth = 1.5;
             ctx.beginPath();
             for (let i = 0; i < D.length; i++) {
               const X = PLOT.ml + ((i + 0.5) / D.length) * pw;
-              const Y = PLOT.mt + ph - (D[i] / m) * ph * 0.95;
+              const Y = hy(D[i] * f);
               if (i) ctx.lineTo(X, Y); else ctx.moveTo(X, Y);
             }
             ctx.stroke();
@@ -235,7 +248,7 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
     ctx.rotate(-Math.PI / 2);
     ctx.textAlign = 'center';
     ctx.font = '11px sans-serif';
-    ctx.fillText(o.y ? o.y.channel : 'Count', 0, 0);
+    ctx.fillText(o.y ? o.y.channel : hs.label, 0, 0);
     ctx.restore();
     // Gates
     ctx.save();

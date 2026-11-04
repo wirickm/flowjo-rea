@@ -127,6 +127,7 @@ export interface PlotSettings {
   kind: 'pseudocolor' | 'density' | 'zebra' | 'dot' | 'contour' | 'histogram';
   contourLevel?: number; // percent per contour step
   showOutliers?: boolean;
+  normalize?: boolean; // histogram "Normalized To Mode" (default raw counts)
   overlays?: string[]; // population paths drawn on top (backgating)
 }
 

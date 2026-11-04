@@ -45,6 +45,7 @@ function erf(x: number): number {
 const cdf = (x: number, m: number, s: number) => 0.5 * (1 + erf((x - m) / (s * Math.SQRT2)));
 
 const LOG2 = Math.log10(2);
+export const MAX_PEAKS = 10;
 
 export function fitProliferation(values: Float64Array, opts: ProliferationOptions = {}): ProliferationFit {
   const warnings: string[] = [];
@@ -57,7 +58,9 @@ export function fitProliferation(values: Float64Array, opts: ProliferationOption
   const hi = opts.log10Max ?? logs.reduce((a, b) => Math.max(a, b), -Infinity);
   if (!(hi > lo)) fail('FIT_INVALID', 'Proliferation fit: empty log10 range');
   const B = opts.bins ?? 256;
-  const maxGen = opts.maxGenerations ?? 8;
+  // FlowJo 10 "Number of Peaks": integer 0..10, default 4 (specs 6.7).
+  const maxGen = opts.maxGenerations ?? 4;
+  if (!Number.isInteger(maxGen) || maxGen < 0 || maxGen > MAX_PEAKS) fail('FIT_INVALID', `Number of peaks must be an integer from 0 to ${MAX_PEAKS}`);
   const dw = (hi - lo) / B;
   const edges = Float64Array.from({ length: B + 1 }, (_, i) => lo + i * dw);
   const obs = new Float64Array(B);

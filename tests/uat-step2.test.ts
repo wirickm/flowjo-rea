@@ -8,6 +8,8 @@ import { tooSmall } from '../src/ui/gateGeometry';
 import { emptyWorkspace, uniqueName, type Gate, type Population } from '../src/core/model';
 import { groupByKey, mergeImported, relinkMismatch, removeSample } from '../src/core/project';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../src/core/gatingml';
+import { validPercentile } from '../src/core/stats';
+import { fitProliferation } from '../src/core/proliferation';
 
 const ch = (name: string, range: number): FcsChannel => ({ index: 1, name, label: '', bits: 32, range, logDecades: 0, logOffset: 0, gain: 1 });
 
@@ -125,5 +127,22 @@ describe('a1-07/a5-02 relink by keywords; remove a sample', () => {
     removeSample(ws, 'a');
     expect(ws.samples.map((x) => x.id)).toEqual(['b']);
     expect(ws.groups.map((g) => g.sampleIds)).toEqual([['b'], []]);
+  });
+});
+
+describe('a4-02/a4-03 percentile and Number of Peaks limits', () => {
+  it('a percentile is an integer from 0 to 100', () => {
+    expect([0, 50, 100].every(validPercentile)).toBe(true);
+    expect([-1, 150, 2.5, NaN, undefined].some(validPercentile)).toBe(false);
+  });
+  it('Number of Peaks is an integer from 0 to 10; 0 gives no division, not NaN', () => {
+    const v = Float64Array.from({ length: 4000 }, (_, i) => 1e4 * Math.exp(0.05 * Math.sin(i)));
+    expect(() => fitProliferation(v, { maxGenerations: -1 })).toThrow(/integer from 0 to 10/);
+    expect(() => fitProliferation(v, { maxGenerations: 11 })).toThrow(/integer from 0 to 10/);
+    expect(() => fitProliferation(v, { maxGenerations: 2.5 })).toThrow(/integer from 0 to 10/);
+    const f = fitProliferation(v, { maxGenerations: 0 });
+    expect(f.generations).toHaveLength(1);
+    expect(f.pctDivided).toBe(0);
+    expect(fitProliferation(v).generations.length).toBeLessThanOrEqual(5); // default 4 peaks
   });
 });

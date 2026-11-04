@@ -4,7 +4,7 @@ import { exportGatingMl, gatingMlNames, parseGatingMl } from '../core/gatingml';
 import { emptyWorkspace, newId, populationPath, uniqueName, type Gate, type KeywordRule, type PlotSettings, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
 import { applySubtree, criteriaLabel, fingerprint, mergeImported, relinkMismatch, removeSample, derivedParameterUsers, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
 import type { PlotResult, SampleMeta } from '../core/service';
-import { STAT_LABELS, STAT_NEEDS_CHANNEL } from '../core/stats';
+import { STAT_LABELS, STAT_NEEDS_CHANNEL, validPercentile } from '../core/stats';
 import { statScales } from '../core/flowjoStats';
 import { formatStat, statsCsv } from '../core/statsTable';
 import { makeTransform, type TransformSpec } from '../core/transforms';
@@ -778,10 +778,11 @@ export function App() {
                 {channels.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
               </select>
             )}
-            {newStat.stat === 'percentile' && <input type="number" min={0} max={100} value={newStat.percentile} onChange={(e) => setNewStat({ ...newStat, percentile: Number(e.target.value) })} style={{ width: 60 }} />}
+            {newStat.stat === 'percentile' && <input type="number" min={0} max={100} step={1} value={Number.isNaN(newStat.percentile) ? '' : newStat.percentile} onChange={(e) => setNewStat({ ...newStat, percentile: e.target.value === '' ? NaN : Number(e.target.value) })} style={{ width: 60 }} data-testid="stat-percentile" title="Integer from 0 to 100" />}
+            {newStat.stat === 'percentile' && !validPercentile(newStat.percentile) && <span className="error" data-testid="percentile-error">integer 0 to 100</span>}
             <button
               data-testid="add-stat"
-              disabled={!sample || (STAT_NEEDS_CHANNEL(newStat.stat) && !newStat.channel)}
+              disabled={!sample || (STAT_NEEDS_CHANNEL(newStat.stat) && !newStat.channel) || (newStat.stat === 'percentile' && !validPercentile(newStat.percentile))}
               onClick={() => updateWs((w) => { w.statColumns.push({ id: newId('col'), populationPath: popPath, stat: newStat.stat, channel: STAT_NEEDS_CHANNEL(newStat.stat) ? newStat.channel : undefined, percentile: newStat.percentile }); })}
             >
               Add for "{popPath || 'All events'}"

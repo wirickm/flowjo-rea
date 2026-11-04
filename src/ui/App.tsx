@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PopulationResult } from '../core/analysis';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../core/gatingml';
 import { emptyWorkspace, newId, populationPath, uniqueName, type Gate, type KeywordRule, type PlotSettings, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
-import { applySubtree, criteriaLabel, fingerprint, mergeImported, relinkMismatch, removeSample, derivedParameterUsers, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
+import { applySubtree, criteriaLabel, descendantCount, fingerprint, mergeImported, relinkMismatch, removeSample, derivedParameterUsers, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
 import type { PlotResult, SampleMeta } from '../core/service';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL, validPercentile } from '../core/stats';
 import { statScales } from '../core/flowjoStats';
@@ -178,6 +178,12 @@ export function App() {
   };
 
   const openWorkspace = async (file: File) => {
+    // FlowJo 10 opens a .wsp in a new window; here it replaces the open
+    // workspace, so ask first when there is work to lose (specs 6.7).
+    if (ws.samples.length || hist.past.length) {
+      const a = await ask(`Open ${file.name}? It replaces the current workspace; unsaved changes are lost (Save workspace first to keep them).`, ['Open']);
+      if (a !== 'Open') return;
+    }
     await run(async () => {
       const text = await file.text();
       let next: Workspace;
@@ -404,24 +410,32 @@ export function App() {
     });
   };
 
+  // AND/OR take the Ctrl-click multi-selection; NOT takes the multi-selection
+  // of one or, as in FlowJo 10, the normally selected population (specs 6.7).
+  const notOperand = multi.length === 1 ? multi[0] : multi.length === 0 && selPopValid ? sel.popId : null;
   const makeBoolean = (op: 'and' | 'or' | 'not') => {
-    if (!sample || !multi.length) return;
-    const first = sample.populations.find((p) => p.id === multi[0])!;
-    const name = uniqueName(op === 'not' ? `NOT ${first.name}` : multi.map((id) => sample.populations.find((p) => p.id === id)!.name).join(op === 'and' ? ' & ' : ' | '), siblingNames(first.parentId));
+    const operands = op === 'not' ? (notOperand ? [notOperand] : []) : multi;
+    if (!sample || !operands.length) return;
+    const first = sample.populations.find((p) => p.id === operands[0])!;
+    const name = uniqueName(op === 'not' ? `NOT ${first.name}` : operands.map((id) => sample.populations.find((p) => p.id === id)!.name).join(op === 'and' ? ' & ' : ' | '), siblingNames(first.parentId));
     const id = newId('pop');
     updateWs((w) => {
-      w.samples.find((x) => x.id === sample.id)!.populations.push({ id, name, parentId: first.parentId, gate: { type: 'boolean', op, operands: multi.map((ref) => ({ ref })) } });
+      w.samples.find((x) => x.id === sample.id)!.populations.push({ id, name, parentId: first.parentId, gate: { type: 'boolean', op, operands: operands.map((ref) => ({ ref })) } });
     });
     setMulti([]);
   };
 
-  const deletePop = (id: string) => {
+  const deletePop = async (id: string) => {
     if (!sample) return;
     const dependants = sample.populations.filter((p) => p.gate.type === 'boolean' && p.gate.operands.some((o) => o.ref === id));
     if (dependants.length) {
       note('warn', `Cannot delete: used by boolean gate(s) ${dependants.map((d) => d.name).join(', ')}`);
       return;
     }
+    // FlowJo 10 always confirms a tree delete (specs 6.7).
+    const below = descendantCount(sample.populations, id);
+    const a = await ask(`Delete "${populationPath(sample.populations, id)}"${below ? ` and the ${below} population(s) below it` : ''}? Undo restores it.`, ['Delete']);
+    if (a !== 'Delete') return;
     updateWs((w) => removePopulation(w.samples.find((x) => x.id === sample.id)!, id));
     if (sel.popId === id) setSel({ sampleId: sample.id, popId: null });
   };
@@ -577,7 +591,7 @@ export function App() {
             </select>
             <button disabled={!groupKey} data-testid="group-by" onClick={() => {
               updateWs((w) => { groupByKey(w, groupKey); });
-              note('info', `Live groups by ${groupKey} created; they update as samples and annotations change`);
+              note('info', `Groups by ${groupKey} created; their membership updates as samples and annotations change (a new value does not create a new group)`);
             }}>Make groups</button>
           </div>
           <div className="row">
@@ -674,7 +688,7 @@ export function App() {
               <div className="row">
                 <button disabled={multi.length < 2} onClick={() => makeBoolean('and')} title="Ctrl-click populations to multi-select">AND</button>
                 <button disabled={multi.length < 2} onClick={() => makeBoolean('or')}>OR</button>
-                <button disabled={multi.length !== 1} onClick={() => makeBoolean('not')}>NOT</button>
+                <button disabled={!notOperand} onClick={() => makeBoolean('not')} data-testid="bool-not" title="NOT of the selected population">NOT</button>
                 <button disabled={!sel.popId} onClick={() => deletePop(sel.popId!)} data-testid="delete-pop">Delete</button>
                 <button
                   disabled={!sel.popId || sample.populations.find((p) => p.id === sel.popId)?.gate.type === 'boolean'}

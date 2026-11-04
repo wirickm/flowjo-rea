@@ -6,7 +6,7 @@ import { channelRange, defaultTransform, specForKind } from '../src/ui/axes';
 import { histogramScale } from '../src/ui/renderPlot';
 import { tooSmall } from '../src/ui/gateGeometry';
 import { emptyWorkspace, uniqueName, type Gate, type Population } from '../src/core/model';
-import { deserializeWorkspace, groupByKey, mergeImported, relinkMismatch, removeSample, serializeWorkspace } from '../src/core/project';
+import { descendantCount, deserializeWorkspace, groupByKey, mergeImported, relinkMismatch, removeSample, serializeWorkspace } from '../src/core/project';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../src/core/gatingml';
 import { validPercentile } from '../src/core/stats';
 import { fitProliferation } from '../src/core/proliferation';
@@ -152,5 +152,19 @@ describe('a4-06 named statistic templates are saved in the workspace', () => {
     const ws = emptyWorkspace();
     ws.statTemplates = [{ id: 't1', name: 'CD4 panel', columns: [{ id: 'c1', populationPath: 'Cells', stat: 'percentile', channel: 'FSC-A', percentile: 95 }] }];
     expect(deserializeWorkspace(serializeWorkspace(ws)).statTemplates).toEqual(ws.statTemplates);
+  });
+});
+
+describe('a2-11 tree delete confirms with the size of the subtree', () => {
+  it('counts every population below', () => {
+    const g: Gate = { type: 'boolean', op: 'and', operands: [] };
+    const pops: Population[] = [
+      { id: 'a', name: 'A', parentId: null, gate: g },
+      { id: 'b', name: 'B', parentId: 'a', gate: g },
+      { id: 'c', name: 'C', parentId: 'b', gate: g },
+      { id: 'd', name: 'D', parentId: 'a', gate: g },
+    ];
+    expect(descendantCount(pops, 'a')).toBe(3);
+    expect(descendantCount(pops, 'c')).toBe(0);
   });
 });

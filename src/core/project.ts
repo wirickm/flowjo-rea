@@ -287,3 +287,8 @@ export function removeSample(ws: Workspace, sampleId: string): void {
   ws.samples = ws.samples.filter((s) => s.id !== sampleId);
   for (const g of ws.groups) g.sampleIds = g.sampleIds.filter((id) => id !== sampleId);
 }
+
+// Number of populations below `id` (children, grandchildren, ...).
+export function descendantCount(pops: Population[], id: string): number {
+  return pops.filter((p) => p.parentId === id).reduce((n, p) => n + 1 + descendantCount(pops, p.id), 0);
+}

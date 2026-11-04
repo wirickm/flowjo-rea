@@ -1,6 +1,6 @@
 // Native workspace persistence (.frea.json) and cross-sample operations.
 import { fail } from './errors';
-import { newId, populationPath, uniqueName, type Gate, type KeywordRule, type Population, type SampleState, type Workspace } from './model';
+import { dimLabel, newId, populationPath, uniqueName, type Gate, type KeywordRule, type Population, type SampleState, type Workspace } from './model';
 
 export function serializeWorkspace(ws: Workspace): string {
   return JSON.stringify(ws, null, 1);
@@ -317,7 +317,47 @@ export function removeSample(ws: Workspace, sampleId: string): void {
   for (const g of ws.groups) g.sampleIds = g.sampleIds.filter((id) => id !== sampleId);
 }
 
-// Number of populations below `id` (children, grandchildren, ...).
-export function descendantCount(pops: Population[], id: string): number {
-  return pops.filter((p) => p.parentId === id).reduce((n, p) => n + 1 + descendantCount(pops, p.id), 0);
+
+// FlowJo 10's quad test (specs 6.2): a 2-D rectangle with exactly one open
+// bound on each axis (RectGate.getQuadID), a 1-D range with an open end
+// (RangeGate.isQuad), and a curly quad (always). A quadrant gate here is the
+// rectangle (or range) of its interval, open where the interval is an end one.
+export function isQuadGate(g: Gate): boolean {
+  if (g.type === 'splineQuadrant') return true;
+  if (g.type === 'rect') {
+    const open = g.min.map((lo, k) => (lo === null) !== (g.max[k] === null));
+    if (g.dims.length === 1) return g.min[0] === null || g.max[0] === null;
+    return g.dims.length === 2 && open[0] && open[1];
+  }
+  if (g.type === 'quadrant') {
+    if (g.dims.length > 2) return false;
+    return g.dividers.every((d, k) => d.length > 0 && (g.side[k] === 0 || g.side[k] === d.length));
+  }
+  return false;
+}
+
+// Populations FlowJo 10 deletes with `id` (STreeMgr.deleteSelection calls
+// NodeList.addSiblingQuads): when `id` is a quad, every sibling quad on the
+// same x and y parameters, wherever its centre is. Returns `id` first.
+export function deletionRoots(pops: Population[], id: string): string[] {
+  const p = pops.find((q) => q.id === id);
+  if (!p || p.gate.type === 'boolean' || !isQuadGate(p.gate)) return [id];
+  const params = (g: Gate) => gateDimNames(g).join('\u0000');
+  const key = params(p.gate);
+  return [id, ...pops.filter((q) => q.id !== id && q.parentId === p.parentId && q.gate.type !== 'boolean' && isQuadGate(q.gate) && params(q.gate) === key).map((q) => q.id)];
+}
+
+function gateDimNames(g: Gate): string[] {
+  return g.type === 'boolean' ? [] : g.dims.slice(0, 2).map(dimLabel);
+}
+
+// Every population removed with these roots: the roots and their descendants.
+export function subtreeIds(pops: Population[], roots: string[]): Set<string> {
+  const out = new Set(roots);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const p of pops) if (p.parentId && out.has(p.parentId) && !out.has(p.id)) { out.add(p.id); grew = true; }
+  }
+  return out;
 }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PopulationResult } from '../core/analysis';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../core/gatingml';
 import { emptyWorkspace, newId, populationPath, uniqueName, type Gate, type KeywordRule, type PlotSettings, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
-import { applySubtree, criteriaLabel, descendantCount, fingerprint, mergeImported, relinkTarget, removeSample, derivedParameterUsers, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
+import { applySubtree, criteriaLabel, deletionRoots, fingerprint, subtreeIds, mergeImported, relinkTarget, removeSample, derivedParameterUsers, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
 import type { PlotResult, SampleMeta } from '../core/service';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL, validPercentile } from '../core/stats';
 import { statScales } from '../core/flowjoStats';
@@ -429,17 +429,23 @@ export function App() {
 
   const deletePop = async (id: string) => {
     if (!sample) return;
-    const dependants = sample.populations.filter((p) => p.gate.type === 'boolean' && p.gate.operands.some((o) => o.ref === id));
+    const pops = sample.populations;
+    // As in FlowJo 10, deleting a quad also deletes its sibling quads on the same
+    // parameters (specs 6.2), each with its subtree.
+    const roots = deletionRoots(pops, id);
+    const doomed = subtreeIds(pops, roots);
+    const dependants = pops.filter((p) => !doomed.has(p.id) && p.gate.type === 'boolean' && p.gate.operands.some((o) => doomed.has(o.ref)));
     if (dependants.length) {
       note('warn', `Cannot delete: used by boolean gate(s) ${dependants.map((d) => d.name).join(', ')}`);
       return;
     }
     // FlowJo 10 always confirms a tree delete (specs 6.7).
-    const below = descendantCount(sample.populations, id);
-    const a = await ask(`Delete "${populationPath(sample.populations, id)}"${below ? ` and the ${below} population(s) below it` : ''}? Undo restores it.`, ['Delete']);
+    const what = roots.map((r) => `"${populationPath(pops, r)}"`).join(', ');
+    const below = doomed.size - roots.length;
+    const a = await ask(`Delete ${what}${roots.length > 1 ? ' (sibling quadrants are deleted together, as in FlowJo)' : ''}${below ? ` and the ${below} population(s) below` : ''}? Undo restores it.`, ['Delete']);
     if (a !== 'Delete') return;
-    updateWs((w) => removePopulation(w.samples.find((x) => x.id === sample.id)!, id));
-    if (sel.popId === id) setSel({ sampleId: sample.id, popId: null });
+    updateWs((w) => { const s = w.samples.find((x) => x.id === sample.id)!; for (const r of roots) removePopulation(s, r); });
+    if (sel.popId && doomed.has(sel.popId)) setSel({ sampleId: sample.id, popId: null });
   };
 
   // --- exports --------------------------------------------------------------------

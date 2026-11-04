@@ -213,6 +213,24 @@ await page.getByTestId('add-fcs').setInputFiles(join(out, F));
 await idle();
 check('a5-02 file with a different $TOT is a new sample; the matching file relinks', notLinked && (await page.locator('.missing').count()) === 0);
 
+// specs 6.2: deleting one quadrant deletes its sibling quadrants (FlowJo NodeList.addSiblingQuads).
+await page.getByTestId(`sample-${F}`).first().click();
+await idle();
+await page.getByTestId('pop-root').click();
+await page.getByTestId('tool-quadrant').click();
+{
+  const box = await canvas.boundingBox();
+  await page.mouse.click(box.x + 64 + 0.5 * (460 - 78), box.y + 14 + 0.5 * (420 - 62));
+}
+await idle();
+const quads = (await pops()).filter((t) => t.startsWith('Q'));
+await page.getByTestId(`pop-${quads[2]}`).click();
+await page.getByTestId('delete-pop').click();
+const qText = await page.getByTestId('question').innerText();
+await page.getByTestId('answer-Delete').click();
+await idle();
+check('6.2 deleting one quadrant deletes all four', quads.length === 4 && qText.includes('sibling quadrants') && !(await pops()).some((t) => t.startsWith('Q')), `${quads.length} quads; left: ${(await pops()).join(',')}`);
+
 check('no uncaught page errors or React key warnings', errors.length === 0, errors.join('; '));
 await browser.close();
 writeFileSync(join(out, 'results.json'), JSON.stringify(results, null, 1));

@@ -6,7 +6,7 @@ import { channelRange, defaultTransform, specForKind } from '../src/ui/axes';
 import { histogramScale } from '../src/ui/renderPlot';
 import { tooSmall } from '../src/ui/gateGeometry';
 import { emptyWorkspace, uniqueName, type Gate, type Population } from '../src/core/model';
-import { descendantCount, deserializeWorkspace, groupByKey, mergeImported, relinkMatches, relinkTarget, removeSample, serializeWorkspace } from '../src/core/project';
+import { deserializeWorkspace, subtreeIds, groupByKey, mergeImported, relinkMatches, relinkTarget, removeSample, serializeWorkspace } from '../src/core/project';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../src/core/gatingml';
 import { validPercentile } from '../src/core/stats';
 import { fitProliferation } from '../src/core/proliferation';
@@ -193,8 +193,8 @@ describe('a2-11 tree delete confirms with the size of the subtree', () => {
       { id: 'c', name: 'C', parentId: 'b', gate: g },
       { id: 'd', name: 'D', parentId: 'a', gate: g },
     ];
-    expect(descendantCount(pops, 'a')).toBe(3);
-    expect(descendantCount(pops, 'c')).toBe(0);
+    expect(subtreeIds(pops, ['a']).size - 1).toBe(3);
+    expect(subtreeIds(pops, ['c']).size - 1).toBe(0);
   });
 });
 

@@ -21,9 +21,13 @@ Checks run: `npx tsc -p .` clean; `npm test` 232 passed, 2 skipped;
 from `file://` (Chromium). REA ledger regenerated after the `stats.ts` change
 (analyst mode, REA built from `../rea`): 4 obligations verified.
 
-Choices to confirm: the "10 px" measure (bounding box, either direction);
-same-file detection by content instead of path; relink keyword list; no
-"don't ask again" on delete.
+Confirmed by decompiling FlowJo 10.6.2's jars with Ghidra (REA 6.8.0 cannot
+open JVM classes): shape size is 10 px or less in both directions
+(corrected), relink is FlowJo's keyword test over every sample without data
+and a non-matching file is a new sample (corrected), the `-N` suffix numbers
+from an existing suffix's stem (refined), same file is same path in FlowJo
+(content here, by necessity). Open decision: FlowJo's "Don't Ask Again" box
+on delete.
 
 Next steps: step 3 (own UX choices: Escape, matrix input checks, stale log
 warnings, S4 layout items); quadrant sibling delete (specs 6.2); REA-native

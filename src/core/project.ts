@@ -285,12 +285,30 @@ export function mergeImported(existing: Population[], imported: Population[], ro
   return out;
 }
 
-// FlowJo 10 relinks a data file to a sample only when identifying keywords
-// match (specs 6.7). Returns the keywords that differ; keys missing on either
-// side are not compared.
-export const RELINK_KEYWORDS = ['$TOT', '$PAR', '$BTIM', '$ETIM', '$DATE'];
-export function relinkMismatch(recorded: Record<string, string>, file: Record<string, string>): string[] {
-  return RELINK_KEYWORDS.filter((k) => recorded[k] !== undefined && file[k] !== undefined && recorded[k].trim() !== file[k].trim());
+// FlowJo 10's relink test (specs 6.7): does a newly added file belong to a
+// workspace sample whose data is missing? `recorded` = the sample's saved
+// keywords, `file` = the new file's. $TOT must be recorded and equal. Then
+// $DATE, $BTIM and $BEGINDATA in that order: each recorded one must be equal;
+// the first one not recorded ends these checks. Last, $FIL: not recorded, or
+// equal, matches. (FlowJo also accepts a different $FIL when the sample's file
+// exists in the workspace's folder; a browser cannot see folders, so that case
+// does not match here.) Values are compared trimmed.
+export function relinkMatches(recorded: Record<string, string>, file: Record<string, string>): boolean {
+  const rec = (k: string) => (recorded[k] ?? '').trim();
+  const fil = (k: string) => (file[k] ?? '').trim();
+  if (!rec('$TOT') || rec('$TOT') !== fil('$TOT')) return false;
+  for (const k of ['$DATE', '$BTIM', '$BEGINDATA']) {
+    if (!rec(k)) break;
+    if (rec(k) !== fil(k)) return false;
+  }
+  return !rec('$FIL') || rec('$FIL') === fil('$FIL');
+}
+
+// The first sample without data that a new file relinks to (FlowJo 10 tests
+// every such sample in workspace order, whatever its file name), or undefined:
+// the file is then added as a new sample.
+export function relinkTarget(samples: SampleState[], hasData: (id: string) => boolean, fileKeywords: Record<string, string>): SampleState | undefined {
+  return samples.find((s) => !hasData(s.id) && relinkMatches(s.keywordsSnapshot, fileKeywords));
 }
 
 // Remove a sample and its group memberships.

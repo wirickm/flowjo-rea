@@ -36,7 +36,7 @@ const rows = (n) => Array.from({ length: n }, () => [1024 * u(), 1024 * u(), 50 
 const CH = ['FSC-A', 'SSC-A', 'FL1-A', 'NEG'];
 const F = 'step2.fcs';
 writeFileSync(join(out, F), fcsBytes(CH, rows(5000), { $FIL: F }));
-// Same name, different data ($TOT differs): must not relink.
+// Same name, different data ($TOT differs): must not relink; added as a new sample.
 writeFileSync(join(out, 'other', F), fcsBytes(CH, rows(3000), { $FIL: F }));
 
 const browser = await chromium.launch();
@@ -84,9 +84,9 @@ const T = await page.locator('.params input').first().inputValue();
 check('a2-04 scale type change keeps the range 0..$PnR', T === '1024', `logicle T = ${T}`);
 await page.getByRole('dialog').getByLabel('Close').click();
 
-// a2-07: a shape of 10 px or less is discarded.
+// a2-07: a shape of 10 px or less in both directions is discarded.
 await page.getByTestId('tool-rect').click();
-await drag(0.3, 0.3, 0.31, 0.6);
+await drag(0.3, 0.3, 0.31, 0.31);
 check('a2-07 shape of 10 px or less is discarded', (await pops()).length === 0 && (await logText()).includes('discarded'), (await pops()).join(','));
 
 // a2-08: unique sibling names; duplicate rename refused.
@@ -202,16 +202,16 @@ await page.getByTestId('answer-cancel').click();
 await idle();
 check('a2-16 opening a workspace over current work asks first; cancel keeps it', asked.includes('replaces the current workspace') && (await page.locator(`[data-testid="sample-${F}"]`).count()) === 1);
 
-// a5-02: relink needs matching keywords.
+// a5-02: relink needs FlowJo's keyword match; a file that matches no sample is a new sample.
 await page.reload();
 await page.getByTestId('open-ws').setInputFiles(wsPath);
 await idle();
 await page.getByTestId('add-fcs').setInputFiles(join(out, 'other', F));
 await idle();
-const refused = (await logText()).includes('not relinked') && (await page.locator('.missing').count()) === 1;
+const notLinked = (await page.locator('.missing').count()) === 1 && (await page.locator(`[data-testid="sample-${F}"]`).count()) === 2;
 await page.getByTestId('add-fcs').setInputFiles(join(out, F));
 await idle();
-check('a5-02 relink refused when $TOT differs, accepted for the matching file', refused && (await page.locator('.missing').count()) === 0);
+check('a5-02 file with a different $TOT is a new sample; the matching file relinks', notLinked && (await page.locator('.missing').count()) === 0);
 
 check('no uncaught page errors or React key warnings', errors.length === 0, errors.join('; '));
 await browser.close();

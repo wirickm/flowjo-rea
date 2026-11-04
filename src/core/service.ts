@@ -129,6 +129,17 @@ export class AnalysisService {
     return this.load(sampleId, b.fileName, b.bytes, datasetIndex);
   }
 
+  // Move a loaded sample to another id (a new file relinked to a workspace sample).
+  rekey(from: string, to: string) {
+    const b = this.bytes.get(from);
+    const f = this.files.get(from);
+    if (!b || !f) throw new AppError('WORKSPACE_INVALID', 'Sample data is not loaded');
+    this.unload(from);
+    this.bytes.set(to, b);
+    this.files.set(to, f);
+    this.engines.delete(to);
+  }
+
   unload(sampleId: string) {
     this.bytes.delete(sampleId);
     this.files.delete(sampleId);

@@ -31,8 +31,8 @@ export function sameScale(a: TransformSpec, b: TransformSpec) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-// FlowJo 10 discards a newly drawn shape of 10 px or less (specs 6.7). Here:
-// a 2-D shape whose screen bounding box is 10 px or less in either direction,
+// FlowJo 10 discards a newly drawn shape that is too small (specs 6.7): a 2-D
+// shape whose screen bounding box is 10 px or less in both width and height,
 // or a 1-D range 10 px or less wide. Points are in screen pixels.
 export const MIN_SHAPE_PX = 10;
 export function tooSmall(px: [number, number][], twoD: boolean): boolean {
@@ -40,7 +40,7 @@ export function tooSmall(px: [number, number][], twoD: boolean): boolean {
   const ys = px.map((q) => q[1]);
   const w = Math.max(...xs) - Math.min(...xs);
   const h = Math.max(...ys) - Math.min(...ys);
-  return w <= MIN_SHAPE_PX || (twoD && h <= MIN_SHAPE_PX);
+  return w <= MIN_SHAPE_PX && (!twoD || h <= MIN_SHAPE_PX);
 }
 
 export function channelDim(a: Axis, compensation?: string): Dimension {

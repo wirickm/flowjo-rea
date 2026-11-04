@@ -6,7 +6,7 @@ import { channelRange, defaultTransform, specForKind } from '../src/ui/axes';
 import { histogramScale } from '../src/ui/renderPlot';
 import { tooSmall } from '../src/ui/gateGeometry';
 import { emptyWorkspace, uniqueName, type Gate, type Population } from '../src/core/model';
-import { descendantCount, deserializeWorkspace, groupByKey, mergeImported, relinkMismatch, removeSample, serializeWorkspace } from '../src/core/project';
+import { descendantCount, deserializeWorkspace, groupByKey, mergeImported, relinkMatches, relinkTarget, removeSample, serializeWorkspace } from '../src/core/project';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../src/core/gatingml';
 import { validPercentile } from '../src/core/stats';
 import { fitProliferation } from '../src/core/proliferation';
@@ -49,17 +49,24 @@ describe('a2-02 histogram overlays use raw counts by default', () => {
 });
 
 describe('a2-07/a2-08/a1-08 degenerate shapes and unique names', () => {
-  it('a taken name gets the first free "-N" suffix', () => {
+  // FlowJo 10.6.2 fjlib NameUtil.uniqueName, read with Ghidra (specs 6.7).
+  it('a taken name gets the first free "-N" suffix, numbered from the stem', () => {
     expect(uniqueName('Rect 1', ['Polygon 1'])).toBe('Rect 1');
     expect(uniqueName('Rect 1', ['Rect 1'])).toBe('Rect 1-1');
     expect(uniqueName('Rect 1', ['Rect 1', 'Rect 1-1'])).toBe('Rect 1-2');
+    expect(uniqueName('CD4-1', ['CD4-1'])).toBe('CD4-2'); // "-1" is a suffix: stem CD4
+    expect(uniqueName('CD4-1234', ['CD4-1234'])).toBe('CD4-1234-1'); // 4 digits: not a suffix
+    expect(uniqueName('A-1', ['A-1'])).toBe('A-1-1'); // dash at index 1: not a suffix
+    expect(uniqueName('cd4', ['CD4'])).toBe('cd4'); // exact comparison
   });
-  it('shapes of 10 px or less are discarded', () => {
-    expect(tooSmall([[100, 100], [110, 160]], true)).toBe(true); // 10 px wide
+  // FlowJo 10.6.2 Fig.isTooSmall / FigRange.isTooSmall, read with Ghidra (specs 6.7).
+  it('a shape is discarded only when 10 px or less in both directions (range: width)', () => {
+    expect(tooSmall([[100, 100], [110, 110]], true)).toBe(true);
+    expect(tooSmall([[100, 100], [110, 160]], true)).toBe(false); // thin but tall: kept
+    expect(tooSmall([[100, 100], [160, 105]], true)).toBe(false); // wide but flat: kept
     expect(tooSmall([[100, 100], [111, 111]], true)).toBe(false);
-    expect(tooSmall([[100, 100], [160, 105]], true)).toBe(true); // 5 px high
-    expect(tooSmall([[100, 0], [140, 0]], false)).toBe(false); // 1-D range ignores height
-    expect(tooSmall([[100, 0], [108, 0]], false)).toBe(true);
+    expect(tooSmall([[100, 0], [140, 0]], false)).toBe(false);
+    expect(tooSmall([[100, 0], [110, 0]], false)).toBe(true);
   });
   it('group-by names do not duplicate an existing group name', () => {
     const ws = emptyWorkspace();
@@ -112,11 +119,33 @@ describe('a5-04 quadrant names survive a Gating-ML round trip', () => {
 });
 
 describe('a1-07/a5-02 relink by keywords; remove a sample', () => {
-  it('relinks only when the identifying keywords agree', () => {
-    expect(relinkMismatch({ $TOT: '283969', $BTIM: '10:00:00' }, { $TOT: '283969', $BTIM: '10:00:00 ' })).toEqual([]);
-    expect(relinkMismatch({ $TOT: '283969' }, { $TOT: '1000' })).toEqual(['$TOT']);
-    // Keywords recorded on one side only are not compared.
-    expect(relinkMismatch({ $TOT: '283969' }, { $DATE: '01-JAN-2020' })).toEqual([]);
+  // FlowJo 10.6.2 FCSFinder$SampleKeywordMatcher.keywordsMatch, read with Ghidra (specs 6.7).
+  const rec = { $TOT: '1000', $DATE: '01-JAN-2020', $BTIM: '10:00:00', $BEGINDATA: '2048', $FIL: 'a.fcs' };
+  it('relinks when $TOT, $DATE, $BTIM, $BEGINDATA and $FIL agree', () => {
+    expect(relinkMatches(rec, { ...rec, $BTIM: '10:00:00 ' })).toBe(true);
+  });
+  it('$TOT must be recorded and equal', () => {
+    expect(relinkMatches(rec, { ...rec, $TOT: '999' })).toBe(false);
+    expect(relinkMatches({ ...rec, $TOT: '' }, rec)).toBe(false);
+  });
+  it('a recorded date/time keyword must be equal; the first unrecorded one ends those checks', () => {
+    expect(relinkMatches(rec, { ...rec, $BEGINDATA: '4096' })).toBe(false);
+    const noDate = { $TOT: '1000', $BTIM: '10:00:00', $BEGINDATA: '2048', $FIL: 'a.fcs' };
+    // $DATE not recorded: $BTIM and $BEGINDATA are not checked.
+    expect(relinkMatches(noDate, { ...rec, $BTIM: '11:00:00', $BEGINDATA: '4096' })).toBe(true);
+    // Recorded but missing from the file: no match.
+    expect(relinkMatches(rec, { $TOT: '1000', $FIL: 'a.fcs' })).toBe(false);
+  });
+  it('$FIL matches when not recorded or equal; $PAR and $ETIM are not compared', () => {
+    expect(relinkMatches({ ...rec, $FIL: '' }, { ...rec, $FIL: 'b.fcs' })).toBe(true);
+    expect(relinkMatches(rec, { ...rec, $FIL: 'b.fcs' })).toBe(false);
+    expect(relinkMatches({ ...rec, $PAR: '8', $ETIM: '10:05:00' }, { ...rec, $PAR: '9', $ETIM: '11:00:00' })).toBe(true);
+  });
+  it('the target is the first sample without data that matches, whatever its file name', () => {
+    const s = (id: string, fileName: string, kw: Record<string, string>) => ({ id, fileName, fileSize: 0, fingerprint: '', datasetIndex: 0, compensation: 'none', populations: [], keywordsSnapshot: kw, channelNames: [], eventCount: 0 });
+    const samples = [s('loaded', 'x.fcs', rec), s('other', 'a.fcs', { ...rec, $TOT: '5' }), s('renamed', 'old name.fcs', rec)];
+    expect(relinkTarget(samples, (id) => id === 'loaded', rec)?.id).toBe('renamed');
+    expect(relinkTarget(samples, (id) => id === 'loaded', { ...rec, $TOT: '7' })).toBeUndefined();
   });
   it('removing a sample drops it from every group', () => {
     const ws = emptyWorkspace();

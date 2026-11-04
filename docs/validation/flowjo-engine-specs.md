@@ -190,7 +190,7 @@ has none or is weaker.
   siblings on the same parameter pair (`NodeList.addSiblingQuads`).
 - This app: the .wsp importer turns such a rectangle into a `quadrant` gate
   (identical `[lo, hi)` membership), so siblings with the same corner move
-  together. Sibling delete is not yet matched (6.7).
+  together. Sibling delete is not yet matched.
 
 ### 6.3 Spillover versus spectral matrices (matches the flag)
 
@@ -230,31 +230,43 @@ has none or is weaker.
 - This app: before deleting, lists the gates, statistic columns and other
   derived parameters that use it; no cascade; Undo restores.
 
-### 6.7 Further observed behaviors (not yet implemented here)
+### 6.7 Further observed behaviors (matched in UAT step 2)
 
-Recorded for the next fixes (`docs/validation/uat-2026-11-02.md`, step 2):
+Implemented on 2026-11-04 (`docs/validation/uat-2026-11-02.md`, step 2,
+which records each decision). Where this app differs, it says so.
 
 - Linear axis range is `0..$PnR` (1024 when missing); changing the scale type
-  keeps the range.
+  keeps the range. Matches.
 - Histogram overlays show raw counts on a shared axis by default; "Normalized
-  To Mode" is an option and relabels the axis.
+  To Mode" is an option and relabels the axis. Matches.
 - Sibling gate names are unique: new gates get a `-N` suffix; the rename
-  dialog refuses a duplicate ("Name must be unique."). New shapes 10 px or
-  smaller are discarded.
+  dialog refuses a duplicate ("Name must be unique."). Matches; group names
+  follow the same rule here. New shapes 10 px or smaller are discarded:
+  matched with this app's reading of the measure (screen bounding box 10 px
+  or less in either direction; a range 10 px or less wide). FlowJo's exact
+  measure was not decoded.
 - Importing a gate whose name a sibling already has replaces it (silently if
   equivalent, otherwise after a "Replace?" question); never a duplicate.
+  Matches for Gating-ML import.
 - Relinking a data file needs matching keywords (`$TOT`, `$BTIM`, ...);
   samples can be removed after a confirmation; the same path is not added
-  twice.
+  twice. Matches; this app compares `$TOT`, `$PAR`, `$BTIM`, `$ETIM` and
+  `$DATE` where both sides record them, and detects the same file by content
+  (a browser exposes no path).
 - Percentile is an integer 0..100 (table editor 1..99); invalid input is
   blocked. Proliferation "Number of Peaks" is an integer 0..10, default 4.
+  Matches (0..100 for percentiles).
 - Statistics that need recalculation show "-"; export recalculates first.
+  Matches.
 - Platform errors are shown in the platform window; table templates are named
-  and saved in the workspace.
-- Tree delete always confirms (with a "don't ask again" option). NOT applies
-  to the normal selection. Escape cancels only the naming/rename dialog.
+  and saved in the workspace. Matches.
+- Tree delete always confirms (with a "don't ask again" option). Matches
+  without the option. NOT applies to the normal selection. Matches. Escape
+  cancels only the naming/rename dialog (step 3 decides this app's rule).
 - Live keyword groups re-evaluate membership; they do not create new groups.
-  Opening a .wsp opens a new window instead of replacing the open workspace.
+  Matches (message corrected). Opening a .wsp opens a new window instead of
+  replacing the open workspace; this app has one window and asks before
+  replacing a workspace with work in it.
 
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 

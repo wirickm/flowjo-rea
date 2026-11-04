@@ -1,5 +1,34 @@
 # Progress and handoff
 
+## State (2026-11-04, acceptance test step 2 fixes)
+
+Step 2 (medium defects) fixed: 13 defects (19 UAT ids), each matched to FlowJo 10.6.2
+behavior from specs 6.7, one commit per group, decisions and reasons in
+`docs/validation/uat-2026-11-02.md` section 4:
+- linear range `0..$PnR`, kept across scale types; histogram overlays in raw
+  counts with a "Normalized To Mode" option;
+- shapes of 10 px or less discarded; unique sibling and group names;
+- Gating-ML re-import replaces by name, never duplicates; quadrant names kept;
+- same file not added twice; relink needs matching keywords; sample remove;
+- percentile 0..100 and "Number of Peaks" 0..10 (default 4) enforced;
+- stats show "-" while recalculating, exports recalculate; platform errors in
+  the platform window; named templates;
+- NOT on the selection; tree delete and workspace replace ask first;
+  group-by message corrected.
+
+Checks run: `npx tsc -p .` clean; `npm test` 232 passed, 2 skipped;
+`npm run e2e` 46/46 and `node e2e/step2.mjs` 18/18, each on the dev server and
+from `file://` (Chromium). REA ledger regenerated after the `stats.ts` change
+(analyst mode, REA built from `../rea`): 4 obligations verified.
+
+Choices to confirm: the "10 px" measure (bounding box, either direction);
+same-file detection by content instead of path; relink keyword list; no
+"don't ask again" on delete.
+
+Next steps: step 3 (own UX choices: Escape, matrix input checks, stale log
+warnings, S4 layout items); quadrant sibling delete (specs 6.2); REA-native
+ledger rerun with Ghidra.
+
 ## State (2026-11-02, acceptance test and step 1 fixes)
 
 Front-end acceptance test (five browser operators, five datasets): 234

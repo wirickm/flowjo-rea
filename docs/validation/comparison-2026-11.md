@@ -190,10 +190,10 @@ statistics 39, platforms 29, transforms 19, export 15, compensation 9).
 | A2 | Workspace | Preference "Disable Undo" | none | Missing | `prefs.ws.noundo` | high |
 | A3 | Workspace | Optional auto-save every N minutes (saved workspaces with samples; not ACS/Envoy) | none | Missing | `AutoSaveTask`, `prefs.ws.autosave*` | high |
 | A4 | Workspace | Delete confirmations with "Don't Ask Again", reset in Preferences | asks every time | Missing (known open item) | specs 6.7; `prefs.ws.resetdontask` | high |
-| A5 | Samples | Remove from workspace or from current group only | workspace only | Differs | `ws.deletesample.ws/group` | high |
-| A6 | Groups | Group-owned analysis; delete asks "everywhere or copy to each sample"; synchronized groups | copy by population path, optional sync | Differs (matrix row 7) | `fj.string.groupdelprompt`, `ws.group.dlog.sync` | high |
-| A7 | Groups | Live criteria: =, !=, >, >=, <, <=, between, not between, contains, exists/lacks | text operators (contains, equals, starts/ends with, negations) | Differs | `CriteriaTest`, `fj.criterion.contains`, `fj.keyword.criterion.*` | medium |
-| A8 | Groups | Roles (test, control, compensation, baseline, replicate...) and every-Nth sample | none | Missing | `Group$Role`, `Group.getEveryNthSample` | high |
+| A5 | Samples | Remove from workspace or from current group only | asks workspace or current group; removes from the group only (2026-11-06) | Match (specs 7.1) | `ws.deletesample.ws/group` | high |
+| A6 | Groups | Group-owned analysis; delete asks "everywhere or copy to each sample"; synchronized groups | group-owned populations; Synchronized groups; Allocate To Samples / First Sample / Delete Entirely; Rename for all (2026-11-06) | Match (specs 7.2) | `fj.string.groupdelprompt`, `ws.group.dlog.sync` | high |
+| A7 | Groups | Live criteria (decoded, specs 7.1): =, ≠, >, >=, <, <=, Contains, Lacks, Exists; And / Or / & Not from a true start; stain sets; reference group | FlowJo functions and connectors, numeric comparisons, stain sets, reference groups (2026-11-06) | Match (specs 7.1) | `CriteriaTest`, `fj.criterion.contains`, `fj.keyword.criterion.*` | medium |
+| A8 | Groups | Roles (test, control, compensation, baseline, replicate...) and every-Nth sample | roles in the group dialog and .wsp; check every n-th sample (2026-11-06) | Match (specs 7.1) | `Group$Role`, `Group.getEveryNthSample` | high |
 | A9 | Statistics | Mode, Correlation, Freq. of (any ancestor). Mode = the first (lowest) channel with the highest count in the parameter's histogram, channel index times range / channels, then converted to a data value | none | Missing | `Statistic.MODE/CORRELATION/FREQOF`; Mode: REA Ghidra `GParameter::Mode` `ev_14466f77...`, `BasicHistogram::ChannelMode` `ev_c5cc3d11...`; histogram size for statistics assumed 4096 as for the median (specs 4); Correlation and Freq. of rules not read | high (Mode rule); medium (bin count) |
 | A10 | Statistics | No Min statistic (engine names a Max) | Min and Max | Differs (extra) | `Statistic` constants; engine stat-name literals | medium |
 | A11 | Statistics | Comparison statistics (KS, Overton, chi-square, probability binning) | none | Missing | `StatKey`, `KolmogorovSmirnoff`, `MultiDimCompare` | high |
@@ -281,7 +281,7 @@ step 3, `docs/validation/uat-2026-11-02.md` section 5).
 | # | Area | FlowJo 10.6.2 | This app | Status | Recommendation for step 3 | Conf. |
 |---|---|---|---|---|---|---|
 | C1 | Main window | Ribbon frame: tabs File, Edit, Tools, Configure, Workspace, FlowJo; 22 bands (Document, Clipboard, Navigate, Groups, Keywords, Populations, Statistics, Boolean, Biology, Cytometry, Visualizations, Discovery, ...); presets Simple / Experienced / Advanced (`ws.ribbon.*`, `WSRibbonFrame`) | one toolbar and four panels, no menus (`src/ui/App.tsx:540-560`) | Differs | Own rule: keep one page. Group the toolbar into FlowJo's band names (Document, Groups, Populations, Statistics, Biology, Cytometry) so FlowJo users find commands | high |
-| C2 | Group pane | Group list above samples; "All Samples" cannot be edited or deleted; name, role, size (`GroupTreeTable`, `ws.groupmgr.errcantdeleteall`) | group list with live badge and count | Match (role column Missing) | Keep; add role only with A8 | medium |
+| C2 | Group pane | Group list above samples; "All Samples" cannot be edited or deleted; name, role, size (`GroupTreeTable`, `ws.groupmgr.errcantdeleteall`) | group list; role set in the group dialog (2026-11-06) | Match | Keep; add role only with A8 | medium |
 | C3 | Sample tree | One tree-table: samples, populations and statistic nodes with columns Name, Statistic, #Cells and optional keyword columns (`SampleTreeTable`, `ws.column.special.*`) | population tree plus a separate statistics table | Differs | Own rule: keep the split; optional keyword columns later | high |
 | C4 | Graph window | One window per population; menus File, Edit, Go, Graph, Display, Help; breadcrumb gating path; parent/child and next/previous sample navigation (`GWFrame`, `gw.breadcrumbbar.*`, `gw.nav.*`) | one plot panel bound to the selected population | Differs | Match in part: add a breadcrumb of the gating path and next/previous sample keys (PageUp/PageDown, as `gw.nav`) to the plot panel | high |
 | C5 | Gate naming | After drawing, a naming dialog (name, favorites list, colour; unique-name check) (`GateNamerDialog`, `dlog.gatenamer.*`) | automatic name, double-click to rename | Differs | Own rule: keep automatic names (faster); naming rules already match (specs 6.7) | high |
@@ -298,13 +298,13 @@ step 3, `docs/validation/uat-2026-11-02.md` section 5).
 | C16 | Keyboard | About 150 accelerators, e.g. Cmd+Z / Shift+Cmd+Z undo/redo, Cmd+S save, Cmd+G group, Cmd+B add statistic, Cmd+E export, Cmd+I inspect, Cmd+Enter open graph, Cmd+Y Preferences (`*.accelerator`) | Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z and Ctrl/Cmd+Y (redo) (`src/ui/App.tsx:82-93`) | Differs | Match where the browser allows: Cmd/Ctrl+S, +G, +B, +E, +I. Browser-reserved keys (Cmd+L, +T, +N, +W, +R) stay unmapped (own rule). Keep Ctrl+Y as redo (Windows convention; in FlowJo it opens Preferences) | medium |
 | C17 | Escape | Escape bound only in the rename dialog (specs 6.7) | Escape clears a polygon draft only | Differs | Own rule as planned: Escape closes every dialog (browser convention) | high |
 | C18 | Delete confirmations | Populations, samples, groups, layouts, tables, plates each ask; many with "Don't Show Again" (`ws.mgr.confirmation*`, `ws.groupmgr.deleteprompt`, `le/te/pe.delete.confirm`) | asks for population delete, sample remove, in-use derived parameter; not for group, matrix, template, statistic column, layout item (`src/ui/App.tsx:593,857,867`) | Differs | Match: ask before deleting a group and a template; add "Don't ask again" (F1). Statistic columns and layout items stay undoable without a question (own) | high |
-| C19 | Remove samples | Asks: from workspace or from the current group (`ws.deletesample.ws/group`) | workspace only | Differs (A5) | Match (F2) | high |
+| C19 | Remove samples | Asks: from workspace or from the current group (`ws.deletesample.ws/group`) | asks: from workspace or from the current group (2026-11-06) | Match | Match (F2) | high |
 | C20 | Unsaved changes | "Save changes?" on close (`ws.doc.wannasave`, QDialog save prompts) | no guard when the tab closes | Missing | Match: `beforeunload` guard when the workspace has unsaved edits (F3) | high |
 | C21 | Add samples | Add Samples command and a "Drag Samples Here" drop target; per-file failure counts (`ws.sample.drag.here`, `ws.samplemgr.numfilesnotadded`) | file picker only | Missing (drop) | Match: accept dropped FCS files on the samples panel (F4) | high |
 | C22 | Status | Status/progress area; auto-save message (`WSProgressPanel`) | "Working..." / "Ready" plus the Log | Match | Keep; step 3 stale-log warnings stay own | medium |
 | C23 | Edge events | Warning in the graph when 5% or more of events are on either axis bound; on by default (`gw.gates.panel.warn1/2`; `FJPrefsFJML$Graph.eventsOnAxis` = true, `warningThreshold` = 5) | none | Missing (A40) | Match: caption warning at 5% with the share on the bounds | high |
 | C24 | Launcher, help, repositories | Start window with recent documents; Help band; LabArchives / Cytobank / Enterprise links | none | Missing | Own rule: not needed in an offline single file | high |
-| C25 | Group dialog | Create/Modify Group: name, colour, role, criteria (keyword op value), Live, Synchronized (`GroupDlog`) | "New group from checked", "group by", rule group | Differs (A7, A8) | Match criteria operators with F7 | high |
+| C25 | Group dialog | Create/Modify Group: name, colour, role, criteria (keyword op value), Live, Synchronized (`GroupDlog`) | Create/Modify Group dialog: name, role, Live, Synchronized, 4 criteria, stain sets, reference group (2026-11-06) | Match | Match criteria operators with F7 | high |
 
 ## 6. Ranked proposed fixes
 
@@ -351,3 +351,29 @@ in a browser (A3), layout and table editors (A42, A43), the platforms in A39.
    an own rule. If a UI pattern source should govern step 3, name it.
 4. **Fix F9 touches `tools/reaProof.ts`.** It is tooling, not app code, but
    it is a code change; it waits for a go-ahead like the others.
+
+## 8. Parity tracker
+
+Updated with each area PR (one PR per area, REA loop: decode with Ghidra /
+REA, spec, REA obligation, implementation, tests, ledger). Ratings use the
+rows above: High = every row Match or a documented own rule.
+
+| Area | Rating | Since |
+|---|---|---|
+| Gating math | High | 2026-11-01 |
+| Core statistics rules | High | 2026-11-01 |
+| .wsp import | High | 2026-11-01 |
+| Transforms (main types) | High | 2026-11-01 |
+| Naming, delete, relink, undo | High | 2026-11-05 |
+| **Groups** | **High** | 2026-11-06 (specs 7; obligations groups.*) |
+| FCS reading | Medium | |
+| Compensation | Medium | |
+| Cell cycle, proliferation | Medium | |
+| Gate tools | Low | |
+| Export | Low | |
+| Statistics list | Low | |
+| Kinetics | Low | |
+| Derived parameters | Low | |
+| Layout and table editors | Low | |
+| Preferences, autosave, shortcuts | Low | |
+

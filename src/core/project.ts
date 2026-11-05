@@ -1,6 +1,7 @@
 // Native workspace persistence (.frea.json) and cross-sample operations.
 import { fail } from './errors';
-import { dimLabel, newId, populationPath, uniqueName, type Gate, type KeywordRule, type Population, type SampleState, type Workspace } from './model';
+import { acceptCriteria, connectorText, functionText } from './groupCriteria';
+import { dimLabel, newId, populationPath, uniqueName, type Gate, type Population, type SampleState, type Workspace } from './model';
 
 export function serializeWorkspace(ws: Workspace): string {
   return JSON.stringify(ws, null, 1);
@@ -97,10 +98,103 @@ export function applySubtree(ws: Workspace, fromSampleId: string, popId: string,
         const missing = gate.dims.flatMap((d) => (d.kind === 'channel' ? [d.channel] : [d.num, d.den])).filter((c) => t.channelNames.length && !t.channelNames.includes(c));
         if (missing.length) warnings.push(`${t.fileName}: "${p.name}" uses channels not in this sample: ${missing.join(', ')}`);
       }
-      t.populations.push({ id: idMap.get(p.id)!, name: p.name, parentId: p.id === root.id ? parentId : idMap.get(p.parentId!)!, gate });
+      t.populations.push({ id: idMap.get(p.id)!, name: p.name, parentId: p.id === root.id ? parentId : idMap.get(p.parentId!)!, gate, ...(p.exclude ? { exclude: true } : {}) });
     }
   }
   return warnings;
+}
+
+// --- group-owned analysis (FlowJo 10.6.2, specs 7.2) ---------------------------
+
+const pathOf = (s: SampleState, id: string) => populationPath(s.populations, id);
+const atPath = (s: SampleState, path: string) => s.populations.find((p) => pathOf(s, p.id) === path);
+function markOwned(s: SampleState, rootId: string, groupId: string | undefined): void {
+  for (const id of subtreeIds(s.populations, [rootId])) {
+    const p = s.populations.find((q) => q.id === id)!;
+    if (groupId) p.owningGroup = groupId;
+    else delete p.owningGroup;
+  }
+}
+
+// "Copy analysis to group": the subtree is copied to every member by
+// population path and becomes owned by the group, in the source sample too.
+export function copyAnalysisToGroup(ws: Workspace, fromSampleId: string, popId: string, groupId: string): string[] {
+  const g = ws.groups.find((x) => x.id === groupId);
+  if (!g) fail('WORKSPACE_INVALID', 'Group not found');
+  const src = ws.samples.find((s) => s.id === fromSampleId)!;
+  const path = pathOf(src, popId);
+  const warnings = applySubtree(ws, fromSampleId, popId, g.sampleIds);
+  for (const s of ws.samples) {
+    if (s.id !== fromSampleId && !g.sampleIds.includes(s.id)) continue;
+    const root = atPath(s, path);
+    if (root) markOwned(s, root.id, groupId);
+  }
+  return warnings;
+}
+
+// The group that owns a population, if any.
+export const owningGroupOf = (s: SampleState, popId: string) => s.populations.find((p) => p.id === popId)?.owningGroup;
+
+// An edit to a group-owned gate in a synchronized group moves it in every
+// member (FlowJo: "all other samples in the same group have their gates
+// moved too"); in other groups only the edited sample changes.
+export function propagateOwnedEdits(ws: Workspace, sampleId: string, popIds: string[]): string[] {
+  const s = ws.samples.find((x) => x.id === sampleId)!;
+  const warnings: string[] = [];
+  for (const id of popIds) {
+    const gid = owningGroupOf(s, id);
+    const g = gid ? ws.groups.find((x) => x.id === gid) : undefined;
+    if (!g?.synchronized) continue;
+    warnings.push(...copyAnalysisToGroup(ws, sampleId, id, g.id));
+  }
+  return warnings;
+}
+
+// Deleting group-owned analysis (WSGroupMgr.deleteGroupAnalyses with
+// GroupDelConfirmationDlog): "allocateToSamples" keeps the populations in
+// every member, now owned by each sample; "allocateToFirst" keeps them only
+// in the group's first member; "deleteEntirely" removes them from every member.
+export type GroupDeleteChoice = 'allocateToSamples' | 'allocateToFirst' | 'deleteEntirely';
+export function deleteGroupAnalysis(ws: Workspace, groupId: string, path: string, choice: GroupDeleteChoice): void {
+  const g = ws.groups.find((x) => x.id === groupId);
+  if (!g) return;
+  g.sampleIds.forEach((sid, i) => {
+    const s = ws.samples.find((x) => x.id === sid);
+    const root = s && atPath(s, path);
+    if (!s || !root || root.owningGroup !== groupId) return;
+    const keep = choice === 'allocateToSamples' || (choice === 'allocateToFirst' && i === 0);
+    if (keep) markOwned(s, root.id, undefined);
+    else removePopulation(s, root.id);
+  });
+}
+
+// Renaming a group-owned population, "for all" (FlowJo asks "The gate is
+// group owned. Rename for all?").
+export function renameGroupAnalysis(ws: Workspace, groupId: string, path: string, name: string): void {
+  const g = ws.groups.find((x) => x.id === groupId);
+  for (const sid of g?.sampleIds ?? []) {
+    const s = ws.samples.find((x) => x.id === sid);
+    const p = s && atPath(s, path);
+    if (p && p.owningGroup === groupId) p.name = name;
+  }
+}
+
+// Members that join a group receive its group-owned analysis (FlowJo
+// re-adds group analyses to group members), copied from a member that has it.
+function addGroupAnalysisTo(ws: Workspace, g: Workspace['groups'][number], newIds: string[]): void {
+  if (!newIds.length) return;
+  const template = ws.samples.find((s) => g.sampleIds.includes(s.id) && !newIds.includes(s.id) && s.populations.some((p) => p.owningGroup === g.id));
+  if (!template) return;
+  const roots = template.populations.filter((p) => p.owningGroup === g.id && !(p.parentId && template.populations.find((q) => q.id === p.parentId)?.owningGroup === g.id));
+  for (const r of roots) {
+    const path = pathOf(template, r.id);
+    applySubtree(ws, template.id, r.id, newIds);
+    for (const sid of newIds) {
+      const s = ws.samples.find((x) => x.id === sid);
+      const root = s && atPath(s, path);
+      if (s && root) markOwned(s, root.id, g.id);
+    }
+  }
 }
 
 export function removePopulation(s: SampleState, id: string): void {
@@ -149,40 +243,28 @@ export function syncLiveGroups(ws: Workspace): boolean {
     if (!c) continue;
     const ids = ws.samples
       .filter((s) => {
-        if ('rules' in c) return matchRules(s, c.rules);
+        if ('rules' in c) return acceptCriteria(ws, s, c);
         const v = sampleValue(s, c.key);
         return c.value === null ? v === undefined || v === '' : v === c.value;
       })
       .map((s) => s.id);
     if (ids.join() !== g.sampleIds.join()) {
+      const added = ids.filter((id) => !g.sampleIds.includes(id));
       g.sampleIds = ids;
+      addGroupAnalysisTo(ws, g, added);
       changed = true;
     }
   }
   return changed;
 }
 
-// FlowJo keyword criteria, combined strictly left to right (no precedence).
-// Matching is case-insensitive; FlowJo's case handling is unverified.
-export function matchRules(s: SampleState, rules: KeywordRule[]): boolean {
-  let acc = false;
-  rules.forEach((r, i) => {
-    const v = (sampleValue(s, r.keyword) ?? '').toLowerCase();
-    const q = r.value.toLowerCase();
-    const hit =
-      r.op === 'contains' ? v.includes(q)
-      : r.op === 'notContains' ? !v.includes(q)
-      : r.op === 'equals' ? v === q
-      : r.op === 'notEquals' ? v !== q
-      : r.op === 'startsWith' ? v.startsWith(q)
-      : v.endsWith(q);
-    acc = i === 0 ? hit : r.connector === 'and' ? acc && hit : acc || hit;
-  });
-  return acc;
-}
-
 export function criteriaLabel(c: NonNullable<Workspace['groups'][number]['criteria']>): string {
-  if ('rules' in c) return c.rules.map((r, i) => `${i ? `${r.connector} ` : ''}${r.keyword} ${r.op} "${r.value}"`).join(' ');
+  if ('rules' in c) {
+    const parts = c.rules.map((r, i) => `${i || r.connector !== 'and' ? `${connectorText(r.connector)} ` : ''}${r.keyword} ${functionText(r.op) ?? r.op} "${r.value}"`);
+    if (c.stains?.length) parts.push(`stains: ${c.stains.join(' | ')}`);
+    if (c.refGroup) parts.push(`${c.refGroup.fn} group "${c.refGroup.name}"`);
+    return parts.join(' ');
+  }
   return `${c.key} = ${c.value ?? '(missing)'}`;
 }
 

@@ -1,5 +1,18 @@
 # Progress and handoff
 
+## State (2026-11-06, parity area 1: groups)
+
+Groups now match FlowJo 10.6.2 (decoded with Ghidra 12.1.4; specs section
+7): keyword criteria with FlowJo's 9 functions and 3 connectors (result
+starts true, numeric comparisons, Java trim and case rules), stain sets,
+reference groups, roles, colour and font style, check every n-th sample,
+remove from group or workspace, delete-group question; group-owned analysis
+with Synchronized groups, Allocate To Samples / First Sample / Delete
+Entirely and Rename for all; .wsp read/write of all of it. REA ledger: 14 of
+14 obligations verified (analyst and REA-native). Checks: `npx tsc -p .`
+clean; `npm test` all pass; `npm run e2e` 46/46, `e2e/step2.mjs` 19/19,
+`e2e/groups.mjs` 5/5 (dev server and file://). Next area: statistics.
+
 ## State (2026-11-05, comparison with FlowJo 10.6.2)
 
 Analysis only, no app code changed: `docs/validation/comparison-2026-11.md`

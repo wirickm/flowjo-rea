@@ -6,7 +6,7 @@ import { SampleEngine } from '../src/core/analysis';
 import { parseFcs } from '../src/core/fcs';
 import { exportGatingMl, parseGatingMl } from '../src/core/gatingml';
 import type { Dimension, Gate, Population, SampleState } from '../src/core/model';
-import { matchRules } from '../src/core/project';
+import { evalRules as matchRules } from '../src/core/groupCriteria';
 import { splineInterpolator } from '../src/core/spline';
 import { parseWsp } from '../src/core/wsp';
 import { writeWsp } from '../src/core/wspWriter';

@@ -21,7 +21,10 @@
       { "address": "0x15d1a0", "symbol": "GParameter::Mode" },
       { "address": "0xeb290", "symbol": "BasicHistogram::ChannelMode" },
       { "address": "0x15d240", "symbol": "GParameter::MedianAbsoluteDeviation" },
-      { "address": "0x15d490", "symbol": "GParameter::Correlation" }
+      { "address": "0x15d490", "symbol": "GParameter::Correlation" },
+      { "address": "0x3773d0", "symbol": "Exporter::WriteSample" },
+      { "address": "0x3777c0", "symbol": "Exporter::WriteRow" },
+      { "address": "0x376b50", "symbol": "Exporter::WriteParamHeaderRow" }
     ]
   },
   "jar": {
@@ -40,6 +43,8 @@
     "stats-histogram-moments": ["0x15c770",  "0xea2d0",  "0xea950",  "0xea7a0",  "0xea3a0"],
     "stats-mode": ["0x15d1a0",  "0xeb290"],
     "stats-mad": ["0x15d240"],
-    "stats-correlation-nan": ["0x15d490"]
+    "stats-correlation-nan": ["0x15d490"],
+    "export-event-cap": ["0x3773d0"],
+    "export-csv-format": ["0x3777c0",  "0x376b50"]
   }
 }

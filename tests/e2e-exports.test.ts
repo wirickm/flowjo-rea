@@ -14,8 +14,9 @@ describe.skipIf(!existsSync(manifest))('E2E export files', () => {
     expect(f.eventCount).toBe(m.polyFinal);
     const csv = readFileSync(m.csvOut, 'utf8').trim().split('\n');
     const first = csv[1].split(',').map(Number);
-    // float32 storage in FCS: relative 1e-6
-    first.forEach((v: number, c: number) => expect(Math.abs(f.data[c][0] - v)).toBeLessThanOrEqual(1e-6 * Math.max(1, Math.abs(v))));
+    // CSV prints FlowJo's %g (6 significant digits, specs 9): relative 5e-6,
+    // and values within 1e-6 of zero print as 0.
+    first.forEach((v: number, c: number) => expect(Math.abs(f.data[c][0] - v)).toBeLessThanOrEqual(5e-6 * Math.max(1e-6, Math.abs(f.data[c][0])) + 1e-6));
     expect(f.keywords['FLOWJO_REA_POPULATION']).toBe('Cells/Polygon 1');
   });
   it('Gating-ML export re-imports', () => {

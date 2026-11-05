@@ -536,6 +536,45 @@ value at position `k` (`k x range / channels`) converted back to data units.
   known).
 - Fewer than 2 events: SD and CV are not decoded; this app shows NaN.
 
+## 9. Event export (FlowJo 10.6.2)
+
+Read with REA 6.8.0's Ghidra provider (`Exporter::WriteSample`,
+`Exporter::WriteRow`, `Exporter::WriteParamHeaderRow`,
+`Exporter::PopulateParmArray`, `Exporter::GetSampleIDParameter`,
+`FCS3Exporter::WriteRow`), `llvm-objdump` (`ExportRequest::FromXML`
+defaults) and headless Ghidra / javap on the Java side
+(`PopulationExporter2`, `ExportModel`). Static reading only. Implemented in
+`src/core/exportRules.ts` and `src/core/service.ts`.
+
+- Formats: FCS 3, CSV scale values, CSV channel values. Parameters: all
+  compensated, all uncompensated, or a chosen set.
+- "No more than N" is not random (the dialog's tooltip says "randomly
+  selected"): with step = trunc(count / N) in single precision (1 when count =
+  N), events are taken every step-th in file order until N are written. For a
+  whole sample the positions are 0, step, 2 step, ...; for a gated population
+  the step-th, 2 step-th, ... event of the population (1-based). N at or above
+  the count takes every event.
+- CSV (`Exporter::WriteRow`): "," between columns, "\n" at line end; scale
+  values print with C `%g` (6 significant digits), values within 1e-6 of zero
+  as `0`; channel values as integers on the parameter's scale with
+  `channelRange` channels, 1024 by default (the dialog never sets it).
+- CSV header (`WriteParamHeaderRow`): parameter name, stain, or both joined
+  with " :: ".
+- Concatenation (`PopulationExporter2`): all files together, every n files
+  (consecutive runs), or files with equal values of a keyword (groups in
+  string order of the value; samples without a value are left out). Inside a
+  file the populations are ordered by `$ETIM` (HH:mm:ss) ascending, a missing
+  or unreadable time comparing equal. The cap per population is trunc(sum of
+  min(N, count) / number of populations). A `SampleID` parameter holds each
+  population's 1-based position.
+- FCS rows (`FCS3Exporter::WriteRow`): float32 values divided by the
+  parameter gain and, for Time, by the time step (raw units, original
+  keywords). This app keeps its own rule: scale units with `$TIMESTEP` = 1,
+  which reads back to the same values (FlowJo reads either).
+- Not decoded: keyword-derived extra parameters and their "spread
+  distribution"; file-naming patterns (this app downloads one file per
+  output with a fixed pattern).
+
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 
 Source: static analysis of `libNativeEngine.dylib` from the public FlowJo

@@ -48,7 +48,7 @@
     ],
     "scenarios": [
       {
-        "evidence_id": "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e",
+        "evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
         "operation": "verify_reconstruction_obligations",
         "authority": "controlled-replay"
       }
@@ -235,6 +235,51 @@
         ]
       },
       {
+        "evidence_id": "ev_27565fd9f5e9e72571db8afdd7e629cb243f1aee11b48b86a591b1b72cea58cc",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "libNativeEngine-3.6.2.jnilib",
+          "digest": {
+            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
+          "format": "mach-o",
+          "architecture": "x86_64"
+        },
+        "provider": {
+          "id": "llvm-objdump",
+          "name": "LLVM objdump (analyst reading of disassembly)",
+          "version": "18.1.3"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_native_functions",
+        "parameters": {
+          "symbols": [
+            "Exporter::WriteSample(Sample*, FGate*, int, std::string)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "No more than N: step = trunc(count / N) (1 when equal); events are written every step-th in file order until N are written; whole sample from position 0, gated population the step-th, 2 step-th, ... event (1-based); N at or above count writes every event.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 9"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "address-range",
+            "start": "0x3773d0",
+            "end": "0x3777c0"
+          }
+        ]
+      },
+      {
         "evidence_id": "ev_276f7886135cbaa91fc8d3bc855b7f3369303019589dcdd9e65aab3c7ce13d84",
         "analysis_profile": null,
         "raw_result": null,
@@ -262,6 +307,42 @@
             "negative"
           ],
           "owner": "src/core/gateGrid.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_2d71ce2c0510752e881767c00e52e9ee38e09bccac3c1e1a5658fdc4235bc2ed",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_c0d27ae65072280e5289647e6b31830235823cdd8e260dcb81b33855508168b9"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "export.concatenate",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Concatenation groups, order, cap and SampleID follow FlowJo 10",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/exportRules.ts"
         },
         "confidence": "derived",
         "authority": "analyst-inference",
@@ -674,6 +755,64 @@
         "locations": []
       },
       {
+        "evidence_id": "ev_674f3a9f7bd45021563547eba661a6b70ffe7c62d56f346c36c730da252670a0",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "libNativeEngine-3.6.2.jnilib",
+          "digest": {
+            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
+          "format": "mach-o",
+          "architecture": "x86_64"
+        },
+        "provider": {
+          "id": "llvm-objdump",
+          "name": "LLVM objdump (analyst reading of disassembly)",
+          "version": "18.1.3"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_native_functions",
+        "parameters": {
+          "symbols": [
+            "Exporter::WriteRow(Sample*, int, std::string)",
+            "Exporter::WriteParamHeaderRow(SString)",
+            "Exporter::PopulateParmArray",
+            "ExportRequest::FromXML (channelRange default 1024)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "CSV: comma-separated, newline-terminated; scale values printed with %g, values within 1e-6 of zero as 0; channel values as integers on 1024 channels by default; header = parameter name, stain, or both joined with ' :: '.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 9"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "address-range",
+            "start": "0x3777c0",
+            "end": "0x377b60"
+          },
+          {
+            "kind": "address-range",
+            "start": "0x376b50",
+            "end": "0x3773d0"
+          },
+          {
+            "kind": "address-range",
+            "start": "0x375ad0",
+            "end": "0x375f20"
+          }
+        ]
+      },
+      {
         "evidence_id": "ev_67ab01569ce944ad2f9fdc579526d1db14e7492637781867782c4e8da2656f7b",
         "analysis_profile": null,
         "raw_result": null,
@@ -927,523 +1066,6 @@
         ]
       },
       {
-        "evidence_id": "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [],
-        "subject": null,
-        "provider": {
-          "id": "flowjo-rea.proof",
-          "name": "flowjo-rea proof producer",
-          "version": "2"
-        },
-        "predicate_type": "rea.reconstruction-proof",
-        "operation": "verify_reconstruction_obligations",
-        "parameters": {
-          "node": "v22.23.4"
-        },
-        "normalized_result": {
-          "bindings": [
-            {
-              "obligation_id": "wsp.polygon-counts",
-              "obligation_version": 2,
-              "owner_sha256": "a07e209ac1da9915d6101deb4c6a6cd4420e131ab3078a85865166057ac7add3",
-              "fixtures": [
-                {
-                  "fixture_id": "wsp.polygon-counts.fixtures",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "wsp.polygon-counts.edges",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "wsp.polygon-counts.outside",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "wsp.flowjo-counts",
-                  "claim_id": "wsp.polygon-counts.v2",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "wsp.logicle-ellipse",
-              "obligation_version": 2,
-              "owner_sha256": "a07e209ac1da9915d6101deb4c6a6cd4420e131ab3078a85865166057ac7add3",
-              "fixtures": [
-                {
-                  "fixture_id": "wsp.logicle-ellipse.fixtures",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "wsp.logicle-ellipse.outline",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "wsp.flowjo-counts",
-                  "claim_id": "wsp.logicle-ellipse.v2",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "gate.rect-open-bounds",
-              "obligation_version": 2,
-              "owner_sha256": "eadf4143ad5b70c190926bda4d37e71547923ebc0fd3d533d5808f57fb6d903f",
-              "fixtures": [
-                {
-                  "fixture_id": "gate.rect-open-bounds.time",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gate.rect-open-bounds.closed",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "wsp.flowjo-counts",
-                  "claim_id": "gate.rect-open-bounds.v2",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "stats.flowjo-conventions",
-              "obligation_version": 2,
-              "owner_sha256": "e5ab4a358014b8247dd0a70d2c23729b9230d076c11ecc49a7dc2311d8d13225",
-              "fixtures": [
-                {
-                  "fixture_id": "stats.median",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.clamp",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.small",
-                  "case_kind": "malformed",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "stats.flowjo-histogram",
-                  "claim_id": "stats.flowjo-conventions.v2",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "names.unique-sibling",
-              "obligation_version": 1,
-              "owner_sha256": "2884f94dd8d0457a0c0d6ab387ee023f1ed463952b143847f66feeecd6d16061",
-              "fixtures": [
-                {
-                  "fixture_id": "names.unique-sibling.suffix",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "names.unique-sibling.kept",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "uat.step2",
-                  "claim_id": "names.unique-sibling.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "gate.min-shape",
-              "obligation_version": 1,
-              "owner_sha256": "005407fbf5d62312d24627a8d31686115b3c4c1881509138a0e91f4ddedbc4a0",
-              "fixtures": [
-                {
-                  "fixture_id": "gate.min-shape.discard",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gate.min-shape.keep",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "uat.step2",
-                  "claim_id": "gate.min-shape.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "sample.relink-keywords",
-              "obligation_version": 1,
-              "owner_sha256": "85016992a14b156aff4879d2f0cbee6f722185856fe134366ad3f9032ceb4c73",
-              "fixtures": [
-                {
-                  "fixture_id": "sample.relink.match",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "sample.relink.first",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "sample.relink.tot",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "uat.step2",
-                  "claim_id": "sample.relink-keywords.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "gate.quad-sibling-delete",
-              "obligation_version": 1,
-              "owner_sha256": "85016992a14b156aff4879d2f0cbee6f722185856fe134366ad3f9032ceb4c73",
-              "fixtures": [
-                {
-                  "fixture_id": "gate.quad-delete.siblings",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gate.quad-delete.fixture",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gate.quad-delete.alone",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "gate.quad-delete",
-                  "claim_id": "gate.quad-sibling-delete.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "cellcycle.histogram-channels",
-              "obligation_version": 1,
-              "owner_sha256": "a318ce3cdf23d11689ea8ca9c34dd5d000cd228621a05166715e63a8ffad8e45",
-              "fixtures": [
-                {
-                  "fixture_id": "cellcycle.channels.cap",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "cellcycle.channels.range",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "cellcycle.fits",
-                  "claim_id": "cellcycle.histogram-channels.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "workspace.undo-limit",
-              "obligation_version": 1,
-              "owner_sha256": "301a114c4485e3f967d766c4dce1959d174e7492e9b6dbbc69616cb3582efa9e",
-              "fixtures": [
-                {
-                  "fixture_id": "undo.cap",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "undo.order",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "undo.branch",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "workspace.history",
-                  "claim_id": "workspace.undo-limit.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "groups.keyword-criteria",
-              "obligation_version": 1,
-              "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b",
-              "fixtures": [
-                {
-                  "fixture_id": "groups.criteria.numeric",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.criteria.connectors",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.criteria.missing",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.criteria.inactive",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.criteria.nonnumeric",
-                  "case_kind": "malformed",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "groups.criteria",
-                  "claim_id": "groups.keyword-criteria.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "groups.acceptance",
-              "obligation_version": 1,
-              "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b",
-              "fixtures": [
-                {
-                  "fixture_id": "groups.accept.stains",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.accept.ref",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.accept.none",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "groups.criteria",
-                  "claim_id": "groups.acceptance.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "groups.roles",
-              "obligation_version": 1,
-              "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b",
-              "fixtures": [
-                {
-                  "fixture_id": "groups.roles.read",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.roles.quirk",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "groups.criteria",
-                  "claim_id": "groups.roles.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "groups.owned-analysis",
-              "obligation_version": 1,
-              "owner_sha256": "85016992a14b156aff4879d2f0cbee6f722185856fe134366ad3f9032ceb4c73",
-              "fixtures": [
-                {
-                  "fixture_id": "groups.owned.copy",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.owned.alloc",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.owned.first",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.owned.delete",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.owned.sync",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "groups.owned",
-                  "claim_id": "groups.owned-analysis.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "stats.histogram-moments",
-              "obligation_version": 1,
-              "owner_sha256": "e5ab4a358014b8247dd0a70d2c23729b9230d076c11ecc49a7dc2311d8d13225",
-              "fixtures": [
-                {
-                  "fixture_id": "stats.mean",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.geomean",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.cv-sign",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "stats.flowjo-moments",
-                  "claim_id": "stats.histogram-moments.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "stats.mode-mad-correlation",
-              "obligation_version": 1,
-              "owner_sha256": "e5ab4a358014b8247dd0a70d2c23729b9230d076c11ecc49a7dc2311d8d13225",
-              "fixtures": [
-                {
-                  "fixture_id": "stats.mode",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.mad",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.correlation",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "stats.flowjo-moments",
-                  "claim_id": "stats.mode-mad-correlation.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "stats.wsp-names",
-              "obligation_version": 1,
-              "owner_sha256": "451b046d16b826c38946ec6732e6ad3ee7b34ff72543016a8177fe2a39b20196",
-              "fixtures": [
-                {
-                  "fixture_id": "stats.names",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.freqof",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.own",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "stats.flowjo-moments",
-                  "claim_id": "stats.wsp-names.v1",
-                  "passed": true
-                }
-              ]
-            }
-          ]
-        },
-        "confidence": "observed",
-        "authority": "controlled-replay",
-        "environment": {
-          "id": "node-v22.23.4",
-          "platform": "linux",
-          "architecture": "x64",
-          "isolation": "process"
-        },
-        "limitations": [
-          "Verifiers are this repository’s vitest suites run in one local process; FlowJo reference counts come from FlowJo-saved .wsp files (FlowJo 10.6.2 to 10.10.0)."
-        ],
-        "locations": []
-      },
-      {
         "evidence_id": "ev_82d64dbe78beda98ee2d8d21dfcaee1524a638cb52d21da6a18bb5b9ab5899c0",
         "analysis_profile": null,
         "raw_result": null,
@@ -1590,6 +1212,42 @@
             "end": "0x807c0"
           }
         ]
+      },
+      {
+        "evidence_id": "ev_9a59a28140b736c3779dbd06c9b19c8ad0800f5a5889125df420732861ad7cab",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_27565fd9f5e9e72571db8afdd7e629cb243f1aee11b48b86a591b1b72cea58cc"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "export.event-cap",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "No more than N takes every step-th event, as FlowJo 10 does",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/exportRules.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
       },
       {
         "evidence_id": "ev_9bdbf4c7336d6cff60522ae415bfdf4f475af8614d4650601c54f8ca9bdf0296",
@@ -1888,6 +1546,53 @@
         ]
       },
       {
+        "evidence_id": "ev_c0d27ae65072280e5289647e6b31830235823cdd8e260dcb81b33855508168b9",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "com.treestar.flowjo.dialogs.export.PopulationExporter2.makeConcatenateRequests(List)",
+            "PopulationExporter2.createCommonExportConfig",
+            "PopulationExporter2$EndTimeComparator.compare",
+            "Exporter::GetSampleIDParameter (engine)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Concatenation groups: all, every n consecutive, or equal keyword values (string order, empty values left out); populations ordered by $ETIM; per-population cap trunc(sum of min(N, count) / populations); a SampleID parameter holds the 1-based position.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 9"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/dialogs/export/PopulationExporter2.class"
+          }
+        ]
+      },
+      {
         "evidence_id": "ev_c573a126b70fd67d14cff40e41f7853b0a9a1ae02bf22d0a17b682093046bf35",
         "analysis_profile": null,
         "raw_result": null,
@@ -1995,6 +1700,42 @@
             "negative"
           ],
           "owner": "src/core/model.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_d5c48ae865c8f958d4f95a0a5a4b50b4d87d82d477beaab1a72aac0a3b9ba24b",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_674f3a9f7bd45021563547eba661a6b70ffe7c62d56f346c36c730da252670a0"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "export.csv-format",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "CSV values, channels and header follow FlowJo 10",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/exportRules.ts"
         },
         "confidence": "derived",
         "authority": "analyst-inference",
@@ -2223,6 +1964,615 @@
             "path": "com/treestar/flowjo/dialogs/GroupDelConfirmationDlog.class"
           }
         ]
+      },
+      {
+        "evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.proof",
+          "name": "flowjo-rea proof producer",
+          "version": "2"
+        },
+        "predicate_type": "rea.reconstruction-proof",
+        "operation": "verify_reconstruction_obligations",
+        "parameters": {
+          "node": "v22.23.4"
+        },
+        "normalized_result": {
+          "bindings": [
+            {
+              "obligation_id": "wsp.polygon-counts",
+              "obligation_version": 2,
+              "owner_sha256": "a07e209ac1da9915d6101deb4c6a6cd4420e131ab3078a85865166057ac7add3",
+              "fixtures": [
+                {
+                  "fixture_id": "wsp.polygon-counts.fixtures",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "wsp.polygon-counts.edges",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "wsp.polygon-counts.outside",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "wsp.flowjo-counts",
+                  "claim_id": "wsp.polygon-counts.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "wsp.logicle-ellipse",
+              "obligation_version": 2,
+              "owner_sha256": "a07e209ac1da9915d6101deb4c6a6cd4420e131ab3078a85865166057ac7add3",
+              "fixtures": [
+                {
+                  "fixture_id": "wsp.logicle-ellipse.fixtures",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "wsp.logicle-ellipse.outline",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "wsp.flowjo-counts",
+                  "claim_id": "wsp.logicle-ellipse.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gate.rect-open-bounds",
+              "obligation_version": 2,
+              "owner_sha256": "eadf4143ad5b70c190926bda4d37e71547923ebc0fd3d533d5808f57fb6d903f",
+              "fixtures": [
+                {
+                  "fixture_id": "gate.rect-open-bounds.time",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gate.rect-open-bounds.closed",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "wsp.flowjo-counts",
+                  "claim_id": "gate.rect-open-bounds.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "stats.flowjo-conventions",
+              "obligation_version": 2,
+              "owner_sha256": "e5ab4a358014b8247dd0a70d2c23729b9230d076c11ecc49a7dc2311d8d13225",
+              "fixtures": [
+                {
+                  "fixture_id": "stats.median",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.clamp",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.small",
+                  "case_kind": "malformed",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "stats.flowjo-histogram",
+                  "claim_id": "stats.flowjo-conventions.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "names.unique-sibling",
+              "obligation_version": 1,
+              "owner_sha256": "2884f94dd8d0457a0c0d6ab387ee023f1ed463952b143847f66feeecd6d16061",
+              "fixtures": [
+                {
+                  "fixture_id": "names.unique-sibling.suffix",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "names.unique-sibling.kept",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "uat.step2",
+                  "claim_id": "names.unique-sibling.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gate.min-shape",
+              "obligation_version": 1,
+              "owner_sha256": "005407fbf5d62312d24627a8d31686115b3c4c1881509138a0e91f4ddedbc4a0",
+              "fixtures": [
+                {
+                  "fixture_id": "gate.min-shape.discard",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gate.min-shape.keep",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "uat.step2",
+                  "claim_id": "gate.min-shape.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "sample.relink-keywords",
+              "obligation_version": 1,
+              "owner_sha256": "85016992a14b156aff4879d2f0cbee6f722185856fe134366ad3f9032ceb4c73",
+              "fixtures": [
+                {
+                  "fixture_id": "sample.relink.match",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "sample.relink.first",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "sample.relink.tot",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "uat.step2",
+                  "claim_id": "sample.relink-keywords.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gate.quad-sibling-delete",
+              "obligation_version": 1,
+              "owner_sha256": "85016992a14b156aff4879d2f0cbee6f722185856fe134366ad3f9032ceb4c73",
+              "fixtures": [
+                {
+                  "fixture_id": "gate.quad-delete.siblings",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gate.quad-delete.fixture",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gate.quad-delete.alone",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "gate.quad-delete",
+                  "claim_id": "gate.quad-sibling-delete.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "cellcycle.histogram-channels",
+              "obligation_version": 1,
+              "owner_sha256": "4b3688c4f79dac3817f5748199c706fc99932ff5d8d9b30db45530ab07a3ed5a",
+              "fixtures": [
+                {
+                  "fixture_id": "cellcycle.channels.cap",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "cellcycle.channels.range",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "cellcycle.fits",
+                  "claim_id": "cellcycle.histogram-channels.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "workspace.undo-limit",
+              "obligation_version": 1,
+              "owner_sha256": "301a114c4485e3f967d766c4dce1959d174e7492e9b6dbbc69616cb3582efa9e",
+              "fixtures": [
+                {
+                  "fixture_id": "undo.cap",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "undo.order",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "undo.branch",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "workspace.history",
+                  "claim_id": "workspace.undo-limit.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "groups.keyword-criteria",
+              "obligation_version": 1,
+              "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b",
+              "fixtures": [
+                {
+                  "fixture_id": "groups.criteria.numeric",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.criteria.connectors",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.criteria.missing",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.criteria.inactive",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.criteria.nonnumeric",
+                  "case_kind": "malformed",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "groups.criteria",
+                  "claim_id": "groups.keyword-criteria.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "groups.acceptance",
+              "obligation_version": 1,
+              "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b",
+              "fixtures": [
+                {
+                  "fixture_id": "groups.accept.stains",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.accept.ref",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.accept.none",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "groups.criteria",
+                  "claim_id": "groups.acceptance.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "groups.roles",
+              "obligation_version": 1,
+              "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b",
+              "fixtures": [
+                {
+                  "fixture_id": "groups.roles.read",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.roles.quirk",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "groups.criteria",
+                  "claim_id": "groups.roles.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "groups.owned-analysis",
+              "obligation_version": 1,
+              "owner_sha256": "85016992a14b156aff4879d2f0cbee6f722185856fe134366ad3f9032ceb4c73",
+              "fixtures": [
+                {
+                  "fixture_id": "groups.owned.copy",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.owned.alloc",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.owned.first",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.owned.delete",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.owned.sync",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "groups.owned",
+                  "claim_id": "groups.owned-analysis.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "stats.histogram-moments",
+              "obligation_version": 1,
+              "owner_sha256": "e5ab4a358014b8247dd0a70d2c23729b9230d076c11ecc49a7dc2311d8d13225",
+              "fixtures": [
+                {
+                  "fixture_id": "stats.mean",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.geomean",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.cv-sign",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "stats.flowjo-moments",
+                  "claim_id": "stats.histogram-moments.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "stats.mode-mad-correlation",
+              "obligation_version": 1,
+              "owner_sha256": "e5ab4a358014b8247dd0a70d2c23729b9230d076c11ecc49a7dc2311d8d13225",
+              "fixtures": [
+                {
+                  "fixture_id": "stats.mode",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.mad",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.correlation",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "stats.flowjo-moments",
+                  "claim_id": "stats.mode-mad-correlation.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "stats.wsp-names",
+              "obligation_version": 1,
+              "owner_sha256": "451b046d16b826c38946ec6732e6ad3ee7b34ff72543016a8177fe2a39b20196",
+              "fixtures": [
+                {
+                  "fixture_id": "stats.names",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.freqof",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.own",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "stats.flowjo-moments",
+                  "claim_id": "stats.wsp-names.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "export.event-cap",
+              "obligation_version": 1,
+              "owner_sha256": "321d1aca2a614cfe372acd78bd072ec1a764e36c6c5f8d7f39fced4475905ac0",
+              "fixtures": [
+                {
+                  "fixture_id": "export.cap.whole",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "export.cap.gated",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "export.cap.all",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "export.flowjo",
+                  "claim_id": "export.event-cap.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "export.csv-format",
+              "obligation_version": 1,
+              "owner_sha256": "321d1aca2a614cfe372acd78bd072ec1a764e36c6c5f8d7f39fced4475905ac0",
+              "fixtures": [
+                {
+                  "fixture_id": "export.csv.g",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "export.csv.header",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "export.csv.channel",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "export.flowjo",
+                  "claim_id": "export.csv-format.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "export.concatenate",
+              "obligation_version": 1,
+              "owner_sha256": "321d1aca2a614cfe372acd78bd072ec1a764e36c6c5f8d7f39fced4475905ac0",
+              "fixtures": [
+                {
+                  "fixture_id": "export.concat.everyn",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "export.concat.service",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "export.concat.cap",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "export.concat.empty",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "export.flowjo",
+                  "claim_id": "export.concatenate.v1",
+                  "passed": true
+                }
+              ]
+            }
+          ]
+        },
+        "confidence": "observed",
+        "authority": "controlled-replay",
+        "environment": {
+          "id": "node-v22.23.4",
+          "platform": "linux",
+          "architecture": "x64",
+          "isolation": "process"
+        },
+        "limitations": [
+          "Verifiers are this repository’s vitest suites run in one local process; FlowJo reference counts come from FlowJo-saved .wsp files (FlowJo 10.6.2 to 10.10.0)."
+        ],
+        "locations": []
       },
       {
         "evidence_id": "ev_ffcff8a57a326d5f42f524928fb439eb5e95b0db6a1af811be806af790c7a42c",
@@ -2774,6 +3124,96 @@
       "review_evidence_ids": [
         "ev_2e5402c92005353ffcdb3c35cfdd6bb1e1ba01bb8c2feff6326be90286bb1dec"
       ]
+    },
+    {
+      "obligation_id": "export.event-cap",
+      "obligation_version": 1,
+      "title": "No more than N takes every step-th event, as FlowJo 10 does",
+      "application_layer": "application",
+      "family": "export",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "Exporter::WriteSample"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_9a59a28140b736c3779dbd06c9b19c8ad0800f5a5889125df420732861ad7cab"
+      ]
+    },
+    {
+      "obligation_id": "export.csv-format",
+      "obligation_version": 1,
+      "title": "CSV values, channels and header follow FlowJo 10",
+      "application_layer": "application",
+      "family": "export",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "Exporter::WriteRow"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_d5c48ae865c8f958d4f95a0a5a4b50b4d87d82d477beaab1a72aac0a3b9ba24b"
+      ]
+    },
+    {
+      "obligation_id": "export.concatenate",
+      "obligation_version": 1,
+      "title": "Concatenation groups, order, cap and SampleID follow FlowJo 10",
+      "application_layer": "application",
+      "family": "export",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "com.treestar.flowjo.dialogs.export.PopulationExporter2.makeConcatenateRequests"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_2d71ce2c0510752e881767c00e52e9ee38e09bccac3c1e1a5658fdc4235bc2ed"
+      ]
     }
   ],
   "manifest": {
@@ -2804,7 +3244,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -2812,7 +3252,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -2820,7 +3260,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           }
         ],
@@ -2830,7 +3270,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e",
+          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
           "enumerated_obligation_ids": [
             "wsp.polygon-counts"
           ],
@@ -2866,7 +3306,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -2874,7 +3314,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           }
         ],
@@ -2884,7 +3324,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e",
+          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
           "enumerated_obligation_ids": [
             "wsp.logicle-ellipse"
           ],
@@ -2920,7 +3360,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -2928,7 +3368,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           }
         ],
@@ -2938,7 +3378,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e",
+          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
           "enumerated_obligation_ids": [
             "gate.rect-open-bounds"
           ],
@@ -2979,7 +3419,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -2987,7 +3427,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -2995,7 +3435,7 @@
             "case_kind": "malformed",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           }
         ],
@@ -3005,7 +3445,7 @@
           "command": "npx vitest run tests/flowjo-stats.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e",
+          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
           "enumerated_obligation_ids": [
             "stats.flowjo-conventions"
           ],
@@ -3041,7 +3481,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3049,7 +3489,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           }
         ],
@@ -3059,7 +3499,7 @@
           "command": "npx vitest run tests/uat-step2.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e",
+          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
           "enumerated_obligation_ids": [
             "names.unique-sibling"
           ],
@@ -3095,7 +3535,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3103,7 +3543,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           }
         ],
@@ -3113,7 +3553,7 @@
           "command": "npx vitest run tests/uat-step2.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e",
+          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
           "enumerated_obligation_ids": [
             "gate.min-shape"
           ],
@@ -3149,7 +3589,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3157,7 +3597,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3165,7 +3605,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           }
         ],
@@ -3175,7 +3615,7 @@
           "command": "npx vitest run tests/uat-step2.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e",
+          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
           "enumerated_obligation_ids": [
             "sample.relink-keywords"
           ],
@@ -3211,7 +3651,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3219,7 +3659,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3227,7 +3667,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           }
         ],
@@ -3237,7 +3677,7 @@
           "command": "npx vitest run tests/quad-delete.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e",
+          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
           "enumerated_obligation_ids": [
             "gate.quad-sibling-delete"
           ],
@@ -3252,7 +3692,7 @@
         "owner": {
           "module_path": "src/core/service.ts",
           "symbol": "cellCycleChannels",
-          "owner_sha256": "a318ce3cdf23d11689ea8ca9c34dd5d000cd228621a05166715e63a8ffad8e45"
+          "owner_sha256": "4b3688c4f79dac3817f5748199c706fc99932ff5d8d9b30db45530ab07a3ed5a"
         },
         "parser_type": null,
         "original_cases": [
@@ -3273,7 +3713,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3281,7 +3721,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           }
         ],
@@ -3291,7 +3731,7 @@
           "command": "npx vitest run tests/cellcycle.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e",
+          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
           "enumerated_obligation_ids": [
             "cellcycle.histogram-channels"
           ],
@@ -3327,7 +3767,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3335,7 +3775,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3343,7 +3783,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           }
         ],
@@ -3353,7 +3793,7 @@
           "command": "npx vitest run tests/history.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e",
+          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
           "enumerated_obligation_ids": [
             "workspace.undo-limit"
           ],
@@ -3394,7 +3834,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3402,7 +3842,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3410,7 +3850,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3418,7 +3858,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3426,7 +3866,7 @@
             "case_kind": "malformed",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           }
         ],
@@ -3436,7 +3876,7 @@
           "command": "npx vitest run tests/group-criteria.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e",
+          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
           "enumerated_obligation_ids": [
             "groups.keyword-criteria"
           ],
@@ -3472,7 +3912,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3480,7 +3920,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3488,7 +3928,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           }
         ],
@@ -3498,7 +3938,7 @@
           "command": "npx vitest run tests/group-criteria.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e",
+          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
           "enumerated_obligation_ids": [
             "groups.acceptance"
           ],
@@ -3534,7 +3974,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3542,7 +3982,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           }
         ],
@@ -3552,7 +3992,7 @@
           "command": "npx vitest run tests/group-criteria.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e",
+          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
           "enumerated_obligation_ids": [
             "groups.roles"
           ],
@@ -3588,7 +4028,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3596,7 +4036,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3604,7 +4044,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3612,7 +4052,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3620,7 +4060,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           }
         ],
@@ -3630,7 +4070,7 @@
           "command": "npx vitest run tests/group-analysis.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e",
+          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
           "enumerated_obligation_ids": [
             "groups.owned-analysis"
           ],
@@ -3666,7 +4106,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3674,7 +4114,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3682,7 +4122,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           }
         ],
@@ -3692,7 +4132,7 @@
           "command": "npx vitest run tests/flowjo-stats-moments.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e",
+          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
           "enumerated_obligation_ids": [
             "stats.histogram-moments"
           ],
@@ -3733,7 +4173,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3741,7 +4181,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3749,7 +4189,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           }
         ],
@@ -3759,7 +4199,7 @@
           "command": "npx vitest run tests/flowjo-stats-moments.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e",
+          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
           "enumerated_obligation_ids": [
             "stats.mode-mad-correlation"
           ],
@@ -3795,7 +4235,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3803,7 +4243,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           },
           {
@@ -3811,7 +4251,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e"
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
             ]
           }
         ],
@@ -3821,9 +4261,203 @@
           "command": "npx vitest run tests/flowjo-stats-moments.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_7fc3e6e40d4e54d8b98271f6c4332bf2a885a2e43846cbc47f5f3b0e167e2a3e",
+          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
           "enumerated_obligation_ids": [
             "stats.wsp-names"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "export.event-cap",
+        "owner": {
+          "module_path": "src/core/exportRules.ts",
+          "symbol": "capPositions",
+          "owner_sha256": "321d1aca2a614cfe372acd78bd072ec1a764e36c6c5f8d7f39fced4475905ac0"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_27565fd9f5e9e72571db8afdd7e629cb243f1aee11b48b86a591b1b72cea58cc",
+            "location": "every step-th event until N"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_27565fd9f5e9e72571db8afdd7e629cb243f1aee11b48b86a591b1b72cea58cc",
+            "location": "N at or above the count takes every event"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "export.cap.whole",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+            ]
+          },
+          {
+            "fixture_id": "export.cap.gated",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+            ]
+          },
+          {
+            "fixture_id": "export.cap.all",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "export.flowjo",
+          "claim_id": "export.event-cap.v1",
+          "command": "npx vitest run tests/export-rules.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "enumerated_obligation_ids": [
+            "export.event-cap"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "export.csv-format",
+        "owner": {
+          "module_path": "src/core/exportRules.ts",
+          "symbol": "csvScaleValue",
+          "owner_sha256": "321d1aca2a614cfe372acd78bd072ec1a764e36c6c5f8d7f39fced4475905ac0"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_674f3a9f7bd45021563547eba661a6b70ffe7c62d56f346c36c730da252670a0",
+            "location": "%g scale values, 1024-channel values, name/stain header"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_674f3a9f7bd45021563547eba661a6b70ffe7c62d56f346c36c730da252670a0",
+            "location": "values within 1e-6 of zero print 0; channels clamp to 0..1023"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "export.csv.g",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+            ]
+          },
+          {
+            "fixture_id": "export.csv.header",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+            ]
+          },
+          {
+            "fixture_id": "export.csv.channel",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "export.flowjo",
+          "claim_id": "export.csv-format.v1",
+          "command": "npx vitest run tests/export-rules.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "enumerated_obligation_ids": [
+            "export.csv-format"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "export.concatenate",
+        "owner": {
+          "module_path": "src/core/exportRules.ts",
+          "symbol": "concatGroups",
+          "owner_sha256": "321d1aca2a614cfe372acd78bd072ec1a764e36c6c5f8d7f39fced4475905ac0"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_c0d27ae65072280e5289647e6b31830235823cdd8e260dcb81b33855508168b9",
+            "location": "every n, equal keyword groups; $ETIM order; SampleID"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_c0d27ae65072280e5289647e6b31830235823cdd8e260dcb81b33855508168b9",
+            "location": "samples without the keyword value are left out"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "export.concat.everyn",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+            ]
+          },
+          {
+            "fixture_id": "export.concat.service",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+            ]
+          },
+          {
+            "fixture_id": "export.concat.cap",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+            ]
+          },
+          {
+            "fixture_id": "export.concat.empty",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "export.flowjo",
+          "claim_id": "export.concatenate.v1",
+          "command": "npx vitest run tests/export-rules.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "enumerated_obligation_ids": [
+            "export.concatenate"
           ],
           "nondeterminism": {
             "mode": "total-order",

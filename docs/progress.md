@@ -1,5 +1,14 @@
 # Progress and handoff
 
+## State (2026-11-06, parity area 3: export)
+
+Event export follows FlowJo 10.6.2 (specs section 9): CSV scale values (%g)
+or channel values (1024 channels), header by name / stain / both, parameter
+sets, "no more than N" as FlowJo's deterministic step decimation (its
+tooltip says random; the engine is not), concatenation all / every n / equal
+keyword in $ETIM order with a SampleID parameter. REA ledger 20 of 20
+verified. Next area: gate tools.
+
 ## State (2026-11-06, parity area 2: statistics)
 
 Statistics now follow FlowJo 10.6.2 (REA Ghidra provider; specs section 8):

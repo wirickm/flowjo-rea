@@ -196,6 +196,30 @@
       "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/core/Statistic.class" }],
       "behavior": "A Statistic element is written with name = the StatKey string as is (Count, fj.stat.freqofparent, fj.stat.freqof, Median, Mode, Geometric Mean, Median Abs Dev, Correlation, ...), id = parameter, percent, ancestor (ancestor name) and correlate (second parameter); Freq. of = 100 x count / ancestor count.",
       "spec_section": "8.1"
+    },
+    {
+      "key": "export-event-cap",
+      "subject": "engine",
+      "symbols": ["Exporter::WriteSample(Sample*, FGate*, int, std::string)"],
+      "locations": [{ "kind": "address-range", "start": "0x3773d0", "end": "0x3777c0" }],
+      "behavior": "No more than N: step = trunc(count / N) (1 when equal); events are written every step-th in file order until N are written; whole sample from position 0, gated population the step-th, 2 step-th, ... event (1-based); N at or above count writes every event.",
+      "spec_section": "9"
+    },
+    {
+      "key": "export-csv-format",
+      "subject": "engine",
+      "symbols": ["Exporter::WriteRow(Sample*, int, std::string)", "Exporter::WriteParamHeaderRow(SString)", "Exporter::PopulateParmArray", "ExportRequest::FromXML (channelRange default 1024)"],
+      "locations": [{ "kind": "address-range", "start": "0x3777c0", "end": "0x377b60" }, { "kind": "address-range", "start": "0x376b50", "end": "0x3773d0" }, { "kind": "address-range", "start": "0x375ad0", "end": "0x375f20" }],
+      "behavior": "CSV: comma-separated, newline-terminated; scale values printed with %g, values within 1e-6 of zero as 0; channel values as integers on 1024 channels by default; header = parameter name, stain, or both joined with ' :: '.",
+      "spec_section": "9"
+    },
+    {
+      "key": "export-concatenate",
+      "subject": "jar",
+      "symbols": ["com.treestar.flowjo.dialogs.export.PopulationExporter2.makeConcatenateRequests(List)", "PopulationExporter2.createCommonExportConfig", "PopulationExporter2$EndTimeComparator.compare", "Exporter::GetSampleIDParameter (engine)"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/dialogs/export/PopulationExporter2.class" }],
+      "behavior": "Concatenation groups: all, every n consecutive, or equal keyword values (string order, empty values left out); populations ordered by $ETIM; per-population cap trunc(sum of min(N, count) / populations); a SampleID parameter holds the 1-based position.",
+      "spec_section": "9"
     }
   ]
 }

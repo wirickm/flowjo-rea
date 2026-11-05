@@ -200,9 +200,9 @@ statistics 39, platforms 29, transforms 19, export 15, compensation 9).
 | A12 | FCS read | Versions 2.0, 3.0, 3.1; 3.2 tag recognized | 2.0, 3.0, 3.1; 3.2 refused with an explicit error | Differs | engine literal `FCS3.2`; extent of 3.2 support Unknown | medium |
 | A13 | FCS read | Packed (non-byte) and mixed bit widths, 3-byte variants | rejected with an explicit error | Missing | `FCSPackedDataReader`, `FCSMixedDataLengthRawDataReader`, `FCS3ByteDataReader` | high (names) |
 | A14 | FCS read | `$NEXTDATA` data sets | one data set at a time | Match | `FCSUtil::ReadDataPage` | medium |
-| A15 | Export | FCS 3 events | FCS 3.1 float32 | Match (format); parameter choice Differs | `FCS3Exporter`; `ExportParameters{ALL_UNCOMPENSATED,ALL_COMPENSATED,CUSTOM}` | high |
-| A16 | Export | CSV of scale values or channel values; header by stain, parameter or both | scale values, parameter names | Differs | `ExportFileTypes{CSV_SCALE,CSV_CHANNEL}`, `HeaderParameter`; channel mapping not recovered (`GParameter::ScaleToChannel` dispatches through a virtual table Ghidra could not resolve, `ev_86470e58...`) | high (exists); mapping Unknown |
-| A17 | Export | Event cap (random N, or smallest file) and concatenation (all, every n, equal keyword) with a sample-ID parameter | none | Missing | `ExportModel$EventCountParameter`, `$GroupConcatenationParameter`, `Exporter::GetSampleIDParameter` | high |
+| A15 | Export | FCS 3 events | FCS 3.1 float32; parameters all compensated / all uncompensated / chosen set (2026-11-06) | Match (format, parameters); own rule for FCS units (specs 9) | `FCS3Exporter`; `ExportParameters{ALL_UNCOMPENSATED,ALL_COMPENSATED,CUSTOM}` | high |
+| A16 | Export | CSV of scale values or channel values; header by stain, parameter or both | CSV scale values (%g) or channel values (1024); header by name, stain or both (2026-11-06) | Match (specs 9) | `ExportFileTypes{CSV_SCALE,CSV_CHANNEL}`, `HeaderParameter`; channel mapping not recovered (`GParameter::ScaleToChannel` dispatches through a virtual table Ghidra could not resolve, `ev_86470e58...`) | high (exists); mapping Unknown |
+| A17 | Export | Event cap (random N, or smallest file) and concatenation (all, every n, equal keyword) with a sample-ID parameter | no more than N (FlowJo's step decimation, not random); concatenation all / every n / equal keyword, $ETIM order, SampleID (2026-11-06) | Match (specs 9) | `ExportModel$EventCountParameter`, `$GroupConcatenationParameter`, `Exporter::GetSampleIDParameter` | high |
 | A18 | Workspace files | `.wsp` read | read; 221/228 counts exact | Match | specs 1 to 3; matrix | high |
 | A19 | Workspace files | `.wsp` write | written, never opened in FlowJo | Unknown | matrix | - |
 | A20 | Workspace files | `.wspt` templates, ACS archives, legacy `.jo`, Excel/CSV of the workspace table | none (native `.frea.json`, stats CSV) | Missing | `WSDocument.saveTemplate/doSaveACS/readJoFile/doSaveToExcel` | high |
@@ -292,7 +292,7 @@ step 3, `docs/validation/uat-2026-11-02.md` section 5).
 | C10 | Compensation | Compensation window: control group, positive/negative gates per parameter, status badges, Calculate, matrix editor, SSM (`compeditor.*`, `plat.comp.*`) | compensation dialog with wizard and editable grid | Differs (A22 to A24) | Keep; step 3 matrix input checks stay an own rule (FlowJo accepts bad files silently, specs 6.7) | high |
 | C11 | Derived parameters | Formula editor with reference insertion, scale range, preview, apply to group (`plat.derived.*`, `dlog.dp.*`) | ratio builder | Differs (A34) | Defer | high |
 | C12 | Keywords | Inspect window (keywords, parameters, prev/next sample) plus Add Keyword, Find & Replace, Value Series (`PropertiesDialog`, `ws.find.*`) | Keywords modal, view and filter only | Match (view) / Missing (edit) | Add prev/next sample in the Keywords modal (small) | high |
-| C13 | Export | "Export or Concatenate" dialog: format (FCS3, CSV scale, CSV channel), parameters, event cap, naming pattern, concatenation, file count and overwrite warnings (`export.*`) | Export modal: CSV or FCS, compensated toggle, plot PNG/SVG, Gating-ML, .wsp | Differs (A15 to A17) | Match: add event cap and concatenation options with A17 | high |
+| C13 | Export | "Export or Concatenate" dialog: format (FCS3, CSV scale, CSV channel), parameters, event cap, naming pattern, concatenation, file count and overwrite warnings (`export.*`) | Export or Concatenate dialog: format, parameter set, event cap, header, concatenation modes (2026-11-06) | Match (naming patterns: own fixed names) | Match: add event cap and concatenation options with A17 | high |
 | C14 | Platforms | One window per platform; errors in the window; warning before opening many windows (`plat.factory.*`) | Platforms modal; errors in the window (specs 6.7) | Match | Keep | high |
 | C15 | Preferences | 25 panels (Workspace, Graphs, Gates, Cytometers, ...) incl. "Reset All Don't Show Memory", "Disable Undo", auto-save (`prefs.*`) | none | Missing | Add a minimal Preferences dialog only for what fixes need: "Don't ask again" reset (F1), auto-save if adopted | high |
 | C16 | Keyboard | About 150 accelerators, e.g. Cmd+Z / Shift+Cmd+Z undo/redo, Cmd+S save, Cmd+G group, Cmd+B add statistic, Cmd+E export, Cmd+I inspect, Cmd+Enter open graph, Cmd+Y Preferences (`*.accelerator`) | Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z and Ctrl/Cmd+Y (redo) (`src/ui/App.tsx:82-93`) | Differs | Match where the browser allows: Cmd/Ctrl+S, +G, +B, +E, +I. Browser-reserved keys (Cmd+L, +T, +N, +W, +R) stay unmapped (own rule). Keep Ctrl+Y as redo (Windows convention; in FlowJo it opens Preferences) | medium |
@@ -370,7 +370,7 @@ rows above: High = every row Match or a documented own rule.
 | Compensation | Medium | |
 | Cell cycle, proliferation | Medium | |
 | Gate tools | Low | |
-| Export | Low | |
+| **Export** | **High** | 2026-11-06 (specs 9; obligations export.*) |
 | **Statistics list** | **High** | 2026-11-06 (specs 8; obligations stats.histogram-moments, stats.mode-mad-correlation, stats.wsp-names) |
 | Kinetics | Low | |
 | Derived parameters | Low | |

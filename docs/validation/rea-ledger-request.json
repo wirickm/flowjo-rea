@@ -48,7 +48,7 @@
     ],
     "scenarios": [
       {
-        "evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
+        "evidence_id": "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053",
         "operation": "verify_reconstruction_obligations",
         "authority": "controlled-replay"
       }
@@ -56,6 +56,43 @@
     "captures": [],
     "unknowns": [],
     "records": [
+      {
+        "evidence_id": "ev_0878026dea0816b3dd1850ad20f816be3305300671dad6e84f9d154af6e9dac6",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_82d64dbe78beda98ee2d8d21dfcaee1524a638cb52d21da6a18bb5b9ab5899c0"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "groups.keyword-criteria",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Live group keyword criteria evaluate as in FlowJo 10",
+          "required_case_kinds": [
+            "positive",
+            "negative",
+            "malformed"
+          ],
+          "owner": "src/core/groupCriteria.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
       {
         "evidence_id": "ev_11d197fc5dc61181462b587047f8ae0cc431578be388fe3fe9fc34b24f8f55d8",
         "analysis_profile": null,
@@ -268,305 +305,6 @@
         ]
       },
       {
-        "evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [],
-        "subject": null,
-        "provider": {
-          "id": "flowjo-rea.proof",
-          "name": "flowjo-rea proof producer",
-          "version": "2"
-        },
-        "predicate_type": "rea.reconstruction-proof",
-        "operation": "verify_reconstruction_obligations",
-        "parameters": {
-          "node": "v22.23.4"
-        },
-        "normalized_result": {
-          "bindings": [
-            {
-              "obligation_id": "wsp.polygon-counts",
-              "obligation_version": 2,
-              "owner_sha256": "deffb97091009b419f7dbf79bfe0cdf49e3b0070e0a23a6a3425750e3d412ec5",
-              "fixtures": [
-                {
-                  "fixture_id": "wsp.polygon-counts.fixtures",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "wsp.polygon-counts.edges",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "wsp.polygon-counts.outside",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "wsp.flowjo-counts",
-                  "claim_id": "wsp.polygon-counts.v2",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "wsp.logicle-ellipse",
-              "obligation_version": 2,
-              "owner_sha256": "deffb97091009b419f7dbf79bfe0cdf49e3b0070e0a23a6a3425750e3d412ec5",
-              "fixtures": [
-                {
-                  "fixture_id": "wsp.logicle-ellipse.fixtures",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "wsp.logicle-ellipse.outline",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "wsp.flowjo-counts",
-                  "claim_id": "wsp.logicle-ellipse.v2",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "gate.rect-open-bounds",
-              "obligation_version": 2,
-              "owner_sha256": "f22eab0214c6e341656368366a111ad530636fdff5ee4ab0849a0a1c8ac7b344",
-              "fixtures": [
-                {
-                  "fixture_id": "gate.rect-open-bounds.time",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gate.rect-open-bounds.closed",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "wsp.flowjo-counts",
-                  "claim_id": "gate.rect-open-bounds.v2",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "stats.flowjo-conventions",
-              "obligation_version": 2,
-              "owner_sha256": "a07291e0e9dcec77522b992a649d6f7992598c178b494ba95dbb2b3471433531",
-              "fixtures": [
-                {
-                  "fixture_id": "stats.median",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.clamp",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.small",
-                  "case_kind": "malformed",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "stats.flowjo-histogram",
-                  "claim_id": "stats.flowjo-conventions.v2",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "names.unique-sibling",
-              "obligation_version": 1,
-              "owner_sha256": "1b019e380e6b0350b8d350a6aec91a0b4604fcb8e80eb6b3ad977610943c849f",
-              "fixtures": [
-                {
-                  "fixture_id": "names.unique-sibling.suffix",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "names.unique-sibling.kept",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "uat.step2",
-                  "claim_id": "names.unique-sibling.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "gate.min-shape",
-              "obligation_version": 1,
-              "owner_sha256": "005407fbf5d62312d24627a8d31686115b3c4c1881509138a0e91f4ddedbc4a0",
-              "fixtures": [
-                {
-                  "fixture_id": "gate.min-shape.discard",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gate.min-shape.keep",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "uat.step2",
-                  "claim_id": "gate.min-shape.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "sample.relink-keywords",
-              "obligation_version": 1,
-              "owner_sha256": "243f733a3be351c0b0068c4cdbd1a671f82b79271984ca748bedf8ea2e128fd1",
-              "fixtures": [
-                {
-                  "fixture_id": "sample.relink.match",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "sample.relink.first",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "sample.relink.tot",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "uat.step2",
-                  "claim_id": "sample.relink-keywords.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "gate.quad-sibling-delete",
-              "obligation_version": 1,
-              "owner_sha256": "243f733a3be351c0b0068c4cdbd1a671f82b79271984ca748bedf8ea2e128fd1",
-              "fixtures": [
-                {
-                  "fixture_id": "gate.quad-delete.siblings",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gate.quad-delete.fixture",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gate.quad-delete.alone",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "gate.quad-delete",
-                  "claim_id": "gate.quad-sibling-delete.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "cellcycle.histogram-channels",
-              "obligation_version": 1,
-              "owner_sha256": "c05b8f2f992652d2965d1ed2eec631af1d911d3f49a9dd0f20e4847634855bc4",
-              "fixtures": [
-                {
-                  "fixture_id": "cellcycle.channels.cap",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "cellcycle.channels.range",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "cellcycle.fits",
-                  "claim_id": "cellcycle.histogram-channels.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "workspace.undo-limit",
-              "obligation_version": 1,
-              "owner_sha256": "301a114c4485e3f967d766c4dce1959d174e7492e9b6dbbc69616cb3582efa9e",
-              "fixtures": [
-                {
-                  "fixture_id": "undo.cap",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "undo.order",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "undo.branch",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "workspace.history",
-                  "claim_id": "workspace.undo-limit.v1",
-                  "passed": true
-                }
-              ]
-            }
-          ]
-        },
-        "confidence": "observed",
-        "authority": "controlled-replay",
-        "environment": {
-          "id": "node-v22.23.4",
-          "platform": "linux",
-          "architecture": "x64",
-          "isolation": "process"
-        },
-        "limitations": [
-          "Verifiers are this repository’s vitest suites run in one local process; FlowJo reference counts come from FlowJo-saved .wsp files (FlowJo 10.6.2 to 10.10.0)."
-        ],
-        "locations": []
-      },
-      {
         "evidence_id": "ev_3caabaaa55400c8d00b3236e99c7e4fa6bfdb3c695ea9f9097a23932c34fc7c6",
         "analysis_profile": null,
         "raw_result": null,
@@ -689,6 +427,42 @@
             "negative"
           ],
           "owner": "src/core/project.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_5bee229594b367145e0f0cc42dd76280ad1f9f4c5e63c743ec24d94b20684458",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_ee45bc030a39b19a3aa3afeced3427ed8c44b64c560eb099da5bfd52a877858c"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "groups.roles",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Group roles read and write as in FlowJo 10",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/groupCriteria.ts"
         },
         "confidence": "derived",
         "authority": "analyst-inference",
@@ -857,6 +631,56 @@
         "locations": []
       },
       {
+        "evidence_id": "ev_7bd5913593e2db3a3d1aab02c0923a4548a7f8cf35af880a81289c641547b806",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "com.treestar.flowjo.core.GroupCriteria.acceptSolo(Workspace, Group, Sample)",
+            "com.treestar.flowjo.core.GroupCriteria.accept(Workspace, Group, Sample)",
+            "com.treestar.flowjo.core.ParameterList.getStainSet()"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Without stain sets and an active first criterion a group accepts nothing; listed stain sets must contain the sample's stain set (trimmed non-empty $PnS of non-scatter, non-time parameters joined with ', '); a reference group combines with 'also' (either) or 'only' (both), any other function accepting nothing.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 7.1"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/core/GroupCriteria.class"
+          },
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/core/ParameterList.class"
+          }
+        ]
+      },
+      {
         "evidence_id": "ev_7cb8479303c58b361674da5eb9e4a72d284859ad99f9cbe45e895ac4bc352f0e",
         "analysis_profile": null,
         "raw_result": null,
@@ -898,6 +722,58 @@
           {
             "kind": "artifact-path",
             "path": "com/treestar/flowjo/cellcycle/CCNode.class"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_82d64dbe78beda98ee2d8d21dfcaee1524a638cb52d21da6a18bb5b9ab5899c0",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "com.treestar.flowjo.core.nodes.KeywordCriterion.evalFunction(Sample)",
+            "com.treestar.flowjo.core.nodes.KeywordCriterion.eval(Sample, boolean)",
+            "com.treestar.flowjo.core.nodes.KeywordCriterion.evalConnector(boolean, boolean)",
+            "com.treestar.flowjo.core.enumerations.CriteriaTest.isNumericFunction(int)",
+            "com.treestar.lib.parsing.ParseUtil.isNumber(String) (fjlib-2.3.0.jar)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Up to 4 keyword criteria; an active criterion has a keyword and a non-empty value. The result starts true and every active criterion applies its connector (And, Or, And-not), the first included. A missing keyword tests false; the six comparisons are numeric when the trimmed sample value is a number, otherwise case-insensitive string order; Contains / Lacks are case-insensitive substring tests; Exists is true when the keyword is present.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 7.1"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/core/nodes/KeywordCriterion.class"
+          },
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/core/enumerations/CriteriaTest.class"
           }
         ]
       },
@@ -1247,6 +1123,436 @@
         "locations": []
       },
       {
+        "evidence_id": "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.proof",
+          "name": "flowjo-rea proof producer",
+          "version": "2"
+        },
+        "predicate_type": "rea.reconstruction-proof",
+        "operation": "verify_reconstruction_obligations",
+        "parameters": {
+          "node": "v22.23.4"
+        },
+        "normalized_result": {
+          "bindings": [
+            {
+              "obligation_id": "wsp.polygon-counts",
+              "obligation_version": 2,
+              "owner_sha256": "5330692de043ec28f32a15d537bb7de500985071f3f2100e086b6f5dff7518d9",
+              "fixtures": [
+                {
+                  "fixture_id": "wsp.polygon-counts.fixtures",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "wsp.polygon-counts.edges",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "wsp.polygon-counts.outside",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "wsp.flowjo-counts",
+                  "claim_id": "wsp.polygon-counts.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "wsp.logicle-ellipse",
+              "obligation_version": 2,
+              "owner_sha256": "5330692de043ec28f32a15d537bb7de500985071f3f2100e086b6f5dff7518d9",
+              "fixtures": [
+                {
+                  "fixture_id": "wsp.logicle-ellipse.fixtures",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "wsp.logicle-ellipse.outline",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "wsp.flowjo-counts",
+                  "claim_id": "wsp.logicle-ellipse.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gate.rect-open-bounds",
+              "obligation_version": 2,
+              "owner_sha256": "4a9d150fb8ce9ffb708b09751000d9a837f2d4043e825d0e7cc5ab6193173d3c",
+              "fixtures": [
+                {
+                  "fixture_id": "gate.rect-open-bounds.time",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gate.rect-open-bounds.closed",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "wsp.flowjo-counts",
+                  "claim_id": "gate.rect-open-bounds.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "stats.flowjo-conventions",
+              "obligation_version": 2,
+              "owner_sha256": "a07291e0e9dcec77522b992a649d6f7992598c178b494ba95dbb2b3471433531",
+              "fixtures": [
+                {
+                  "fixture_id": "stats.median",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.clamp",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.small",
+                  "case_kind": "malformed",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "stats.flowjo-histogram",
+                  "claim_id": "stats.flowjo-conventions.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "names.unique-sibling",
+              "obligation_version": 1,
+              "owner_sha256": "fac7d3ef7cc633404e81387d54827328bb3f37ff20e25b47ccda534f5a074958",
+              "fixtures": [
+                {
+                  "fixture_id": "names.unique-sibling.suffix",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "names.unique-sibling.kept",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "uat.step2",
+                  "claim_id": "names.unique-sibling.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gate.min-shape",
+              "obligation_version": 1,
+              "owner_sha256": "005407fbf5d62312d24627a8d31686115b3c4c1881509138a0e91f4ddedbc4a0",
+              "fixtures": [
+                {
+                  "fixture_id": "gate.min-shape.discard",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gate.min-shape.keep",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "uat.step2",
+                  "claim_id": "gate.min-shape.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "sample.relink-keywords",
+              "obligation_version": 1,
+              "owner_sha256": "85016992a14b156aff4879d2f0cbee6f722185856fe134366ad3f9032ceb4c73",
+              "fixtures": [
+                {
+                  "fixture_id": "sample.relink.match",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "sample.relink.first",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "sample.relink.tot",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "uat.step2",
+                  "claim_id": "sample.relink-keywords.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gate.quad-sibling-delete",
+              "obligation_version": 1,
+              "owner_sha256": "85016992a14b156aff4879d2f0cbee6f722185856fe134366ad3f9032ceb4c73",
+              "fixtures": [
+                {
+                  "fixture_id": "gate.quad-delete.siblings",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gate.quad-delete.fixture",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gate.quad-delete.alone",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "gate.quad-delete",
+                  "claim_id": "gate.quad-sibling-delete.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "cellcycle.histogram-channels",
+              "obligation_version": 1,
+              "owner_sha256": "c05b8f2f992652d2965d1ed2eec631af1d911d3f49a9dd0f20e4847634855bc4",
+              "fixtures": [
+                {
+                  "fixture_id": "cellcycle.channels.cap",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "cellcycle.channels.range",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "cellcycle.fits",
+                  "claim_id": "cellcycle.histogram-channels.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "workspace.undo-limit",
+              "obligation_version": 1,
+              "owner_sha256": "301a114c4485e3f967d766c4dce1959d174e7492e9b6dbbc69616cb3582efa9e",
+              "fixtures": [
+                {
+                  "fixture_id": "undo.cap",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "undo.order",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "undo.branch",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "workspace.history",
+                  "claim_id": "workspace.undo-limit.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "groups.keyword-criteria",
+              "obligation_version": 1,
+              "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b",
+              "fixtures": [
+                {
+                  "fixture_id": "groups.criteria.numeric",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.criteria.connectors",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.criteria.missing",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.criteria.inactive",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.criteria.nonnumeric",
+                  "case_kind": "malformed",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "groups.criteria",
+                  "claim_id": "groups.keyword-criteria.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "groups.acceptance",
+              "obligation_version": 1,
+              "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b",
+              "fixtures": [
+                {
+                  "fixture_id": "groups.accept.stains",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.accept.ref",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.accept.none",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "groups.criteria",
+                  "claim_id": "groups.acceptance.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "groups.roles",
+              "obligation_version": 1,
+              "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b",
+              "fixtures": [
+                {
+                  "fixture_id": "groups.roles.read",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.roles.quirk",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "groups.criteria",
+                  "claim_id": "groups.roles.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "groups.owned-analysis",
+              "obligation_version": 1,
+              "owner_sha256": "85016992a14b156aff4879d2f0cbee6f722185856fe134366ad3f9032ceb4c73",
+              "fixtures": [
+                {
+                  "fixture_id": "groups.owned.copy",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.owned.alloc",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.owned.first",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.owned.delete",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.owned.sync",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "groups.owned",
+                  "claim_id": "groups.owned-analysis.v1",
+                  "passed": true
+                }
+              ]
+            }
+          ]
+        },
+        "confidence": "observed",
+        "authority": "controlled-replay",
+        "environment": {
+          "id": "node-v22.23.4",
+          "platform": "linux",
+          "architecture": "x64",
+          "isolation": "process"
+        },
+        "limitations": [
+          "Verifiers are this repository’s vitest suites run in one local process; FlowJo reference counts come from FlowJo-saved .wsp files (FlowJo 10.6.2 to 10.10.0)."
+        ],
+        "locations": []
+      },
+      {
         "evidence_id": "ev_e9cc1e0fc9b96146262e7b220bc2b19ee83e8c40550a5d99d73e5ead6c1b4f77",
         "analysis_profile": null,
         "raw_result": null,
@@ -1298,6 +1604,87 @@
         ]
       },
       {
+        "evidence_id": "ev_ea6ccb4ff5472f533d1c7157f3110d18ca6707cdfaa39e1fee4ba0db3aa9d0ee",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_7bd5913593e2db3a3d1aab02c0923a4548a7f8cf35af880a81289c641547b806"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "groups.acceptance",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Group acceptance with stain sets and reference groups follows FlowJo 10",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/groupCriteria.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_ee45bc030a39b19a3aa3afeced3427ed8c44b64c560eb099da5bfd52a877858c",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "com.treestar.flowjo.core.Group$Role.fromString(String)",
+            "com.treestar.flowjo.core.Group$Role.<clinit>"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Eight roles written as ws.group.dlog.<role>; read back by substring of the upper-cased text (TEST, CONTROLS, COMPENSATION, INSTRUMENTATION, MFO, COPY), so replicate, baseline and gating level read back as undefined.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 7.1"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/core/Group$Role.class"
+          }
+        ]
+      },
+      {
         "evidence_id": "ev_f54893712fad5b36fd1984b42e5d0b2c3d846a8ddcfceeec1682a7a98f799e7f",
         "analysis_profile": null,
         "raw_result": null,
@@ -1325,6 +1712,93 @@
             "negative"
           ],
           "owner": "src/core/gateGrid.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_fdf1fa0555246ec4926c646448ba0d02f604477b0fa0f086438b2ba3c60ac4e2",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "com.treestar.flowjo.application.workspace.manager.WSGroupMgr.deleteGroupAnalyses(NodeList)",
+            "com.treestar.flowjo.application.workspace.manager.WSGroupMgr.removeGroupAnalysisNodes(boolean, boolean, Group, AppNode)",
+            "com.treestar.flowjo.dialogs.GroupDelConfirmationDlog",
+            "dictionary ws.group.dlog.sync.tooltip, ws.group.copygate.tooltip"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Copy analysis to group makes the subtree group-owned in every member; in a synchronized group moving a group-owned gate moves it in every member; deleting group analysis offers Allocate To Samples (keep in every member, sample-owned), Allocate To First Sample (keep only in the first member) or Delete Entirely (remove from every member).",
+          "spec": "docs/validation/flowjo-engine-specs.md section 7.2"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/application/workspace/manager/WSGroupMgr.class"
+          },
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/dialogs/GroupDelConfirmationDlog.class"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_ffcff8a57a326d5f42f524928fb439eb5e95b0db6a1af811be806af790c7a42c",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_fdf1fa0555246ec4926c646448ba0d02f604477b0fa0f086438b2ba3c60ac4e2"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "groups.owned-analysis",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Group-owned analysis, synchronized groups and group delete choices follow FlowJo 10",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/project.ts"
         },
         "confidence": "derived",
         "authority": "analyst-inference",
@@ -1637,6 +2111,127 @@
       "review_evidence_ids": [
         "ev_7b5d7e9d39c008d5e6e8999e0c13652484f71a02376e697d5488247e75091b4e"
       ]
+    },
+    {
+      "obligation_id": "groups.keyword-criteria",
+      "obligation_version": 1,
+      "title": "Live group keyword criteria evaluate as in FlowJo 10",
+      "application_layer": "application",
+      "family": "groups",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "com.treestar.flowjo.core.nodes.KeywordCriterion.evalFunction"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative",
+        "malformed"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_0878026dea0816b3dd1850ad20f816be3305300671dad6e84f9d154af6e9dac6"
+      ]
+    },
+    {
+      "obligation_id": "groups.acceptance",
+      "obligation_version": 1,
+      "title": "Group acceptance with stain sets and reference groups follows FlowJo 10",
+      "application_layer": "application",
+      "family": "groups",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "com.treestar.flowjo.core.GroupCriteria.accept"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_ea6ccb4ff5472f533d1c7157f3110d18ca6707cdfaa39e1fee4ba0db3aa9d0ee"
+      ]
+    },
+    {
+      "obligation_id": "groups.roles",
+      "obligation_version": 1,
+      "title": "Group roles read and write as in FlowJo 10",
+      "application_layer": "application",
+      "family": "groups",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "com.treestar.flowjo.core.Group$Role.fromString"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_5bee229594b367145e0f0cc42dd76280ad1f9f4c5e63c743ec24d94b20684458"
+      ]
+    },
+    {
+      "obligation_id": "groups.owned-analysis",
+      "obligation_version": 1,
+      "title": "Group-owned analysis, synchronized groups and group delete choices follow FlowJo 10",
+      "application_layer": "application",
+      "family": "groups",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "com.treestar.flowjo.application.workspace.manager.WSGroupMgr.deleteGroupAnalyses"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_ffcff8a57a326d5f42f524928fb439eb5e95b0db6a1af811be806af790c7a42c"
+      ]
     }
   ],
   "manifest": {
@@ -1646,7 +2241,7 @@
         "owner": {
           "module_path": "src/core/gateGrid.ts",
           "symbol": "polygonGridMask",
-          "owner_sha256": "deffb97091009b419f7dbf79bfe0cdf49e3b0070e0a23a6a3425750e3d412ec5"
+          "owner_sha256": "5330692de043ec28f32a15d537bb7de500985071f3f2100e086b6f5dff7518d9"
         },
         "parser_type": null,
         "original_cases": [
@@ -1667,7 +2262,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           },
           {
@@ -1675,7 +2270,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           },
           {
@@ -1683,7 +2278,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           }
         ],
@@ -1693,7 +2288,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
+          "result_evidence_id": "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053",
           "enumerated_obligation_ids": [
             "wsp.polygon-counts"
           ],
@@ -1708,7 +2303,7 @@
         "owner": {
           "module_path": "src/core/gateGrid.ts",
           "symbol": "ellipseLatticePolygon",
-          "owner_sha256": "deffb97091009b419f7dbf79bfe0cdf49e3b0070e0a23a6a3425750e3d412ec5"
+          "owner_sha256": "5330692de043ec28f32a15d537bb7de500985071f3f2100e086b6f5dff7518d9"
         },
         "parser_type": null,
         "original_cases": [
@@ -1729,7 +2324,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           },
           {
@@ -1737,7 +2332,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           }
         ],
@@ -1747,7 +2342,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
+          "result_evidence_id": "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053",
           "enumerated_obligation_ids": [
             "wsp.logicle-ellipse"
           ],
@@ -1762,7 +2357,7 @@
         "owner": {
           "module_path": "src/core/wsp.ts",
           "symbol": "parseWsp",
-          "owner_sha256": "f22eab0214c6e341656368366a111ad530636fdff5ee4ab0849a0a1c8ac7b344"
+          "owner_sha256": "4a9d150fb8ce9ffb708b09751000d9a837f2d4043e825d0e7cc5ab6193173d3c"
         },
         "parser_type": null,
         "original_cases": [
@@ -1783,7 +2378,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           },
           {
@@ -1791,7 +2386,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           }
         ],
@@ -1801,7 +2396,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
+          "result_evidence_id": "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053",
           "enumerated_obligation_ids": [
             "gate.rect-open-bounds"
           ],
@@ -1842,7 +2437,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           },
           {
@@ -1850,7 +2445,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           },
           {
@@ -1858,7 +2453,7 @@
             "case_kind": "malformed",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           }
         ],
@@ -1868,7 +2463,7 @@
           "command": "npx vitest run tests/flowjo-stats.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
+          "result_evidence_id": "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053",
           "enumerated_obligation_ids": [
             "stats.flowjo-conventions"
           ],
@@ -1883,7 +2478,7 @@
         "owner": {
           "module_path": "src/core/model.ts",
           "symbol": "uniqueName",
-          "owner_sha256": "1b019e380e6b0350b8d350a6aec91a0b4604fcb8e80eb6b3ad977610943c849f"
+          "owner_sha256": "fac7d3ef7cc633404e81387d54827328bb3f37ff20e25b47ccda534f5a074958"
         },
         "parser_type": null,
         "original_cases": [
@@ -1904,7 +2499,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           },
           {
@@ -1912,7 +2507,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           }
         ],
@@ -1922,7 +2517,7 @@
           "command": "npx vitest run tests/uat-step2.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
+          "result_evidence_id": "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053",
           "enumerated_obligation_ids": [
             "names.unique-sibling"
           ],
@@ -1958,7 +2553,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           },
           {
@@ -1966,7 +2561,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           }
         ],
@@ -1976,7 +2571,7 @@
           "command": "npx vitest run tests/uat-step2.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
+          "result_evidence_id": "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053",
           "enumerated_obligation_ids": [
             "gate.min-shape"
           ],
@@ -1991,7 +2586,7 @@
         "owner": {
           "module_path": "src/core/project.ts",
           "symbol": "relinkMatches",
-          "owner_sha256": "243f733a3be351c0b0068c4cdbd1a671f82b79271984ca748bedf8ea2e128fd1"
+          "owner_sha256": "85016992a14b156aff4879d2f0cbee6f722185856fe134366ad3f9032ceb4c73"
         },
         "parser_type": null,
         "original_cases": [
@@ -2012,7 +2607,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           },
           {
@@ -2020,7 +2615,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           },
           {
@@ -2028,7 +2623,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           }
         ],
@@ -2038,7 +2633,7 @@
           "command": "npx vitest run tests/uat-step2.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
+          "result_evidence_id": "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053",
           "enumerated_obligation_ids": [
             "sample.relink-keywords"
           ],
@@ -2053,7 +2648,7 @@
         "owner": {
           "module_path": "src/core/project.ts",
           "symbol": "deletionRoots",
-          "owner_sha256": "243f733a3be351c0b0068c4cdbd1a671f82b79271984ca748bedf8ea2e128fd1"
+          "owner_sha256": "85016992a14b156aff4879d2f0cbee6f722185856fe134366ad3f9032ceb4c73"
         },
         "parser_type": null,
         "original_cases": [
@@ -2074,7 +2669,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           },
           {
@@ -2082,7 +2677,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           },
           {
@@ -2090,7 +2685,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           }
         ],
@@ -2100,7 +2695,7 @@
           "command": "npx vitest run tests/quad-delete.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
+          "result_evidence_id": "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053",
           "enumerated_obligation_ids": [
             "gate.quad-sibling-delete"
           ],
@@ -2136,7 +2731,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           },
           {
@@ -2144,7 +2739,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           }
         ],
@@ -2154,7 +2749,7 @@
           "command": "npx vitest run tests/cellcycle.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
+          "result_evidence_id": "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053",
           "enumerated_obligation_ids": [
             "cellcycle.histogram-channels"
           ],
@@ -2190,7 +2785,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           },
           {
@@ -2198,7 +2793,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           },
           {
@@ -2206,7 +2801,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
             ]
           }
         ],
@@ -2216,9 +2811,286 @@
           "command": "npx vitest run tests/history.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
+          "result_evidence_id": "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053",
           "enumerated_obligation_ids": [
             "workspace.undo-limit"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "groups.keyword-criteria",
+        "owner": {
+          "module_path": "src/core/groupCriteria.ts",
+          "symbol": "evalRules",
+          "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_82d64dbe78beda98ee2d8d21dfcaee1524a638cb52d21da6a18bb5b9ab5899c0",
+            "location": "numeric comparison when the sample value is a number; connectors from a true start"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_82d64dbe78beda98ee2d8d21dfcaee1524a638cb52d21da6a18bb5b9ab5899c0",
+            "location": "a missing keyword is false; inactive criteria are skipped"
+          },
+          {
+            "kind": "malformed",
+            "evidence_id": "ev_82d64dbe78beda98ee2d8d21dfcaee1524a638cb52d21da6a18bb5b9ab5899c0",
+            "location": "a numeric sample value with a non-numeric criterion value does not match"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "groups.criteria.numeric",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
+            ]
+          },
+          {
+            "fixture_id": "groups.criteria.connectors",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
+            ]
+          },
+          {
+            "fixture_id": "groups.criteria.missing",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
+            ]
+          },
+          {
+            "fixture_id": "groups.criteria.inactive",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
+            ]
+          },
+          {
+            "fixture_id": "groups.criteria.nonnumeric",
+            "case_kind": "malformed",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "groups.criteria",
+          "claim_id": "groups.keyword-criteria.v1",
+          "command": "npx vitest run tests/group-criteria.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053",
+          "enumerated_obligation_ids": [
+            "groups.keyword-criteria"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "groups.acceptance",
+        "owner": {
+          "module_path": "src/core/groupCriteria.ts",
+          "symbol": "acceptCriteria",
+          "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_7bd5913593e2db3a3d1aab02c0923a4548a7f8cf35af880a81289c641547b806",
+            "location": "matching stain set or reference group 'also' accepts"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_7bd5913593e2db3a3d1aab02c0923a4548a7f8cf35af880a81289c641547b806",
+            "location": "no stain sets and no active first criterion accepts nothing"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "groups.accept.stains",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
+            ]
+          },
+          {
+            "fixture_id": "groups.accept.ref",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
+            ]
+          },
+          {
+            "fixture_id": "groups.accept.none",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "groups.criteria",
+          "claim_id": "groups.acceptance.v1",
+          "command": "npx vitest run tests/group-criteria.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053",
+          "enumerated_obligation_ids": [
+            "groups.acceptance"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "groups.roles",
+        "owner": {
+          "module_path": "src/core/groupCriteria.ts",
+          "symbol": "roleFromText",
+          "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_ee45bc030a39b19a3aa3afeced3427ed8c44b64c560eb099da5bfd52a877858c",
+            "location": "compensation and test roles read back"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_ee45bc030a39b19a3aa3afeced3427ed8c44b64c560eb099da5bfd52a877858c",
+            "location": "replicate and baseline read back as undefined"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "groups.roles.read",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
+            ]
+          },
+          {
+            "fixture_id": "groups.roles.quirk",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "groups.criteria",
+          "claim_id": "groups.roles.v1",
+          "command": "npx vitest run tests/group-criteria.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053",
+          "enumerated_obligation_ids": [
+            "groups.roles"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "groups.owned-analysis",
+        "owner": {
+          "module_path": "src/core/project.ts",
+          "symbol": "copyAnalysisToGroup",
+          "owner_sha256": "85016992a14b156aff4879d2f0cbee6f722185856fe134366ad3f9032ceb4c73"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_fdf1fa0555246ec4926c646448ba0d02f604477b0fa0f086438b2ba3c60ac4e2",
+            "location": "copy makes the subtree group-owned; synchronized edits propagate; delete choices"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_fdf1fa0555246ec4926c646448ba0d02f604477b0fa0f086438b2ba3c60ac4e2",
+            "location": "an edit in a group that is not synchronized changes only the edited sample"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "groups.owned.copy",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
+            ]
+          },
+          {
+            "fixture_id": "groups.owned.alloc",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
+            ]
+          },
+          {
+            "fixture_id": "groups.owned.first",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
+            ]
+          },
+          {
+            "fixture_id": "groups.owned.delete",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
+            ]
+          },
+          {
+            "fixture_id": "groups.owned.sync",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "groups.owned",
+          "claim_id": "groups.owned-analysis.v1",
+          "command": "npx vitest run tests/group-analysis.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_dcdbae9f5254026d6a2b611e7ede1cac7ffa8e6828de1d3338e241086e955053",
+          "enumerated_obligation_ids": [
+            "groups.owned-analysis"
           ],
           "nondeterminism": {
             "mode": "total-order",

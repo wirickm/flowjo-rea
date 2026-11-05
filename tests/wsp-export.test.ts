@@ -89,15 +89,21 @@ describe('wsp export of live groups', () => {
     const sample = (id: string, fil: string) => ({ id, fileName: `${id}.fcs`, fileSize: 0, fingerprint: '', datasetIndex: 0, compensation: 'none', keywordsSnapshot: { $FIL: fil, TUBE: id }, channelNames: [], eventCount: 1, populations: [] });
     ws.samples.push(sample('a', 'Comp_unstained.fcs'), sample('b', 'Specimen_001.fcs'), sample('c', 'comp_CD3.fcs'));
     ws.groups[0].sampleIds = ['a', 'b', 'c'];
-    ws.groups.push({ id: 'g1', name: 'Compensation', sampleIds: ['a', 'c'], criteria: { rules: [{ connector: 'and', keyword: '$FIL', op: 'contains', value: 'unstained' }, { connector: 'or', keyword: '$FIL', op: 'startsWith', value: 'comp' }] } });
+    ws.groups.push({ id: 'g1', name: 'Compensation', sampleIds: ['a', 'c'], criteria: { rules: [{ connector: 'and', keyword: '$FIL', op: 'contains', value: 'unstained' }, { connector: 'or', keyword: '$FIL', op: 'contains', value: 'comp' }] } });
     ws.groups.push({ id: 'g2', name: 'TUBE: b', sampleIds: ['b'], criteria: { key: 'TUBE', value: 'b' } });
-    const { xml } = writeWsp({ ws, sampleMatrix: () => null });
-    expect(xml).toContain('<Criterion connector="Or" keyword="$FIL" function="StartsWith" value="comp" />');
+    ws.groups.push({ id: 'g3', name: 'Starts', sampleIds: ['a', 'c'], criteria: { rules: [{ connector: 'and', keyword: '$FIL', op: 'startsWith', value: 'comp' }] } });
+    const { xml, warnings } = writeWsp({ ws, sampleMatrix: () => null });
+    // FlowJo's own texts (specs 7.1).
+    expect(xml).toContain('<Criterion connector="Or" keyword="$FIL" function="Contains" value="comp" />');
+    // This app's own "starts with" has no FlowJo criterion: members only.
+    expect(warnings.join('\n')).toMatch(/Group "Starts".*members only/);
+    expect(parseWsp(xml).workspace.groups.find((g) => g.name === 'Starts')!.criteria).toBeUndefined();
     const back = parseWsp(xml).workspace;
     const comp = back.groups.find((g) => g.name === 'Compensation')!;
     expect(comp.criteria).toEqual(ws.groups[1].criteria);
     expect(comp.sampleIds.map((id) => back.samples.find((s) => s.id === id)!.fileName)).toEqual(['a.fcs', 'c.fcs']);
     const tube = back.groups.find((g) => g.name === 'TUBE: b')!;
     expect(tube.criteria).toEqual({ rules: [{ connector: 'and', keyword: 'TUBE', op: 'equals', value: 'b' }] });
+    expect(xml).toContain('function="="');
   });
 });

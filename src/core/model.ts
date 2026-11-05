@@ -53,6 +53,9 @@ export interface Population {
   gate: Gate;
   // FlowJo eventsInside="0": the population is the parent's events outside the gate.
   exclude?: boolean;
+  // Group that owns this population (FlowJo owningGroup): set by "Copy
+  // analysis to group"; specs 7.2.
+  owningGroup?: string;
 }
 
 export interface SampleState {
@@ -79,14 +82,34 @@ export interface Group {
   sampleIds: string[];
   // Live group: membership is recomputed from the criteria over all samples.
   // { key, value }: exact match (value null = samples without the key).
-  // { rules }: FlowJo-style keyword criteria, combined left to right.
-  criteria?: { key: string; value: string | null } | { rules: KeywordRule[] };
+  // { rules, ... }: FlowJo 10 group criteria (src/core/groupCriteria.ts).
+  criteria?: { key: string; value: string | null } | GroupCriteria;
+  // FlowJo group role (metadata; written to and read from .wsp).
+  role?: GroupRole;
+  // FlowJo synchronized group: moving a group-owned gate moves it in every member.
+  synchronized?: boolean;
+  // FlowJo group display: text colour (#rrggbb) and font style.
+  color?: string;
+  fontStyle?: 'plain' | 'bold' | 'italic';
+}
+
+export type GroupRole = 'undefined' | 'test' | 'controls' | 'replicate' | 'compensation' | 'instrumentation' | 'baseline' | 'gatingLevel';
+
+// FlowJo 10 group criteria: up to 4 keyword criteria, optional stain sets
+// and an optional reference group ("also" = either, "only" = both).
+export interface GroupCriteria {
+  rules: KeywordRule[];
+  stains?: string[];
+  refGroup?: { name: string; fn: string };
 }
 
 export interface KeywordRule {
-  connector: 'and' | 'or'; // ignored on the first rule
+  // Applied to the running result, which starts true (also on the first rule).
+  connector: 'and' | 'or' | 'andNot';
   keyword: string;
-  op: 'contains' | 'notContains' | 'equals' | 'notEquals' | 'startsWith' | 'endsWith';
+  // FlowJo's functions: = (equals), != (notEquals), >, >=, <, <=, Contains,
+  // Lacks (notContains), Exists. startsWith / endsWith are this app's own.
+  op: 'equals' | 'notEquals' | 'gt' | 'gte' | 'lt' | 'lte' | 'contains' | 'notContains' | 'exists' | 'startsWith' | 'endsWith';
   value: string;
 }
 

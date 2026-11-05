@@ -2,40 +2,6 @@
   "note": "Open obligations from docs/validation/comparison-2026-11.md part A, in the REA reviewed-obligation shape (rea docs/reconstruction-obligation-ledgers.md). Not read by tools/reaProof.ts: they have no owner yet, and the producer requires an owner, fixtures and a verifier for every obligation. review_evidence_ids stay empty until the producer emits review records for them. spec_section and comparison_status are local annotations, not REA fields. Runtime authority is unavailable: FlowJo is macOS-only and was not run.",
   "obligations": [
     {
-      "obligation_id": "sample.remove-scope",
-      "obligation_version": 1,
-      "title": "Removing samples asks: from the workspace, or only from the current group",
-      "application_layer": "application",
-      "family": "workspace",
-      "target": {
-        "artifact_sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c",
-        "application_node_id": null,
-        "semantic_node_id": null,
-        "location": "ws.deletesample.ws / ws.deletesample.group (flowjodictionary.properties)"
-      },
-      "required": true,
-      "required_case_kinds": [
-        "positive",
-        "negative"
-      ],
-      "required_original_authority": "static",
-      "required_fixture_authority": "integration",
-      "required_verifier_authority": "integration",
-      "requires_parser_type": false,
-      "dependency_obligation_ids": [],
-      "residual_unknown_ids": [],
-      "unavailable_authority": [
-        "runtime"
-      ],
-      "required_next_evidence": [
-        "Decide match or own rule (Differs: this app removes from the workspace only.); then an owner in src/, fixtures for each case kind and a verifier test, and move the entry to tools/rea-obligations.json with an observation in tools/rea-originals.json."
-      ],
-      "disposition": "active",
-      "review_evidence_ids": [],
-      "spec_section": "6.8",
-      "comparison_status": "Differs: this app removes from the workspace only."
-    },
-    {
       "obligation_id": "workspace.dont-ask-again",
       "obligation_version": 1,
       "title": "Delete confirmations offer Don't Ask Again, remembered per message and reset from Preferences",
@@ -208,41 +174,6 @@
       "comparison_status": "Partial: scale values only; the channel mapping is unknown (needs engine reading)."
     },
     {
-      "obligation_id": "groups.criteria-comparisons",
-      "obligation_version": 1,
-      "title": "Live group criteria support numeric comparisons, between/not between and exists/lacks",
-      "application_layer": "application",
-      "family": "workspace",
-      "target": {
-        "artifact_sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c",
-        "application_node_id": null,
-        "semantic_node_id": null,
-        "location": "com.treestar.flowjo.core.enumerations.CriteriaTest"
-      },
-      "required": true,
-      "required_case_kinds": [
-        "positive",
-        "negative",
-        "malformed"
-      ],
-      "required_original_authority": "static",
-      "required_fixture_authority": "integration",
-      "required_verifier_authority": "integration",
-      "requires_parser_type": false,
-      "dependency_obligation_ids": [],
-      "residual_unknown_ids": [],
-      "unavailable_authority": [
-        "runtime"
-      ],
-      "required_next_evidence": [
-        "Decide match or own rule (Differs: text operators only.); then an owner in src/, fixtures for each case kind and a verifier test, and move the entry to tools/rea-obligations.json with an observation in tools/rea-originals.json."
-      ],
-      "disposition": "active",
-      "review_evidence_ids": [],
-      "spec_section": "6.8",
-      "comparison_status": "Differs: text operators only."
-    },
-    {
       "obligation_id": "fcs.packed-mixed-widths",
       "obligation_version": 1,
       "title": "FCS files with non-byte or mixed parameter bit widths are read",
@@ -310,40 +241,6 @@
       "review_evidence_ids": [],
       "spec_section": "6.8",
       "comparison_status": "Missing."
-    },
-    {
-      "obligation_id": "groups.owned-analysis",
-      "obligation_version": 1,
-      "title": "Group-owned analysis: deleting asks to delete everywhere or hand a copy to each sample; group gates synchronize",
-      "application_layer": "application",
-      "family": "workspace",
-      "target": {
-        "artifact_sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c",
-        "application_node_id": null,
-        "semantic_node_id": null,
-        "location": "fj.string.groupdelprompt; ws.group.dlog.sync"
-      },
-      "required": true,
-      "required_case_kinds": [
-        "positive",
-        "negative"
-      ],
-      "required_original_authority": "static",
-      "required_fixture_authority": "integration",
-      "required_verifier_authority": "integration",
-      "requires_parser_type": false,
-      "dependency_obligation_ids": [],
-      "residual_unknown_ids": [],
-      "unavailable_authority": [
-        "runtime"
-      ],
-      "required_next_evidence": [
-        "Decide match or own rule (Differs: this app copies by population path (compatibility matrix row 7).); then an owner in src/, fixtures for each case kind and a verifier test, and move the entry to tools/rea-obligations.json with an observation in tools/rea-originals.json."
-      ],
-      "disposition": "active",
-      "review_evidence_ids": [],
-      "spec_section": "6.8",
-      "comparison_status": "Differs: this app copies by population path (compatibility matrix row 7)."
     },
     {
       "obligation_id": "compensation.mtx-files",

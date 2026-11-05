@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PopulationResult } from '../core/analysis';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../core/gatingml';
-import { emptyWorkspace, newId, populationPath, uniqueName, type Gate, type KeywordRule, type PlotSettings, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
-import { applySubtree, criteriaLabel, deletionRoots, fingerprint, subtreeIds, mergeImported, relinkTarget, removeSample, derivedParameterUsers, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
+import { emptyWorkspace, newId, populationPath, uniqueName, type Gate, type Group, type KeywordRule, type PlotSettings, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
+import { copyAnalysisToGroup, deleteGroupAnalysis, propagateOwnedEdits, renameGroupAnalysis, criteriaLabel, deletionRoots, fingerprint, subtreeIds, mergeImported, relinkTarget, removeSample, derivedParameterUsers, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
 import type { PlotResult, SampleMeta } from '../core/service';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL, validPercentile } from '../core/stats';
 import { statScales } from '../core/flowjoStats';
@@ -12,6 +12,8 @@ import { parseWsp } from '../core/wsp';
 import { writeWsp } from '../core/wspWriter';
 import { channelRange, defaultTransform, isScatterOrTime, makeAxis, sampleChannels } from './axes';
 import { CompensationDialog, DerivedDialog, KeywordsDialog, TransformDialog } from './Dialogs';
+import { GroupDialog } from './GroupDialog';
+import { everyNth, FLOWJO_FUNCTIONS, removeFromGroup, stainSet } from '../core/groupCriteria';
 import { LayoutView } from './Layout';
 import { PlatformsDialog } from './Platforms';
 import type { Axis } from './gateGeometry';
@@ -25,7 +27,7 @@ import { createAnalysisClient } from './workerClient';
 const client = createAnalysisClient();
 
 type Analysis = { results: PopulationResult[]; total: number; compError?: string };
-type Dialog = null | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export' } | { kind: 'layout' } | { kind: 'derived' } | { kind: 'platforms' };
+type Dialog = null | { kind: 'group'; id: string | null } | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export' } | { kind: 'layout' } | { kind: 'derived' } | { kind: 'platforms' };
 
 function download(name: string, data: BlobPart, type = 'application/octet-stream') {
   const url = URL.createObjectURL(new Blob([data], { type }));
@@ -71,8 +73,8 @@ export function App() {
   const [templateName, setTemplateName] = useState('');
   const [annKey, setAnnKey] = useState('');
   const [annVal, setAnnVal] = useState('');
-  const [syncGroup, setSyncGroup] = useState(false);
   const [checked, setChecked] = useState<string[]>([]);
+  const [nth, setNth] = useState(2);
   const [rule, setRule] = useState<{ keyword: string; op: KeywordRule['op']; value: string }>({ keyword: '', op: 'contains', value: '' });
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   // In-app question with labelled answers; resolves to the chosen label or null (cancel).
@@ -367,10 +369,10 @@ export function App() {
     return out;
   }, [analysis, sample]);
 
+  // Edits to group-owned gates of a synchronized group move them in every
+  // member, as in FlowJo 10 (specs 7.2).
   const syncRoots = (w: Workspace, sampleId: string, popIds: string[], say: Say) => {
-    if (!syncGroup) return;
-    const targets = (w.groups.find((g) => g.id === groupId)?.sampleIds ?? []).filter((x) => x !== sampleId);
-    for (const id of popIds) for (const msg of applySubtree(w, sampleId, id, targets)) say('warn', msg);
+    for (const msg of propagateOwnedEdits(w, sampleId, popIds)) say('warn', msg);
   };
 
   // Names of the selected population's children, plus extra names to reserve.
@@ -398,6 +400,14 @@ export function App() {
     if (!p || !name || name === p.name) return;
     if (sample.populations.some((q) => q.id !== id && q.parentId === p.parentId && q.name === name)) {
       note('warn', `Name must be unique: "${name}" is already used by a sibling population`);
+      return;
+    }
+    // FlowJo asks "The gate is group owned. Rename for all?" (specs 7.2).
+    if (p.owningGroup) {
+      void ask(`The gate is group owned. Rename "${p.name}" to "${name}" in every sample of the group?`, ['Rename for all', 'Only this sample']).then((a) => {
+        if (a === 'Rename for all') updateWs((w) => renameGroupAnalysis(w, p.owningGroup!, populationPath(sample.populations, id), name));
+        else if (a === 'Only this sample') updateWs((w) => { w.samples.find((s) => s.id === sample.id)!.populations.find((q) => q.id === id)!.name = name; });
+      });
       return;
     }
     updateWs((w) => { w.samples.find((s) => s.id === sample.id)!.populations.find((q) => q.id === id)!.name = name; });
@@ -437,6 +447,24 @@ export function App() {
     const dependants = pops.filter((p) => !doomed.has(p.id) && p.gate.type === 'boolean' && p.gate.operands.some((o) => doomed.has(o.ref)));
     if (dependants.length) {
       note('warn', `Cannot delete: used by boolean gate(s) ${dependants.map((d) => d.name).join(', ')}`);
+      return;
+    }
+    // Group-owned analysis (specs 7.2): a sample-owned node that contains
+    // group-owned analysis cannot be deleted; a group-owned root asks how to
+    // remove it from the group (this app has no group node in the tree, so
+    // deleting a group-owned population is deleting it from its group).
+    const owner = pops.find((p) => p.id === roots[0])?.owningGroup;
+    if (!owner && [...doomed].some((d) => pops.find((p) => p.id === d)?.owningGroup)) {
+      note('warn', `"${populationPath(pops, roots[0])}" could not be deleted, because it contains analysis owned by a group.`);
+      return;
+    }
+    if (owner) {
+      const gname = ws.groups.find((g) => g.id === owner)?.name ?? owner;
+      const a = await ask(`The analysis that you are removing is shared by all samples of group "${gname}". Delete it from the workspace entirely, or give it to the samples of the group (all of them, or only the first)? Undo restores it.`, ['Allocate To Samples', 'Allocate To First Sample', 'Delete Entirely']);
+      const choice = a === 'Allocate To Samples' ? 'allocateToSamples' : a === 'Allocate To First Sample' ? 'allocateToFirst' : a === 'Delete Entirely' ? 'deleteEntirely' : null;
+      if (!choice) return;
+      updateWs((w) => { for (const r of roots) deleteGroupAnalysis(w, owner, populationPath(pops, r), choice); });
+      if (sel.popId && doomed.has(sel.popId) && choice !== 'allocateToSamples') setSel({ sampleId: sample.id, popId: null });
       return;
     }
     // FlowJo 10 always confirms a tree delete (specs 6.7).
@@ -525,7 +553,7 @@ export function App() {
                   onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
                 />
               ) : (
-                <span className="pname">{p.gate.type === 'boolean' ? `[${p.gate.op}] ` : ''}{p.exclude ? '[excl] ' : ''}{p.name}</span>
+                <span className="pname">{p.gate.type === 'boolean' ? `[${p.gate.op}] ` : ''}{p.exclude ? '[excl] ' : ''}{p.name}{p.owningGroup && <span className="muted" title={`Owned by group "${ws.groups.find((g) => g.id === p.owningGroup)?.name ?? p.owningGroup}"`}> (G)</span>}</span>
               )}
               <span className="pcount" data-testid={`count-${p.name}`}>{r2?.error ? 'error' : r ? r.count.toLocaleString() : '-'}</span>
               <span className="ppct">{pct && `${pct}%`}</span>
@@ -577,7 +605,7 @@ export function App() {
                     onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
                   />
                 ) : (
-                  <span className="pname">{g.name}</span>
+                  <span className="pname" style={{ color: g.color, fontWeight: g.fontStyle === 'bold' ? 'bold' : undefined, fontStyle: g.fontStyle === 'italic' ? 'italic' : undefined }}>{g.name}</span>
                 )}
                 {g.criteria && <span className="muted" title={`live: ${criteriaLabel(g.criteria)}`}>live</span>}
                 <span className="pcount">{g.sampleIds.length}</span>
@@ -590,7 +618,17 @@ export function App() {
               updateWs((w) => { w.groups.push({ id: newId('grp'), name, sampleIds: [...checked] }); });
               setChecked([]);
             }}>New group from checked</button>
-            <button disabled={groupId === 'all'} onClick={() => { updateWs((w) => { w.groups = w.groups.filter((g) => g.id !== groupId); }); setGroupId('all'); }}>Delete group</button>
+            <button disabled={groupId === 'all'} data-testid="delete-group" onClick={async () => {
+              // FlowJo asks before deleting a group (ws.groupmgr.deleteprompt).
+              const g = ws.groups.find((x) => x.id === groupId);
+              if (!g || (await ask(`Delete group "${g.name}"? Its samples stay in the workspace. Undo restores it.`, ['Delete'])) !== 'Delete') return;
+              updateWs((w) => { w.groups = w.groups.filter((x) => x.id !== groupId); });
+              setGroupId('all');
+            }}>Delete group</button>
+          </div>
+          <div className="row">
+            <button data-testid="create-group" onClick={() => setDialog({ kind: 'group', id: null })}>Create group...</button>
+            <button disabled={groupId === 'all'} data-testid="edit-group" onClick={() => setDialog({ kind: 'group', id: groupId })}>Modify group...</button>
           </div>
           <div className="row">
             <select value={groupKey} onChange={(e) => setGroupKey(e.target.value)} data-testid="group-key" style={{ maxWidth: 140 }}>
@@ -608,12 +646,9 @@ export function App() {
               {groupKeys.map((k) => <option key={k} value={k}>{k}</option>)}
             </select>
             <select value={rule.op} onChange={(e) => setRule({ ...rule, op: e.target.value as KeywordRule['op'] })} data-testid="rule-op">
-              <option value="contains">contains</option>
-              <option value="notContains">does not contain</option>
-              <option value="equals">equals</option>
-              <option value="notEquals">does not equal</option>
-              <option value="startsWith">starts with</option>
-              <option value="endsWith">ends with</option>
+              {FLOWJO_FUNCTIONS.map((f) => <option key={f.op} value={f.op}>{f.text}</option>)}
+              <option value="startsWith">starts with (not in FlowJo)</option>
+              <option value="endsWith">ends with (not in FlowJo)</option>
             </select>
             <input placeholder="value" value={rule.value} onChange={(e) => setRule({ ...rule, value: e.target.value })} style={{ width: 70 }} data-testid="rule-value" />
             <button disabled={!rule.keyword} data-testid="rule-group" onClick={() => {
@@ -622,6 +657,14 @@ export function App() {
               updateWs((w) => { w.groups.push({ id: newId('grp'), name, sampleIds: [], criteria: { rules: [r] } }); });
               note('info', `Live keyword group "${rule.keyword} ${rule.op} ${rule.value}" created`);
             }}>Rule group</button>
+          </div>
+          <div className="row">
+            <button disabled={!groupSamples.length} data-testid="check-every-nth" onClick={() => {
+              // FlowJo "Select every Nth sample" (Group.getEveryNthSample).
+              setChecked(everyNth(groupSamples.map((s) => s.id), nth));
+            }}>Check every</button>
+            <input type="number" min={1} value={nth} onChange={(e) => setNth(Math.max(1, Math.floor(Number(e.target.value) || 1)))} style={{ width: 48 }} aria-label="n" />
+            <span className="muted">th sample</span>
           </div>
           <h3>Samples ({groupSamples.length})</h3>
           {groupSamples.map((s) => (
@@ -635,8 +678,19 @@ export function App() {
           {sample && (
             <div className="row">
               <button data-testid="remove-sample" onClick={async () => {
-                const a = await ask(`Remove sample ${sample.fileName} and its gates from the workspace? Undo restores it.`, ['Remove']);
-                if (a !== 'Remove') return;
+                // FlowJo asks: from the workspace or only from the current group.
+                const g = ws.groups.find((x) => x.id === groupId);
+                const fromGroup = g && g.id !== 'all' && !g.criteria;
+                const a = await ask(
+                  fromGroup ? `Remove sample ${sample.fileName} from the workspace (with its gates), or only from group "${g.name}"? Undo restores it.` : `Remove sample ${sample.fileName} and its gates from the workspace? Undo restores it.`,
+                  fromGroup ? ['Remove from workspace', 'Remove from group'] : ['Remove'],
+                );
+                if (a === 'Remove from group') {
+                  updateWs((w) => { removeFromGroup(w, groupId, [sample.id]); });
+                  note('info', `Removed ${sample.fileName} from group "${g!.name}"`);
+                  return;
+                }
+                if (a !== 'Remove' && a !== 'Remove from workspace') return;
                 updateWs((w) => removeSample(w, sample.id));
                 setChecked((c) => c.filter((x) => x !== sample.id));
                 setSel({ sampleId: ws.samples.find((s) => s.id !== sample.id)?.id ?? null, popId: null });
@@ -708,12 +762,12 @@ export function App() {
               <div className="row">
                 <button disabled={!sel.popId} data-testid="apply-group" onClick={() => {
                   updateWs((w, say) => {
-                    const msgs = applySubtree(w, sample.id, sel.popId!, w.groups.find((g) => g.id === groupId)!.sampleIds);
+                    const msgs = copyAnalysisToGroup(w, sample.id, sel.popId!, groupId);
                     msgs.forEach((m) => say('warn', m));
                   });
                   note('info', `Applied "${popPath}" and its children to group ${group?.name}`);
-                }}>Copy gate tree to group</button>
-                <label title="Gate edits propagate to all samples in the current group"><input type="checkbox" checked={syncGroup} onChange={(e) => setSyncGroup(e.target.checked)} /> sync edits to group</label>
+                }}>Copy analysis to group</button>
+                <label title="FlowJo synchronized group: moving a group-owned gate moves it in every sample of the group"><input type="checkbox" data-testid="group-sync" checked={!!group?.synchronized} onChange={(e) => updateWs((w) => { const g = w.groups.find((x) => x.id === groupId)!; if (e.target.checked) g.synchronized = true; else delete g.synchronized; })} /> Synchronized</label>
               </div>
               {analysis[sample.id]?.compError && <p className="error">Compensation: {analysis[sample.id]!.compError}</p>}
             </>
@@ -922,6 +976,37 @@ export function App() {
             runCellCycle={(channel, model) => runOrThrow(() => client.cellCycle({ ...base, channel, model }))}
             runProliferation={(channel, maxGenerations) => runOrThrow(() => client.proliferation({ ...base, channel, maxGenerations }))}
             runKinetics={(channel, stat, bins, threshold) => runOrThrow(() => client.kinetics({ ...base, channel, stat, bins, threshold, timeChannel: channels.find((c) => /^time$/i.test(c.name))!.name }))}
+          />
+        );
+      })()}
+      {dialog?.kind === 'group' && (() => {
+        const g = dialog.id ? ws.groups.find((x) => x.id === dialog.id) : undefined;
+        const crit = g?.criteria && 'rules' in g.criteria ? g.criteria : undefined;
+        return (
+          <GroupDialog
+            initial={g ? { name: g.name, role: g.role ?? 'undefined', live: !!crit, synchronized: !!g.synchronized, color: g.color, fontStyle: g.fontStyle, criteria: crit ?? { rules: [] } } : null}
+            keywords={groupKeys}
+            stainSets={[...new Set(ws.samples.map(stainSet).filter(Boolean))].sort()}
+            groupNames={ws.groups.filter((x) => x.id !== g?.id).map((x) => x.name)}
+            takenNames={ws.groups.filter((x) => x.id !== g?.id).map((x) => x.name)}
+            onClose={() => setDialog(null)}
+            onSave={(d) => {
+              updateWs((w) => {
+                const target = g ? w.groups.find((x) => x.id === g.id)! : (() => { const n: Group = { id: newId('grp'), name: d.name, sampleIds: [...checked] }; w.groups.push(n); return n; })();
+                target.name = d.name;
+                target.role = d.role === 'undefined' ? undefined : d.role;
+                if (d.synchronized) target.synchronized = true;
+                else delete target.synchronized;
+                if (d.color && d.color !== '#000000') target.color = d.color;
+                else delete target.color;
+                if (d.fontStyle && d.fontStyle !== 'plain') target.fontStyle = d.fontStyle;
+                else delete target.fontStyle;
+                if (d.live) target.criteria = d.criteria;
+                else delete target.criteria;
+              });
+              setDialog(null);
+              note('info', `Group "${d.name}" ${g ? 'updated' : 'created'}${d.live ? ' (live)' : ''}`);
+            }}
           />
         );
       })()}

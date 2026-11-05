@@ -378,13 +378,8 @@ unconfirmed for all of it (FlowJo was not run). The full comparison is
   FlowJo matrix file. The FCS reader recognizes the FCS3.2 header tag (how
   much of 3.2 it supports is unknown) and reads packed (non-byte) and mixed
   bit widths, which this app rejects.
-- Live group criteria (medium): the criterion tests are equals, not equals,
-  greater, greater or equal, less, less or equal, between and not between
-  (`CriteriaTest`), plus a "Contains" label (the fixtures' `$FIL contains`
-  groups use it) and "Exists" / "Lacks" connectors. This app has contains,
-  does not contain, equals, does not equal, starts with and ends with: no
-  numeric comparisons, ranges or exists/lacks; starts/ends with and does not
-  contain were not found in FlowJo 10.6.2 (low confidence for that absence).
+- Live group criteria: superseded by section 7.1 (decoded with Ghidra; the
+  earlier "between" reading was wrong: keyword criteria have no between).
 - Edge events (high): the graph window warns when 5% or more of events sit
   on either axis bound; on by default (`FJPrefsFJML$Graph`: `eventsOnAxis`
   true, `warningThreshold` 5; Preferences > Graphs). This app: none.
@@ -406,6 +401,82 @@ unconfirmed for all of it (FlowJo was not run). The full comparison is
 - Undo (now high): each user action's edits form one compound edit that is
   added through Swing `UndoManager.addEdit`, so the 100 limit counts user
   actions (decompiled `FJUndoManager.startNewEdit`, checked with `javap -c`).
+
+## 7. Groups (FlowJo 10.6.2, Ghidra 12.1.4)
+
+Read from `KeywordCriterion`, `GroupCriteria`, `CriteriaTest`,
+`Group`, `Group$Role`, `ParameterList`, `KeywordedParameterList`,
+`fjlib ParseUtil`, `WSGroupMgr` and `GroupDelConfirmationDlog` (headless
+Ghidra decompiler; exception handlers and switch fall-through checked with
+`javap -c`), plus the dictionary texts. Static reading only. Implemented in
+`src/core/groupCriteria.ts` and `src/core/project.ts`.
+
+### 7.1 Live group criteria (matches)
+
+- A group holds at most 4 keyword criteria, read in file order from the
+  `Criterion` elements; FlowJo writes only the leading criteria that have a
+  keyword and a non-empty value.
+- Functions (index order, with the text written in `.wsp`): `=`, `≠`, `>`,
+  `>=`, `<`, `<=`, `Contains`, `Lacks`, `Exists`. Connectors: `And`, `Or`,
+  `& Not`. Texts are looked up trimmed and case-insensitively; an unknown
+  function reads as `=` and an unknown connector as `And`.
+- A criterion takes part only when it has a keyword and a non-empty value
+  (also `Exists`). The running result starts true and every active
+  criterion applies its connector, the first one included: `And` gives
+  result-and-test, `Or` result-or-test, `& Not` result-and-not-test. So a
+  first criterion with `Or` makes the keyword part true.
+- The test: the sample's value missing gives false. Otherwise both values
+  are trimmed (Java trim). The six comparisons are numeric when the sample's
+  value is a number (`ParseUtil.isNumber`: "0" yes; empty or "null" no; one
+  trailing `%` is ignored and `%` alone counts; then Java's double parser,
+  then the locale number format); FlowJo then parses both values and raises
+  an error if the criterion's value is not a number (this app: no match).
+  Otherwise they compare as Java `compareToIgnoreCase`. `Contains` / `Lacks`
+  test the lower-cased sample value for the lower-cased criterion value.
+  `Exists` is true whenever the keyword is present.
+- The sample's value (`KeywordedParameterList.get`): a parameter name gives
+  that parameter's stain (`$PnS`); `a + b` joins the values of `a` and `b`
+  with a space; `FILENAME` is the file name; otherwise the keyword. The
+  "<Any Keyword>" choice is dead code in 10.6.2 (a string is compared with a
+  dictionary key, never equal).
+- Stain sets: optional list of stain-set strings (`StainCriterion` /
+  `stainId`). A sample's stain set is the trimmed non-empty `$PnS` of every
+  measured parameter that is neither scatter (name starting with FS,
+  Forward, BSC, SS, SSC, OrthSc, ObtSc, 90D or Side, any case) nor time (name
+  containing "time"), in parameter order, joined with ", ". It must equal
+  one of the listed strings.
+- With no stain sets and no active first criterion a group accepts nothing.
+- Reference group (`refGroupName`, `refGroupFunction`): `also` = in the
+  criteria result or in the reference group; `only` = in both; any other
+  function accepts nothing.
+- Roles (`role` attribute): Undefined, Test, Controls, Replicate,
+  Compensation, Instrumentation, Baseline, Gating level, written as
+  `ws.group.dlog.<role>`. Read back by substring of the upper-cased text
+  (TEST, CONTROLS, COMPENSATION, INSTRUMENTATION, MFO, COPY, in that order),
+  so Replicate, Baseline and Gating level read back as Undefined.
+- "Select every Nth sample": members at positions 0, n, 2n, ... (n below 1
+  is 1).
+- Removing samples asks whether to remove them from the workspace or only
+  from the current group; deleting a group asks first; "All Samples" cannot
+  be deleted.
+
+### 7.2 Group-owned analysis (matches)
+
+- "Copy analysis to group" applies the selected gate and its subtree to
+  every member of the current group; the populations are owned by the group
+  (`owningGroup` attribute on each population, the group's name).
+- Synchronized groups (`synchronized` attribute): moving a group-owned gate
+  moves it in every member; in other groups only the edited sample changes.
+- A group-owned gate cannot be deleted from one sample; a node that contains
+  group-owned analysis cannot be deleted ("contains analysis owned by a
+  group"). Deleting group analysis asks: Cancel, Allocate To Samples (keep
+  the gates in every member, owned by each sample), Allocate To First Sample
+  (keep them only in the group's first member), Delete Entirely.
+- Renaming a group-owned gate asks "Rename for all?".
+- Samples that join a group receive its group analysis.
+- This app has no group node in the population tree: deleting a group-owned
+  population there is deleting it from its group (own UI rule; the choices
+  and their effects match FlowJo).
 
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 

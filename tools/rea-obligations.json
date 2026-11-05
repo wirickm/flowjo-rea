@@ -195,6 +195,90 @@
         { "fixture_id": "undo.branch", "case_kind": "negative", "test_file": "tests/history.test.ts", "test_name": "a new edit after undo discards the redo branch" }
       ],
       "verifier": { "verifier_id": "workspace.history", "claim_id": "workspace.undo-limit.v1", "test_file": "tests/history.test.ts", "command": "npx vitest run tests/history.test.ts" }
+    },
+    {
+      "obligation_id": "groups.keyword-criteria",
+      "obligation_version": 1,
+      "title": "Live group keyword criteria evaluate as in FlowJo 10",
+      "family": "groups",
+      "target_location": "com.treestar.flowjo.core.nodes.KeywordCriterion.evalFunction",
+      "required_case_kinds": ["positive", "negative", "malformed"],
+      "original_cases": [
+        { "kind": "positive", "observation": "group-criteria-eval", "location": "numeric comparison when the sample value is a number; connectors from a true start" },
+        { "kind": "negative", "observation": "group-criteria-eval", "location": "a missing keyword is false; inactive criteria are skipped" },
+        { "kind": "malformed", "observation": "group-criteria-eval", "location": "a numeric sample value with a non-numeric criterion value does not match" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/groupCriteria.ts", "symbol": "evalRules", "files": ["src/core/groupCriteria.ts"] },
+      "fixtures": [
+        { "fixture_id": "groups.criteria.numeric", "case_kind": "positive", "test_file": "tests/group-criteria.test.ts", "test_name": "compares numerically when the sample value is a number" },
+        { "fixture_id": "groups.criteria.connectors", "case_kind": "positive", "test_file": "tests/group-criteria.test.ts", "test_name": "starts true and applies every connector, the first one included" },
+        { "fixture_id": "groups.criteria.missing", "case_kind": "negative", "test_file": "tests/group-criteria.test.ts", "test_name": "a missing keyword is false for every function" },
+        { "fixture_id": "groups.criteria.inactive", "case_kind": "negative", "test_file": "tests/group-criteria.test.ts", "test_name": "skips inactive criteria" },
+        { "fixture_id": "groups.criteria.nonnumeric", "case_kind": "malformed", "test_file": "tests/group-criteria.test.ts", "test_name": "a numeric sample value with a non-numeric criterion value does not match" }
+      ],
+      "verifier": { "verifier_id": "groups.criteria", "claim_id": "groups.keyword-criteria.v1", "test_file": "tests/group-criteria.test.ts", "command": "npx vitest run tests/group-criteria.test.ts" }
+    },
+    {
+      "obligation_id": "groups.acceptance",
+      "obligation_version": 1,
+      "title": "Group acceptance with stain sets and reference groups follows FlowJo 10",
+      "family": "groups",
+      "target_location": "com.treestar.flowjo.core.GroupCriteria.accept",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "group-acceptance", "location": "matching stain set or reference group 'also' accepts" },
+        { "kind": "negative", "observation": "group-acceptance", "location": "no stain sets and no active first criterion accepts nothing" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/groupCriteria.ts", "symbol": "acceptCriteria", "files": ["src/core/groupCriteria.ts"] },
+      "fixtures": [
+        { "fixture_id": "groups.accept.stains", "case_kind": "positive", "test_file": "tests/group-criteria.test.ts", "test_name": "stain set is the trimmed $PnS of non-scatter, non-time parameters" },
+        { "fixture_id": "groups.accept.ref", "case_kind": "positive", "test_file": "tests/group-criteria.test.ts", "test_name": "a reference group combines with" },
+        { "fixture_id": "groups.accept.none", "case_kind": "negative", "test_file": "tests/group-criteria.test.ts", "test_name": "accepts nothing without stain sets or an active first criterion" }
+      ],
+      "verifier": { "verifier_id": "groups.criteria", "claim_id": "groups.acceptance.v1", "test_file": "tests/group-criteria.test.ts", "command": "npx vitest run tests/group-criteria.test.ts" }
+    },
+    {
+      "obligation_id": "groups.roles",
+      "obligation_version": 1,
+      "title": "Group roles read and write as in FlowJo 10",
+      "family": "groups",
+      "target_location": "com.treestar.flowjo.core.Group$Role.fromString",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "group-roles", "location": "compensation and test roles read back" },
+        { "kind": "negative", "observation": "group-roles", "location": "replicate and baseline read back as undefined" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/groupCriteria.ts", "symbol": "roleFromText", "files": ["src/core/groupCriteria.ts"] },
+      "fixtures": [
+        { "fixture_id": "groups.roles.read", "case_kind": "positive", "test_file": "tests/group-criteria.test.ts", "test_name": "reads roles by substring" },
+        { "fixture_id": "groups.roles.quirk", "case_kind": "negative", "test_file": "tests/group-criteria.test.ts", "test_name": "reads roles by substring" }
+      ],
+      "verifier": { "verifier_id": "groups.criteria", "claim_id": "groups.roles.v1", "test_file": "tests/group-criteria.test.ts", "command": "npx vitest run tests/group-criteria.test.ts" }
+    },
+    {
+      "obligation_id": "groups.owned-analysis",
+      "obligation_version": 1,
+      "title": "Group-owned analysis, synchronized groups and group delete choices follow FlowJo 10",
+      "family": "groups",
+      "target_location": "com.treestar.flowjo.application.workspace.manager.WSGroupMgr.deleteGroupAnalyses",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "group-owned-analysis", "location": "copy makes the subtree group-owned; synchronized edits propagate; delete choices" },
+        { "kind": "negative", "observation": "group-owned-analysis", "location": "an edit in a group that is not synchronized changes only the edited sample" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/project.ts", "symbol": "copyAnalysisToGroup", "files": ["src/core/project.ts"] },
+      "fixtures": [
+        { "fixture_id": "groups.owned.copy", "case_kind": "positive", "test_file": "tests/group-analysis.test.ts", "test_name": "copies the subtree to every member and makes it group-owned" },
+        { "fixture_id": "groups.owned.alloc", "case_kind": "positive", "test_file": "tests/group-analysis.test.ts", "test_name": "Allocate To Samples keeps the populations in every member" },
+        { "fixture_id": "groups.owned.first", "case_kind": "positive", "test_file": "tests/group-analysis.test.ts", "test_name": "Allocate To First Sample keeps them only in the first member" },
+        { "fixture_id": "groups.owned.delete", "case_kind": "positive", "test_file": "tests/group-analysis.test.ts", "test_name": "Delete Entirely removes them from every member" },
+        { "fixture_id": "groups.owned.sync", "case_kind": "negative", "test_file": "tests/group-analysis.test.ts", "test_name": "moves it in every member only when the group is synchronized" }
+      ],
+      "verifier": { "verifier_id": "groups.owned", "claim_id": "groups.owned-analysis.v1", "test_file": "tests/group-analysis.test.ts", "command": "npx vitest run tests/group-analysis.test.ts" }
     }
   ]
 }

@@ -10,8 +10,9 @@
 //  - AndNode/OrNode/NotNode populations reference operands by path.
 import type { SpilloverMatrix } from './compensation';
 import { fail } from './errors';
-import { emptyWorkspace, type Dimension, type Gate, type GridAxis, type Group, type KeywordRule, type Population, type SampleState, type StatKind, type Workspace } from './model';
+import { emptyWorkspace, type Dimension, type Gate, type GridAxis, type Group, type GroupCriteria, type KeywordRule, type Population, type SampleState, type StatKind, type Workspace } from './model';
 import { syncLiveGroups } from './project';
+import { connectorFromText, functionFromText, MAX_KEYWORD_CRITERIA, roleFromText } from './groupCriteria';
 import { defaultGrid } from './gateGrid';
 import { STAT_NEEDS_CHANNEL } from './stats';
 import { makeTransform, type TransformSpec } from './transforms';
@@ -116,6 +117,7 @@ export function parseWsp(xml: string): WspImport {
   const sampleList = kid(root, 'SampleList');
   if (!sampleList) fail('WORKSPACE_INVALID', 'Workspace has no SampleList');
   const sampleIdMap = new Map<string, string>();
+  const owners = new Map<Population, string>(); // population -> owning group name
   // Plot settings per population path, from the first sample that has them.
   const plots: NonNullable<Workspace['plots']> = {};
 
@@ -348,11 +350,14 @@ export function parseWsp(xml: string): WspImport {
           }
           // eventsInside="0" (exclusion): the population is the events outside the gate.
           const exclude = attr(kids(gEl!)[0], 'eventsInside') === '0';
-          pops.push({ id, name, parentId, gate, ...(exclude ? { exclude: true } : {}) });
+          const pop: Population = { id, name, parentId, gate, ...(exclude ? { exclude: true } : {}) };
+          if (attr(p, 'owningGroup')) owners.set(pop, attr(p, 'owningGroup')!);
+          pops.push(pop);
         } else {
           const deps = kids(kid(p, 'Dependents') ?? p, 'Dependent').map((d) => attr(d, 'name') ?? '');
           const op = kind === 'AndNode' ? 'and' : kind === 'OrNode' ? 'or' : 'not';
           const pop: Population = { id, name, parentId, gate: { type: 'boolean', op, operands: [] } };
+          if (attr(p, 'owningGroup')) owners.set(pop, attr(p, 'owningGroup')!);
           pops.push(pop);
           pending.push({ pop, deps });
         }
@@ -411,25 +416,39 @@ export function parseWsp(xml: string): WspImport {
     const refs = grp ? kids(kid(grp, 'SampleRefs') ?? grp, 'SampleRef').map((r) => attr(r, 'sampleID') ?? '') : [];
     const ids = refs.map((r) => sampleIdMap.get(r)).filter((x): x is string => !!x);
     const group: Group = { id: gname === 'All Samples' ? 'all' : `g${groups.length + 1}`, name: gname, sampleIds: gname === 'All Samples' ? ws.samples.map((s) => s.id) : ids };
+    if (grp && attr(grp, 'role') !== undefined) group.role = roleFromText(attr(grp, 'role'));
+    if (grp && attr(grp, 'synchronized') === '1') group.synchronized = true;
+    const fg = grp ? attr(grp, 'foreground') : undefined;
+    if (fg && /^#[0-9a-fA-F]{6}$/.test(fg)) group.color = fg.toLowerCase();
+    const fs = grp ? attr(grp, 'fontStyle') : undefined;
+    if (fs === 'bold' || fs === 'italic' || fs === 'plain') group.fontStyle = fs;
     const crit = grp ? kid(grp, 'Criteria') : undefined;
     if (crit && group.id !== 'all') {
-      if (attr(crit, 'refGroupName')) warnings.push(`Group "${gname}": criteria referencing group "${attr(crit, 'refGroupName')}" are not supported; membership kept as saved`);
-      const rules: KeywordRule[] = [];
-      for (const c of kids(crit, 'Criterion')) {
-        const op = WSP_CRITERIA[attr(c, 'function') ?? ''];
-        if (!op) {
-          warnings.push(`Group "${gname}": criterion function "${attr(c, 'function')}" is not supported; membership kept as saved`);
-          rules.length = 0;
-          break;
-        }
-        rules.push({ connector: (attr(c, 'connector') ?? 'And').toLowerCase() === 'or' ? 'or' : 'and', keyword: (attr(c, 'keyword') ?? '').toUpperCase(), op, value: attr(c, 'value') ?? '' });
-      }
-      if (rules.length) group.criteria = { rules };
+      // FlowJo reads up to 4 Criterion elements and any StainCriterion
+      // (plus a stainId attribute); specs 7.1.
+      const rules: KeywordRule[] = kids(crit, 'Criterion').slice(0, MAX_KEYWORD_CRITERIA).map((c) => ({
+        connector: connectorFromText(attr(c, 'connector')),
+        keyword: attr(c, 'keyword') ?? '',
+        op: LEGACY_CRITERIA[attr(c, 'function') ?? ''] ?? functionFromText(attr(c, 'function')),
+        value: attr(c, 'value') ?? '',
+      }));
+      const stains = [attr(crit, 'stainId'), ...kids(crit, 'StainCriterion').map((e) => attr(e, 'stainId'))].filter((x): x is string => x !== undefined && x !== null);
+      const refName = attr(crit, 'refGroupName');
+      const c: GroupCriteria = { rules };
+      if (stains.length) c.stains = stains;
+      if (refName) c.refGroup = { name: refName, fn: attr(crit, 'refGroupFunction') ?? '' };
+      if (rules.length || stains.length || refName) group.criteria = c;
     }
     groups.push(group);
   }
   if (!groups.some((g) => g.id === 'all')) groups.unshift({ id: 'all', name: 'All Samples', sampleIds: ws.samples.map((s) => s.id) });
   ws.groups = groups;
+  // Group ownership (owningGroup = group name; specs 7.2).
+  const groupIdByName = new Map(groups.map((g) => [g.name, g.id]));
+  for (const [pop, owner] of owners) {
+    const gid = groupIdByName.get(owner);
+    if (gid) pop.owningGroup = gid;
+  }
   // Live keyword groups are recomputed from the imported keywords; the saved
   // SampleRefs are replaced (a difference is reported).
   const saved = new Map(groups.map((g) => [g.id, g.sampleIds.join()]));
@@ -457,8 +476,9 @@ const WSP_STATS: Record<string, StatKind> = {
   Percentile: 'percentile',
 };
 
-const WSP_CRITERIA: Record<string, KeywordRule['op']> = {
-  Contains: 'contains',
+// Function names written by this app's .wsp export before version 1.1
+// (not FlowJo's texts; FlowJo itself would read them as "=").
+const LEGACY_CRITERIA: Record<string, KeywordRule['op']> = {
   DoesNotContain: 'notContains',
   Equals: 'equals',
   DoesNotEqual: 'notEquals',

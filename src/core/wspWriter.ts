@@ -5,7 +5,8 @@ import { invert } from './compensation';
 import type { SpilloverMatrix } from './compensation';
 import { axesFromGate } from './ellipse';
 import { fail } from './errors';
-import type { Dimension, Gate, Group, KeywordRule, Population, Workspace } from './model';
+import type { Dimension, Gate, Group, GroupCriteria, Population, Workspace } from './model';
+import { connectorText, functionText, MAX_KEYWORD_CRITERIA, roleText } from './groupCriteria';
 import { makeTransform, type TransformSpec } from './transforms';
 import { esc } from './xml';
 
@@ -164,7 +165,8 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
       return `<Subpopulations>${kids
         .map((p) => {
           const count = counts?.[p.id];
-          const head = `name="${esc(p.name)}" count="${count ?? -1}"`;
+          const ownerName = p.owningGroup ? ws.groups.find((g) => g.id === p.owningGroup)?.name : undefined;
+          const head = `name="${esc(p.name)}"${ownerName ? ` owningGroup="${esc(ownerName)}"` : ''} count="${count ?? -1}"`;
           if (p.gate.type === 'boolean') {
             const tag = p.gate.op === 'and' ? 'AndNode' : p.gate.op === 'or' ? 'OrNode' : 'NotNode';
             if (p.gate.operands.some((o) => o.complement)) warn(`"${path(p)}" uses a complemented operand; FlowJo boolean nodes have no such flag, written without it`);
@@ -194,20 +196,30 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
   // Live keyword groups are written as FlowJo criteria (plus their current
   // members, as FlowJo saves them); "group by" on an annotation has no FlowJo
   // keyword and is written as members only.
-  const FJ_FUNCTION: Record<KeywordRule['op'], string> = { contains: 'Contains', notContains: 'DoesNotContain', equals: 'Equals', notEquals: 'DoesNotEqual', startsWith: 'StartsWith', endsWith: 'EndsWith' };
+  // FlowJo's texts (specs 7.1); this app's own operators (starts / ends with)
+  // have none, so such a group is written with its members only.
   const isKeyword = (k: string) => ws.samples.some((s) => k in s.keywordsSnapshot);
   const criteriaXml = (g: Group): string => {
     const c = g.criteria;
-    let rules: KeywordRule[] = [];
-    if (c && 'rules' in c) rules = c.rules;
-    else if (c && c.value !== null && isKeyword(c.key)) rules = [{ connector: 'and', keyword: c.key, op: 'equals', value: c.value }];
-    if (!rules.length) return '';
-    return `<Criteria>${rules.map((r, i) => `<Criterion connector="${i === 0 || r.connector === 'and' ? 'And' : 'Or'}" keyword="${esc(r.keyword)}" function="${FJ_FUNCTION[r.op]}" value="${esc(r.value)}" />`).join('')}</Criteria>`;
+    let crit: GroupCriteria | undefined;
+    if (c && 'rules' in c) crit = c;
+    else if (c && c.value !== null && isKeyword(c.key)) crit = { rules: [{ connector: 'and', keyword: c.key, op: 'equals', value: c.value }] };
+    if (!crit) return '';
+    if (crit.rules.some((r) => functionText(r.op) === undefined)) {
+      warnings.push(`Group "${g.name}": "starts with" / "ends with" have no FlowJo criterion; written with its current members only`);
+      return '';
+    }
+    if (crit.rules.length > MAX_KEYWORD_CRITERIA) warnings.push(`Group "${g.name}": FlowJo keeps ${MAX_KEYWORD_CRITERIA} criteria; the others are not written`);
+    const ref = crit.refGroup ? ` refGroupFunction="${esc(crit.refGroup.fn)}" refGroupName="${esc(crit.refGroup.name)}"` : '';
+    const rules = crit.rules.slice(0, MAX_KEYWORD_CRITERIA).map((r) => `<Criterion connector="${esc(connectorText(r.connector))}" keyword="${esc(r.keyword)}" function="${esc(functionText(r.op)!)}" value="${esc(r.value)}" />`).join('');
+    const stains = (crit.stains ?? []).map((st) => `<StainCriterion stainId="${esc(st)}" />`).join('');
+    return `<Criteria${ref}>${rules}${stains}</Criteria>`;
   };
   const groups = ws.groups
     .map((g) => {
       const crit = g.id === 'all' ? '' : criteriaXml(g);
-      return `<GroupNode name="${esc(g.name)}"><Group name="${esc(g.name)}"${crit ? ' live="1"' : ''}>${crit}<SampleRefs>${g.sampleIds.map((id) => `<SampleRef sampleID="${ws.samples.findIndex((s) => s.id === id) + 1}" />`).join('')}</SampleRefs></Group></GroupNode>`;
+      const role = (g.role ? ` role="${roleText(g.role)}"` : '') + (g.synchronized ? ' synchronized="1"' : '') + (g.color ? ` foreground="${esc(g.color)}"` : '') + (g.fontStyle ? ` fontStyle="${g.fontStyle}"` : '');
+      return `<GroupNode name="${esc(g.name)}"><Group name="${esc(g.name)}"${crit ? ' live="1"' : ''}${role}>${crit}<SampleRefs>${g.sampleIds.map((id) => `<SampleRef sampleID="${ws.samples.findIndex((s) => s.id === id) + 1}" />`).join('')}</SampleRefs></Group></GroupNode>`;
     })
     .join('');
   if (!ws.samples.length) fail('WORKSPACE_INVALID', 'Workspace has no samples to export');

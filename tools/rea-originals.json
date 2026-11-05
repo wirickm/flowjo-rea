@@ -124,6 +124,38 @@
       "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/application/workspace/WSUndoManager.class" }],
       "behavior": "Workspace undo keeps the last 100 edits (Swing UndoManager default; no class in FlowJo-10.6.2.jar or fjlib-2.3.0.jar sets another limit), undoes and redoes them in order, and a new edit after an undo drops the redo edits.",
       "spec_section": "6.8"
+    },
+    {
+      "key": "group-criteria-eval",
+      "subject": "jar",
+      "symbols": ["com.treestar.flowjo.core.nodes.KeywordCriterion.evalFunction(Sample)", "com.treestar.flowjo.core.nodes.KeywordCriterion.eval(Sample, boolean)", "com.treestar.flowjo.core.nodes.KeywordCriterion.evalConnector(boolean, boolean)", "com.treestar.flowjo.core.enumerations.CriteriaTest.isNumericFunction(int)", "com.treestar.lib.parsing.ParseUtil.isNumber(String) (fjlib-2.3.0.jar)"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/core/nodes/KeywordCriterion.class" }, { "kind": "artifact-path", "path": "com/treestar/flowjo/core/enumerations/CriteriaTest.class" }],
+      "behavior": "Up to 4 keyword criteria; an active criterion has a keyword and a non-empty value. The result starts true and every active criterion applies its connector (And, Or, And-not), the first included. A missing keyword tests false; the six comparisons are numeric when the trimmed sample value is a number, otherwise case-insensitive string order; Contains / Lacks are case-insensitive substring tests; Exists is true when the keyword is present.",
+      "spec_section": "7.1"
+    },
+    {
+      "key": "group-acceptance",
+      "subject": "jar",
+      "symbols": ["com.treestar.flowjo.core.GroupCriteria.acceptSolo(Workspace, Group, Sample)", "com.treestar.flowjo.core.GroupCriteria.accept(Workspace, Group, Sample)", "com.treestar.flowjo.core.ParameterList.getStainSet()"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/core/GroupCriteria.class" }, { "kind": "artifact-path", "path": "com/treestar/flowjo/core/ParameterList.class" }],
+      "behavior": "Without stain sets and an active first criterion a group accepts nothing; listed stain sets must contain the sample's stain set (trimmed non-empty $PnS of non-scatter, non-time parameters joined with ', '); a reference group combines with 'also' (either) or 'only' (both), any other function accepting nothing.",
+      "spec_section": "7.1"
+    },
+    {
+      "key": "group-roles",
+      "subject": "jar",
+      "symbols": ["com.treestar.flowjo.core.Group$Role.fromString(String)", "com.treestar.flowjo.core.Group$Role.<clinit>"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/core/Group$Role.class" }],
+      "behavior": "Eight roles written as ws.group.dlog.<role>; read back by substring of the upper-cased text (TEST, CONTROLS, COMPENSATION, INSTRUMENTATION, MFO, COPY), so replicate, baseline and gating level read back as undefined.",
+      "spec_section": "7.1"
+    },
+    {
+      "key": "group-owned-analysis",
+      "subject": "jar",
+      "symbols": ["com.treestar.flowjo.application.workspace.manager.WSGroupMgr.deleteGroupAnalyses(NodeList)", "com.treestar.flowjo.application.workspace.manager.WSGroupMgr.removeGroupAnalysisNodes(boolean, boolean, Group, AppNode)", "com.treestar.flowjo.dialogs.GroupDelConfirmationDlog", "dictionary ws.group.dlog.sync.tooltip, ws.group.copygate.tooltip"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/application/workspace/manager/WSGroupMgr.class" }, { "kind": "artifact-path", "path": "com/treestar/flowjo/dialogs/GroupDelConfirmationDlog.class" }],
+      "behavior": "Copy analysis to group makes the subtree group-owned in every member; in a synchronized group moving a group-owned gate moves it in every member; deleting group analysis offers Allocate To Samples (keep in every member, sample-owned), Allocate To First Sample (keep only in the first member) or Delete Entirely (remove from every member).",
+      "spec_section": "7.2"
     }
   ]
 }

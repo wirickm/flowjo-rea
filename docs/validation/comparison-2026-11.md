@@ -128,6 +128,24 @@ function) is ready outside the repository, untested.
 | `ev_7cb8479303c58b36...` | cell-cycle-channels | cellcycle.histogram-channels |
 | `ev_bc9a71d441d5bcee...` | undo-limit | workspace.undo-limit |
 
+### 2.4 Update after Ghidra became available (same day)
+
+Ghidra 12.1.4 was installed at `/opt/ghidra_12.1.4_PUBLIC` (official release,
+SHA-256 `ddac49f9...d2d4db`, the value pinned in rea's CI workflow) and
+`rea doctor --provider ghidra` reports healthy. R2 is resolved; R1 (REA has
+no JVM route) stands.
+
+- REA-native ledger rerun (`tools/reaObserveFlowjo.mjs`, REA Ghidra provider,
+  bundles kept in `/tmp`): **10 of 10 obligations verified, ledger `ready`**
+  (`docs/validation/rea-ledger-result.native.json`; 41 Evidence records). The
+  six new obligations rest on the analyst observations, linked from the REA
+  records.
+- Java classes decompiled with headless Ghidra and the P17 to P20 GhidraScript
+  (output in `/tmp`), cross-checked with `javap -c`: A1 (undo limit, now high
+  confidence), A26 (curly quad shape), C23 (edge-event default 5%, on).
+- Still to run: the engine functions behind A9 (Mode), A16 (CSV channel
+  values), A17 (random event cap) and A25 (bisector).
+
 ## 3. Part A: behavior parity
 
 Status: **Match** (same behavior, evidence cited), **Differs** (both have it,
@@ -164,7 +182,7 @@ statistics 39, platforms 29, transforms 19, export 15, compensation 9).
 
 | # | Area | FlowJo 10.6.2 behavior | This app | Status | FlowJo evidence | Conf. |
 |---|---|---|---|---|---|---|
-| A1 | Workspace | Undo keeps 100 edits; new edit drops redo | 100 snapshots, same | Match | `WSUndoManager` / `FJUndoManager` (Swing default, no `setLimit`); specs 6.8 | medium |
+| A1 | Workspace | Undo keeps 100 user actions (each action's edits are one compound edit); new edit drops redo | 100 snapshots, same | Match | `WSUndoManager` / `FJUndoManager` (decompiled: `startNewEdit` adds each compound edit through Swing `UndoManager.addEdit`, no `setLimit`; checked with `javap -c`); specs 6.8 | high |
 | A2 | Workspace | Preference "Disable Undo" | none | Missing | `prefs.ws.noundo` | high |
 | A3 | Workspace | Optional auto-save every N minutes (saved workspaces with samples; not ACS/Envoy) | none | Missing | `AutoSaveTask`, `prefs.ws.autosave*` | high |
 | A4 | Workspace | Delete confirmations with "Don't Ask Again", reset in Preferences | asks every time | Missing (known open item) | specs 6.7; `prefs.ws.resetdontask` | high |
@@ -189,7 +207,7 @@ statistics 39, platforms 29, transforms 19, export 15, compensation 9).
 | A23 | Compensation | Spillover spreading matrix (SSM) view/export | none | Missing | `CompCommand{CALCSSM,SSM_VIEW,SSM_SAVE}`, `WeightOptimizer::CalculateSSM` | high |
 | A24 | Compensation | Wizard with auto positive/negative gates, universal negative, status badges | median-based wizard, own | Differs | `compeditor.model.AutoGateMaker`, `WizardMatrix` | high (exists); algorithm Unknown *(needs Ghidra)* |
 | A25 | Gates | Bisector | none | Missing | `QuadGate::ComputeBisectorGate`, `gw.tool.bisector` | high |
-| A26 | Gates | Curly quad (arms follow the axis transform) | spline quadrant (own definition) | Differs | `CurlyQuadGate.getHorizontalCurlyFunction` | high (exists); shape rule Unknown *(needs Ghidra)* |
+| A26 | Gates | Curly quad: each arm is a parabola in display pixels from the centre, y = cy - round(k dx^2), sampled about every 1/40 of the remaining width to the frame edge; a command doubles or halves k | spline quadrant (monotone cubic through control points, own definition) | Differs | `CurlyQuadGate.getHorizontalCurlyFunction`, `multInflection` (decompiled, checked with `javap -c`) | medium-high |
 | A27 | Gates | Spider quad, freehand (pencil), timeslice, auto gate, magnetic gates, manual coordinate entry, anchored range, BifurGate | none (Time range gates work) | Missing | `gw.tool.*`, `TetheredRangeGate`, `AutoGateMaker`, `ws.autoquad` | high |
 | A28 | Gates | Copy/paste gates; convert shape (rect/poly/ellipse) | none | Missing | `GWCommand{COPYGATE,PASTEGATE}`, `GateConvertEdit` | high |
 | A29 | Gates | Exclusion via a negation flag on the gate | `exclude` toggle | Match (semantics derived; matrix row 5) | `FGate::SetNegation`, `Gate.getNot` | medium |
@@ -280,7 +298,7 @@ step 3, `docs/validation/uat-2026-11-02.md` section 5).
 | C20 | Unsaved changes | "Save changes?" on close (`ws.doc.wannasave`, QDialog save prompts) | no guard when the tab closes | Missing | Match: `beforeunload` guard when the workspace has unsaved edits (F3) | high |
 | C21 | Add samples | Add Samples command and a "Drag Samples Here" drop target; per-file failure counts (`ws.sample.drag.here`, `ws.samplemgr.numfilesnotadded`) | file picker only | Missing (drop) | Match: accept dropped FCS files on the samples panel (F4) | high |
 | C22 | Status | Status/progress area; auto-save message (`WSProgressPanel`) | "Working..." / "Ready" plus the Log | Match | Keep; step 3 stale-log warnings stay own | medium |
-| C23 | Edge events | Warning in the graph when a set share of events is on the axis bounds (`gw.gates.panel.warn1/2`) | none | Missing (A40) | Match: caption warning with the share on the bounds (threshold value *(needs Ghidra or a FlowJo preference file)*) | medium |
+| C23 | Edge events | Warning in the graph when 5% or more of events are on either axis bound; on by default (`gw.gates.panel.warn1/2`; `FJPrefsFJML$Graph.eventsOnAxis` = true, `warningThreshold` = 5) | none | Missing (A40) | Match: caption warning at 5% with the share on the bounds | high |
 | C24 | Launcher, help, repositories | Start window with recent documents; Help band; LabArchives / Cytobank / Enterprise links | none | Missing | Own rule: not needed in an offline single file | high |
 | C25 | Group dialog | Create/Modify Group: name, colour, role, criteria (keyword op value), Live, Synchronized (`GroupDlog`) | "New group from checked", "group by", rule group | Differs (A7, A8) | Match criteria operators with F7 | high |
 

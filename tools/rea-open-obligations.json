@@ -70,41 +70,6 @@
       "comparison_status": "Missing (a browser app would need its own storage rule; own decision)."
     },
     {
-      "obligation_id": "stats.mode-correlation-freqof",
-      "obligation_version": 1,
-      "title": "Statistics Mode, Correlation and Freq. of (any ancestor) exist",
-      "application_layer": "application",
-      "family": "statistics",
-      "target": {
-        "artifact_sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c",
-        "application_node_id": null,
-        "semantic_node_id": null,
-        "location": "com.treestar.flowjo.core.Statistic.{MODE,CORRELATION,FREQOF}"
-      },
-      "required": true,
-      "required_case_kinds": [
-        "positive",
-        "negative",
-        "malformed"
-      ],
-      "required_original_authority": "static",
-      "required_fixture_authority": "integration",
-      "required_verifier_authority": "integration",
-      "requires_parser_type": false,
-      "dependency_obligation_ids": [],
-      "residual_unknown_ids": [],
-      "unavailable_authority": [
-        "runtime"
-      ],
-      "required_next_evidence": [
-        "Decide match or own rule (Missing; FlowJo's computation rules for them are unknown (needs engine reading).); then an owner in src/, fixtures for each case kind and a verifier test, and move the entry to tools/rea-obligations.json with an observation in tools/rea-originals.json."
-      ],
-      "disposition": "active",
-      "review_evidence_ids": [],
-      "spec_section": "6.8",
-      "comparison_status": "Missing; FlowJo's computation rules for them are unknown (needs engine reading)."
-    },
-    {
       "obligation_id": "export.concatenate-downsample",
       "obligation_version": 1,
       "title": "Event export can cap events (random N or smallest file) and concatenate files with a sample ID parameter",

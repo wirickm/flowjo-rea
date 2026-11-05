@@ -12,21 +12,34 @@
       { "address": "0x15cfb0", "symbol": "GParameter::Median" },
       { "address": "0xe3ca0", "symbol": "BasicHistogram::Build1DHistogram" },
       { "address": "0xeaaf0", "symbol": "BasicHistogram::ScaleRobustCV" },
-      { "address": "0xeabf0", "symbol": "BasicHistogram::ScaleRobustSD" }
+      { "address": "0xeabf0", "symbol": "BasicHistogram::ScaleRobustSD" },
+      { "address": "0xea2d0", "symbol": "BasicHistogram::ScaleMean" },
+      { "address": "0xea950", "symbol": "BasicHistogram::ScaleStdDev" },
+      { "address": "0xea7a0", "symbol": "BasicHistogram::ScaleCV" },
+      { "address": "0xea3a0", "symbol": "BasicHistogram::ScaleGeometricMean" },
+      { "address": "0x15c770", "symbol": "GParameter::ComputeStat" },
+      { "address": "0x15d1a0", "symbol": "GParameter::Mode" },
+      { "address": "0xeb290", "symbol": "BasicHistogram::ChannelMode" },
+      { "address": "0x15d240", "symbol": "GParameter::MedianAbsoluteDeviation" },
+      { "address": "0x15d490", "symbol": "GParameter::Correlation" }
     ]
   },
   "jar": {
     "file": "FlowJo-10.6.2.jar",
     "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c",
-    "members": ["com/treestar/flowjo/core/gates/EllipseGate.class", "com/treestar/flowjo/core/gates/PolyGate.class", "com/treestar/layout/presentation/FigGatingEllipse.class"]
+    "members": ["com/treestar/flowjo/core/gates/EllipseGate.class",  "com/treestar/flowjo/core/gates/PolyGate.class",  "com/treestar/layout/presentation/FigGatingEllipse.class"]
   },
   "observations": {
-    "polygon-mask": ["0x29a930", "0x1c8350"],
+    "polygon-mask": ["0x29a930",  "0x1c8350"],
     "grid-mapping": ["0x1c86a0"],
     "rect-open-bounds": ["0x804d0"],
-    "histogram-median": ["0x15cfb0", "0xe9fe0"],
+    "histogram-median": ["0x15cfb0",  "0xe9fe0"],
     "histogram-clamp": ["0xe3ca0"],
-    "robust-cv-small": ["0xeaaf0", "0xeabf0"],
-    "ellipse-polygon": ["jar"]
+    "robust-cv-small": ["0xeaaf0",  "0xeabf0"],
+    "ellipse-polygon": ["jar"],
+    "stats-histogram-moments": ["0x15c770",  "0xea2d0",  "0xea950",  "0xea7a0",  "0xea3a0"],
+    "stats-mode": ["0x15d1a0",  "0xeb290"],
+    "stats-mad": ["0x15d240"],
+    "stats-correlation-nan": ["0x15d490"]
   }
 }

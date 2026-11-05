@@ -73,18 +73,102 @@ export function flowjoRobustCv(values: Float64Array, s: ChannelScale): number {
   return (100 * flowjoRobustSd(values, s)) / new Histogram(s, values).value(50);
 }
 
-// FlowJo mode (GParameter::Mode, BasicHistogram::ChannelMode; specs 8.1): a
-// 256-channel histogram on the FlowJo scale; the first (lowest) channel with
-// the highest count, as a position on the 4096-channel axis, converted back.
+// --- histogram moment statistics (GParameter::ComputeStat; specs 8.2) ---------
+
+// Counts of an nbins-channel histogram on the FlowJo scale: linear axes
+// floor((v - min) * nbins / (max - min) + 0.5) clamped; logicle axes the
+// lookup-table index scaled to nbins and truncated.
+function binCounts(values: Float64Array, s: ChannelScale, nbins: number): Float64Array {
+  const bins = new Float64Array(nbins);
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i];
+    if (Number.isNaN(v)) continue;
+    let c: number;
+    if (s.kind === 'logicle') c = Math.floor((tableIndex(logicleTable(s.T, s.W, s.M, s.A), v) * nbins) / N);
+    else c = Math.floor(((Math.fround(v) - s.min) * nbins) / (s.max - s.min) + 0.5);
+    bins[c < 0 ? 0 : c > nbins - 1 ? nbins - 1 : c]++;
+  }
+  return bins;
+}
+// Data value of a (possibly fractional) position on the 4096-channel axis;
+// a fractional logicle position is truncated (FlowJo's conversion of a
+// fractional channel is not decoded).
+const valueAt = (s: ChannelScale, c: number) => (s.kind === 'logicle' ? valueOf(s, Math.floor(c)) : valueOf(s, c));
+const f = Math.fround;
+
+// Mean (BasicHistogram::ScaleMean, 4096 channels): sum over channels of
+// count x channel value, in single precision, divided by n.
+export function flowjoMean(values: Float64Array, s: ChannelScale): number {
+  if (values.length === 0) return NaN;
+  const b = binCounts(values, s, N);
+  let sum = 0;
+  for (let k = 0; k < N; k++) if (b[k]) sum = f(sum + b[k] * f(valueAt(s, k)));
+  return f(sum / f(values.length));
+}
+
+// SD (ScaleStdDev): sum of count x (channel value - mean)^2 over n - 1, in
+// single precision, then the square root. Fewer than 2 events: NaN (FlowJo's
+// value is not decoded).
+export function flowjoSd(values: Float64Array, s: ChannelScale): number {
+  const n = values.length;
+  if (n < 2) return NaN;
+  const b = binCounts(values, s, N);
+  let sum = 0;
+  for (let k = 0; k < N; k++) if (b[k]) sum = f(sum + b[k] * f(valueAt(s, k)));
+  const mean = f(sum / f(n));
+  let ss = 0;
+  for (let k = 0; k < N; k++) {
+    const d = f(f(valueAt(s, k)) - mean);
+    ss = f(ss + f(f(d * d) * f(b[k])));
+  }
+  return f(Math.sqrt(f(ss / f(n - 1))));
+}
+
+// CV (ScaleCV): 100 x SD / mean, the mean not made absolute.
+export function flowjoCv(values: Float64Array, s: ChannelScale): number {
+  const sd = flowjoSd(values, s);
+  return Number.isNaN(sd) ? NaN : f((100 * sd) / flowjoMean(values, s));
+}
+
+// Geometric mean (ScaleGeometricMean) works on channel numbers: on a linear
+// axis 10^(sum over channels 1..4095 of count x log10(channel) / n), events
+// in channel 0 counted in n only, converted back; on a logicle axis (FlowJo's
+// per-parameter flag, here taken as "logicle") the mean channel, converted.
+export function flowjoGeomean(values: Float64Array, s: ChannelScale): number {
+  const n = values.length;
+  if (n === 0) return NaN;
+  const b = binCounts(values, s, N);
+  if (s.kind === 'logicle') {
+    let wsum = 0, cnt = 0;
+    for (let k = 0; k < N; k++) { wsum = f(wsum + f(k * b[k])); cnt = f(cnt + b[k]); }
+    return valueAt(s, f(wsum / cnt));
+  }
+  let lsum = 0;
+  for (let k = 1; k < N; k++) lsum = f(lsum + f(b[k] * f(Math.log10(k))));
+  return valueAt(s, f(Math.pow(10, f(lsum / f(n)))));
+}
+
+// Mode (GParameter::Mode, BasicHistogram::ChannelMode): a 256-channel
+// histogram; the first (lowest) channel with the highest count, as a
+// position on the 4096-channel axis, converted back.
 const MODE_CHANNELS = 256;
 export function flowjoMode(values: Float64Array, s: ChannelScale): number {
   if (values.length === 0) return NaN;
-  const bins = new Float64Array(MODE_CHANNELS);
-  const step = N / MODE_CHANNELS;
-  for (let i = 0; i < values.length; i++) if (!Number.isNaN(values[i])) bins[Math.min(MODE_CHANNELS - 1, Math.floor(channelOf(s, values[i]) / step))]++;
+  const b = binCounts(values, s, MODE_CHANNELS);
   let best = 0;
-  for (let k = 1; k < MODE_CHANNELS; k++) if (bins[k] > bins[best]) best = k;
-  return valueOf(s, Math.round(Math.fround(best * step)));
+  for (let k = 1; k < MODE_CHANNELS; k++) if (b[k] > b[best]) best = k;
+  return valueAt(s, f(best * (N / MODE_CHANNELS)));
+}
+
+// "Median Abs Dev" (GParameter::MedianAbsoluteDeviation): with the median m
+// of the 4096-channel histogram, the absolute deviations of the events from
+// m, sorted; the element at floor(n / 2), in single precision, gives
+// 100 x 1.4826 x deviation / m (m not made absolute).
+export function flowjoMad(values: Float64Array, s: ChannelScale | undefined, median: number): number {
+  void s;
+  if (values.length === 0) return NaN;
+  const dev = Float64Array.from(values, (v) => Math.abs(v - median)).sort();
+  return ((f(dev[dev.length >> 1]) * 1.4826) / median) * 100;
 }
 
 // The FlowJo scale of a channel: an imported FlowJo linear range, else the

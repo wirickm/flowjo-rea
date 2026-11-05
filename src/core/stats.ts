@@ -2,7 +2,7 @@
 // Definitions are documented in docs/compatibility-matrix.md. With a FlowJo
 // channel scale, median, percentiles, robust SD and robust CV follow FlowJo
 // 10's histogram conventions (src/core/flowjoStats.ts).
-import { flowjoMode, flowjoPercentile, flowjoRobustCv, flowjoRobustSd, type ChannelScale } from './flowjoStats';
+import { flowjoCv, flowjoGeomean, flowjoMad, flowjoMean, flowjoMode, flowjoPercentile, flowjoRobustCv, flowjoRobustSd, flowjoSd, type ChannelScale } from './flowjoStats';
 import type { StatKind } from './model';
 
 // FlowJo 10: a percentile is an integer from 0 to 100 (specs 6.7).
@@ -60,6 +60,11 @@ export function computeStat(
     if (kind === 'robustSd') return flowjoRobustSd(values, scale);
     if (kind === 'robustCv') return flowjoRobustCv(values, scale);
     if (kind === 'mode') return flowjoMode(values, scale);
+    if (kind === 'mean') return flowjoMean(values, scale);
+    if (kind === 'sd') return flowjoSd(values, scale);
+    if (kind === 'cv') return flowjoCv(values, scale);
+    if (kind === 'geomean') return flowjoGeomean(values, scale);
+    if (kind === 'mad') return flowjoMad(values, scale, flowjoPercentile(values, scale, 50));
   }
   const n = values.length;
   let sum = 0;
@@ -98,12 +103,9 @@ export function computeStat(
       const med = quantileSorted(s, 0.5);
       return med !== 0 ? (100 * (quantileSorted(s, 0.8413) - quantileSorted(s, 0.1587))) / 2 / Math.abs(med) : NaN;
     }
-    case 'mad': {
-      const s = sorted();
-      const med = quantileSorted(s, 0.5);
-      const dev = Float64Array.from(s, (v) => Math.abs(v - med)).sort();
-      return quantileSorted(dev, 0.5);
-    }
+    case 'mad':
+      // FlowJo's definition (100 x 1.4826 x MAD / median), with the exact median.
+      return flowjoMad(values, undefined, quantileSorted(sorted(), 0.5));
     case 'min': {
       let m = Infinity;
       for (let i = 0; i < n; i++) m = Math.min(m, values[i]);
@@ -143,7 +145,7 @@ export const STAT_LABELS: Record<StatKind, string> = {
   cv: 'CV (%)',
   robustSd: 'Robust SD',
   robustCv: 'Robust CV (%)',
-  mad: 'MAD',
+  mad: 'Median Abs Dev (%)',
   min: 'Min',
   max: 'Max',
   percentile: 'Percentile',

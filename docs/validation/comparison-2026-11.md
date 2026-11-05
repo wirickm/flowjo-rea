@@ -194,9 +194,9 @@ statistics 39, platforms 29, transforms 19, export 15, compensation 9).
 | A6 | Groups | Group-owned analysis; delete asks "everywhere or copy to each sample"; synchronized groups | group-owned populations; Synchronized groups; Allocate To Samples / First Sample / Delete Entirely; Rename for all (2026-11-06) | Match (specs 7.2) | `fj.string.groupdelprompt`, `ws.group.dlog.sync` | high |
 | A7 | Groups | Live criteria (decoded, specs 7.1): =, ≠, >, >=, <, <=, Contains, Lacks, Exists; And / Or / & Not from a true start; stain sets; reference group | FlowJo functions and connectors, numeric comparisons, stain sets, reference groups (2026-11-06) | Match (specs 7.1) | `CriteriaTest`, `fj.criterion.contains`, `fj.keyword.criterion.*` | medium |
 | A8 | Groups | Roles (test, control, compensation, baseline, replicate...) and every-Nth sample | roles in the group dialog and .wsp; check every n-th sample (2026-11-06) | Match (specs 7.1) | `Group$Role`, `Group.getEveryNthSample` | high |
-| A9 | Statistics | Mode, Correlation, Freq. of (any ancestor). Mode = the first (lowest) channel with the highest count in the parameter's histogram, channel index times range / channels, then converted to a data value | none | Missing | `Statistic.MODE/CORRELATION/FREQOF`; Mode: REA Ghidra `GParameter::Mode` `ev_14466f77...`, `BasicHistogram::ChannelMode` `ev_c5cc3d11...`; histogram size for statistics assumed 4096 as for the median (specs 4); Correlation and Freq. of rules not read | high (Mode rule); medium (bin count) |
-| A10 | Statistics | No Min statistic (engine names a Max) | Min and Max | Differs (extra) | `Statistic` constants; engine stat-name literals | medium |
-| A11 | Statistics | Comparison statistics (KS, Overton, chi-square, probability binning) | none | Missing | `StatKey`, `KolmogorovSmirnoff`, `MultiDimCompare` | high |
+| A9 | Statistics | Mode, Correlation, Freq. of (any ancestor). Mode = the first (lowest) channel with the highest count in the parameter's histogram, channel index times range / channels, then converted to a data value | Mode (256-channel rule), Freq. of (named ancestor), Correlation (NaN, as the 10.6.2 engine) (2026-11-06) | Match (specs 8) | `Statistic.MODE/CORRELATION/FREQOF`; Mode: REA Ghidra `GParameter::Mode` `ev_14466f77...`, `BasicHistogram::ChannelMode` `ev_c5cc3d11...`; histogram size for statistics assumed 4096 as for the median (specs 4); Correlation and Freq. of rules not read | high (Mode rule); medium (bin count) |
+| A10 | Statistics | No Min statistic (engine names a Max) | Min and Max kept as own statistics; not written to .wsp (no FlowJo key) (2026-11-06) | Own rule (documented) | `Statistic` constants; engine stat-name literals | medium |
+| A11 | Statistics | Comparison statistics (KS, Overton, chi-square, probability binning) | moved to Platforms (Compare Populations), A39 | Moved to A39 | `StatKey`, `KolmogorovSmirnoff`, `MultiDimCompare` | high |
 | A12 | FCS read | Versions 2.0, 3.0, 3.1; 3.2 tag recognized | 2.0, 3.0, 3.1; 3.2 refused with an explicit error | Differs | engine literal `FCS3.2`; extent of 3.2 support Unknown | medium |
 | A13 | FCS read | Packed (non-byte) and mixed bit widths, 3-byte variants | rejected with an explicit error | Missing | `FCSPackedDataReader`, `FCSMixedDataLengthRawDataReader`, `FCS3ByteDataReader` | high (names) |
 | A14 | FCS read | `$NEXTDATA` data sets | one data set at a time | Match | `FCSUtil::ReadDataPage` | medium |
@@ -361,7 +361,7 @@ rows above: High = every row Match or a documented own rule.
 | Area | Rating | Since |
 |---|---|---|
 | Gating math | High | 2026-11-01 |
-| Core statistics rules | High | 2026-11-01 |
+| Core statistics rules | High | 2026-11-01; mean, SD, CV, geometric mean and MAD now on FlowJo histogram rules 2026-11-06 |
 | .wsp import | High | 2026-11-01 |
 | Transforms (main types) | High | 2026-11-01 |
 | Naming, delete, relink, undo | High | 2026-11-05 |
@@ -371,7 +371,7 @@ rows above: High = every row Match or a documented own rule.
 | Cell cycle, proliferation | Medium | |
 | Gate tools | Low | |
 | Export | Low | |
-| Statistics list | Low | |
+| **Statistics list** | **High** | 2026-11-06 (specs 8; obligations stats.histogram-moments, stats.mode-mad-correlation, stats.wsp-names) |
 | Kinetics | Low | |
 | Derived parameters | Low | |
 | Layout and table editors | Low | |

@@ -156,6 +156,46 @@
       "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/application/workspace/manager/WSGroupMgr.class" }, { "kind": "artifact-path", "path": "com/treestar/flowjo/dialogs/GroupDelConfirmationDlog.class" }],
       "behavior": "Copy analysis to group makes the subtree group-owned in every member; in a synchronized group moving a group-owned gate moves it in every member; deleting group analysis offers Allocate To Samples (keep in every member, sample-owned), Allocate To First Sample (keep only in the first member) or Delete Entirely (remove from every member).",
       "spec_section": "7.2"
+    },
+    {
+      "key": "stats-histogram-moments",
+      "subject": "engine",
+      "symbols": ["GParameter::ComputeStat(Statistic*, ActivePopulation*)", "BasicHistogram::ScaleMean()", "BasicHistogram::ScaleStdDev()", "BasicHistogram::ScaleCV()", "BasicHistogram::ScaleGeometricMean()"],
+      "locations": [{ "kind": "address-range", "start": "0x15c770", "end": "0x15cfb0" }, { "kind": "address-range", "start": "0xea2d0", "end": "0xea3a0" }, { "kind": "address-range", "start": "0xea950", "end": "0xeaaf0" }, { "kind": "address-range", "start": "0xea7a0", "end": "0xea950" }, { "kind": "address-range", "start": "0xea3a0", "end": "0xea5b0" }],
+      "behavior": "Mean, SD, CV and geometric mean come from a 4096-channel histogram on the parameter's scale: mean = sum of count x channel value / n (single precision); SD = sqrt(sum of count x (channel value - mean)^2 / (n - 1)); CV = 100 x SD / mean, not absolute; geometric mean on a linear axis = 10^(sum over channels >= 1 of count x log10(channel) / n), converted back.",
+      "spec_section": "8.2"
+    },
+    {
+      "key": "stats-mode",
+      "subject": "engine",
+      "symbols": ["GParameter::Mode(ActivePopulation*, long, bool)", "BasicHistogram::ChannelMode()"],
+      "locations": [{ "kind": "address-range", "start": "0x15d1a0", "end": "0x15d21f" }, { "kind": "address-range", "start": "0xeb290", "end": "0xeb3a0" }],
+      "behavior": "Mode: a 256-channel histogram; the first (lowest) channel with the highest count, as a position on the 4096-channel axis, converted back to a data value.",
+      "spec_section": "8.2"
+    },
+    {
+      "key": "stats-mad",
+      "subject": "engine",
+      "symbols": ["GParameter::MedianAbsoluteDeviation(ActivePopulation*)"],
+      "locations": [{ "kind": "address-range", "start": "0x15d240", "end": "0x15d490" }],
+      "behavior": "Median Abs Dev: m = the 4096-channel histogram median; the absolute deviations of the events from m are sorted and the element at floor(n / 2) gives 100 x 1.4826 x deviation / m.",
+      "spec_section": "8.2"
+    },
+    {
+      "key": "stats-correlation-nan",
+      "subject": "engine",
+      "symbols": ["GParameter::Correlation(ActivePopulation*, Statistic*)"],
+      "locations": [{ "kind": "address-range", "start": "0x15d490", "end": "0x15d4a0" }],
+      "behavior": "Correlation returns NaN; the engine has no other correlation implementation, so FlowJo 10.6.2 shows no correlation value.",
+      "spec_section": "8.1"
+    },
+    {
+      "key": "stats-wsp-names",
+      "subject": "jar",
+      "symbols": ["com.treestar.flowjo.core.Statistic.addToElement(SElement, boolean)", "com.treestar.lib.i18n.StatKey.<clinit> (fjlib-2.3.0.jar)"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/core/Statistic.class" }],
+      "behavior": "A Statistic element is written with name = the StatKey string as is (Count, fj.stat.freqofparent, fj.stat.freqof, Median, Mode, Geometric Mean, Median Abs Dev, Correlation, ...), id = parameter, percent, ancestor (ancestor name) and correlate (second parameter); Freq. of = 100 x count / ancestor count.",
+      "spec_section": "8.1"
     }
   ]
 }

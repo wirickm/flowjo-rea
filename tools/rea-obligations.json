@@ -279,6 +279,67 @@
         { "fixture_id": "groups.owned.sync", "case_kind": "negative", "test_file": "tests/group-analysis.test.ts", "test_name": "moves it in every member only when the group is synchronized" }
       ],
       "verifier": { "verifier_id": "groups.owned", "claim_id": "groups.owned-analysis.v1", "test_file": "tests/group-analysis.test.ts", "command": "npx vitest run tests/group-analysis.test.ts" }
+    },
+    {
+      "obligation_id": "stats.histogram-moments",
+      "obligation_version": 1,
+      "title": "Mean, SD, CV and geometric mean follow FlowJo 10's 4096-channel histogram",
+      "family": "statistics",
+      "target_location": "GParameter::ComputeStat",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "stats-histogram-moments", "location": "values snap to channels; count-weighted channel values" },
+        { "kind": "negative", "observation": "stats-histogram-moments", "location": "CV is not made absolute; SD of one event is not a number" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/flowjoStats.ts", "symbol": "flowjoMean", "files": ["src/core/flowjoStats.ts", "src/core/stats.ts"] },
+      "fixtures": [
+        { "fixture_id": "stats.mean", "case_kind": "positive", "test_file": "tests/flowjo-stats-moments.test.ts", "test_name": "mean is the count-weighted channel value" },
+        { "fixture_id": "stats.geomean", "case_kind": "positive", "test_file": "tests/flowjo-stats-moments.test.ts", "test_name": "geometric mean on a linear axis" },
+        { "fixture_id": "stats.cv-sign", "case_kind": "negative", "test_file": "tests/flowjo-stats-moments.test.ts", "test_name": "SD uses n - 1 over channel values" }
+      ],
+      "verifier": { "verifier_id": "stats.flowjo-moments", "claim_id": "stats.histogram-moments.v1", "test_file": "tests/flowjo-stats-moments.test.ts", "command": "npx vitest run tests/flowjo-stats-moments.test.ts" }
+    },
+    {
+      "obligation_id": "stats.mode-mad-correlation",
+      "obligation_version": 1,
+      "title": "Mode, Median Abs Dev and Correlation follow FlowJo 10",
+      "family": "statistics",
+      "target_location": "GParameter::Mode",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "stats-mode", "location": "first highest of 256 channels" },
+        { "kind": "positive", "observation": "stats-mad", "location": "100 x 1.4826 x MAD / histogram median" },
+        { "kind": "negative", "observation": "stats-correlation-nan", "location": "Correlation gives no value" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/flowjoStats.ts", "symbol": "flowjoMode", "files": ["src/core/flowjoStats.ts", "src/core/stats.ts"] },
+      "fixtures": [
+        { "fixture_id": "stats.mode", "case_kind": "positive", "test_file": "tests/flowjo-stats-moments.test.ts", "test_name": "mode: 256-channel histogram" },
+        { "fixture_id": "stats.mad", "case_kind": "positive", "test_file": "tests/flowjo-stats-moments.test.ts", "test_name": "Median Abs Dev = 100 x 1.4826" },
+        { "fixture_id": "stats.correlation", "case_kind": "negative", "test_file": "tests/flowjo-stats-moments.test.ts", "test_name": "Correlation is NaN" }
+      ],
+      "verifier": { "verifier_id": "stats.flowjo-moments", "claim_id": "stats.mode-mad-correlation.v1", "test_file": "tests/flowjo-stats-moments.test.ts", "command": "npx vitest run tests/flowjo-stats-moments.test.ts" }
+    },
+    {
+      "obligation_id": "stats.wsp-names",
+      "obligation_version": 1,
+      "title": "Statistic nodes use FlowJo 10's StatKey names, ancestor and correlate",
+      "family": "statistics",
+      "target_location": "com.treestar.flowjo.core.Statistic.addToElement",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "stats-wsp-names", "location": "FlowJo keys written and read back; Freq. of from the ancestor count" },
+        { "kind": "negative", "observation": "stats-wsp-names", "location": "statistics without a FlowJo key are not written" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/stats.ts", "symbol": "FLOWJO_STAT_NAMES", "files": ["src/core/stats.ts", "src/core/wsp.ts", "src/core/wspWriter.ts"] },
+      "fixtures": [
+        { "fixture_id": "stats.names", "case_kind": "positive", "test_file": "tests/flowjo-stats-moments.test.ts", "test_name": "uses FlowJo keys" },
+        { "fixture_id": "stats.freqof", "case_kind": "positive", "test_file": "tests/flowjo-stats-moments.test.ts", "test_name": "Freq. of an ancestor" },
+        { "fixture_id": "stats.own", "case_kind": "negative", "test_file": "tests/flowjo-stats-moments.test.ts", "test_name": "uses FlowJo keys" }
+      ],
+      "verifier": { "verifier_id": "stats.flowjo-moments", "claim_id": "stats.wsp-names.v1", "test_file": "tests/flowjo-stats-moments.test.ts", "command": "npx vitest run tests/flowjo-stats-moments.test.ts" }
     }
   ]
 }

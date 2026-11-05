@@ -327,8 +327,9 @@ Source: the same verified installer (`FlowJo-10.6.2.jar` SHA-256
 `ae2369f3...`). Read with `javap` (member signatures and constants; `-c` only
 where a constant had to be located), the resource bundles
 `com/treestar/flowjo/core/flowjodictionary*.properties`, and `llvm-nm
---demangle` on the engine. Ghidra was not available in this session, so
-nothing here is *(decompiled)*; confidence is given per item. Runtime is
+--demangle` on the engine. The last four items were then read with Ghidra
+12.1.4 (headless decompiler for Java, REA's Ghidra provider for the engine);
+confidence is given per item. Runtime is
 unconfirmed for all of it (FlowJo was not run). The full comparison is
 `docs/validation/comparison-2026-11.md`.
 
@@ -384,8 +385,27 @@ unconfirmed for all of it (FlowJo was not run). The full comparison is
   does not contain, equals, does not equal, starts with and ends with: no
   numeric comparisons, ranges or exists/lacks; starts/ends with and does not
   contain were not found in FlowJo 10.6.2 (low confidence for that absence).
-- Edge events (high): the graph window warns when a set percentage of events
-  sits on the axis bounds (Preferences > Graphs threshold). This app: none.
+- Edge events (high): the graph window warns when 5% or more of events sit
+  on either axis bound; on by default (`FJPrefsFJML$Graph`: `eventsOnAxis`
+  true, `warningThreshold` 5; Preferences > Graphs). This app: none.
+- Bisector (high; REA Ghidra provider, `QuadGate::ComputeBisectorGate`):
+  two populations split at one value. An event whose parameter value is
+  below the split is in the left population; every other event, the split
+  value included, is in the right one. The comparison is exact on the value
+  (not on the gate grid of section 1). This app: no bisector.
+- Mode (high for the rule, medium for the bin count; `GParameter::Mode`,
+  `BasicHistogram::ChannelMode`): built from the parameter's histogram; the
+  mode is the first (lowest) channel with the highest count, as channel
+  index times range / channel count, then converted to a data value. The
+  statistics histogram is presumably the 4096-channel one of section 4.
+- Curly quad (medium-high; decompiled `CurlyQuadGate`, checked with
+  `javap -c`): each arm starts at the centre and is a parabola in display
+  pixels, y = cy - round(k * dx^2), sampled about every 1/40 of the remaining
+  width up to the frame edge; a command doubles or halves k. This app's
+  spline quadrant is a different curve.
+- Undo (now high): each user action's edits form one compound edit that is
+  added through Swing `UndoManager.addEdit`, so the 100 limit counts user
+  actions (decompiled `FJUndoManager.startNewEdit`, checked with `javap -c`).
 
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 

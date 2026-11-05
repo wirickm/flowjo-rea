@@ -143,8 +143,12 @@ no JVM route) stands.
 - Java classes decompiled with headless Ghidra and the P17 to P20 GhidraScript
   (output in `/tmp`), cross-checked with `javap -c`: A1 (undo limit, now high
   confidence), A26 (curly quad shape), C23 (edge-event default 5%, on).
-- Still to run: the engine functions behind A9 (Mode), A16 (CSV channel
-  values), A17 (random event cap) and A25 (bisector).
+- Engine functions analyzed with REA's Ghidra provider (second session,
+  bundle in `/tmp`): A25 bisector rule (high), A9 Mode rule (high). A16
+  channel mapping stays Unknown (unresolved virtual dispatch). A17 random
+  selection is not in `Exporter::SampleLoop`; bounded search of the engine
+  export classes found no selection routine, so it is likely in the Java
+  export command (`ExportCommand2`) or a downsample gate: Unknown.
 
 ## 3. Part A: behavior parity
 
@@ -190,14 +194,14 @@ statistics 39, platforms 29, transforms 19, export 15, compensation 9).
 | A6 | Groups | Group-owned analysis; delete asks "everywhere or copy to each sample"; synchronized groups | copy by population path, optional sync | Differs (matrix row 7) | `fj.string.groupdelprompt`, `ws.group.dlog.sync` | high |
 | A7 | Groups | Live criteria: =, !=, >, >=, <, <=, between, not between, contains, exists/lacks | text operators (contains, equals, starts/ends with, negations) | Differs | `CriteriaTest`, `fj.criterion.contains`, `fj.keyword.criterion.*` | medium |
 | A8 | Groups | Roles (test, control, compensation, baseline, replicate...) and every-Nth sample | none | Missing | `Group$Role`, `Group.getEveryNthSample` | high |
-| A9 | Statistics | Mode, Correlation, Freq. of (any ancestor) | none | Missing | `Statistic.MODE/CORRELATION/FREQOF` | high (exists); rules Unknown *(needs Ghidra)* |
+| A9 | Statistics | Mode, Correlation, Freq. of (any ancestor). Mode = the first (lowest) channel with the highest count in the parameter's histogram, channel index times range / channels, then converted to a data value | none | Missing | `Statistic.MODE/CORRELATION/FREQOF`; Mode: REA Ghidra `GParameter::Mode` `ev_14466f77...`, `BasicHistogram::ChannelMode` `ev_c5cc3d11...`; histogram size for statistics assumed 4096 as for the median (specs 4); Correlation and Freq. of rules not read | high (Mode rule); medium (bin count) |
 | A10 | Statistics | No Min statistic (engine names a Max) | Min and Max | Differs (extra) | `Statistic` constants; engine stat-name literals | medium |
 | A11 | Statistics | Comparison statistics (KS, Overton, chi-square, probability binning) | none | Missing | `StatKey`, `KolmogorovSmirnoff`, `MultiDimCompare` | high |
 | A12 | FCS read | Versions 2.0, 3.0, 3.1; 3.2 tag recognized | 2.0, 3.0, 3.1; 3.2 refused with an explicit error | Differs | engine literal `FCS3.2`; extent of 3.2 support Unknown | medium |
 | A13 | FCS read | Packed (non-byte) and mixed bit widths, 3-byte variants | rejected with an explicit error | Missing | `FCSPackedDataReader`, `FCSMixedDataLengthRawDataReader`, `FCS3ByteDataReader` | high (names) |
 | A14 | FCS read | `$NEXTDATA` data sets | one data set at a time | Match | `FCSUtil::ReadDataPage` | medium |
 | A15 | Export | FCS 3 events | FCS 3.1 float32 | Match (format); parameter choice Differs | `FCS3Exporter`; `ExportParameters{ALL_UNCOMPENSATED,ALL_COMPENSATED,CUSTOM}` | high |
-| A16 | Export | CSV of scale values or channel values; header by stain, parameter or both | scale values, parameter names | Differs | `ExportFileTypes{CSV_SCALE,CSV_CHANNEL}`, `HeaderParameter` | high |
+| A16 | Export | CSV of scale values or channel values; header by stain, parameter or both | scale values, parameter names | Differs | `ExportFileTypes{CSV_SCALE,CSV_CHANNEL}`, `HeaderParameter`; channel mapping not recovered (`GParameter::ScaleToChannel` dispatches through a virtual table Ghidra could not resolve, `ev_86470e58...`) | high (exists); mapping Unknown |
 | A17 | Export | Event cap (random N, or smallest file) and concatenation (all, every n, equal keyword) with a sample-ID parameter | none | Missing | `ExportModel$EventCountParameter`, `$GroupConcatenationParameter`, `Exporter::GetSampleIDParameter` | high |
 | A18 | Workspace files | `.wsp` read | read; 221/228 counts exact | Match | specs 1 to 3; matrix | high |
 | A19 | Workspace files | `.wsp` write | written, never opened in FlowJo | Unknown | matrix | - |
@@ -206,7 +210,7 @@ statistics 39, platforms 29, transforms 19, export 15, compensation 9).
 | A22 | Compensation | Matrix files: FlowJo matrix (Gating-ML based) and CSV save, load from file | CSV import (own `#` header rule) | Differs | specs 6.4; `CompCommand{SAVE_FJFORMAT,SAVE_CSVFORMAT,LOAD_FILE}` | high |
 | A23 | Compensation | Spillover spreading matrix (SSM) view/export | none | Missing | `CompCommand{CALCSSM,SSM_VIEW,SSM_SAVE}`, `WeightOptimizer::CalculateSSM` | high |
 | A24 | Compensation | Wizard with auto positive/negative gates, universal negative, status badges | median-based wizard, own | Differs | `compeditor.model.AutoGateMaker`, `WizardMatrix` | high (exists); algorithm Unknown *(needs Ghidra)* |
-| A25 | Gates | Bisector | none | Missing | `QuadGate::ComputeBisectorGate`, `gw.tool.bisector` | high |
+| A25 | Gates | Bisector: two populations split at one value; an event below the split is in the left one, every other event (the split value included) in the right one; exact comparison on the parameter value, not the gate grid | none | Missing | REA Ghidra `QuadGate::ComputeBisectorGate` (per-event overload) `ev_0086d5bb...`; `gw.tool.bisector` | high |
 | A26 | Gates | Curly quad: each arm is a parabola in display pixels from the centre, y = cy - round(k dx^2), sampled about every 1/40 of the remaining width to the frame edge; a command doubles or halves k | spline quadrant (monotone cubic through control points, own definition) | Differs | `CurlyQuadGate.getHorizontalCurlyFunction`, `multInflection` (decompiled, checked with `javap -c`) | medium-high |
 | A27 | Gates | Spider quad, freehand (pencil), timeslice, auto gate, magnetic gates, manual coordinate entry, anchored range, BifurGate | none (Time range gates work) | Missing | `gw.tool.*`, `TetheredRangeGate`, `AutoGateMaker`, `ws.autoquad` | high |
 | A28 | Gates | Copy/paste gates; convert shape (rect/poly/ellipse) | none | Missing | `GWCommand{COPYGATE,PASTEGATE}`, `GateConvertEdit` | high |
@@ -317,10 +321,10 @@ a FlowJo rule must be decoded first to match it exactly.
 | F5 | Error contract: close `ErrorCode` over `INTERNAL`/`WORKER_FAILED`, carry an optional remediation, show code + remediation in the Log; allow-list worker operations; error boundary per panel; remediation for worker failure | B3, B4, B6, B7 | Medium: clearer recovery, no blank page | S | `src/core/errors.ts`, `src/worker/analysis.worker.ts`, `src/ui/workerClient.ts` | high |
 | F6 | Named limits with units; warn when the data-set walk (1000) or keyword snapshot (500 characters) truncates | B5 | Medium: no silent data loss | S | `src/core/fcs.ts:117`, `src/ui/App.tsx:166` | high |
 | F7 | Live group criteria: numeric comparisons, between / not between, exists / lacks | A7, C25 | Medium: FlowJo groups built on numeric keywords | S-M | `CriteriaTest` | medium |
-| F8 | Bisector gate | A25, C6 | Medium: common FlowJo gate | M | `QuadGate::ComputeBisectorGate`; split rule *(needs Ghidra)* | high (exists) |
+| F8 | Bisector gate | A25, C6 | Medium: common FlowJo gate | M | `QuadGate::ComputeBisectorGate`: below the split left, the rest right (decoded) | high |
 | F9 | REA producer: emit ownerless obligations as open reviewed obligations; derive the evidence operation from the subject format; then merge `tools/rea-open-obligations.json` | B12 | Medium: the ledger shows open parity work, not only closed work | S | rea `docs/reconstruction-obligation-ledgers.md`; `tools/reaProof.ts` | high |
 | F10 | Event export: event cap and concatenation with a sample-ID parameter | A17, C13 | High for users who downsample or merge files | M | `ExportModel` enums, `Exporter::GetSampleIDParameter`; random selection rule *(needs Ghidra)* | high |
-| F11 | Statistics Mode and Freq. of (any ancestor); Correlation later | A9 | High for parity of stats tables | M | `Statistic` constants; computation rules *(needs Ghidra)* | high (exists) |
+| F11 | Statistics Mode and Freq. of (any ancestor); Correlation later | A9 | High for parity of stats tables | M | `Statistic` constants; Mode rule decoded (first highest histogram channel); Freq. of and Correlation rules not read | high (Mode) |
 | F12 | `.wsp` layout pages: emit the warning the matrix promises, or correct the matrix | A21 | Low, but a doc/code mismatch | S | `docs/compatibility-matrix.md`, `src/core/wsp.ts` | high |
 | F13 | Graph navigation: gating-path breadcrumb and next/previous sample keys; edge-event caption | C4, C23, A40 | Medium | S-M | `gw.breadcrumbbar.*`, `gw.nav.*`, `gw.gates.panel.warn1/2` | high |
 | F14 | Keyboard accelerators allowed by the browser (S, G, B, E, I) | C16 | Low-medium | S | `*.accelerator` keys | medium |

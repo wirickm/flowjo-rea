@@ -243,3 +243,89 @@ Not applicable from rea: runtime analysis settings through MCP (no
 operator-tunable budgets in a browser app), provider registries and process
 ownership (one in-page worker), generated error catalogs (16 codes; a table
 in the docs would do if wanted).
+
+## 5. Part C: UI/UX
+
+FlowJo side: resource bundles `com/treestar/flowjo/core/flowjodictionary.properties`
+(and `_dlog`, `_plat`, `_prefs`), fjlib `com/bric/swing/QDialog.properties`,
+and UI class names; band-to-tab placement and button order are built in code
+and were not read *(needs Ghidra)*. Accelerator modifiers are inferred
+(menu key, Shift for an upper-case value): medium confidence. This app's side:
+`src/ui/*`. No rea or ghidra pattern covers UI design (section 1, gap); the
+recommendations below are either "match FlowJo 10" (evidence-backed) or
+"own rule" (a browser constraint or this app's choice, to be decided in UAT
+step 3, `docs/validation/uat-2026-11-02.md` section 5).
+
+| # | Area | FlowJo 10.6.2 | This app | Status | Recommendation for step 3 | Conf. |
+|---|---|---|---|---|---|---|
+| C1 | Main window | Ribbon frame: tabs File, Edit, Tools, Configure, Workspace, FlowJo; 22 bands (Document, Clipboard, Navigate, Groups, Keywords, Populations, Statistics, Boolean, Biology, Cytometry, Visualizations, Discovery, ...); presets Simple / Experienced / Advanced (`ws.ribbon.*`, `WSRibbonFrame`) | one toolbar and four panels, no menus (`src/ui/App.tsx:540-560`) | Differs | Own rule: keep one page. Group the toolbar into FlowJo's band names (Document, Groups, Populations, Statistics, Biology, Cytometry) so FlowJo users find commands | high |
+| C2 | Group pane | Group list above samples; "All Samples" cannot be edited or deleted; name, role, size (`GroupTreeTable`, `ws.groupmgr.errcantdeleteall`) | group list with live badge and count | Match (role column Missing) | Keep; add role only with A8 | medium |
+| C3 | Sample tree | One tree-table: samples, populations and statistic nodes with columns Name, Statistic, #Cells and optional keyword columns (`SampleTreeTable`, `ws.column.special.*`) | population tree plus a separate statistics table | Differs | Own rule: keep the split; optional keyword columns later | high |
+| C4 | Graph window | One window per population; menus File, Edit, Go, Graph, Display, Help; breadcrumb gating path; parent/child and next/previous sample navigation (`GWFrame`, `gw.breadcrumbbar.*`, `gw.nav.*`) | one plot panel bound to the selected population | Differs | Match in part: add a breadcrumb of the gating path and next/previous sample keys (PageUp/PageDown, as `gw.nav`) to the plot panel | high |
+| C5 | Gate naming | After drawing, a naming dialog (name, favorites list, colour; unique-name check) (`GateNamerDialog`, `dlog.gatenamer.*`) | automatic name, double-click to rename | Differs | Own rule: keep automatic names (faster); naming rules already match (specs 6.7) | high |
+| C6 | Gate tools | 13 tools: arrow, rectangle, ellipse, polygon, pencil, quad, curly quad, spider, range, bisector, timeslice, auto gate, manual entry (`gw.tool.*`) | select, rectangle, polygon, ellipse, quadrant, spline; select and range on histograms | Missing (A25 to A27) | Add bisector first (fix F8); others later | high |
+| C7 | Transforms | Transform dialog per parameter (logicle T/W/M/A, biex width/decades) with apply to group / all samples / several parameters (`dlog.parameter.*`, `dlog.transformvalues.*`) | scale dialog per channel, global | Differs (A33) | Defer: needs a per-sample scale model | high |
+| C8 | Layout editor | Own ribbon window (tabs File, Edit, Arrange, Object, Settings, Layout Editor), free drawing tools, graph definition dialog, iteration by sample / keyword / panel, batch to PDF / PowerPoint / web (`le.*`) | modal with an ordered two-column list, per-sample batch | Differs (A42) | Defer; the S4 layout items in UAT step 3 stay own choices | high |
+| C9 | Table editor | Own window (tabs Table Editor, Edit, Visualize, Plot): formula and keyword columns, formatting, outputs to file / clipboard / layout (`te.*`) | statistics panel with named templates | Differs (A43) | Defer | high |
+| C10 | Compensation | Compensation window: control group, positive/negative gates per parameter, status badges, Calculate, matrix editor, SSM (`compeditor.*`, `plat.comp.*`) | compensation dialog with wizard and editable grid | Differs (A22 to A24) | Keep; step 3 matrix input checks stay an own rule (FlowJo accepts bad files silently, specs 6.7) | high |
+| C11 | Derived parameters | Formula editor with reference insertion, scale range, preview, apply to group (`plat.derived.*`, `dlog.dp.*`) | ratio builder | Differs (A34) | Defer | high |
+| C12 | Keywords | Inspect window (keywords, parameters, prev/next sample) plus Add Keyword, Find & Replace, Value Series (`PropertiesDialog`, `ws.find.*`) | Keywords modal, view and filter only | Match (view) / Missing (edit) | Add prev/next sample in the Keywords modal (small) | high |
+| C13 | Export | "Export or Concatenate" dialog: format (FCS3, CSV scale, CSV channel), parameters, event cap, naming pattern, concatenation, file count and overwrite warnings (`export.*`) | Export modal: CSV or FCS, compensated toggle, plot PNG/SVG, Gating-ML, .wsp | Differs (A15 to A17) | Match: add event cap and concatenation options with A17 | high |
+| C14 | Platforms | One window per platform; errors in the window; warning before opening many windows (`plat.factory.*`) | Platforms modal; errors in the window (specs 6.7) | Match | Keep | high |
+| C15 | Preferences | 25 panels (Workspace, Graphs, Gates, Cytometers, ...) incl. "Reset All Don't Show Memory", "Disable Undo", auto-save (`prefs.*`) | none | Missing | Add a minimal Preferences dialog only for what fixes need: "Don't ask again" reset (F1), auto-save if adopted | high |
+| C16 | Keyboard | About 150 accelerators, e.g. Cmd+Z / Shift+Cmd+Z undo/redo, Cmd+S save, Cmd+G group, Cmd+B add statistic, Cmd+E export, Cmd+I inspect, Cmd+Enter open graph, Cmd+Y Preferences (`*.accelerator`) | Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z and Ctrl/Cmd+Y (redo) (`src/ui/App.tsx:82-93`) | Differs | Match where the browser allows: Cmd/Ctrl+S, +G, +B, +E, +I. Browser-reserved keys (Cmd+L, +T, +N, +W, +R) stay unmapped (own rule). Keep Ctrl+Y as redo (Windows convention; in FlowJo it opens Preferences) | medium |
+| C17 | Escape | Escape bound only in the rename dialog (specs 6.7) | Escape clears a polygon draft only | Differs | Own rule as planned: Escape closes every dialog (browser convention) | high |
+| C18 | Delete confirmations | Populations, samples, groups, layouts, tables, plates each ask; many with "Don't Show Again" (`ws.mgr.confirmation*`, `ws.groupmgr.deleteprompt`, `le/te/pe.delete.confirm`) | asks for population delete, sample remove, in-use derived parameter; not for group, matrix, template, statistic column, layout item (`src/ui/App.tsx:593,857,867`) | Differs | Match: ask before deleting a group and a template; add "Don't ask again" (F1). Statistic columns and layout items stay undoable without a question (own) | high |
+| C19 | Remove samples | Asks: from workspace or from the current group (`ws.deletesample.ws/group`) | workspace only | Differs (A5) | Match (F2) | high |
+| C20 | Unsaved changes | "Save changes?" on close (`ws.doc.wannasave`, QDialog save prompts) | no guard when the tab closes | Missing | Match: `beforeunload` guard when the workspace has unsaved edits (F3) | high |
+| C21 | Add samples | Add Samples command and a "Drag Samples Here" drop target; per-file failure counts (`ws.sample.drag.here`, `ws.samplemgr.numfilesnotadded`) | file picker only | Missing (drop) | Match: accept dropped FCS files on the samples panel (F4) | high |
+| C22 | Status | Status/progress area; auto-save message (`WSProgressPanel`) | "Working..." / "Ready" plus the Log | Match | Keep; step 3 stale-log warnings stay own | medium |
+| C23 | Edge events | Warning in the graph when a set share of events is on the axis bounds (`gw.gates.panel.warn1/2`) | none | Missing (A40) | Match: caption warning with the share on the bounds (threshold value *(needs Ghidra or a FlowJo preference file)*) | medium |
+| C24 | Launcher, help, repositories | Start window with recent documents; Help band; LabArchives / Cytobank / Enterprise links | none | Missing | Own rule: not needed in an offline single file | high |
+| C25 | Group dialog | Create/Modify Group: name, colour, role, criteria (keyword op value), Live, Synchronized (`GroupDlog`) | "New group from checked", "group by", rule group | Differs (A7, A8) | Match criteria operators with F7 | high |
+
+## 6. Ranked proposed fixes
+
+Ranked by impact over effort. Effort: S (under a day), M (days), L (weeks).
+Nothing here is implemented; each waits for a go-ahead. "Needs Ghidra" means
+a FlowJo rule must be decoded first to match it exactly.
+
+| Rank | Fix | Rows | Impact | Effort | Evidence | Conf. |
+|---|---|---|---|---|---|---|
+| F1 | "Don't ask again" on delete confirmations, remembered per message, reset from a minimal Preferences dialog | A4, C15, C18 | Medium: the known open UAT item; fewer repeated questions | S | specs 6.7, 6.8; `SDialogs.confirm`, `prefs.ws.resetdontask` | high |
+| F2 | Remove samples from the workspace or only from the current group | A5, C19 | Medium: group editing without losing samples | S | `ws.deletesample.ws/group` | high |
+| F3 | Unsaved-changes guard on tab close | C20 | High: prevents data loss (FCS data and edits are in memory only) | S | `ws.doc.wannasave` | high |
+| F4 | Drop FCS files onto the samples panel | C21 | Medium: common FlowJo workflow | S | `ws.sample.drag.here` | high |
+| F5 | Error contract: close `ErrorCode` over `INTERNAL`/`WORKER_FAILED`, carry an optional remediation, show code + remediation in the Log; allow-list worker operations; error boundary per panel; remediation for worker failure | B3, B4, B6, B7 | Medium: clearer recovery, no blank page | S | `src/core/errors.ts`, `src/worker/analysis.worker.ts`, `src/ui/workerClient.ts` | high |
+| F6 | Named limits with units; warn when the data-set walk (1000) or keyword snapshot (500 characters) truncates | B5 | Medium: no silent data loss | S | `src/core/fcs.ts:117`, `src/ui/App.tsx:166` | high |
+| F7 | Live group criteria: numeric comparisons, between / not between, exists / lacks | A7, C25 | Medium: FlowJo groups built on numeric keywords | S-M | `CriteriaTest` | medium |
+| F8 | Bisector gate | A25, C6 | Medium: common FlowJo gate | M | `QuadGate::ComputeBisectorGate`; split rule *(needs Ghidra)* | high (exists) |
+| F9 | REA producer: emit ownerless obligations as open reviewed obligations; derive the evidence operation from the subject format; then merge `tools/rea-open-obligations.json` | B12 | Medium: the ledger shows open parity work, not only closed work | S | rea `docs/reconstruction-obligation-ledgers.md`; `tools/reaProof.ts` | high |
+| F10 | Event export: event cap and concatenation with a sample-ID parameter | A17, C13 | High for users who downsample or merge files | M | `ExportModel` enums, `Exporter::GetSampleIDParameter`; random selection rule *(needs Ghidra)* | high |
+| F11 | Statistics Mode and Freq. of (any ancestor); Correlation later | A9 | High for parity of stats tables | M | `Statistic` constants; computation rules *(needs Ghidra)* | high (exists) |
+| F12 | `.wsp` layout pages: emit the warning the matrix promises, or correct the matrix | A21 | Low, but a doc/code mismatch | S | `docs/compatibility-matrix.md`, `src/core/wsp.ts` | high |
+| F13 | Graph navigation: gating-path breadcrumb and next/previous sample keys; edge-event caption | C4, C23, A40 | Medium | S-M | `gw.breadcrumbbar.*`, `gw.nav.*`, `gw.gates.panel.warn1/2` | high |
+| F14 | Keyboard accelerators allowed by the browser (S, G, B, E, I) | C16 | Low-medium | S | `*.accelerator` keys | medium |
+| F15 | Repository hygiene: PR template and CONTRIBUTING pointer, ESLint with `react-hooks` (or drop the 4 directives), Playwright as a dev dependency, `docs/architecture.mermaid` | B8 to B11 | Low-medium: contributor clarity | S | rea `.github/pull_request_template.md`, `AGENTS.md` | high |
+
+Larger items, not ranked for now (L effort or need an own decision):
+group-owned analysis (A6), per-sample transforms (A33), formula derived
+parameters (A34), keyword editing (A35), copy/paste and shape conversion
+(A28), packed / mixed FCS bit widths (A13), CSV channel values (A16), auto-save
+in a browser (A3), layout and table editors (A42, A43), the platforms in A39.
+
+## 7. Open questions and blockers
+
+1. **Ghidra (blocker).** `/opt/ghidra_12.1.4_PUBLIC` does not exist in this
+   session and the release download is blocked. To unblock: install Ghidra
+   12.1.x there (or allow `github.com/NationalSecurityAgency/ghidra`
+   releases), then run the prepared GhidraScript on the rows marked *(needs
+   Ghidra)* and `rea ... --provider ghidra` on the engine for an REA-native
+   ledger rerun.
+2. **REA and JVM classes (finding R1).** Not fixable by configuration;
+   decompiled Java stays analyst Evidence unless REA adds a JVM route.
+3. **UI pattern.** Neither rea nor ghidra has a UI/UX design pattern. Part C
+   uses FlowJo 10 as the reference and labels every other recommendation as
+   an own rule. If a UI pattern source should govern step 3, name it.
+4. **Fix F9 touches `tools/reaProof.ts`.** It is tooling, not app code, but
+   it is a code change; it waits for a go-ahead like the others.

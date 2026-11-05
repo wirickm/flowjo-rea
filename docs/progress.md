@@ -1,5 +1,17 @@
 # Progress and handoff
 
+## State (2026-11-05, comparison with FlowJo 10.6.2)
+
+Analysis only, no app code changed: `docs/validation/comparison-2026-11.md`
+(pattern inventory from wirickm/rea and wirickm/ghidra; part A behavior
+parity, B code architecture, C UI/UX; 15 ranked fixes awaiting a go-ahead).
+New static observations: specs 6.8. REA ledger: six new obligations bound to
+existing tests, 10 of 10 verified (analyst mode); twelve open obligations in
+`tools/rea-open-obligations.json`. Ghidra was not available in this session
+(rows marked "needs Ghidra"); REA 6.8.0 refuses JVM class files at target
+resolution. Next steps: go-ahead on the ranked fixes; Ghidra for the
+"needs Ghidra" rows and the REA-native ledger rerun.
+
 ## State (2026-11-04, quad sibling delete)
 
 Deleting one quad deletes its sibling quads on the same x and y parameters,

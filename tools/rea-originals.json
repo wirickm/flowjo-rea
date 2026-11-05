@@ -76,6 +76,54 @@
       "locations": [{ "kind": "address-range", "start": "0xeaaf0", "end": "0xeabf0" }, { "kind": "address-range", "start": "0xeabf0", "end": "0xeae80" }],
       "behavior": "Robust CV is 0 for populations of fewer than 6 events; otherwise 100 x robust SD / median, robust SD being (P84.13 - P15.87) / 2 with one-sided fallbacks at saturation.",
       "spec_section": "4"
+    },
+    {
+      "key": "unique-child-name",
+      "subject": "jar",
+      "symbols": ["com.treestar.flowjo.core.nodes.ParentNode.uniqueChildName(String)", "com.treestar.lib.core.NameUtil.uniqueName(String, Uniquenesser) (fjlib-2.3.0.jar, same installer)"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/core/nodes/ParentNode.class" }],
+      "behavior": "A new child name that no sibling uses is kept; a taken name becomes the first free <stem>-N (N = 1..999), the stem dropping a trailing dash plus up to 3 digits when that dash is after the 3rd character; names compare exactly.",
+      "spec_section": "6.7"
+    },
+    {
+      "key": "shape-too-small",
+      "subject": "jar",
+      "symbols": ["com.treestar.layout.presentation.Fig.isTooSmall()", "com.treestar.layout.presentation.FigRange.isTooSmall()", "com.treestar.layout.editor.drags.CreationDrag"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/layout/presentation/Fig.class" }, { "kind": "artifact-path", "path": "com/treestar/layout/presentation/FigRange.class" }],
+      "behavior": "A newly drawn shape is discarded when it is 10 px or less in both width and height (a range: 10 px or less wide); any larger shape is kept.",
+      "spec_section": "6.7"
+    },
+    {
+      "key": "relink-keywords",
+      "subject": "jar",
+      "symbols": ["com.treestar.flowjo.application.fcsscan.FCSFinder$SampleKeywordMatcher.keywordsMatch(Sample)", "com.treestar.flowjo.core.Sample.matchesBrokenSample"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/application/fcsscan/FCSFinder$SampleKeywordMatcher.class" }],
+      "behavior": "A new file relinks to the first workspace sample without data whose saved $TOT is present and equal, whose saved $DATE, $BTIM, $BEGINDATA are equal up to the first unsaved one, and whose $FIL is unsaved or equal; otherwise the file is a new sample.",
+      "spec_section": "6.7"
+    },
+    {
+      "key": "quad-siblings",
+      "subject": "jar",
+      "symbols": ["com.treestar.flowjo.core.nodes.NodeList.addSiblingQuads()", "com.treestar.flowjo.application.workspace.treetables.ktreetable.STreeMgr.deleteSelection"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/core/nodes/NodeList.class" }],
+      "behavior": "Deleting a quad population also deletes every sibling quad on the same x and y parameters, wherever its centre; a population whose gate is not a quad is deleted alone.",
+      "spec_section": "6.2"
+    },
+    {
+      "key": "cell-cycle-channels",
+      "subject": "jar",
+      "symbols": ["com.treestar.flowjo.cellcycle.CCNode.HISTOGRAM_CHANNELS = 1024", "CellCycle::ProcessQuery (engine)"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/cellcycle/CCNode.class" }],
+      "behavior": "The cell cycle model is fitted on a histogram of min(parameter channel range, 1024) channels; the user cannot set the resolution.",
+      "spec_section": "6.1"
+    },
+    {
+      "key": "undo-limit",
+      "subject": "jar",
+      "symbols": ["com.treestar.flowjo.application.workspace.WSUndoManager", "com.treestar.lib.gui.undo.FJUndoManager (fjlib-2.3.0.jar, same installer)", "javax.swing.undo.UndoManager (default limit 100)"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/application/workspace/WSUndoManager.class" }],
+      "behavior": "Workspace undo keeps the last 100 edits (Swing UndoManager default; no class in FlowJo-10.6.2.jar or fjlib-2.3.0.jar sets another limit), undoes and redoes them in order, and a new edit after an undo drops the redo edits.",
+      "spec_section": "6.8"
     }
   ]
 }

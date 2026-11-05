@@ -320,6 +320,93 @@ output stays outside the repository.
   replacing the open workspace; this app has one window and asks before
   replacing a workspace with work in it.
 
+### 6.8 Further static observations (comparison of 2026-11-05)
+
+Source: the same verified installer (`FlowJo-10.6.2.jar` SHA-256
+`6a6436c0...`, `fjlib-2.3.0.jar` SHA-256 `ed08fec9...`, engine
+`ae2369f3...`). Read with `javap` (member signatures and constants; `-c` only
+where a constant had to be located), the resource bundles
+`com/treestar/flowjo/core/flowjodictionary*.properties`, and `llvm-nm
+--demangle` on the engine. The last four items were then read with Ghidra
+12.1.4 (headless decompiler for Java, REA's Ghidra provider for the engine);
+confidence is given per item. Runtime is
+unconfirmed for all of it (FlowJo was not run). The full comparison is
+`docs/validation/comparison-2026-11.md`.
+
+- Undo/redo (high for the class structure, medium for the limit): workspace
+  undo (`WSUndoManager`, extending fjlib `FJUndoManager`) is a Swing
+  `UndoManager`. Neither class nor any other class in the two jars sets a
+  limit (`setLimit` occurs only in the unrelated manual-gate dialog), so the
+  Swing default of 100 edits applies; a new edit after an undo drops the redo
+  edits (Swing behavior). Preferences has "Disable Undo". This app: 100
+  snapshots, redo dropped by a new edit. Matches; no "Disable Undo".
+- Auto-save (high): Preferences offers "Enable Auto-Save" with an interval in
+  minutes. A timer task saves each workspace that has a file and samples;
+  ACS and Envoy workspaces are skipped; the status bar then reports that the
+  workspace was auto-saved, with the time (`AutoSaveTask`). This app: none.
+- Resetting "Don't Ask Again" (high): the remembered answers are reset
+  as a whole from Preferences > Workspace ("Reset All Don't Show Memory", now
+  or on exit). Completes specs 6.7.
+- Removing samples (high): FlowJo asks whether to remove the selected samples
+  from the workspace or only from the current group. This app removes from
+  the workspace only.
+- Shared group analysis (high): removing analysis owned by a group asks
+  whether to delete it from every sample or give each sample its own copy;
+  nodes holding group-owned analysis cannot be deleted from one sample. This
+  app copies gates by path and has no group ownership.
+- Statistics (high for the list): FlowJo's statistic set is Count, Freq. of
+  Parent, Freq. of Grandparent, Freq. of Total, Freq. of (any ancestor), Mean,
+  Median, Geometric Mean, Mode, CV, Robust CV, SD, Robust SD, Median Absolute
+  Deviation, Percentile and Correlation (`Statistic` constants). There is no
+  Min statistic; the engine names a Max. This app lacks Mode, Correlation and
+  Freq. of (any ancestor) and adds Min and Max.
+- Gate tools (high): rectangle, ellipse, polygon, freehand (pencil), quad,
+  curly quad, spider quad, range, bisector, timeslice, auto gate, manual
+  coordinate entry; magnetic gates, anchored (tethered) range gates, BifurGate
+  (automatic bisectors at the valley of bimodal parameters), gate shape
+  conversion, copy/paste of gates. The engine has no ellipse gate type, which
+  agrees with section 2.
+- Export (high): FCS 3 or CSV with either scale values or channel values;
+  parameters all compensated, all uncompensated or a custom set; event count
+  "no more than N" (random) or capped at the smallest file; concatenation of
+  all files, every n files, or files with equal keyword values, adding a
+  sample ID parameter. This app: FCS 3.1 or CSV scale values, compensated or
+  not, no event cap, no concatenation.
+- Interchange (high): `.wsp`, `.wspt` templates, ACS archives (workspace plus
+  data), legacy Mac `.jo` read, Excel/CSV of the workspace table, FACSDiva
+  XML import/export, compensation matrices saved as CSV or a Gating-ML based
+  FlowJo matrix file. The FCS reader recognizes the FCS3.2 header tag (how
+  much of 3.2 it supports is unknown) and reads packed (non-byte) and mixed
+  bit widths, which this app rejects.
+- Live group criteria (medium): the criterion tests are equals, not equals,
+  greater, greater or equal, less, less or equal, between and not between
+  (`CriteriaTest`), plus a "Contains" label (the fixtures' `$FIL contains`
+  groups use it) and "Exists" / "Lacks" connectors. This app has contains,
+  does not contain, equals, does not equal, starts with and ends with: no
+  numeric comparisons, ranges or exists/lacks; starts/ends with and does not
+  contain were not found in FlowJo 10.6.2 (low confidence for that absence).
+- Edge events (high): the graph window warns when 5% or more of events sit
+  on either axis bound; on by default (`FJPrefsFJML$Graph`: `eventsOnAxis`
+  true, `warningThreshold` 5; Preferences > Graphs). This app: none.
+- Bisector (high; REA Ghidra provider, `QuadGate::ComputeBisectorGate`):
+  two populations split at one value. An event whose parameter value is
+  below the split is in the left population; every other event, the split
+  value included, is in the right one. The comparison is exact on the value
+  (not on the gate grid of section 1). This app: no bisector.
+- Mode (high for the rule, medium for the bin count; `GParameter::Mode`,
+  `BasicHistogram::ChannelMode`): built from the parameter's histogram; the
+  mode is the first (lowest) channel with the highest count, as channel
+  index times range / channel count, then converted to a data value. The
+  statistics histogram is presumably the 4096-channel one of section 4.
+- Curly quad (medium-high; decompiled `CurlyQuadGate`, checked with
+  `javap -c`): each arm starts at the centre and is a parabola in display
+  pixels, y = cy - round(k * dx^2), sampled about every 1/40 of the remaining
+  width up to the frame edge; a command doubles or halves k. This app's
+  spline quadrant is a different curve.
+- Undo (now high): each user action's edits form one compound edit that is
+  added through Swing `UndoManager.addEdit`, so the 100 limit counts user
+  actions (decompiled `FJUndoManager.startNewEdit`, checked with `javap -c`).
+
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 
 Source: static analysis of `libNativeEngine.dylib` from the public FlowJo

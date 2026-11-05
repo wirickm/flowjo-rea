@@ -78,6 +78,123 @@
         { "fixture_id": "stats.small", "case_kind": "malformed", "test_file": "tests/flowjo-stats.test.ts", "test_name": "robust CV is 0 below 6 events and NaN when empty" }
       ],
       "verifier": { "verifier_id": "stats.flowjo-histogram", "claim_id": "stats.flowjo-conventions.v2", "test_file": "tests/flowjo-stats.test.ts", "command": "npx vitest run tests/flowjo-stats.test.ts" }
+    },
+    {
+      "obligation_id": "names.unique-sibling",
+      "obligation_version": 1,
+      "title": "A new or renamed population takes FlowJo 10's unique sibling name",
+      "family": "naming",
+      "target_location": "com.treestar.flowjo.core.nodes.ParentNode.uniqueChildName",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "unique-child-name", "location": "a taken name becomes the first free <stem>-N" },
+        { "kind": "negative", "observation": "unique-child-name", "location": "an unused name is kept unchanged" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/model.ts", "symbol": "uniqueName", "files": ["src/core/model.ts"] },
+      "fixtures": [
+        { "fixture_id": "names.unique-sibling.suffix", "case_kind": "positive", "test_file": "tests/uat-step2.test.ts", "test_name": "a taken name gets the first free \"-N\" suffix" },
+        { "fixture_id": "names.unique-sibling.kept", "case_kind": "negative", "test_file": "tests/uat-step2.test.ts", "test_name": "a taken name gets the first free \"-N\" suffix" }
+      ],
+      "verifier": { "verifier_id": "uat.step2", "claim_id": "names.unique-sibling.v1", "test_file": "tests/uat-step2.test.ts", "command": "npx vitest run tests/uat-step2.test.ts" }
+    },
+    {
+      "obligation_id": "gate.min-shape",
+      "obligation_version": 1,
+      "title": "A drawn shape of 10 px or less in both directions is discarded, as in FlowJo 10",
+      "family": "gating",
+      "target_location": "com.treestar.layout.presentation.Fig.isTooSmall",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "shape-too-small", "location": "10 px or less wide and high is discarded" },
+        { "kind": "negative", "observation": "shape-too-small", "location": "larger in either direction is kept" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/ui/gateGeometry.ts", "symbol": "tooSmall", "files": ["src/ui/gateGeometry.ts"] },
+      "fixtures": [
+        { "fixture_id": "gate.min-shape.discard", "case_kind": "positive", "test_file": "tests/uat-step2.test.ts", "test_name": "a shape is discarded only when 10 px or less in both directions" },
+        { "fixture_id": "gate.min-shape.keep", "case_kind": "negative", "test_file": "tests/uat-step2.test.ts", "test_name": "a shape is discarded only when 10 px or less in both directions" }
+      ],
+      "verifier": { "verifier_id": "uat.step2", "claim_id": "gate.min-shape.v1", "test_file": "tests/uat-step2.test.ts", "command": "npx vitest run tests/uat-step2.test.ts" }
+    },
+    {
+      "obligation_id": "sample.relink-keywords",
+      "obligation_version": 1,
+      "title": "A new file relinks to a sample without data by FlowJo 10's keyword test",
+      "family": "workspace",
+      "target_location": "com.treestar.flowjo.application.fcsscan.FCSFinder$SampleKeywordMatcher.keywordsMatch",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "relink-keywords", "location": "saved keywords agree: the file relinks to the first matching sample" },
+        { "kind": "negative", "observation": "relink-keywords", "location": "$TOT unsaved or different: no relink, the file is a new sample" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/project.ts", "symbol": "relinkMatches", "files": ["src/core/project.ts"] },
+      "fixtures": [
+        { "fixture_id": "sample.relink.match", "case_kind": "positive", "test_file": "tests/uat-step2.test.ts", "test_name": "relinks when $TOT, $DATE, $BTIM, $BEGINDATA and $FIL agree" },
+        { "fixture_id": "sample.relink.first", "case_kind": "positive", "test_file": "tests/uat-step2.test.ts", "test_name": "the target is the first sample without data that matches" },
+        { "fixture_id": "sample.relink.tot", "case_kind": "negative", "test_file": "tests/uat-step2.test.ts", "test_name": "$TOT must be recorded and equal" }
+      ],
+      "verifier": { "verifier_id": "uat.step2", "claim_id": "sample.relink-keywords.v1", "test_file": "tests/uat-step2.test.ts", "command": "npx vitest run tests/uat-step2.test.ts" }
+    },
+    {
+      "obligation_id": "gate.quad-sibling-delete",
+      "obligation_version": 1,
+      "title": "Deleting a quad deletes its sibling quads on the same parameters, as in FlowJo 10",
+      "family": "gating",
+      "target_location": "com.treestar.flowjo.core.nodes.NodeList.addSiblingQuads",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "quad-siblings", "location": "sibling quads on the same x and y parameters are deleted together" },
+        { "kind": "negative", "observation": "quad-siblings", "location": "a population whose gate is not a quad is deleted alone" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/project.ts", "symbol": "deletionRoots", "files": ["src/core/project.ts"] },
+      "fixtures": [
+        { "fixture_id": "gate.quad-delete.siblings", "case_kind": "positive", "test_file": "tests/quad-delete.test.ts", "test_name": "takes every sibling quad on the same x and y parameters" },
+        { "fixture_id": "gate.quad-delete.fixture", "case_kind": "positive", "test_file": "tests/quad-delete.test.ts", "test_name": "removes all four quadrants of reused_quad_gate_with_child.wsp" },
+        { "fixture_id": "gate.quad-delete.alone", "case_kind": "negative", "test_file": "tests/quad-delete.test.ts", "test_name": "a gate that is not a quad is deleted alone" }
+      ],
+      "verifier": { "verifier_id": "gate.quad-delete", "claim_id": "gate.quad-sibling-delete.v1", "test_file": "tests/quad-delete.test.ts", "command": "npx vitest run tests/quad-delete.test.ts" }
+    },
+    {
+      "obligation_id": "cellcycle.histogram-channels",
+      "obligation_version": 1,
+      "title": "The cell cycle histogram has min(channel range, 1024) channels, as in FlowJo 10",
+      "family": "platforms",
+      "target_location": "com.treestar.flowjo.cellcycle.CCNode.HISTOGRAM_CHANNELS",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "cell-cycle-channels", "location": "a range above 1024 is fitted on 1024 channels" },
+        { "kind": "negative", "observation": "cell-cycle-channels", "location": "a range at or below 1024 keeps its own channel count" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/service.ts", "symbol": "cellCycleChannels", "files": ["src/core/service.ts"] },
+      "fixtures": [
+        { "fixture_id": "cellcycle.channels.cap", "case_kind": "positive", "test_file": "tests/cellcycle.test.ts", "test_name": "uses the channel range, capped at 1024 channels" },
+        { "fixture_id": "cellcycle.channels.range", "case_kind": "negative", "test_file": "tests/cellcycle.test.ts", "test_name": "uses the channel range, capped at 1024 channels" }
+      ],
+      "verifier": { "verifier_id": "cellcycle.fits", "claim_id": "cellcycle.histogram-channels.v1", "test_file": "tests/cellcycle.test.ts", "command": "npx vitest run tests/cellcycle.test.ts" }
+    },
+    {
+      "obligation_id": "workspace.undo-limit",
+      "obligation_version": 1,
+      "title": "Undo keeps the last 100 edits and a new edit drops the redo edits, as in FlowJo 10",
+      "family": "workspace",
+      "target_location": "com.treestar.flowjo.application.workspace.WSUndoManager",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "undo-limit", "location": "more than 100 edits: only the last 100 can be undone" },
+        { "kind": "negative", "observation": "undo-limit", "location": "within the limit every edit undoes and redoes in order" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/ui/history.ts", "symbol": "pushHistory", "files": ["src/ui/history.ts"] },
+      "fixtures": [
+        { "fixture_id": "undo.cap", "case_kind": "positive", "test_file": "tests/history.test.ts", "test_name": "caps history length" },
+        { "fixture_id": "undo.order", "case_kind": "negative", "test_file": "tests/history.test.ts", "test_name": "undoes and redoes in order" },
+        { "fixture_id": "undo.branch", "case_kind": "negative", "test_file": "tests/history.test.ts", "test_name": "a new edit after undo discards the redo branch" }
+      ],
+      "verifier": { "verifier_id": "workspace.history", "claim_id": "workspace.undo-limit.v1", "test_file": "tests/history.test.ts", "command": "npx vitest run tests/history.test.ts" }
     }
   ]
 }

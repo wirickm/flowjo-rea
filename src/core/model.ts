@@ -181,7 +181,10 @@ export type StatKind =
   | 'mad'
   | 'min'
   | 'max'
-  | 'percentile';
+  | 'percentile'
+  | 'mode'
+  | 'correlation'
+  | 'freqOf';
 
 export interface StatColumn {
   id: string;
@@ -189,6 +192,10 @@ export interface StatColumn {
   stat: StatKind;
   channel?: string;
   percentile?: number;
+  // Freq. of: the ancestor population's name (FlowJo "ancestor" attribute).
+  ancestor?: string;
+  // Correlation: the second parameter (FlowJo "correlate" attribute).
+  correlate?: string;
 }
 
 export function emptyWorkspace(name = 'Untitled'): Workspace {

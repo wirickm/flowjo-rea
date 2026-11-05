@@ -521,7 +521,14 @@ export function App() {
     note('info', `Exported ${format.toUpperCase()} for ${popPath || 'All events'} (${compensated ? 'compensated' : 'uncompensated'})`);
   };
 
-  const colLabel = (c: StatColumn) => `${c.populationPath || 'All events'}: ${STAT_LABELS[c.stat]}${c.stat === 'percentile' ? ` ${c.percentile}` : ''}${c.channel ? ` (${c.channel})` : ''}`;
+  const colLabel = (c: StatColumn) => `${c.populationPath || 'All events'}: ${c.stat === 'freqOf' ? `Freq. of ${c.ancestor} (%)` : STAT_LABELS[c.stat]}${c.stat === 'percentile' ? ` ${c.percentile}` : ''}${c.channel ? ` (${c.channel}${c.correlate ? ` vs ${c.correlate}` : ''})` : ''}`;
+  // Ancestors of the selected population, for "Freq. of" (specs 8.1).
+  const ancestorNames = (() => {
+    const out: string[] = [];
+    let a = sample && sel.popId ? sample.populations.find((p) => p.id === sel.popId)?.parentId : null;
+    while (a && sample) { const q = sample.populations.find((p) => p.id === a); if (!q) break; out.push(q.name); a = q.parentId; }
+    return out;
+  })();
 
   // --- render helpers -----------------------------------------------------------------
   const tree = (parentId: string | null, depth: number): React.ReactNode =>
@@ -563,7 +570,7 @@ export function App() {
         );
       });
 
-  const [newStat, setNewStat] = useState<{ stat: StatKind; channel: string; percentile: number }>({ stat: 'count', channel: '', percentile: 50 });
+  const [newStat, setNewStat] = useState<{ stat: StatKind; channel: string; percentile: number; ancestor: string; correlate: string }>({ stat: 'count', channel: '', percentile: 50, ancestor: '', correlate: '' });
 
   return (
     <div className="app">
@@ -882,10 +889,22 @@ export function App() {
             )}
             {newStat.stat === 'percentile' && <input type="number" min={0} max={100} step={1} value={Number.isNaN(newStat.percentile) ? '' : newStat.percentile} onChange={(e) => setNewStat({ ...newStat, percentile: e.target.value === '' ? NaN : Number(e.target.value) })} style={{ width: 60 }} data-testid="stat-percentile" title="Integer from 0 to 100" />}
             {newStat.stat === 'percentile' && !validPercentile(newStat.percentile) && <span className="error" data-testid="percentile-error">integer 0 to 100</span>}
+            {newStat.stat === 'correlation' && (
+              <select value={newStat.correlate} onChange={(e) => setNewStat({ ...newStat, correlate: e.target.value })} data-testid="stat-correlate" title="Second parameter">
+                <option value="">with...</option>
+                {channels.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+              </select>
+            )}
+            {newStat.stat === 'freqOf' && (
+              <select value={newStat.ancestor} onChange={(e) => setNewStat({ ...newStat, ancestor: e.target.value })} data-testid="stat-ancestor" title="Ancestor population">
+                <option value="">of...</option>
+                {ancestorNames.map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            )}
             <button
               data-testid="add-stat"
-              disabled={!sample || (STAT_NEEDS_CHANNEL(newStat.stat) && !newStat.channel) || (newStat.stat === 'percentile' && !validPercentile(newStat.percentile))}
-              onClick={() => updateWs((w) => { w.statColumns.push({ id: newId('col'), populationPath: popPath, stat: newStat.stat, channel: STAT_NEEDS_CHANNEL(newStat.stat) ? newStat.channel : undefined, percentile: newStat.percentile }); })}
+              disabled={!sample || (STAT_NEEDS_CHANNEL(newStat.stat) && !newStat.channel) || (newStat.stat === 'percentile' && !validPercentile(newStat.percentile)) || (newStat.stat === 'correlation' && !newStat.correlate) || (newStat.stat === 'freqOf' && !newStat.ancestor)}
+              onClick={() => updateWs((w) => { w.statColumns.push({ id: newId('col'), populationPath: popPath, stat: newStat.stat, channel: STAT_NEEDS_CHANNEL(newStat.stat) ? newStat.channel : undefined, percentile: newStat.percentile, ...(newStat.stat === 'freqOf' ? { ancestor: newStat.ancestor } : {}), ...(newStat.stat === 'correlation' ? { correlate: newStat.correlate } : {}) }); })}
             >
               Add for "{popPath || 'All events'}"
             </button>

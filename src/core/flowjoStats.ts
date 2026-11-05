@@ -73,6 +73,20 @@ export function flowjoRobustCv(values: Float64Array, s: ChannelScale): number {
   return (100 * flowjoRobustSd(values, s)) / new Histogram(s, values).value(50);
 }
 
+// FlowJo mode (GParameter::Mode, BasicHistogram::ChannelMode; specs 8.1): a
+// 256-channel histogram on the FlowJo scale; the first (lowest) channel with
+// the highest count, as a position on the 4096-channel axis, converted back.
+const MODE_CHANNELS = 256;
+export function flowjoMode(values: Float64Array, s: ChannelScale): number {
+  if (values.length === 0) return NaN;
+  const bins = new Float64Array(MODE_CHANNELS);
+  const step = N / MODE_CHANNELS;
+  for (let i = 0; i < values.length; i++) if (!Number.isNaN(values[i])) bins[Math.min(MODE_CHANNELS - 1, Math.floor(channelOf(s, values[i]) / step))]++;
+  let best = 0;
+  for (let k = 1; k < MODE_CHANNELS; k++) if (bins[k] > bins[best]) best = k;
+  return valueOf(s, Math.round(Math.fround(best * step)));
+}
+
 // The FlowJo scale of a channel: an imported FlowJo linear range, else the
 // workspace display scale when it is linear or logicle. Undefined otherwise
 // (statistics then use exact order statistics).

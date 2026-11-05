@@ -2,7 +2,7 @@
 // Definitions are documented in docs/compatibility-matrix.md. With a FlowJo
 // channel scale, median, percentiles, robust SD and robust CV follow FlowJo
 // 10's histogram conventions (src/core/flowjoStats.ts).
-import { flowjoPercentile, flowjoRobustCv, flowjoRobustSd, type ChannelScale } from './flowjoStats';
+import { flowjoMode, flowjoPercentile, flowjoRobustCv, flowjoRobustSd, type ChannelScale } from './flowjoStats';
 import type { StatKind } from './model';
 
 // FlowJo 10: a percentile is an integer from 0 to 100 (specs 6.7).
@@ -31,9 +31,10 @@ export function quantileSorted(s: Float64Array, q: number): number {
 export function computeStat(
   kind: StatKind,
   values: Float64Array | null,
-  counts: { count: number; parent: number; grandparent: number; total: number },
+  counts: { count: number; parent: number; grandparent: number; total: number; ancestor?: number },
   percentile = 50,
   scale?: ChannelScale,
+  values2: Float64Array | null = null,
 ): number {
   switch (kind) {
     case 'count':
@@ -44,6 +45,13 @@ export function computeStat(
       return counts.grandparent > 0 ? (100 * counts.count) / counts.grandparent : NaN;
     case 'freqTotal':
       return counts.total > 0 ? (100 * counts.count) / counts.total : NaN;
+    case 'freqOf':
+      return counts.ancestor !== undefined && counts.ancestor > 0 ? (100 * counts.count) / counts.ancestor : NaN;
+    // FlowJo 10.6.2's engine returns NaN for Correlation (GParameter::Correlation
+    // has no implementation; specs 8.1). values2 is the second parameter.
+    case 'correlation':
+      void values2;
+      return NaN;
   }
   if (!values || values.length === 0) return NaN;
   if (scale) {
@@ -51,6 +59,7 @@ export function computeStat(
     if (kind === 'percentile') return flowjoPercentile(values, scale, percentile);
     if (kind === 'robustSd') return flowjoRobustSd(values, scale);
     if (kind === 'robustCv') return flowjoRobustCv(values, scale);
+    if (kind === 'mode') return flowjoMode(values, scale);
   }
   const n = values.length;
   let sum = 0;
@@ -107,6 +116,18 @@ export function computeStat(
     }
     case 'percentile':
       return quantileSorted(sorted(), percentile / 100);
+    case 'mode': {
+      // Without a FlowJo scale: the most frequent value (lowest on ties).
+      const s = sorted();
+      let best = s[0], bestN = 0;
+      for (let i = 0; i < s.length; ) {
+        let j = i;
+        while (j < s.length && s[j] === s[i]) j++;
+        if (j - i > bestN) { bestN = j - i; best = s[i]; }
+        i = j;
+      }
+      return best;
+    }
   }
 }
 
@@ -126,6 +147,30 @@ export const STAT_LABELS: Record<StatKind, string> = {
   min: 'Min',
   max: 'Max',
   percentile: 'Percentile',
+  mode: 'Mode',
+  correlation: 'Correlation',
+  freqOf: 'Freq. of (%)',
 };
 
-export const STAT_NEEDS_CHANNEL = (k: StatKind) => !['count', 'freqParent', 'freqGrandparent', 'freqTotal'].includes(k);
+export const STAT_NEEDS_CHANNEL = (k: StatKind) => !['count', 'freqParent', 'freqGrandparent', 'freqTotal', 'freqOf'].includes(k);
+
+// FlowJo's statistic names in .wsp files (StatKey: the enum's string field,
+// written as is; specs 8.1). Min and Max are this app's own (no FlowJo key).
+export const FLOWJO_STAT_NAMES: Partial<Record<StatKind, string>> = {
+  count: 'Count',
+  freqTotal: 'fj.stat.freqoftotal',
+  freqParent: 'fj.stat.freqofparent',
+  freqGrandparent: 'fj.stat.freqofgrandparent',
+  freqOf: 'fj.stat.freqof',
+  median: 'Median',
+  mean: 'Mean',
+  mode: 'Mode',
+  percentile: 'Percentile',
+  geomean: 'Geometric Mean',
+  robustCv: 'Robust CV',
+  cv: 'CV',
+  sd: 'SD',
+  mad: 'Median Abs Dev',
+  robustSd: 'Robust SD',
+  correlation: 'Correlation',
+};

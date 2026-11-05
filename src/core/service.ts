@@ -235,7 +235,16 @@ export class AnalysisService {
         const mask = p ? eng.masks.get(p.id)! : eng.root;
         let values: Float64Array | null = null;
         if (c.channel) values = gather(eng.column(c.channel), mask);
-        return computeStat(c.stat, values, { count, parent, grandparent: grand, total }, c.percentile, c.channel ? r.scales?.[c.channel] : undefined);
+        // Freq. of: the nearest ancestor with the named population (specs 8.1).
+        let ancestor: number | undefined;
+        if (c.stat === 'freqOf') {
+          let a = p?.parentId ? r.populations.find((x) => x.id === p.parentId) : undefined;
+          while (a && a.name !== c.ancestor) a = a.parentId ? r.populations.find((x) => x.id === a!.parentId) : undefined;
+          if (!a) return `error: no ancestor named "${c.ancestor ?? ''}"`;
+          ancestor = eng.results.get(a.id)!.count;
+        }
+        const values2 = c.stat === 'correlation' && c.correlate ? gather(eng.column(c.correlate), mask) : null;
+        return computeStat(c.stat, values, { count, parent, grandparent: grand, total, ancestor }, c.percentile, c.channel ? r.scales?.[c.channel] : undefined, values2);
       } catch (e) {
         if (e instanceof AppError) return `error: ${e.message}`;
         throw e;

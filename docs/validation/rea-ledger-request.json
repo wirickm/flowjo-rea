@@ -48,7 +48,7 @@
     ],
     "scenarios": [
       {
-        "evidence_id": "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763",
+        "evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
         "operation": "verify_reconstruction_obligations",
         "authority": "controlled-replay"
       }
@@ -56,6 +56,96 @@
     "captures": [],
     "unknowns": [],
     "records": [
+      {
+        "evidence_id": "ev_11d197fc5dc61181462b587047f8ae0cc431578be388fe3fe9fc34b24f8f55d8",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "com.treestar.flowjo.core.nodes.ParentNode.uniqueChildName(String)",
+            "com.treestar.lib.core.NameUtil.uniqueName(String, Uniquenesser) (fjlib-2.3.0.jar, same installer)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "A new child name that no sibling uses is kept; a taken name becomes the first free <stem>-N (N = 1..999), the stem dropping a trailing dash plus up to 3 digits when that dash is after the 3rd character; names compare exactly.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 6.7"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/core/nodes/ParentNode.class"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_1c5be4529e9848688f045b31e291d707c3dcf32348b159942bc55c4849fbe7fd",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "com.treestar.flowjo.application.fcsscan.FCSFinder$SampleKeywordMatcher.keywordsMatch(Sample)",
+            "com.treestar.flowjo.core.Sample.matchesBrokenSample"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "A new file relinks to the first workspace sample without data whose saved $TOT is present and equal, whose saved $DATE, $BTIM, $BEGINDATA are equal up to the first unsaved one, and whose $FIL is unsaved or equal; otherwise the file is a new sample.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 6.7"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/application/fcsscan/FCSFinder$SampleKeywordMatcher.class"
+          }
+        ]
+      },
       {
         "evidence_id": "ev_276f7886135cbaa91fc8d3bc855b7f3369303019589dcdd9e65aab3c7ce13d84",
         "analysis_profile": null,
@@ -178,103 +268,7 @@
         ]
       },
       {
-        "evidence_id": "ev_3caabaaa55400c8d00b3236e99c7e4fa6bfdb3c695ea9f9097a23932c34fc7c6",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [],
-        "subject": {
-          "name": "libNativeEngine-3.6.2.jnilib",
-          "digest": {
-            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
-          },
-          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
-          "format": "mach-o",
-          "architecture": "x86_64"
-        },
-        "provider": {
-          "id": "llvm-objdump",
-          "name": "LLVM objdump (analyst reading of disassembly)",
-          "version": "18.1.3"
-        },
-        "predicate_type": "flowjo-rea.static-behavior",
-        "operation": "inspect_native_functions",
-        "parameters": {
-          "symbols": [
-            "PolyGateHistogram2D::Build2DPolyGateHistogram(ScalePointSet**, int, bool)",
-            "ScalePointSet::PointInPoly(float, float, bool&)"
-          ]
-        },
-        "normalized_result": {
-          "behavior": "The polygon gate mask has gateResolution x gateResolution cells; cell (x, y) is set exactly when the integer point (x, y) lies inside the vertex-rounded polygon (even-odd crossings with the half-open rule y1 < y <= y2) or on one of its edges or vertices.",
-          "spec": "docs/validation/flowjo-engine-specs.md section 1"
-        },
-        "confidence": "observed",
-        "authority": "shipped-artifact",
-        "environment": null,
-        "limitations": [
-          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
-        ],
-        "locations": [
-          {
-            "kind": "address-range",
-            "start": "0x29a930",
-            "end": "0x29ab40"
-          },
-          {
-            "kind": "address-range",
-            "start": "0x1c8350",
-            "end": "0x1c8530"
-          }
-        ]
-      },
-      {
-        "evidence_id": "ev_4bc3a190be4f40021296127fa5857fb1468dfb70d10fd4935b3637ef38462f97",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [],
-        "subject": {
-          "name": "libNativeEngine-3.6.2.jnilib",
-          "digest": {
-            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
-          },
-          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
-          "format": "mach-o",
-          "architecture": "x86_64"
-        },
-        "provider": {
-          "id": "llvm-objdump",
-          "name": "LLVM objdump (analyst reading of disassembly)",
-          "version": "18.1.3"
-        },
-        "predicate_type": "flowjo-rea.static-behavior",
-        "operation": "inspect_native_functions",
-        "parameters": {
-          "symbols": [
-            "ScalePointSet::ScaleToChannel(TransformedParameter*, TransformedParameter*, int, int)"
-          ]
-        },
-        "normalized_result": {
-          "behavior": "Vertices (and, in the gate computation, event values) map to the grid as floor((v - min) * R / (max - min) + 0.5) on linear axes, and as the lookup-table index scaled to R and truncated on table axes; values are read as 32-bit floats.",
-          "spec": "docs/validation/flowjo-engine-specs.md section 1"
-        },
-        "confidence": "observed",
-        "authority": "shipped-artifact",
-        "environment": null,
-        "limitations": [
-          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
-        ],
-        "locations": [
-          {
-            "kind": "address-range",
-            "start": "0x1c86a0",
-            "end": "0x1c8b20"
-          }
-        ]
-      },
-      {
-        "evidence_id": "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763",
+        "evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
         "analysis_profile": null,
         "raw_result": null,
         "relationship_coverage": null,
@@ -397,6 +391,165 @@
                   "passed": true
                 }
               ]
+            },
+            {
+              "obligation_id": "names.unique-sibling",
+              "obligation_version": 1,
+              "owner_sha256": "1b019e380e6b0350b8d350a6aec91a0b4604fcb8e80eb6b3ad977610943c849f",
+              "fixtures": [
+                {
+                  "fixture_id": "names.unique-sibling.suffix",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "names.unique-sibling.kept",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "uat.step2",
+                  "claim_id": "names.unique-sibling.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gate.min-shape",
+              "obligation_version": 1,
+              "owner_sha256": "005407fbf5d62312d24627a8d31686115b3c4c1881509138a0e91f4ddedbc4a0",
+              "fixtures": [
+                {
+                  "fixture_id": "gate.min-shape.discard",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gate.min-shape.keep",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "uat.step2",
+                  "claim_id": "gate.min-shape.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "sample.relink-keywords",
+              "obligation_version": 1,
+              "owner_sha256": "243f733a3be351c0b0068c4cdbd1a671f82b79271984ca748bedf8ea2e128fd1",
+              "fixtures": [
+                {
+                  "fixture_id": "sample.relink.match",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "sample.relink.first",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "sample.relink.tot",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "uat.step2",
+                  "claim_id": "sample.relink-keywords.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gate.quad-sibling-delete",
+              "obligation_version": 1,
+              "owner_sha256": "243f733a3be351c0b0068c4cdbd1a671f82b79271984ca748bedf8ea2e128fd1",
+              "fixtures": [
+                {
+                  "fixture_id": "gate.quad-delete.siblings",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gate.quad-delete.fixture",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gate.quad-delete.alone",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "gate.quad-delete",
+                  "claim_id": "gate.quad-sibling-delete.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "cellcycle.histogram-channels",
+              "obligation_version": 1,
+              "owner_sha256": "c05b8f2f992652d2965d1ed2eec631af1d911d3f49a9dd0f20e4847634855bc4",
+              "fixtures": [
+                {
+                  "fixture_id": "cellcycle.channels.cap",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "cellcycle.channels.range",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "cellcycle.fits",
+                  "claim_id": "cellcycle.histogram-channels.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "workspace.undo-limit",
+              "obligation_version": 1,
+              "owner_sha256": "301a114c4485e3f967d766c4dce1959d174e7492e9b6dbbc69616cb3582efa9e",
+              "fixtures": [
+                {
+                  "fixture_id": "undo.cap",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "undo.order",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "undo.branch",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "workspace.history",
+                  "claim_id": "workspace.undo-limit.v1",
+                  "passed": true
+                }
+              ]
             }
           ]
         },
@@ -412,6 +565,224 @@
           "Verifiers are this repository’s vitest suites run in one local process; FlowJo reference counts come from FlowJo-saved .wsp files (FlowJo 10.6.2 to 10.10.0)."
         ],
         "locations": []
+      },
+      {
+        "evidence_id": "ev_3caabaaa55400c8d00b3236e99c7e4fa6bfdb3c695ea9f9097a23932c34fc7c6",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "libNativeEngine-3.6.2.jnilib",
+          "digest": {
+            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
+          "format": "mach-o",
+          "architecture": "x86_64"
+        },
+        "provider": {
+          "id": "llvm-objdump",
+          "name": "LLVM objdump (analyst reading of disassembly)",
+          "version": "18.1.3"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_native_functions",
+        "parameters": {
+          "symbols": [
+            "PolyGateHistogram2D::Build2DPolyGateHistogram(ScalePointSet**, int, bool)",
+            "ScalePointSet::PointInPoly(float, float, bool&)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "The polygon gate mask has gateResolution x gateResolution cells; cell (x, y) is set exactly when the integer point (x, y) lies inside the vertex-rounded polygon (even-odd crossings with the half-open rule y1 < y <= y2) or on one of its edges or vertices.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 1"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "address-range",
+            "start": "0x29a930",
+            "end": "0x29ab40"
+          },
+          {
+            "kind": "address-range",
+            "start": "0x1c8350",
+            "end": "0x1c8530"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_4bc3a190be4f40021296127fa5857fb1468dfb70d10fd4935b3637ef38462f97",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "libNativeEngine-3.6.2.jnilib",
+          "digest": {
+            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
+          "format": "mach-o",
+          "architecture": "x86_64"
+        },
+        "provider": {
+          "id": "llvm-objdump",
+          "name": "LLVM objdump (analyst reading of disassembly)",
+          "version": "18.1.3"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_native_functions",
+        "parameters": {
+          "symbols": [
+            "ScalePointSet::ScaleToChannel(TransformedParameter*, TransformedParameter*, int, int)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Vertices (and, in the gate computation, event values) map to the grid as floor((v - min) * R / (max - min) + 0.5) on linear axes, and as the lookup-table index scaled to R and truncated on table axes; values are read as 32-bit floats.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 1"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "address-range",
+            "start": "0x1c86a0",
+            "end": "0x1c8b20"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_4f17744496c44f26630fe49c5f7cb1aaf58ded6fcca30f4f89c79dd4d7863858",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_1c5be4529e9848688f045b31e291d707c3dcf32348b159942bc55c4849fbe7fd"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "sample.relink-keywords",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "A new file relinks to a sample without data by FlowJo 10's keyword test",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/project.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_67ab01569ce944ad2f9fdc579526d1db14e7492637781867782c4e8da2656f7b",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_7cb8479303c58b361674da5eb9e4a72d284859ad99f9cbe45e895ac4bc352f0e"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "cellcycle.histogram-channels",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "The cell cycle histogram has min(channel range, 1024) channels, as in FlowJo 10",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/service.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_69adcbebbd20d663bf2a78f32ec73fad48aab694fd681c9353b6c6bb3d54d1ec",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "com.treestar.layout.presentation.Fig.isTooSmall()",
+            "com.treestar.layout.presentation.FigRange.isTooSmall()",
+            "com.treestar.layout.editor.drags.CreationDrag"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "A newly drawn shape is discarded when it is 10 px or less in both width and height (a range: 10 px or less wide); any larger shape is kept.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 6.7"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/layout/presentation/Fig.class"
+          },
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/layout/presentation/FigRange.class"
+          }
+        ]
       },
       {
         "evidence_id": "ev_6b030ef57ed02c11a7a99fa78975a3e7993102f1668e2bbd70a03c6a92ddfd61",
@@ -448,6 +819,87 @@
           "AI-assisted review (Claude Code session); no human review is attested."
         ],
         "locations": []
+      },
+      {
+        "evidence_id": "ev_7b5d7e9d39c008d5e6e8999e0c13652484f71a02376e697d5488247e75091b4e",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_bc9a71d441d5bceea4c35a19da2ea9c4020089e0ec3dbd509f1e3b429f2daf2c"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "workspace.undo-limit",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Undo keeps the last 100 edits and a new edit drops the redo edits, as in FlowJo 10",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/ui/history.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_7cb8479303c58b361674da5eb9e4a72d284859ad99f9cbe45e895ac4bc352f0e",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "com.treestar.flowjo.cellcycle.CCNode.HISTOGRAM_CHANNELS = 1024",
+            "CellCycle::ProcessQuery (engine)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "The cell cycle model is fitted on a histogram of min(parameter channel range, 1024) channels; the user cannot set the resolution.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 6.1"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/cellcycle/CCNode.class"
+          }
+        ]
       },
       {
         "evidence_id": "ev_89699b91f5e6a9c7eeb423b5baa867fe4bd231763b0c5a62ffa46a0380494d50",
@@ -546,6 +998,51 @@
         ]
       },
       {
+        "evidence_id": "ev_9bdbf4c7336d6cff60522ae415bfdf4f475af8614d4650601c54f8ca9bdf0296",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "com.treestar.flowjo.core.nodes.NodeList.addSiblingQuads()",
+            "com.treestar.flowjo.application.workspace.treetables.ktreetable.STreeMgr.deleteSelection"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Deleting a quad population also deletes every sibling quad on the same x and y parameters, wherever its centre; a population whose gate is not a quad is deleted alone.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 6.2"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/core/nodes/NodeList.class"
+          }
+        ]
+      },
+      {
         "evidence_id": "ev_a013155b82a39c0d3594d65480c08cb06d085c568f07ae8652d007b56640391c",
         "analysis_profile": null,
         "raw_result": null,
@@ -594,6 +1091,160 @@
             "path": "com/treestar/layout/presentation/FigGatingEllipse.class"
           }
         ]
+      },
+      {
+        "evidence_id": "ev_bb82bee848ac4154022d2dd522d2ac61f841482a2e271e6affc3952dea8d0185",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_69adcbebbd20d663bf2a78f32ec73fad48aab694fd681c9353b6c6bb3d54d1ec"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "gate.min-shape",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "A drawn shape of 10 px or less in both directions is discarded, as in FlowJo 10",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/ui/gateGeometry.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_bc9a71d441d5bceea4c35a19da2ea9c4020089e0ec3dbd509f1e3b429f2daf2c",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "com.treestar.flowjo.application.workspace.WSUndoManager",
+            "com.treestar.lib.gui.undo.FJUndoManager (fjlib-2.3.0.jar, same installer)",
+            "javax.swing.undo.UndoManager (default limit 100)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Workspace undo keeps the last 100 edits (Swing UndoManager default; no class in FlowJo-10.6.2.jar or fjlib-2.3.0.jar sets another limit), undoes and redoes them in order, and a new edit after an undo drops the redo edits.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 6.8"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/application/workspace/WSUndoManager.class"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_c97917ba1eeed6144ad46deddf56943af65584e7c0a5dbce8b02601892c34fe5",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_9bdbf4c7336d6cff60522ae415bfdf4f475af8614d4650601c54f8ca9bdf0296"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "gate.quad-sibling-delete",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Deleting a quad deletes its sibling quads on the same parameters, as in FlowJo 10",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/project.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_d447a073cbc879bc8e811e7d49489db3b034c4337263dec047bbd1adc0d09f76",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_11d197fc5dc61181462b587047f8ae0cc431578be388fe3fe9fc34b24f8f55d8"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "names.unique-sibling",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "A new or renamed population takes FlowJo 10's unique sibling name",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/model.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
       },
       {
         "evidence_id": "ev_e9cc1e0fc9b96146262e7b220bc2b19ee83e8c40550a5d99d73e5ead6c1b4f77",
@@ -806,6 +1457,186 @@
       "review_evidence_ids": [
         "ev_36fd0ebf6e20ea0a87d2a59c83e609ac9a10de42b24654f54bdfe2037af98be5"
       ]
+    },
+    {
+      "obligation_id": "names.unique-sibling",
+      "obligation_version": 1,
+      "title": "A new or renamed population takes FlowJo 10's unique sibling name",
+      "application_layer": "application",
+      "family": "naming",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "com.treestar.flowjo.core.nodes.ParentNode.uniqueChildName"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_d447a073cbc879bc8e811e7d49489db3b034c4337263dec047bbd1adc0d09f76"
+      ]
+    },
+    {
+      "obligation_id": "gate.min-shape",
+      "obligation_version": 1,
+      "title": "A drawn shape of 10 px or less in both directions is discarded, as in FlowJo 10",
+      "application_layer": "application",
+      "family": "gating",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "com.treestar.layout.presentation.Fig.isTooSmall"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_bb82bee848ac4154022d2dd522d2ac61f841482a2e271e6affc3952dea8d0185"
+      ]
+    },
+    {
+      "obligation_id": "sample.relink-keywords",
+      "obligation_version": 1,
+      "title": "A new file relinks to a sample without data by FlowJo 10's keyword test",
+      "application_layer": "application",
+      "family": "workspace",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "com.treestar.flowjo.application.fcsscan.FCSFinder$SampleKeywordMatcher.keywordsMatch"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_4f17744496c44f26630fe49c5f7cb1aaf58ded6fcca30f4f89c79dd4d7863858"
+      ]
+    },
+    {
+      "obligation_id": "gate.quad-sibling-delete",
+      "obligation_version": 1,
+      "title": "Deleting a quad deletes its sibling quads on the same parameters, as in FlowJo 10",
+      "application_layer": "application",
+      "family": "gating",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "com.treestar.flowjo.core.nodes.NodeList.addSiblingQuads"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_c97917ba1eeed6144ad46deddf56943af65584e7c0a5dbce8b02601892c34fe5"
+      ]
+    },
+    {
+      "obligation_id": "cellcycle.histogram-channels",
+      "obligation_version": 1,
+      "title": "The cell cycle histogram has min(channel range, 1024) channels, as in FlowJo 10",
+      "application_layer": "application",
+      "family": "platforms",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "com.treestar.flowjo.cellcycle.CCNode.HISTOGRAM_CHANNELS"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_67ab01569ce944ad2f9fdc579526d1db14e7492637781867782c4e8da2656f7b"
+      ]
+    },
+    {
+      "obligation_id": "workspace.undo-limit",
+      "obligation_version": 1,
+      "title": "Undo keeps the last 100 edits and a new edit drops the redo edits, as in FlowJo 10",
+      "application_layer": "application",
+      "family": "workspace",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "com.treestar.flowjo.application.workspace.WSUndoManager"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_7b5d7e9d39c008d5e6e8999e0c13652484f71a02376e697d5488247e75091b4e"
+      ]
     }
   ],
   "manifest": {
@@ -836,7 +1667,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763"
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
             ]
           },
           {
@@ -844,7 +1675,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763"
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
             ]
           },
           {
@@ -852,7 +1683,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763"
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
             ]
           }
         ],
@@ -862,7 +1693,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763",
+          "result_evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
           "enumerated_obligation_ids": [
             "wsp.polygon-counts"
           ],
@@ -898,7 +1729,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763"
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
             ]
           },
           {
@@ -906,7 +1737,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763"
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
             ]
           }
         ],
@@ -916,7 +1747,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763",
+          "result_evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
           "enumerated_obligation_ids": [
             "wsp.logicle-ellipse"
           ],
@@ -952,7 +1783,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763"
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
             ]
           },
           {
@@ -960,7 +1791,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763"
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
             ]
           }
         ],
@@ -970,7 +1801,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763",
+          "result_evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
           "enumerated_obligation_ids": [
             "gate.rect-open-bounds"
           ],
@@ -1011,7 +1842,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763"
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
             ]
           },
           {
@@ -1019,7 +1850,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763"
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
             ]
           },
           {
@@ -1027,7 +1858,7 @@
             "case_kind": "malformed",
             "authority": "integration",
             "evidence_ids": [
-              "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763"
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
             ]
           }
         ],
@@ -1037,9 +1868,357 @@
           "command": "npx vitest run tests/flowjo-stats.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_59f8ddbeecf31fd7ae804969c500e416293d2dc7fb328f9c5b973dfa099d1763",
+          "result_evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
           "enumerated_obligation_ids": [
             "stats.flowjo-conventions"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "names.unique-sibling",
+        "owner": {
+          "module_path": "src/core/model.ts",
+          "symbol": "uniqueName",
+          "owner_sha256": "1b019e380e6b0350b8d350a6aec91a0b4604fcb8e80eb6b3ad977610943c849f"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_11d197fc5dc61181462b587047f8ae0cc431578be388fe3fe9fc34b24f8f55d8",
+            "location": "a taken name becomes the first free <stem>-N"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_11d197fc5dc61181462b587047f8ae0cc431578be388fe3fe9fc34b24f8f55d8",
+            "location": "an unused name is kept unchanged"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "names.unique-sibling.suffix",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+            ]
+          },
+          {
+            "fixture_id": "names.unique-sibling.kept",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "uat.step2",
+          "claim_id": "names.unique-sibling.v1",
+          "command": "npx vitest run tests/uat-step2.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
+          "enumerated_obligation_ids": [
+            "names.unique-sibling"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "gate.min-shape",
+        "owner": {
+          "module_path": "src/ui/gateGeometry.ts",
+          "symbol": "tooSmall",
+          "owner_sha256": "005407fbf5d62312d24627a8d31686115b3c4c1881509138a0e91f4ddedbc4a0"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_69adcbebbd20d663bf2a78f32ec73fad48aab694fd681c9353b6c6bb3d54d1ec",
+            "location": "10 px or less wide and high is discarded"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_69adcbebbd20d663bf2a78f32ec73fad48aab694fd681c9353b6c6bb3d54d1ec",
+            "location": "larger in either direction is kept"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "gate.min-shape.discard",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+            ]
+          },
+          {
+            "fixture_id": "gate.min-shape.keep",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "uat.step2",
+          "claim_id": "gate.min-shape.v1",
+          "command": "npx vitest run tests/uat-step2.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
+          "enumerated_obligation_ids": [
+            "gate.min-shape"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "sample.relink-keywords",
+        "owner": {
+          "module_path": "src/core/project.ts",
+          "symbol": "relinkMatches",
+          "owner_sha256": "243f733a3be351c0b0068c4cdbd1a671f82b79271984ca748bedf8ea2e128fd1"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_1c5be4529e9848688f045b31e291d707c3dcf32348b159942bc55c4849fbe7fd",
+            "location": "saved keywords agree: the file relinks to the first matching sample"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_1c5be4529e9848688f045b31e291d707c3dcf32348b159942bc55c4849fbe7fd",
+            "location": "$TOT unsaved or different: no relink, the file is a new sample"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "sample.relink.match",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+            ]
+          },
+          {
+            "fixture_id": "sample.relink.first",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+            ]
+          },
+          {
+            "fixture_id": "sample.relink.tot",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "uat.step2",
+          "claim_id": "sample.relink-keywords.v1",
+          "command": "npx vitest run tests/uat-step2.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
+          "enumerated_obligation_ids": [
+            "sample.relink-keywords"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "gate.quad-sibling-delete",
+        "owner": {
+          "module_path": "src/core/project.ts",
+          "symbol": "deletionRoots",
+          "owner_sha256": "243f733a3be351c0b0068c4cdbd1a671f82b79271984ca748bedf8ea2e128fd1"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_9bdbf4c7336d6cff60522ae415bfdf4f475af8614d4650601c54f8ca9bdf0296",
+            "location": "sibling quads on the same x and y parameters are deleted together"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_9bdbf4c7336d6cff60522ae415bfdf4f475af8614d4650601c54f8ca9bdf0296",
+            "location": "a population whose gate is not a quad is deleted alone"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "gate.quad-delete.siblings",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+            ]
+          },
+          {
+            "fixture_id": "gate.quad-delete.fixture",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+            ]
+          },
+          {
+            "fixture_id": "gate.quad-delete.alone",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "gate.quad-delete",
+          "claim_id": "gate.quad-sibling-delete.v1",
+          "command": "npx vitest run tests/quad-delete.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
+          "enumerated_obligation_ids": [
+            "gate.quad-sibling-delete"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "cellcycle.histogram-channels",
+        "owner": {
+          "module_path": "src/core/service.ts",
+          "symbol": "cellCycleChannels",
+          "owner_sha256": "c05b8f2f992652d2965d1ed2eec631af1d911d3f49a9dd0f20e4847634855bc4"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_7cb8479303c58b361674da5eb9e4a72d284859ad99f9cbe45e895ac4bc352f0e",
+            "location": "a range above 1024 is fitted on 1024 channels"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_7cb8479303c58b361674da5eb9e4a72d284859ad99f9cbe45e895ac4bc352f0e",
+            "location": "a range at or below 1024 keeps its own channel count"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "cellcycle.channels.cap",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+            ]
+          },
+          {
+            "fixture_id": "cellcycle.channels.range",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "cellcycle.fits",
+          "claim_id": "cellcycle.histogram-channels.v1",
+          "command": "npx vitest run tests/cellcycle.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
+          "enumerated_obligation_ids": [
+            "cellcycle.histogram-channels"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "workspace.undo-limit",
+        "owner": {
+          "module_path": "src/ui/history.ts",
+          "symbol": "pushHistory",
+          "owner_sha256": "301a114c4485e3f967d766c4dce1959d174e7492e9b6dbbc69616cb3582efa9e"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_bc9a71d441d5bceea4c35a19da2ea9c4020089e0ec3dbd509f1e3b429f2daf2c",
+            "location": "more than 100 edits: only the last 100 can be undone"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_bc9a71d441d5bceea4c35a19da2ea9c4020089e0ec3dbd509f1e3b429f2daf2c",
+            "location": "within the limit every edit undoes and redoes in order"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "undo.cap",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+            ]
+          },
+          {
+            "fixture_id": "undo.order",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+            ]
+          },
+          {
+            "fixture_id": "undo.branch",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "workspace.history",
+          "claim_id": "workspace.undo-limit.v1",
+          "command": "npx vitest run tests/history.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_39cb6ed7e73a79940e8a3060b7fea9e57ed43391f831aeb0dadc56230583a4e6",
+          "enumerated_obligation_ids": [
+            "workspace.undo-limit"
           ],
           "nondeterminism": {
             "mode": "total-order",

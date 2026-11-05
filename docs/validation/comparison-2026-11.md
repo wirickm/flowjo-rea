@@ -1,0 +1,216 @@
+# flowjo-rea compared with FlowJo 10.6.2 (2026-11)
+
+Analysis only: no application code changed. Reference: FlowJo 10.6.2
+(official installer, hashes in 2.1); FlowJo 11 is not the reference.
+Patterns: only those in the inventory below, from wirickm/rea and
+wirickm/ghidra. Every FlowJo statement comes from static reading of the
+shipped files (FlowJo is macOS-only and was not run), so runtime behavior is
+unconfirmed throughout. No FlowJo code, bytecode listing or disassembly is in
+this repository; behaviors are described in words with class, key and symbol
+names only. Working material (unpacked installer, REA Evidence JSON, survey
+notes) stayed under `/tmp/fj10`.
+
+Contents: 1 pattern inventory; 2 evidence; 3 part A (behavior parity);
+4 part B (code architecture); 5 part C (UI/UX); 6 ranked fixes; 7 open
+questions and blockers.
+
+## 1. Pattern inventory (Phase 1)
+
+Only these patterns are used in parts A to C. "Serves" names the comparison
+part. Paths are relative to each repository (rea = wirickm/rea at 6e9ee97,
+ghidra = wirickm/ghidra at its default branch, 12.3 DEV sources).
+
+| # | Pattern / template | Source | What it requires | Serves |
+|---|---|---|---|---|
+| P1 | Route the target first | rea `.agents/skills/reverse-engineer-anything/SKILL.md` ("Route the target first") | Pick the first tool from the target kind: archive/package -> `open_binary`/`inspect_artifact`; native -> `open_binary` + deep provider; do not call unadvertised tools | A |
+| P2 | Staged investigation checklist | rea SKILL.md ("Plan broader investigations") | Questions -> evidence each needs; smallest overview first; corroborate with the evidence type the claim needs; finding ledger with confidence, search boundary, unknowns; revisit checklist, mark answered / partial / unresolved | A, C |
+| P3 | Observation / inference / unknown split | rea SKILL.md ("Work summary-first"), `AGENTS.md` (Product and Authority) | Every conclusion says which it is; cite Evidence IDs; never imply static analysis observed execution | A, B, C |
+| P4 | Evidence record and retained references | rea `references/evidence-workflows.md` | Cite `evidence_id`; keep authority, limitations, coverage; bounded negative searches stay bounded (absence not proven by an exhausted page) | A |
+| P5 | Native target workflow (Ghidra) | rea `references/native-and-artifacts.md` ("Native targets", "Ghidra startup deadline recovery"), `docs/ghidra-provider.md`, `docs/native-investigation.md` ("Provider and verification boundaries") | Ghidra 12.x (>=12.1) + JDK; `rea doctor --provider ghidra`; `open_binary` -> `list_procedures` / `analyze_function`; addresses and pseudocode are observations, not source; provider unavailability stays unknown, not false | A |
+| P6 | Packages and extraction | rea `references/native-and-artifacts.md` ("Packages and extraction") | `inspect_artifact` for ZIP/JAR/DMG inventories; DMG traversal only on macOS; inventory is central-directory entries only | A, C |
+| P7 | Reviewed obligation | rea `docs/reconstruction-obligation-ledgers.md` ("Reviewed obligation examples") | Stable `obligation_id` + version, title, layer, family, target location, `required_case_kinds`, required authorities, dependencies, residual unknowns, `required_next_evidence`, `disposition`, review Evidence | A |
+| P8 | Manifest binding and closure | same doc ("Manifest and closure", "Proof applicability") | One owner + `owner_sha256`; original cases and fixtures covering every case kind; verifier enumerating the obligation; proof bound to owner digest and obligation version; static-only sources cannot close runtime claims; `blocked`/`out-of-scope` never count as verified | A |
+| P9 | Layered architecture, dependencies inward | rea `docs/architecture.mermaid`, `AGENTS.md` (Architecture and Cleanup) | Domain -> contracts -> providers/adapters -> application -> entry adapters; one owner per interpretation; normalize once at the owning boundary | B |
+| P10 | Typed error contract | rea `docs/error-contract.schema.json` | Error object `{code, category, message, retryable, remediation{action}}` plus optional `recovery{kind, operation}` and `details`; closed code set (20) and category set (10); `additionalProperties: false` | B |
+| P11 | Tagged errors and `Result` | rea `AGENTS.md` (Architecture and Cleanup) | Parse unknown boundary values; model expected failures as tagged errors in `Result`; keep partial facts and failure reasons | B |
+| P12 | Named limits and honest recovery text | rea `docs/design/limits-and-recovery.md` ("Name a default...", "Keep a fixed ceiling honest", "Recovery text") | Every limit is a named constant with a unit; a setting only when operators need headroom; recovery text names the limit, effective value, unit, source, bounds, next action, whether a restart is needed and what does not raise it; invalid configuration is never a silent fallback | B, C |
+| P13 | Agent recovery ladder | same doc ("What agents do"); SKILL.md ("Connect only when needed") | Retry once only when safe; do not repeat unchanged calls; diagnose the observed blocker and continue other supported work | A (process) |
+| P14 | Contribution scope, fail-closed | rea `CONTRIBUTING.md` ("Contribution scope", "Fail-closed integration") | Do not integrate while scope, authority, side-effect or verification questions are open; early proposals and draft PRs welcome | B |
+| P15 | Conventional commits and PR readiness | rea `AGENTS.md` (Pull Request Readiness), `.github/pull_request_template.md` | `type(scope): outcome` titles; PR sections Summary / Problem / Change and scope / Contract impact / Evidence / Validation / Compatibility / Author readiness (left unchecked by agents) / Before merge; report only checks that ran | B |
+| P16 | Performance order | rea `AGENTS.md` (Performance) | Optimize tokens/context, then analysis time, then CPU/memory; measure only when targeting performance | B |
+| P17 | GhidraScript structure | ghidra `Ghidra/Features/Base/ghidra_scripts/ExportFunctionInfoScript.java`, `CallotherCensusScript.java` | Header comment block, `//@category`, class extends `GhidraScript`, `run()` checks `currentProgram`, `printerr`/`println`, `monitor.checkCancelled()` in loops | A |
+| P18 | Headless arguments and continuation | ghidra `Decompiler/ghidra_scripts/WindowsResourceReference.java` (`getScriptArgs`), `Base/ghidra_scripts/SetHeadlessContinuationOptionScript.java` (`HeadlessScript`, `isRunningHeadless`) | Positional script args via `getScriptArgs()`; headless-only behavior behind `isRunningHeadless()`; `analyzeHeadless ... -postScript <script> <args>` | A |
+| P19 | Decompiler use from a script | ghidra `Decompiler/ghidra_scripts/AddVfunctionCallRefScript.java` (`setUpDecompiler`), `CompareFunctionSizesScript.java` | `DecompInterface`, `setOptions`, `toggleCCode(true)`, `setSimplificationStyle("decompile")`, `openProgram`, per-function timeout, `dispose` | A |
+| P20 | Export script output | ghidra `ExportFunctionInfoScript.java` | Write to a caller-chosen file; report the path written | A |
+| P21 | Developer guide conventions | ghidra `DevGuide.md` | Gradle tasks, running tests headless; no headless-analysis or UI-design guidance (confirmed: no UI/UX pattern in either repo) | (none for C) |
+
+Gap noted for part C: neither repository has a UI/UX design pattern or
+template. Part C therefore uses only P2 (checklist), P3 (observation vs
+inference), P12 (recovery text, applied to user-facing messages) and the
+FlowJo 10 resource evidence; it does not invent a UI pattern. See the
+section 7.
+
+## 2. Evidence from FlowJo 10.6.2 (Phase 2)
+
+### 2.1 Identity
+
+| Item | SHA-256 | Matches `tools/rea-originals.json` |
+|---|---|---|
+| `FlowJo-OSX64-10.6.2.dmg` | `90721621...a32f08` | yes (installer named in the note) |
+| `FlowJo-10.6.2.jar` | `6a6436c0...861c61c` | yes |
+| `libNativeEngine-3.6.2.jnilib` | `ae2369f3...289b56` | yes |
+| `fjlib-2.3.0.jar` | `ed08fec9...69632e` | not listed before (new subject in prose only, see 2.3) |
+
+`release.properties`: appVersion 10.6.2, engVersion NativeEngine-3.6.2.
+Everything unpacked to `/tmp/fj10` (outside the repository) and kept there.
+
+### 2.2 Routes tried (P1, P5, P6, P13)
+
+| Target | Route | Result | REA Evidence / outcome |
+|---|---|---|---|
+| Native engine | `rea doctor --provider ghidra --json` | Ghidra missing: `GHIDRA_INSTALL_DIR is not set` (`missing_analysis_engine`) | blocked |
+| Native engine | `rea inspect <engine> --provider ghidra` | `provider_unavailable` (`not_configured`) | blocked |
+| Native engine | `rea inspect-macho <engine>` | `capability_unavailable`: native macOS utilities require macOS | blocked on Linux |
+| Native engine | `llvm-nm --demangle` (analyst, as in the existing originals) | 19,365 defined symbols; class groups in part A | analyst observation |
+| `FlowJo-10.6.2.jar` | `rea inspect-artifact` | complete ZIP inventory, `shipped-artifact` authority | `ev_20bd9a62a53e05a01c860ce4562d5ae666b820868ae15720c62c679bd8ab63eb` |
+| `fjlib-2.3.0.jar` | `rea inspect-artifact` | same | `ev_7dc00c95e318c2dae414547b5319a0fb983525914d8f5e7306aebff6bc140407` |
+| One FlowJo `.class` (`EllipseGate.class`) | `rea inspect <class> --provider ghidra` | `target_unavailable`, `unsupported_target`, `file_format_rejected` ("unsupported binary format") | REA limitation, observed |
+| Java classes | Ghidra headless with a GhidraScript (P17 to P20) | not run: Ghidra 12.1.4 is not installed here and its release download is blocked for this session | blocked |
+| Java classes | `javap -p` / `-constants` (and `-c` only to find constants) | member signatures, enum constants, string constants | analyst observation |
+| Resource bundles | `flowjodictionary*.properties` (main, `_dlog`, `_plat`, `_prefs`) | UI labels, tooltips, accelerators, workflows | analyst observation |
+
+**Finding R1 (REA limitation, confidence high, observed):** REA 6.8.0 cannot
+open JVM class files. The refusal happens at target resolution
+(`BinaryTargetResolver`: a complete class file with the `CAFEBABE` magic that
+parses as a JVM class returns "unsupported binary format"), before any
+provider is selected, so installing Ghidra would not change it. REA's only
+Java route is JADX for Android packages. The Ghidra JVM decompiler must be run
+directly (`analyzeHeadless` with a GhidraScript), and its results recorded as
+analyst Evidence, as `tools/rea-originals.json` already does.
+
+**Finding R2 (blocker, confidence high):** the brief says Ghidra 12.1.4 is
+installed at `/opt/ghidra_12.1.4_PUBLIC`; it is not present in this session,
+and `github.com/NationalSecurityAgency/ghidra` releases are not reachable
+here. Every item marked *(needs Ghidra)* below stays Unknown or medium
+confidence until it is decompiled. A GhidraScript written to the P17 to P20
+conventions (`ExportSelectedFunctionsScript.java`: `getScriptArgs` output
+directory plus name fragments, `DecompInterface` per function, one file per
+function) is ready outside the repository, untested.
+
+### 2.3 How the new observations are recorded
+
+- Behaviors in words: `docs/validation/flowjo-engine-specs.md` section 6.8
+  (new) plus the existing sections 1 to 6.7.
+- Original-case Evidence: six new observations in `tools/rea-originals.json`
+  (`unique-child-name`, `shape-too-small`, `relink-keywords`,
+  `quad-siblings`, `cell-cycle-channels`, `undo-limit`), authority
+  `shipped-artifact`, provider `javap`. The first five restate behaviors
+  already decoded in specs 6.1, 6.2 and 6.7; `undo-limit` is new.
+  Two of them rest partly on `fjlib-2.3.0.jar` (`NameUtil`, `FJUndoManager`);
+  they are recorded under the jar subject with the fjlib class named in the
+  symbols, because `tools/reaProof.ts` labels every non-`jar` subject as a
+  native observation (see fix F9).
+- Closed obligations: six new entries in `tools/rea-obligations.json`, each
+  bound to existing tests. REA ledger (analyst mode) regenerated:
+  **10 of 10 obligations verified, ledger `ready`**
+  (`docs/validation/rea-ledger-result.json`, ledger Evidence
+  `ev_df9c0065f11a8a3b...`, closure digest `c96414af1deb...`; was 4 of 4).
+- Open obligations (Differs / Missing): twelve entries in
+  `tools/rea-open-obligations.json`, in REA's reviewed-obligation shape, not
+  yet in the ledger (no owner; see fix F9).
+
+| New original Evidence | Observation | Obligation |
+|---|---|---|
+| `ev_11d197fc5dc61181...` | unique-child-name | names.unique-sibling |
+| `ev_69adcbebbd20d663...` | shape-too-small | gate.min-shape |
+| `ev_1c5be4529e984868...` | relink-keywords | sample.relink-keywords |
+| `ev_9bdbf4c7336d6cff...` | quad-siblings | gate.quad-sibling-delete |
+| `ev_7cb8479303c58b36...` | cell-cycle-channels | cellcycle.histogram-channels |
+| `ev_bc9a71d441d5bcee...` | undo-limit | workspace.undo-limit |
+
+## 3. Part A: behavior parity
+
+Status: **Match** (same behavior, evidence cited), **Differs** (both have it,
+behavior differs), **Missing** (FlowJo 10 has it, this app does not),
+**Unknown** (cannot be decided from the evidence available here), **Own**
+(this app has its own rule where FlowJo has none). Confidence is about the
+FlowJo side; runtime is unconfirmed for every FlowJo item (static reading
+only). "Specs" = `docs/validation/flowjo-engine-specs.md`. "Matrix" =
+`docs/compatibility-matrix.md`. Inventory: FlowJo-10.6.2.jar 2,941 classes,
+fjlib-2.3.0.jar 1,957, fjengine 112; engine about 535 FlowJo C++ classes
+(gating 87, FCS I/O 46, formula parser 109, ML/downsample 63, histograms 31,
+statistics 39, platforms 29, transforms 19, export 15, compensation 9).
+
+### 3.1 Already decoded and closed (build on, not redone)
+
+| Behavior | Status | Evidence | Obligation |
+|---|---|---|---|
+| Polygon gating on the gate grid | Match (221/228 populations exact; 7 pinned version differences) | specs 1; engine `PolyGateHistogram2D`, `ScalePointSet` | wsp.polygon-counts (verified) |
+| Ellipse as 180-vertex outline polygon | Match | specs 2; `EllipseGate.writeQuery`; engine has no ellipse gate type (new, consistent) | wsp.logicle-ellipse (verified) |
+| Rectangle bounds open at a linear axis edge | Match | specs 3; `FGate::GetRectRangeInScale` | gate.rect-open-bounds (verified) |
+| Median, percentile, robust SD/CV on the 4096-channel histogram | Match (not validated against FlowJo-computed values) | specs 4 | stats.flowjo-conventions (verified) |
+| Quad = rectangle with one open bound per axis; centre drag moves all | Match | specs 6.2 | - |
+| Quad sibling delete | Match | specs 6.2 | gate.quad-sibling-delete (verified, new) |
+| Cell cycle histogram min(range, 1024) | Match | specs 6.1 | cellcycle.histogram-channels (verified, new) |
+| Unique sibling names, `-N` suffix | Match | specs 6.7 | names.unique-sibling (verified, new) |
+| Shapes of 10 px or less discarded | Match | specs 6.7 | gate.min-shape (verified, new) |
+| Relink by keyword test | Match (folder fallback impossible in a browser) | specs 6.7 | sample.relink-keywords (verified, new) |
+| Same file not added twice | Own (content hash; FlowJo compares URI/ID) | specs 6.7 | - |
+| Spillover vs spectral flag | Match (flag); unmixing Differs (OLS vs FlowJo weights) | specs 6.3; new: `SpectralWeightsDialog`, `WeightOptimizer` (weights exist; no separate unmixing solver found) | - |
+| Derived parameter delete | Own (stricter) | specs 6.6 | - |
+| Gating-ML 2.0 export | Own (FlowJo 10.6.2 has none of its own) | specs 6.5 | - |
+
+### 3.2 New comparison rows
+
+| # | Area | FlowJo 10.6.2 behavior | This app | Status | FlowJo evidence | Conf. |
+|---|---|---|---|---|---|---|
+| A1 | Workspace | Undo keeps 100 edits; new edit drops redo | 100 snapshots, same | Match | `WSUndoManager` / `FJUndoManager` (Swing default, no `setLimit`); specs 6.8 | medium |
+| A2 | Workspace | Preference "Disable Undo" | none | Missing | `prefs.ws.noundo` | high |
+| A3 | Workspace | Optional auto-save every N minutes (saved workspaces with samples; not ACS/Envoy) | none | Missing | `AutoSaveTask`, `prefs.ws.autosave*` | high |
+| A4 | Workspace | Delete confirmations with "Don't Ask Again", reset in Preferences | asks every time | Missing (known open item) | specs 6.7; `prefs.ws.resetdontask` | high |
+| A5 | Samples | Remove from workspace or from current group only | workspace only | Differs | `ws.deletesample.ws/group` | high |
+| A6 | Groups | Group-owned analysis; delete asks "everywhere or copy to each sample"; synchronized groups | copy by population path, optional sync | Differs (matrix row 7) | `fj.string.groupdelprompt`, `ws.group.dlog.sync` | high |
+| A7 | Groups | Live criteria: =, !=, >, >=, <, <=, between, not between, contains, exists/lacks | text operators (contains, equals, starts/ends with, negations) | Differs | `CriteriaTest`, `fj.criterion.contains`, `fj.keyword.criterion.*` | medium |
+| A8 | Groups | Roles (test, control, compensation, baseline, replicate...) and every-Nth sample | none | Missing | `Group$Role`, `Group.getEveryNthSample` | high |
+| A9 | Statistics | Mode, Correlation, Freq. of (any ancestor) | none | Missing | `Statistic.MODE/CORRELATION/FREQOF` | high (exists); rules Unknown *(needs Ghidra)* |
+| A10 | Statistics | No Min statistic (engine names a Max) | Min and Max | Differs (extra) | `Statistic` constants; engine stat-name literals | medium |
+| A11 | Statistics | Comparison statistics (KS, Overton, chi-square, probability binning) | none | Missing | `StatKey`, `KolmogorovSmirnoff`, `MultiDimCompare` | high |
+| A12 | FCS read | Versions 2.0, 3.0, 3.1; 3.2 tag recognized | 2.0, 3.0, 3.1; 3.2 refused with an explicit error | Differs | engine literal `FCS3.2`; extent of 3.2 support Unknown | medium |
+| A13 | FCS read | Packed (non-byte) and mixed bit widths, 3-byte variants | rejected with an explicit error | Missing | `FCSPackedDataReader`, `FCSMixedDataLengthRawDataReader`, `FCS3ByteDataReader` | high (names) |
+| A14 | FCS read | `$NEXTDATA` data sets | one data set at a time | Match | `FCSUtil::ReadDataPage` | medium |
+| A15 | Export | FCS 3 events | FCS 3.1 float32 | Match (format); parameter choice Differs | `FCS3Exporter`; `ExportParameters{ALL_UNCOMPENSATED,ALL_COMPENSATED,CUSTOM}` | high |
+| A16 | Export | CSV of scale values or channel values; header by stain, parameter or both | scale values, parameter names | Differs | `ExportFileTypes{CSV_SCALE,CSV_CHANNEL}`, `HeaderParameter` | high |
+| A17 | Export | Event cap (random N, or smallest file) and concatenation (all, every n, equal keyword) with a sample-ID parameter | none | Missing | `ExportModel$EventCountParameter`, `$GroupConcatenationParameter`, `Exporter::GetSampleIDParameter` | high |
+| A18 | Workspace files | `.wsp` read | read; 221/228 counts exact | Match | specs 1 to 3; matrix | high |
+| A19 | Workspace files | `.wsp` write | written, never opened in FlowJo | Unknown | matrix | - |
+| A20 | Workspace files | `.wspt` templates, ACS archives, legacy `.jo`, Excel/CSV of the workspace table | none (native `.frea.json`, stats CSV) | Missing | `WSDocument.saveTemplate/doSaveACS/readJoFile/doSaveToExcel` | high |
+| A21 | Workspace files | `.wsp` layout pages | matrix says "warned"; no such warning in `src/core/wsp.ts` (silently ignored) | Differs (doc vs code) | this app: matrix "Construct coverage" row 1 vs `wsp.ts` | high |
+| A22 | Compensation | Matrix files: FlowJo matrix (Gating-ML based) and CSV save, load from file | CSV import (own `#` header rule) | Differs | specs 6.4; `CompCommand{SAVE_FJFORMAT,SAVE_CSVFORMAT,LOAD_FILE}` | high |
+| A23 | Compensation | Spillover spreading matrix (SSM) view/export | none | Missing | `CompCommand{CALCSSM,SSM_VIEW,SSM_SAVE}`, `WeightOptimizer::CalculateSSM` | high |
+| A24 | Compensation | Wizard with auto positive/negative gates, universal negative, status badges | median-based wizard, own | Differs | `compeditor.model.AutoGateMaker`, `WizardMatrix` | high (exists); algorithm Unknown *(needs Ghidra)* |
+| A25 | Gates | Bisector | none | Missing | `QuadGate::ComputeBisectorGate`, `gw.tool.bisector` | high |
+| A26 | Gates | Curly quad (arms follow the axis transform) | spline quadrant (own definition) | Differs | `CurlyQuadGate.getHorizontalCurlyFunction` | high (exists); shape rule Unknown *(needs Ghidra)* |
+| A27 | Gates | Spider quad, freehand (pencil), timeslice, auto gate, magnetic gates, manual coordinate entry, anchored range, BifurGate | none (Time range gates work) | Missing | `gw.tool.*`, `TetheredRangeGate`, `AutoGateMaker`, `ws.autoquad` | high |
+| A28 | Gates | Copy/paste gates; convert shape (rect/poly/ellipse) | none | Missing | `GWCommand{COPYGATE,PASTEGATE}`, `GateConvertEdit` | high |
+| A29 | Gates | Exclusion via a negation flag on the gate | `exclude` toggle | Match (semantics derived; matrix row 5) | `FGate::SetNegation`, `Gate.getNot` | medium |
+| A30 | Gates | Same-named gate under a node: asks to replace | Gating-ML import asks (specs 6.7); drawing uses `-N` | Match | `ws.parent.node.prompt` | high |
+| A31 | Transforms | Linear, log, biex, logicle, arcsinh, hyperlog | same (ISAC exact, FJ-LUT) | Match | `Transform$TransformType` | high |
+| A32 | Transforms | Miltenyi, robust log, manual table; auto width basis; per-cytometer defaults (about 30 families) | none; own defaults (logicle for fluorescence) | Missing / Differs | `TransformType`, `Cytometer$CytometerType`, `TransformedParameter::DetermineTransformationAutoWidth` | high |
+| A33 | Transforms | Apply a transform to one sample, group or all samples | per channel, global | Differs | `ParmTransformCommand{APPLYTOGROUP,APPLYALLSAMPLES}` | high |
+| A34 | Derived params | Formula language (arithmetic, log/exp, trig, if-then, string functions), event number, imported CSV/CLR | ratio A*(num-B)/(den-C) only | Differs (matrix backlog) | `AlgebraicParameter`, engine `Parser`, `formula.func.*` | high |
+| A35 | Keywords | Add, edit, find/replace, value series, paste to group | view only | Missing | `WSKeywordMgr`, `KeywordFindRelpaceDialog`, `KeywordValueSeriesDialog` | high |
+| A36 | Platforms | Cell cycle DJF / Watson; 2D cell cycle (EM) | DJF / Watson (own fitter); no 2D | Match (models) / Missing (2D) | `cellcycle.model.*`, `graphwindow.cellcycle.em.*` | high |
+| A37 | Platforms | Proliferation (peaks, indices) | same; older "proliferation index" definition differs (matrix) | Differs (definition) | `proliferation.*`, `StatKey.ProlIndex` | medium |
+| A38 | Platforms | Kinetics: smoothing (Gaussian, moving average), threshold, auto-slicing; stats peak, slope, AUC | equal-width bins, count/mean/median/% above | Differs | `KineticsSmoothing`, `StatKey kin*` | high |
+| A39 | Platforms | Compare populations, 3D viewer, Q&B, sample quality, calibration, plate editor, FCS Scan, tSNE, scripting (Rhino), plugins | none | Missing (matrix backlog: plugins) | `PlatformNavCommand`, `com.flowjo.native_tsne`, `PluginManager` | high |
+| A40 | Graphs | Edge-event warning at axis bounds | none | Missing | `gw.gates.panel.warn1/2`, `prefs.graphs.threshold` | high |
+| A41 | Graphs | Dot, pseudocolor, contour, density, zebra, histogram, CDF | all but CDF | Match / Missing (CDF) | `DisplayType`, `fj.graph.*` | high |
+| A42 | Layout | Free positioning, iteration (sample / keyword / panel), batch to PDF, PowerPoint, web | ordered list, per-sample batch, raster PDF | Differs (matrix backlog) | `leditor.*`, `Batch$BatchDestination` | high |
+| A43 | Tables | Table editor (formulas, formatting, iteration, outputs) | stat columns + named templates | Differs (matrix backlog) | `teditor.*` | high |
+| A44 | Open | Missing data files searched for and status shown per file | relink by keywords when files are added | Differs (browser cannot search disks) | `ws.sample.file.*` | high |
+
+Bounded negative searches (P4): "Missing" for a FlowJo feature means its
+classes, keys or symbols were found; "none" for this app means the survey of
+`src/` found no code (`/tmp` survey notes, file:line in each row's source).
+Absence in FlowJo (A10 Min; A7 starts/ends with) is from the class and
+string inventory only, so it is medium or low confidence.

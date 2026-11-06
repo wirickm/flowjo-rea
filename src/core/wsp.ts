@@ -369,6 +369,17 @@ export function parseWsp(xml: string): WspImport {
           statNode(p, parentPath);
           continue;
         }
+        if (kind === 'DerivedParameter') {
+          // FlowJo derived parameter node (specs 12); the inner element holds
+          // the definition when present. Shared by name across samples.
+          const d = kid(p, 'DerivedParameter') ?? p;
+          const name = attr(d, 'name') ?? attr(p, 'name') ?? '';
+          const type = attr(d, 'type') ?? (attr(d, 'formula') ? 'algebraic' : '');
+          const formula = type === 'eventNumber' ? 'Event #' : type === 'algebraic' || type === 'analytic' ? attr(d, 'formula') ?? '' : undefined;
+          if (formula === undefined || !name) sw.push(`Derived parameter "${name}" of type "${type}" is not supported; skipped`);
+          else if (!(ws.derivedParameters ?? []).some((x) => x.name === name)) ws.derivedParameters = [...(ws.derivedParameters ?? []), { name, formula }];
+          continue;
+        }
         if (kind === 'KineticsNode') {
           // FlowJo Kinetics node (specs 11): settings, timeslices and its
           // plat.kin.* statistics; shared by population path across samples.

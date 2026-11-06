@@ -364,8 +364,7 @@ check('spectral CSV import exposes unmixed channels that plot', hasUnmixed && ca
 await page.getByTestId(`sample-${F1}`).click();
 await page.getByTestId('open-derived').click();
 await page.getByTestId('derived-name').fill('FSCoverSSC');
-await page.getByTestId('derived-num').selectOption('FSC-A');
-await page.getByTestId('derived-den').selectOption('SSC-A');
+await page.getByTestId('derived-formula').fill('FSC-A / SSC-A');
 await page.getByTestId('derived-add').click();
 await page.getByRole('dialog').getByLabel('Close').click();
 await idle();

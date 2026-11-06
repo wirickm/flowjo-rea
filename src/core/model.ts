@@ -168,16 +168,16 @@ export interface Workspace {
   derivedParameters?: DerivedParameter[];
 }
 
-// A user-defined channel computed per event as A*(num-B)/(den-C) on the
-// sample's compensated values (FlowJo-style ratio derived parameter).
-export interface DerivedParameter {
-  name: string;
-  num: string;
-  den: string;
-  A: number;
-  B: number;
-  C: number;
-}
+// A user-defined channel. formula: a FlowJo 10 algebraic derived parameter
+// (src/core/formula.ts, specs 12), evaluated per event on the sample's
+// compensated values; "Event #" alone is the event number. Without a
+// formula: this app's earlier ratio A*(num-B)/(den-C), kept so older
+// workspaces open unchanged.
+export type DerivedParameter =
+  | { name: string; formula: string }
+  | { name: string; formula?: undefined; num: string; den: string; A: number; B: number; C: number };
+// The formula FlowJo would store for a derived parameter.
+export const derivedFormula = (d: DerivedParameter) => (d.formula !== undefined ? d.formula : `${d.A}*(${d.num}-${d.B})/(${d.den}-${d.C})`);
 
 export interface PlotSettings {
   x: string;

@@ -868,6 +868,79 @@ tools (section 10.1).
 - Medium confidence: the Geometric Mean channel count, and the Time scale
   (tmax, W) taken as the Time channel range, with no $TIMESTEP gain.
 
+## 12. Derived parameters (FlowJo 10.6.2)
+
+Read with REA 6.8.0's Ghidra provider on the native engine (`Parser`,
+`FunctionInterpreter`, `OperationParser`, `Sample::ComputeAlgebraic`,
+`Sample::DP_ReplaceParameterNames`, `AlgebraicParameterSpec`,
+`DerivedType`) and with headless Ghidra 12.1.4 / javap on the Java side
+(`DerivedParameter`, `AlgebraicParameter`, `DerivedParameterController`,
+`FormulaEditingPanel`). Static reading only. Implemented in
+`src/core/formula.ts` (language), `src/core/analysis.ts` (evaluation),
+`src/ui/Dialogs.tsx` (Derive Parameters) and the .wsp reader / writer.
+
+### 12.1 Kinds (matches)
+
+- FlowJo has algebraic (formula) parameters, the event number ("Event #"),
+  imported CSV / CLR columns and cluster-frequency / consensus parameters.
+  There is no ratio kind: a ratio is a formula. The dialog makes formulas
+  only; a formula of exactly "Event #" is the event number.
+- This app's earlier ratio parameters (A x (num - B) / (den - C)) still open
+  and compute as before (own rule) and are written to .wsp as that formula.
+- Own rule: imported CSV / CLR columns and cluster / consensus parameters
+  are not offered (they need files or clusterings this app does not make).
+
+### 12.2 Evaluation (matches)
+
+- The formula is upper-cased; "EVENT #" and then every parameter name of the
+  sample (longest first, then in parameter order) is replaced wherever it
+  occurs, so names with "-" or "/" work and a longer name wins over a name
+  it contains. Each name takes the event's compensated scale value; Event #
+  the 0-based event index. Results are stored as 32-bit floats.
+- At most 8 distinct names: a 9th takes the first one's slot. A math error
+  (division by zero, sqrt or log of a negative, ...) stops the whole
+  parameter; here gates and statistics on it report the error.
+
+### 12.3 Language (matches)
+
+- The expression is split at the rightmost operator of lowest priority, so
+  every operator is left-associative (2^3^2 = 64), and unary signs bind
+  tighter than ^ (-2^2 = 4). Priorities, loosest first: & and |; = and <>;
+  < > <= >=; + -; * / %; ^; !; unary + -. There is no == or !=; ! is a prefix
+  NOT. Numbers are C strtod (exponents, hex, INF, NAN).
+- % truncates both sides (remainder with the dividend's sign; a divisor that
+  truncates to 0 gives 0). a^b: pow for a > 0, 0 for a = 0, pow(a, trunc(b))
+  for a < 0. Comparisons give 1 or 0; NaN compares false.
+- Functions: sin, cos, tan, sinh, cosh, tanh, exp, atan, asin, acos, ln, log
+  (base 10), abs, sqrt, neg, rand, if(c, a, b), min, max, avg, sd, cv
+  (both divide the root of the squared deviations by n - 1), norm. String
+  functions exist in FlowJo but do not make numbers; they are refused here.
+- Errors carry FlowJo's messages: "Illegal math parameter.", "Empty
+  expression.", "Missing operator in expression.", "Bad syntax in
+  expression.", "Unbalanced open and close parentheses.", "Unknown
+  function.", "Wrong number of arguments for function.", "Numeric value
+  required for function.", "Unbalanced quotes for string value.".
+
+### 12.4 Dialog and names (matches)
+
+- "Derive Parameters": a name (letters, digits and underscore, not a number;
+  a duplicate gives "Paramter with this name already exists"), default
+  "Derived", then "Derived-1", ...; the formula with Insert Reference,
+  Insert Function and Insert Operator lists; validated as it is typed
+  ("Cannot parse the current equation: ..."). The new parameter's scale is
+  linear 0 to 1000 by default.
+- Own rule: references are inserted as plain names (FlowJo's editor stores
+  `<Param name=.../>` commands and writes the plain names to the formula).
+
+### 12.5 Workspace (matches)
+
+- A `DerivedParameter` node in the sample's `Subpopulations` wrapping
+  `<DerivedParameter name type="algebraic" formula>` (type "eventNumber" for
+  Event #) with the raw text in `<Formula>` and the scale in `<Transform>`.
+  Read back by name; unsupported types are skipped with a warning.
+- Own rule: deleting a parameter in use asks first and lists its users
+  (FlowJo has no dependency check; specs 6.6).
+
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 
 Source: static analysis of `libNativeEngine.dylib` from the public FlowJo

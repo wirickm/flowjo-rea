@@ -57,7 +57,21 @@
       { "address": "0x1984d0", "symbol": "GTimeSeries::ComputeFraction" },
       { "address": "0x199c80", "symbol": "GVector::Smooth" },
       { "address": "0x19b020", "symbol": "Kinetics::ComputeThreshold" },
-      { "address": "0x1618f0", "symbol": "GParameter::FindTimeSlice" }
+      { "address": "0x1618f0", "symbol": "GParameter::FindTimeSlice" },
+      { "address": "0x172300", "symbol": "Sample::ComputeAlgebraic" },
+      { "address": "0x178440", "symbol": "Sample::DP_ReplaceParameterNames" },
+      { "address": "0x178770", "symbol": "Sample::ComputeAlgebraic (per event range)" },
+      { "address": "0x4f2d80", "symbol": "DerivedParameterTask::PerformTask" },
+      { "address": "0x4d0320", "symbol": "FunctionInterpreter::AddVariable" },
+      { "address": "0x4cefa0", "symbol": "Parser::Parse" },
+      { "address": "0x4ce630", "symbol": "Parser::FindOperator" },
+      { "address": "0x4cea90", "symbol": "Parser::OperatorUsageByContext" },
+      { "address": "0x4cf2d0", "symbol": "Parser::Priority" },
+      { "address": "0x4cc4f0", "symbol": "Parser::CreateNewFunction" },
+      { "address": "0x4d1050", "symbol": "Parser::ConvertErrorToString" },
+      { "address": "0x2a050", "symbol": "DerivedType::FromXML" },
+      { "address": "0x3b5a20", "symbol": "AlgebraicParameterSpec::FromXML" },
+      { "address": "0x172130", "symbol": "Sample::CreateAlgebraicDerivedParameter" }
     ]
   },
   "jar": {
@@ -97,6 +111,10 @@
     "kin-threshold": ["0x19b020",  "0x1618f0"],
     "kin-timeslices": ["jar"],
     "kin-timeslice-stats": ["jar"],
-    "kin-node": ["jar"]
+    "kin-node": ["jar"],
+    "dp-names-eval": ["0x172300",  "0x178440",  "0x178770",  "0x4f2d80",  "0x4d0320"],
+    "dp-parser": ["0x4cefa0",  "0x4ce630",  "0x4cea90",  "0x4cf2d0",  "0x4cc4f0",  "0x4d1050"],
+    "dp-spec": ["0x2a050",  "0x3b5a20",  "0x172130"],
+    "dp-dialog-wsp": ["jar"]
   }
 }

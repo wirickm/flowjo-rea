@@ -570,6 +570,80 @@
         { "fixture_id": "gates.bifur.margin", "case_kind": "positive", "test_file": "tests/gate-tools.test.ts", "test_name": "right margin: the first two padding bins are lost" }
       ],
       "verifier": { "verifier_id": "gates.flowjo", "claim_id": "gates.anchored-bifurgate.v1", "test_file": "tests/gate-tools.test.ts", "command": "npx vitest run tests/gate-tools.test.ts" }
+    },
+    {
+      "obligation_id": "kinetics.series",
+      "obligation_version": 1,
+      "title": "The kinetics series is binned and computed as FlowJo 10's engine does",
+      "family": "kinetics",
+      "target_location": "Kinetics::MakeTimeSeries; GTimeSeries::Compute*",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "kin-binning", "location": "width and bin count from R; sparse populations get fewer bins" },
+        { "kind": "positive", "observation": "kin-statistics", "location": "streamed percentiles; % over T over gated events" },
+        { "kind": "negative", "observation": "kin-statistics", "location": "values below 0 are left out without a threshold" },
+        { "kind": "positive", "observation": "kin-request", "location": "statistic and smoothing names" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/kinetics.ts", "symbol": "kineticsSeries", "files": ["src/core/kinetics.ts", "src/core/service.ts"] },
+      "fixtures": [
+        { "fixture_id": "kin.bins.range", "case_kind": "positive", "test_file": "tests/kinetics.test.ts", "test_name": "range from the first and last events in file order" },
+        { "fixture_id": "kin.bins.sparse", "case_kind": "positive", "test_file": "tests/kinetics.test.ts", "test_name": "sparse populations get fewer bins" },
+        { "fixture_id": "kin.stats.negative", "case_kind": "negative", "test_file": "tests/kinetics.test.ts", "test_name": "mean leaves out values below 0" },
+        { "fixture_id": "kin.stats.fraction", "case_kind": "positive", "test_file": "tests/kinetics.test.ts", "test_name": "% of cells over T: denominator" },
+        { "fixture_id": "kin.stats.stream", "case_kind": "positive", "test_file": "tests/kinetics.test.ts", "test_name": "percentiles stream events" },
+        { "fixture_id": "kin.stats.empty", "case_kind": "negative", "test_file": "tests/kinetics.test.ts", "test_name": "empty bins are 0 (missing)" }
+      ],
+      "verifier": { "verifier_id": "kinetics.flowjo", "claim_id": "kinetics.series.v1", "test_file": "tests/kinetics.test.ts", "command": "npx vitest run tests/kinetics.test.ts" }
+    },
+    {
+      "obligation_id": "kinetics.smoothing-threshold",
+      "obligation_version": 1,
+      "title": "Smoothing and thresholds follow FlowJo 10's engine",
+      "family": "kinetics",
+      "target_location": "GVector::Smooth; Kinetics::ComputeThreshold",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "kin-smoothing", "location": "moving average and Gaussian weights" },
+        { "kind": "negative", "observation": "kin-smoothing", "location": "missing bins stay missing" },
+        { "kind": "positive", "observation": "kin-threshold", "location": "percentile of an event-index range" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/kinetics.ts", "symbol": "smoothSeries", "files": ["src/core/kinetics.ts", "src/core/service.ts"] },
+      "fixtures": [
+        { "fixture_id": "kin.smooth.ma", "case_kind": "positive", "test_file": "tests/kinetics.test.ts", "test_name": "moving average: equal weights" },
+        { "fixture_id": "kin.smooth.gauss", "case_kind": "positive", "test_file": "tests/kinetics.test.ts", "test_name": "Gaussian weights grow with distance" },
+        { "fixture_id": "kin.smooth.missing", "case_kind": "negative", "test_file": "tests/kinetics.test.ts", "test_name": "missing bins stay missing" },
+        { "fixture_id": "kin.threshold.pct", "case_kind": "positive", "test_file": "tests/kinetics.test.ts", "test_name": "uses the slice start and end as an event-index range" }
+      ],
+      "verifier": { "verifier_id": "kinetics.flowjo", "claim_id": "kinetics.smoothing-threshold.v1", "test_file": "tests/kinetics.test.ts", "command": "npx vitest run tests/kinetics.test.ts" }
+    },
+    {
+      "obligation_id": "kinetics.timeslices",
+      "obligation_version": 1,
+      "title": "Timeslices and their statistics follow FlowJo 10's Kinetics window",
+      "family": "kinetics",
+      "target_location": "TimesliceStatistics; KinToggleAutoSlice; MultiTimesliceDlog; KineticsNode",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "kin-timeslice-stats", "location": "peak, peak t, mean Y, AUC, slope" },
+        { "kind": "negative", "observation": "kin-timeslice-stats", "location": "no kept points: NaN and AUC 0" },
+        { "kind": "positive", "observation": "kin-timeslices", "location": "Range #k, multiple ranges, auto slices" },
+        { "kind": "positive", "observation": "kin-node", "location": "KineticsNode and plat.kin.* statistics" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/kinetics.ts", "symbol": "timesliceStats", "files": ["src/core/kinetics.ts", "src/core/service.ts", "src/core/wsp.ts", "src/core/wspWriter.ts", "src/ui/Kinetics.tsx"] },
+      "fixtures": [
+        { "fixture_id": "kin.slice.stats", "case_kind": "positive", "test_file": "tests/kinetics.test.ts", "test_name": "peak, peak t, mean Y, AUC, slope" },
+        { "fixture_id": "kin.slice.empty", "case_kind": "negative", "test_file": "tests/kinetics.test.ts", "test_name": "no kept points: NaN statistics and AUC 0" },
+        { "fixture_id": "kin.slice.gaps", "case_kind": "positive", "test_file": "tests/kinetics.test.ts", "test_name": "gaps: a zero between non-zero neighbours" },
+        { "fixture_id": "kin.slice.multi", "case_kind": "positive", "test_file": "tests/kinetics.test.ts", "test_name": "multiple ranges: back to back" },
+        { "fixture_id": "kin.slice.auto", "case_kind": "positive", "test_file": "tests/kinetics.test.ts", "test_name": "auto slicing around the longest zero run" },
+        { "fixture_id": "kin.slice.names", "case_kind": "negative", "test_file": "tests/kinetics.test.ts", "test_name": "names: \"Range #k\" past the slice count" },
+        { "fixture_id": "kin.node.wsp", "case_kind": "positive", "test_file": "tests/kinetics.test.ts", "test_name": "KineticsNode with timeslices and plat.kin.* statistics" },
+        { "fixture_id": "kin.node.stats", "case_kind": "positive", "test_file": "tests/kinetics.test.ts", "test_name": "the service runs the series on the Time parameter" }
+      ],
+      "verifier": { "verifier_id": "kinetics.flowjo", "claim_id": "kinetics.timeslices.v1", "test_file": "tests/kinetics.test.ts", "command": "npx vitest run tests/kinetics.test.ts" }
     }
   ]
 }

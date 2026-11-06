@@ -43,7 +43,21 @@
       { "address": "0x29b2b0", "symbol": "GHistogram2D::BuildPolygonList" },
       { "address": "0xe1f50", "symbol": "GHistogram::ProcessQuery" },
       { "address": "0xe9400", "symbol": "BasicHistogram::Smooth" },
-      { "address": "0x21b370", "symbol": "Smoothing::SmoothHistogram" }
+      { "address": "0x21b370", "symbol": "Smoothing::SmoothHistogram" },
+      { "address": "0x3d2cc0", "symbol": "KineticsRequest::FromXML" },
+      { "address": "0x3d3280", "symbol": "KineticsStatistic::FromString" },
+      { "address": "0x3d35b0", "symbol": "SmoothingType::FromString" },
+      { "address": "0x266f40", "symbol": "KineticsResult::ToXML" },
+      { "address": "0x19aa60", "symbol": "Kinetics::MakeTimeSeries" },
+      { "address": "0x19a580", "symbol": "Kinetics::InitKineticsData" },
+      { "address": "0x197760", "symbol": "GTimeSeries::TimeToBin" },
+      { "address": "0x197d00", "symbol": "GTimeSeries::ComputeAverage" },
+      { "address": "0x197f20", "symbol": "GTimeSeries::ComputeLogAverage" },
+      { "address": "0x1981f0", "symbol": "GTimeSeries::ComputePercentile" },
+      { "address": "0x1984d0", "symbol": "GTimeSeries::ComputeFraction" },
+      { "address": "0x199c80", "symbol": "GVector::Smooth" },
+      { "address": "0x19b020", "symbol": "Kinetics::ComputeThreshold" },
+      { "address": "0x1618f0", "symbol": "GParameter::FindTimeSlice" }
     ]
   },
   "jar": {
@@ -75,6 +89,14 @@
     "gate-pencil-autopick": ["jar"],
     "gate-convert-clipboard": ["jar"],
     "gate-manual-anchored": ["jar"],
-    "gate-bifurgate": ["jar"]
+    "gate-bifurgate": ["jar"],
+    "kin-request": ["0x3d2cc0",  "0x3d3280",  "0x3d35b0",  "0x266f40"],
+    "kin-binning": ["0x19aa60",  "0x19a580",  "0x197760"],
+    "kin-statistics": ["0x197d00",  "0x197f20",  "0x1981f0",  "0x1984d0"],
+    "kin-smoothing": ["0x199c80"],
+    "kin-threshold": ["0x19b020",  "0x1618f0"],
+    "kin-timeslices": ["jar"],
+    "kin-timeslice-stats": ["jar"],
+    "kin-node": ["jar"]
   }
 }

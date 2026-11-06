@@ -6,11 +6,13 @@
 //
 // With N_g the fitted cell count in generation g and O_g = N_g / 2^g the
 // number of original (precursor) cells that gave rise to them:
-//   precursorFrequency = sum_{g>=1} O_g / sum_{g>=0} O_g
+// FlowJo 10.6.2's indices (CCProlif::GetStatsElement, specs 15.2):
 //   divisionIndex      = sum_g g * O_g / sum_{g>=0} O_g
 //   proliferationIndex = sum_g g * O_g / sum_{g>=1} O_g
 //   expansionIndex     = sum_g N_g / sum_g O_g
-//   pctDivided         = sum_{g>=1} N_g / sum_g N_g   (a fraction, 0..1)
+//   replicationIndex   = sum_{g>=1} N_g / sum_{g>=1} O_g
+//   pctDivided         = sum_{g>=1} O_g / (N_0 + sum_{g>=1} O_g)   (a fraction, 0..1:
+//                        the share of precursor cells that divided)
 import { fail } from './errors';
 import { nelderMead, nnls, smooth1d } from './cellcycle';
 
@@ -18,7 +20,7 @@ export interface ProliferationFit {
   parentPeak: number;
   width: number;
   generations: { index: number; peak: number; count: number; pct: number }[];
-  precursorFrequency: number;
+  replicationIndex: number;
   divisionIndex: number;
   proliferationIndex: number;
   expansionIndex: number;
@@ -138,11 +140,11 @@ export function fitProliferation(values: Float64Array, opts: ProliferationOption
     parentPeak: 10 ** p,
     width: w,
     generations: idx.map((g, k) => ({ index: g, peak: 10 ** (p - g * LOG2), count: c[k], pct: N > 0 ? (100 * c[k]) / N : 0 })),
-    precursorFrequency: Osum > 0 ? Odiv / Osum : NaN,
     divisionIndex: Osum > 0 ? gO / Osum : NaN,
     proliferationIndex: Odiv > 0 ? gO / Odiv : NaN,
     expansionIndex: Osum > 0 ? N / Osum : NaN,
-    pctDivided: N > 0 ? (N - (c[0] ?? 0)) / N : NaN,
+    replicationIndex: Odiv > 0 ? (N - (c[0] ?? 0)) / Odiv : NaN,
+    pctDivided: Osum > 0 ? Odiv / Osum : NaN,
     histogram: { edges, observed: obs, fitted },
     rmsd: Math.sqrt(ss / B),
     warnings,

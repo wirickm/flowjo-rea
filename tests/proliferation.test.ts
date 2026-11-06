@@ -44,7 +44,10 @@ describe('proliferation fitting', () => {
     expect(Math.abs(f.divisionIndex / truth.division - 1)).toBeLessThan(0.05);
     expect(Math.abs(f.proliferationIndex / truth.proliferation - 1)).toBeLessThan(0.05);
     expect(Math.abs(f.expansionIndex / truth.expansion - 1)).toBeLessThan(0.05);
-    expect(Math.abs(f.pctDivided - (total - counts[0]) / total)).toBeLessThan(0.02);
+    // FlowJo's % Divided: precursor cells that divided, sum_{g>=1} N_g/2^g / (N_0 + sum_{g>=1} N_g/2^g).
+    const O = counts.map((c, g) => c / 2 ** g), Odiv = O.slice(1).reduce((a, b) => a + b, 0);
+    expect(Math.abs(f.pctDivided - Odiv / (counts[0] + Odiv))).toBeLessThan(0.02);
+    expect(Math.abs(f.replicationIndex / ((total - counts[0]) / Odiv) - 1)).toBeLessThan(0.05);
     expect(f.histogram.fitted).toHaveLength(256);
     expect(f.histogram.edges).toHaveLength(257);
   });

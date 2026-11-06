@@ -1,9 +1,12 @@
 // Univariate DNA cell cycle fitting on a linear-scale histogram (bin index =
-// channel value). Dean-Jett-Fox: two Gaussians plus a broadened 2nd-order
-// polynomial S phase, fitted by Nelder-Mead over peak positions/widths with
-// nonnegative areas solved exactly (NNLS) at each step. Watson (pragmatic):
-// half-peak Gaussian fits, S = residual between the peaks. Validated on
-// synthetic data only; not compared against FlowJo or ModFit output.
+// channel value), with FlowJo 10.6.2's models (specs 15.1): Dean-Jett-Fox =
+// two Gaussians plus a broadened 2nd-order polynomial S phase between the
+// peak means; Watson pragmatic = two Gaussians plus an erfc plateau
+// amp [erfc(-((x - m1)/s1 + kG1)) - erfc(-((x - m2)/s2 - kG2))] / 2 with
+// fitted offsets kG1, kG2. Unconstrained by default (FlowJo's constraints
+// start empty), G2 searched between 1.75 and 2.25 x G1, RMSD over every
+// channel. Peak positions / widths by Nelder-Mead with exact nonnegative
+// areas (FlowJo uses Levenberg-Marquardt on the same least squares).
 import { fail } from './errors';
 
 export interface CellCycleFit {
@@ -139,8 +142,8 @@ export function fitCellCycle(hist: Float64Array | number[], opts: CellCycleOptio
   for (const v of y) total += v > 0 ? v : 0;
   if (n < 8 || total <= 0) fail('FIT_INVALID', 'Cell cycle fit: histogram is empty');
   const ratio = opts.g2Ratio ?? 2;
-  const constrain = opts.constrainG2 ?? true;
-  const cvEq = opts.cvEqual ?? true;
+  const constrain = opts.constrainG2 ?? false;
+  const cvEq = opts.cvEqual ?? false;
   const warnings: string[] = [];
 
   // G1 location: tallest smoothed peak (skipping the lowest 2% of channels), or the guess.
@@ -186,7 +189,7 @@ export function fitCellCycle(hist: Float64Array | number[], opts: CellCycleOptio
     };
     const sse = (q: number[]) => {
       const u = unpack(q);
-      if (u.s1 < 0.5 || u.s2 < 0.5 || u.m1 <= lo + 1 || u.m1 >= hi - 1 || u.m2 < 1.5 * u.m1 || u.m2 > 2.5 * u.m1) return Infinity;
+      if (u.s1 < 0.5 || u.s2 < 0.5 || u.m1 <= lo + 1 || u.m1 >= hi - 1 || u.m2 < 1.75 * u.m1 || u.m2 > 2.25 * u.m1) return Infinity;
       const cols = columns(u);
       const c = solveAreas(cols);
       let e = 0;
@@ -219,48 +222,57 @@ export function fitCellCycle(hist: Float64Array | number[], opts: CellCycleOptio
       s: Float64Array.from(all, (i) => c[2] * sc[0][i] + c[3] * sc[1][i] + c[4] * sc[2][i]),
     };
   } else {
-    // Watson (pragmatic): amplitude in closed form, sd by 1-D search, over a half peak.
-    const halfFit = (m: number, sGuess: number, from: number, to: number, sFixed?: number) => {
-      const idx: number[] = [];
-      for (let i = Math.max(0, Math.ceil(from)); i <= Math.min(n - 1, Math.floor(to)); i++) idx.push(i);
-      const amp = (s: number) => {
-        let a = 0, b = 0;
-        for (const i of idx) { const g = gauss(i, m, s), w = 1 / Math.max(y[i], 1); a += w * g * y[i]; b += w * g * g; }
-        return b > 0 ? Math.max(0, a / b) : 0;
-      };
-      const err = (s: number) => {
-        if (s < 0.5) return Infinity;
-        const A = amp(s);
-        return idx.reduce((e, i) => e + (y[i] - A * gauss(i, m, s)) ** 2 / Math.max(y[i], 1), 0);
-      };
-      const s = sFixed ?? nelderMead((q) => err(q[0]), [sGuess], [0.2 * sGuess]).x[0];
-      return { s, A: amp(s) };
+    // Watson pragmatic: G1, G2 and the erfc S plateau, offsets kG1 / kG2 fitted.
+    const sCol = (i: number, q: { m1: number; s1: number; m2: number; s2: number }, k1: number, k2: number) => (erfc(-((i - q.m1) / q.s1 + k1)) - erfc(-((i - q.m2) / q.s2 - k2))) / 2;
+    const unpack = (q: number[]) => {
+      let k = 2;
+      const m2 = constrain ? ratio * q[0] : q[k++];
+      const s2 = cvEq ? (q[1] * m2) / q[0] : q[k++];
+      return { u: { m1: q[0], s1: q[1], m2, s2 }, k1: q[k], k2: q[k + 1] };
     };
-    const m1 = m0;
-    const f1 = halfFit(m1, s0, m1 - 3 * s0, m1);
-    let m2 = ratio * m1;
-    if (!constrain) {
-      let q = -1;
-      for (let i = Math.round(0.85 * m2); i <= Math.min(n - 2, Math.round(1.15 * m2)); i++) if (q < 0 || sm[i] > sm[q]) q = i;
-      if (q > 0) {
-        const d2 = sm[q - 1] - 2 * sm[q] + sm[q + 1];
-        m2 = q + (d2 < 0 ? (0.5 * (sm[q - 1] - sm[q + 1])) / d2 : 0);
-      }
+    const cols = (v: ReturnType<typeof unpack>, idx: number[]) => [
+      Float64Array.from(idx, (i) => gauss(i, v.u.m1, v.u.s1)),
+      Float64Array.from(idx, (i) => gauss(i, v.u.m2, v.u.s2)),
+      Float64Array.from(idx, (i) => sCol(i, v.u, v.k1, v.k2)),
+    ];
+    const solve = (cs: Float64Array[]) => nnls(cs.map((a) => cs.map((b2) => a.reduce((t, v, k) => t + v * b2[k] * wts[k], 0))), cs.map((a) => a.reduce((t, v, k) => t + v * y[xs[k]] * wts[k], 0)));
+    const sse = (q: number[]) => {
+      const v = unpack(q);
+      if (v.u.s1 < 0.5 || v.u.s2 < 0.5 || v.u.m1 <= lo + 1 || v.u.m1 >= hi - 1 || v.u.m2 < 1.75 * v.u.m1 || v.u.m2 > 2.25 * v.u.m1) return Infinity;
+      const cs = cols(v, xs);
+      const c = solve(cs);
+      let e = 0;
+      for (let k = 0; k < xs.length; k++) { let f = 0; for (let b2 = 0; b2 < 3; b2++) f += c[b2] * cs[b2][k]; e += (y[xs[k]] - f) ** 2 * wts[k]; }
+      return e;
+    };
+    const x0 = [m0, s0], st = [0.25 * s0, 0.2 * s0];
+    if (!constrain) { x0.push(ratio * m0); st.push(0.25 * s0 * ratio); }
+    if (!cvEq) { x0.push(s0 * ratio); st.push(0.2 * s0 * ratio); }
+    x0.push(1, 1); st.push(0.5, 0.5);
+    let best = nelderMead(sse, x0, st);
+    for (let r = 0; r < 3; r++) {
+      const next = nelderMead(sse, best.x, st.map((v) => v * 0.5));
+      const done = next.fx >= best.fx * (1 - 1e-6);
+      if (next.fx < best.fx) best = next;
+      if (done) break;
     }
-    const sg2 = (f1.s * m2) / m1;
-    const f2 = halfFit(m2, sg2, m2, m2 + 3 * sg2, cvEq ? sg2 : undefined);
-    p = { m1, s1: f1.s, m2, s2: f2.s };
-    nParams = cvEq ? 4 : 5;
-    const g1 = Float64Array.from({ length: n }, (_, i) => f1.A * gauss(i, m1, f1.s));
-    const g2 = Float64Array.from({ length: n }, (_, i) => f2.A * gauss(i, m2, f2.s));
-    const s = new Float64Array(n);
-    for (let i = Math.ceil(m1); i <= Math.min(n - 1, Math.floor(m2)); i++) s[i] = Math.max(0, y[i] - g1[i] - g2[i]);
-    comp = { g1, s, g2 };
+    const v = unpack(best.x);
+    p = v.u;
+    nParams = best.x.length + 3;
+    const c = solve(cols(v, xs));
+    const all = Array.from({ length: n }, (_, i) => i);
+    comp = {
+      g1: Float64Array.from(all, (i) => c[0] * gauss(i, p.m1, p.s1)),
+      g2: Float64Array.from(all, (i) => c[1] * gauss(i, p.m2, p.s2)),
+      s: Float64Array.from(all, (i) => c[2] * sCol(i, v.u, v.k1, v.k2)),
+    };
   }
 
   const fitted = Float64Array.from({ length: n }, (_, i) => comp.g1[i] + comp.s[i] + comp.g2[i]);
   let ss = 0, chi = 0;
-  for (const i of xs) { ss += (y[i] - fitted[i]) ** 2; chi += (y[i] - fitted[i]) ** 2 / Math.max(y[i], 1); }
+  // RMSD over every histogram channel (CCModel::ComputeRMS).
+  for (let i = 0; i < n; i++) ss += (y[i] - fitted[i]) ** 2;
+  for (const i of xs) chi += (y[i] - fitted[i]) ** 2 / Math.max(y[i], 1);
   const sum = (a: Float64Array) => a.reduce((s, v) => s + v, 0);
   const a1 = sum(comp.g1), aS = sum(comp.s), a2 = sum(comp.g2), at = a1 + aS + a2 || 1;
   let outside = 0;
@@ -275,10 +287,17 @@ export function fitCellCycle(hist: Float64Array | number[], opts: CellCycleOptio
     g1Pct: (100 * a1) / at,
     sPct: (100 * aS) / at,
     g2Pct: (100 * a2) / at,
-    rmsd: Math.sqrt(ss / xs.length),
+    rmsd: Math.sqrt(ss / n),
     chiSquare: chi / Math.max(1, xs.length - nParams),
     fitted,
     components: comp,
     warnings,
   };
+}
+
+// Complementary error function (Numerical Recipes erfcc, |error| < 1.2e-7).
+export function erfc(x: number): number {
+  const z = Math.abs(x), t = 1 / (1 + 0.5 * z);
+  const r = t * Math.exp(-z * z - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + t * (-0.18628806 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277)))))))));
+  return x >= 0 ? r : 2 - r;
 }

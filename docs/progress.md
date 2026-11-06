@@ -1,5 +1,14 @@
 # Progress and handoff
 
+## State (2026-11-06, parity area 9: cell cycle and proliferation)
+
+Cell cycle uses FlowJo 10.6.2's models (Dean-Jett-Fox quadratic S, Watson
+erfc plateau), defaults (unconstrained, G2 in 1.75-2.25 x G1) and outputs
+(RMSD over every channel, no chi-square); proliferation reports FlowJo's
+indices (% Divided over precursors, Replication Index; no Precursor
+Frequency). REA ledger 39 of 39 verified. Next areas: layout / table
+editors, preferences.
+
 ## State (2026-11-06, parity area 8: compensation)
 
 Compensation follows FlowJo 10.6.2 (specs section 14): .mtx save and load,

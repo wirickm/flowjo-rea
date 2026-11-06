@@ -478,7 +478,8 @@ await page.getByTestId('platform-channel').selectOption('CFSE');
 await page.getByTestId('platform-run').click();
 await page.getByTestId('prolif-result').waitFor({ timeout: 60000 });
 const divided = parseFloat(await page.getByTestId('prolif-divided').textContent());
-check('proliferation recovers % divided (truth 80%) within 3 pp', Math.abs(divided - 80) < 3, `${divided}%`);
+// FlowJo's % Divided (precursors that divided): O = 20, 12.5, 6.25, 2.5, 0.625 -> 21.875 / 41.875 = 52.2%.
+check('proliferation recovers FlowJo % divided (truth 52.2%) within 3 pp', Math.abs(divided - 52.2) < 3, `${divided}%`);
 // Kinetics (FlowJo 10.6.2 window, specs 11; detailed checks in e2e/kinetics.mjs).
 await page.getByTestId('platform-kind').selectOption('kinetics');
 await page.getByTestId('kin-row-All Events').waitFor({ timeout: 30000 });

@@ -1,5 +1,12 @@
 # Progress and handoff
 
+## State (2026-11-06, parity area 7: FCS reading)
+
+FCS reading follows FlowJo 10.6.2 (specs section 13): FCS 3.2 accepted
+($PnDATATYPE ignored), packed bit streams, 24-bit and mixed widths,
+non-standard $BYTEORD read as a full reversal, $TOT computed when missing,
+$ENCRYPT refused. REA ledger 35 of 35 verified. Next area: compensation.
+
 ## State (2026-11-06, parity area 6: derived parameters)
 
 Derived parameters follow FlowJo 10.6.2 (specs section 12): the engine's

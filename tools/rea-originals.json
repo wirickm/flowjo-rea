@@ -404,6 +404,22 @@
       "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/core/DerivedParameter.class" }, { "kind": "artifact-path", "path": "com/treestar/flowjo/core/AlgebraicParameter.class" }, { "kind": "artifact-path", "path": "com/treestar/flowjo/application/derivedparameters/DerivedParameterController.class" }],
       "behavior": "Derive Parameters: name letters/digits/underscore and not a number ('Paramter with this name already exists'), default 'Derived', 'Derived-1'..; formula with Insert Reference / Function / Operator; scale linear 0..1000; .wsp DerivedParameter node wrapping DerivedParameter name type formula with Formula and Transform children.",
       "spec_section": "12.4"
+    },
+    {
+      "key": "fcs-header",
+      "subject": "engine",
+      "symbols": ["FCSUtil::ReadFCSHeader", "FCSUtil::HandleStdKey", "FCSUtil::ParameterKeyword"],
+      "locations": [{ "kind": "address-range", "start": "0x4cc50", "end": "0x4d080" }, { "kind": "address-range", "start": "0x51190", "end": "0x51540" }, { "kind": "address-range", "start": "0x51800", "end": "0x51b60" }],
+      "behavior": "Header must start FCS (or MQD); versions 1.0, 2.0, 3.0, 3.1 and 3.2 accepted; only the first letter after $Pn is read (B, E, G, N, R, S), so $PnDATATYPE is ignored; $DATATYPE I, F, D, A; $ENCRYPT must be NONE.",
+      "spec_section": "13.1"
+    },
+    {
+      "key": "fcs-layout",
+      "subject": "engine",
+      "symbols": ["FCSUtil::InitReadingFields", "FCSUtil::CreateDataReader", "FCSPackedDataReader::ReadData", "FCSCytek3ByteDataReader::GetValue", "FCSUtil::SetByteOrder", "FCSDataReader::FCSDataReader"],
+      "locations": [{ "kind": "address-range", "start": "0x50060", "end": "0x50a60" }, { "kind": "address-range", "start": "0x4d6d0", "end": "0x4da90" }, { "kind": "address-range", "start": "0x58ef10", "end": "0x58f820" }, { "kind": "address-range", "start": "0x592ef0", "end": "0x592f40" }, { "kind": "address-range", "start": "0x51d10", "end": "0x51db0" }, { "kind": "address-range", "start": "0x58cd90", "end": "0x58da50" }],
+      "behavior": "Widths <= 8 -> 1 byte, 9-16 -> 2, 24, 32, 64, others 'Encountered unhandled data width'; packed bit stream (LSB first, not reset per event) when the last <= 16-bit parameter is not 8 or 16; 3-byte little-endian unless big-endian; $BYTEORD 1,2 / 1,2,3,4 / 12 / 1234 little else full reversal; integers masked with next-power-of-two($PnR) - 1; $TOT 0 -> DATA length x 8 / bits per event.",
+      "spec_section": "13.2"
     }
   ]
 }

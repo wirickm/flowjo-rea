@@ -941,6 +941,52 @@ Read with REA 6.8.0's Ghidra provider on the native engine (`Parser`,
 - Own rule: deleting a parameter in use asks first and lists its users
   (FlowJo has no dependency check; specs 6.6).
 
+## 13. FCS reading (FlowJo 10.6.2)
+
+Read with REA 6.8.0's Ghidra provider on the native engine (`FCSUtil::ReadFCSHeader`,
+`FCSUtil::InitReadingFields`, `FCSUtil::CreateDataReader`, `FCSUtil::SetByteOrder`,
+`FCSUtil::HandleStdKey`, `FCSPackedDataReader`, `FCSCytek3ByteDataReader`,
+`FCSDataReader`). FCS reading is entirely native (no Java readers exist).
+Implemented in `src/core/fcs.ts`.
+
+### 13.1 Versions (matches)
+
+- FCS 1.0, 2.0, 3.0, 3.1 and 3.2 are accepted. FCS 3.2's per-parameter
+  `$PnDATATYPE` and `$PnTYPE` are ignored (only the first letter after
+  `$Pn` is read: B, E, G, N, R, S); the whole file uses `$DATATYPE`.
+- `$ENCRYPT` other than NONE is refused.
+
+### 13.2 Data layout (matches)
+
+- Integer widths: up to 8 bits take 1 byte, 9 to 16 take 2, then 24, 32
+  and 64; other widths are refused ("Encountered unhandled data width").
+  Mixed byte-aligned widths are read per parameter. When the last parameter
+  of 16 bits or fewer is not exactly 8 or 16 bits, the event is one packed
+  bit stream (not reset per event, bytes added least significant bit first,
+  `$BYTEORD` unused).
+- 24-bit values are little-endian unless the file is big-endian.
+- `$BYTEORD` 1,2 / 1,2,3,4 (or 12 / 1234) is little-endian; any other order
+  is read as a full byte reversal (with a warning here).
+- Integer values are ANDed with (next power of two of `$PnR`) - 1;
+  integers are unsigned.
+- `$TOT` missing or 0: the event count is the DATA length x 8 / bits per
+  event.
+
+### 13.3 Own rules
+
+- `$DATATYPE=A` (ASCII) is refused with an explicit error (FlowJo reads the
+  bytes as integers by `$PnB`); `$MODE` C and U are refused (FlowJo reads C
+  as list data and has an uncorrelated reader).
+- A missing `$BYTEORD` reads little-endian with a warning (FlowJo infers the
+  order from up to 16 events of the last 2-byte parameter).
+- DATA offsets: this app picks the HEADER or TEXT offsets whose length fits
+  `$TOT` (FlowJo uses `$BEGINDATA` / `$ENDDATA` only when the header offset
+  is 0); both read the same files written to the standard.
+- Not decoded: TEXT tokenising (`FFCSHeader`), the `$PnE` to scale
+  conversion and the f1 > 0, f2 = 0 default (this app keeps 10^(f1 x / R)
+  with f2 = 0 read as 1, warned), and the cytometer-specific quirks
+  (Cytomics `$PnB` 10 read as 16, CXP / BCI masking).
+
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 
 Source: static analysis of `libNativeEngine.dylib` from the public FlowJo

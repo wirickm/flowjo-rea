@@ -14,7 +14,7 @@ import { emptyWorkspace, type Dimension, type Gate, type GridAxis, type Group, t
 import { syncLiveGroups } from './project';
 import { connectorFromText, functionFromText, MAX_KEYWORD_CRITERIA, roleFromText } from './groupCriteria';
 import { defaultGrid } from './gateGrid';
-import { STAT_NEEDS_CHANNEL } from './stats';
+import { FLOWJO_STAT_NAMES, STAT_NEEDS_CHANNEL } from './stats';
 import { makeTransform, type TransformSpec } from './transforms';
 import { attr, kid, kids, local, numAttr, parseXml, type El } from './xml';
 
@@ -304,8 +304,8 @@ export function parseWsp(xml: string): WspImport {
     };
 
     // Statistic nodes become statistics-table columns (deduplicated across
-    // samples). Only name="Count" is observed in the fixtures; the other name
-    // mappings and the channel attribute ("id") are assumptions.
+    // samples). FlowJo writes its StatKey strings (specs 8.1); display names
+    // are also accepted.
     const statNode = (st: El, path: string) => {
       const sname = attr(st, 'name') ?? '';
       const stat = WSP_STATS[sname];
@@ -320,8 +320,14 @@ export function parseWsp(xml: string): WspImport {
         return;
       }
       const percentile = stat === 'percentile' ? Number(attr(st, 'percent') ?? 50) : undefined;
-      const dup = ws.statColumns.some((c) => c.populationPath === path && c.stat === stat && c.channel === channel && c.percentile === percentile);
-      if (!dup) ws.statColumns.push({ id: `col${ws.statColumns.length + 1}`, populationPath: path, stat, channel, percentile });
+      const ancestor = stat === 'freqOf' ? attr(st, 'ancestor') ?? '' : undefined;
+      const correlate = stat === 'correlation' ? (attr(st, 'correlate') ? resolveDim(attr(st, 'correlate')!).channel : '') : undefined;
+      if (stat === 'correlation' && !correlate) {
+        sw.push(`Correlation on "${path || 'All events'}" names no second parameter; skipped`);
+        return;
+      }
+      const dup = ws.statColumns.some((c) => c.populationPath === path && c.stat === stat && c.channel === channel && c.percentile === percentile && c.ancestor === ancestor && c.correlate === correlate);
+      if (!dup) ws.statColumns.push({ id: `col${ws.statColumns.length + 1}`, populationPath: path, stat, channel, percentile, ...(ancestor !== undefined ? { ancestor } : {}), ...(correlate !== undefined ? { correlate } : {}) });
     };
 
     const walk = (container: El, parentId: string | null, parentPath: string) => {
@@ -461,19 +467,13 @@ export function parseWsp(xml: string): WspImport {
 }
 
 const WSP_STATS: Record<string, StatKind> = {
-  Count: 'count',
+  // FlowJo's StatKey strings (what FlowJo 10.6.2 writes).
+  ...Object.fromEntries(Object.entries(FLOWJO_STAT_NAMES).map(([k, v]) => [v, k as StatKind])),
+  // Display names (accepted on import).
   'Freq. of Parent': 'freqParent',
   'Freq. of Grandparent': 'freqGrandparent',
   'Freq. of Total': 'freqTotal',
-  Mean: 'mean',
-  Median: 'median',
-  'Geometric Mean': 'geomean',
-  SD: 'sd',
-  CV: 'cv',
-  'Robust SD': 'robustSd',
-  'Robust CV': 'robustCv',
-  'Median Abs Dev': 'mad',
-  Percentile: 'percentile',
+  'Freq. of': 'freqOf',
 };
 
 // Function names written by this app's .wsp export before version 1.1

@@ -139,10 +139,9 @@ percentile or robust statistic; only Count statistic nodes).
    - otherwise `(hi - lo) / 2`.
 4. **Robust CV** = `100 * robust SD / median` (median not made absolute);
    0 when the population has fewer than 6 events.
-5. Mean, SD, CV, geometric mean, min, max are not histogram-based (not
-   analysed further). MAD uses a histogram median and then the deviations of
-   the individual events; its final step is not decoded, so this app keeps
-   its exact MAD.
+5. Mean, SD, CV, geometric mean, mode and MAD are also histogram-based;
+   decoded later, see section 8.2 (the earlier statement that they were not
+   was wrong). Min and max are this app's own statistics (no FlowJo key).
 
 Scope in this app: statistics use these conventions when the channel's
 FlowJo scale is known: an imported FlowJo linear range (per sample), or a
@@ -477,6 +476,104 @@ Ghidra decompiler; exception handlers and switch fall-through checked with
 - This app has no group node in the population tree: deleting a group-owned
   population there is deleting it from its group (own UI rule; the choices
   and their effects match FlowJo).
+
+## 8. Statistics (FlowJo 10.6.2, REA Ghidra provider)
+
+Read with REA 6.8.0's Ghidra provider (`analyze_function` on
+`Statistic::Compute`, `GParameter::ComputeStat`, `GParameter::Mode`,
+`GParameter::Correlation`, `GParameter::MedianAbsoluteDeviation`,
+`BasicHistogram::ScaleMean / ScaleStdDev / ScaleCV / ScaleGeometricMean /
+ChannelMode / BuildHistogram`), `llvm-objdump` for the histogram sizes and
+epilogues the decompiler dropped, and the Java `Statistic` / `StatKey`
+classes (Ghidra, javap). Static reading only. Implemented in
+`src/core/flowjoStats.ts` and `src/core/stats.ts`.
+
+### 8.1 Statistic set and .wsp names (matches)
+
+- FlowJo's statistics: Count, Freq. of Total, Freq. of Parent, Freq. of
+  Grandparent, Freq. of (a named ancestor), Median, Mean, Mode, Percentile,
+  Geometric Mean, Robust CV, CV, SD, Median Abs Dev, Robust SD, Correlation.
+- In `.wsp` a `Statistic` element has `name` = the StatKey string written as
+  is: `Count`, `fj.stat.freqoftotal`, `fj.stat.freqofparent`,
+  `fj.stat.freqofgrandparent`, `fj.stat.freqof`, `Median`, `Mean`, `Mode`,
+  `Percentile`, `Geometric Mean`, `Robust CV`, `CV`, `SD`, `Median Abs Dev`,
+  `Robust SD`, `Correlation`; plus `id` (parameter), `percent`, `ancestor`
+  (the ancestor population's name), `correlate` (second parameter),
+  `expectedRange` and `value`.
+- Freq. of = 100 x count / count of the named ancestor (this app: the
+  nearest ancestor with that name).
+- Correlation: the 10.6.2 engine's `GParameter::Correlation` returns NaN and
+  has no other implementation, so FlowJo 10.6.2 shows no correlation value.
+  This app matches (NaN).
+- Min and Max are this app's own (no FlowJo key; not written to `.wsp`).
+
+### 8.2 Histogram rules (matches on FlowJo scales)
+
+`GParameter::ComputeStat` builds a `BasicHistogram` of the population on the
+parameter's scale for every statistic below. Channel `k` stands for the data
+value at position `k` (`k x range / channels`) converted back to data units.
+
+- Sizes: 4096 channels for median, percentiles, mean, SD, CV, geometric mean,
+  robust SD / CV and the MAD's median; 256 channels for the mode.
+- Mean: sum over channels of count x channel value, in single precision,
+  divided by n.
+- SD: the same mean, then the sum of count x (channel value - mean)^2 over
+  n - 1, single precision, square root (a fast reciprocal square root with
+  one Newton step, i.e. single-precision sqrt).
+- CV: 100 x SD / mean, the mean not made absolute.
+- Geometric mean: on channel numbers. Without the parameter's log flag:
+  10^(sum over channels 1..last of count x log10(channel) / n), events in
+  channel 0 counted in n but not in the sum, then converted back. With the
+  flag: the count-weighted mean channel, converted back. (This app takes the
+  flag as "logicle axis"; the flag's source is not decoded.)
+- Mode: the first (lowest) of the 256 channels with the highest count, as a
+  position on the 4096-channel axis, converted back.
+- Median Abs Dev: m = the 4096-channel histogram median; the absolute
+  deviations of the individual events from m are sorted and the element at
+  index floor(n / 2) (single precision) gives 100 x 1.4826 x deviation / m.
+  So FlowJo's MAD is a percentage of the median. This app uses the same
+  formula on every channel (with the exact median where no FlowJo scale is
+  known).
+- Fewer than 2 events: SD and CV are not decoded; this app shows NaN.
+
+## 9. Event export (FlowJo 10.6.2)
+
+Read with REA 6.8.0's Ghidra provider (`Exporter::WriteSample`,
+`Exporter::WriteRow`, `Exporter::WriteParamHeaderRow`,
+`Exporter::PopulateParmArray`, `Exporter::GetSampleIDParameter`,
+`FCS3Exporter::WriteRow`), `llvm-objdump` (`ExportRequest::FromXML`
+defaults) and headless Ghidra / javap on the Java side
+(`PopulationExporter2`, `ExportModel`). Static reading only. Implemented in
+`src/core/exportRules.ts` and `src/core/service.ts`.
+
+- Formats: FCS 3, CSV scale values, CSV channel values. Parameters: all
+  compensated, all uncompensated, or a chosen set.
+- "No more than N" is not random (the dialog's tooltip says "randomly
+  selected"): with step = trunc(count / N) in single precision (1 when count =
+  N), events are taken every step-th in file order until N are written. For a
+  whole sample the positions are 0, step, 2 step, ...; for a gated population
+  the step-th, 2 step-th, ... event of the population (1-based). N at or above
+  the count takes every event.
+- CSV (`Exporter::WriteRow`): "," between columns, "\n" at line end; scale
+  values print with C `%g` (6 significant digits), values within 1e-6 of zero
+  as `0`; channel values as integers on the parameter's scale with
+  `channelRange` channels, 1024 by default (the dialog never sets it).
+- CSV header (`WriteParamHeaderRow`): parameter name, stain, or both joined
+  with " :: ".
+- Concatenation (`PopulationExporter2`): all files together, every n files
+  (consecutive runs), or files with equal values of a keyword (groups in
+  string order of the value; samples without a value are left out). Inside a
+  file the populations are ordered by `$ETIM` (HH:mm:ss) ascending, a missing
+  or unreadable time comparing equal. The cap per population is trunc(sum of
+  min(N, count) / number of populations). A `SampleID` parameter holds each
+  population's 1-based position.
+- FCS rows (`FCS3Exporter::WriteRow`): float32 values divided by the
+  parameter gain and, for Time, by the time step (raw units, original
+  keywords). This app keeps its own rule: scale units with `$TIMESTEP` = 1,
+  which reads back to the same values (FlowJo reads either).
+- Not decoded: keyword-derived extra parameters and their "spread
+  distribution"; file-naming patterns (this app downloads one file per
+  output with a fixed pattern).
 
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 

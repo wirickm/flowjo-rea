@@ -279,6 +279,128 @@
         { "fixture_id": "groups.owned.sync", "case_kind": "negative", "test_file": "tests/group-analysis.test.ts", "test_name": "moves it in every member only when the group is synchronized" }
       ],
       "verifier": { "verifier_id": "groups.owned", "claim_id": "groups.owned-analysis.v1", "test_file": "tests/group-analysis.test.ts", "command": "npx vitest run tests/group-analysis.test.ts" }
+    },
+    {
+      "obligation_id": "stats.histogram-moments",
+      "obligation_version": 1,
+      "title": "Mean, SD, CV and geometric mean follow FlowJo 10's 4096-channel histogram",
+      "family": "statistics",
+      "target_location": "GParameter::ComputeStat",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "stats-histogram-moments", "location": "values snap to channels; count-weighted channel values" },
+        { "kind": "negative", "observation": "stats-histogram-moments", "location": "CV is not made absolute; SD of one event is not a number" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/flowjoStats.ts", "symbol": "flowjoMean", "files": ["src/core/flowjoStats.ts", "src/core/stats.ts"] },
+      "fixtures": [
+        { "fixture_id": "stats.mean", "case_kind": "positive", "test_file": "tests/flowjo-stats-moments.test.ts", "test_name": "mean is the count-weighted channel value" },
+        { "fixture_id": "stats.geomean", "case_kind": "positive", "test_file": "tests/flowjo-stats-moments.test.ts", "test_name": "geometric mean on a linear axis" },
+        { "fixture_id": "stats.cv-sign", "case_kind": "negative", "test_file": "tests/flowjo-stats-moments.test.ts", "test_name": "SD uses n - 1 over channel values" }
+      ],
+      "verifier": { "verifier_id": "stats.flowjo-moments", "claim_id": "stats.histogram-moments.v1", "test_file": "tests/flowjo-stats-moments.test.ts", "command": "npx vitest run tests/flowjo-stats-moments.test.ts" }
+    },
+    {
+      "obligation_id": "stats.mode-mad-correlation",
+      "obligation_version": 1,
+      "title": "Mode, Median Abs Dev and Correlation follow FlowJo 10",
+      "family": "statistics",
+      "target_location": "GParameter::Mode",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "stats-mode", "location": "first highest of 256 channels" },
+        { "kind": "positive", "observation": "stats-mad", "location": "100 x 1.4826 x MAD / histogram median" },
+        { "kind": "negative", "observation": "stats-correlation-nan", "location": "Correlation gives no value" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/flowjoStats.ts", "symbol": "flowjoMode", "files": ["src/core/flowjoStats.ts", "src/core/stats.ts"] },
+      "fixtures": [
+        { "fixture_id": "stats.mode", "case_kind": "positive", "test_file": "tests/flowjo-stats-moments.test.ts", "test_name": "mode: 256-channel histogram" },
+        { "fixture_id": "stats.mad", "case_kind": "positive", "test_file": "tests/flowjo-stats-moments.test.ts", "test_name": "Median Abs Dev = 100 x 1.4826" },
+        { "fixture_id": "stats.correlation", "case_kind": "negative", "test_file": "tests/flowjo-stats-moments.test.ts", "test_name": "Correlation is NaN" }
+      ],
+      "verifier": { "verifier_id": "stats.flowjo-moments", "claim_id": "stats.mode-mad-correlation.v1", "test_file": "tests/flowjo-stats-moments.test.ts", "command": "npx vitest run tests/flowjo-stats-moments.test.ts" }
+    },
+    {
+      "obligation_id": "stats.wsp-names",
+      "obligation_version": 1,
+      "title": "Statistic nodes use FlowJo 10's StatKey names, ancestor and correlate",
+      "family": "statistics",
+      "target_location": "com.treestar.flowjo.core.Statistic.addToElement",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "stats-wsp-names", "location": "FlowJo keys written and read back; Freq. of from the ancestor count" },
+        { "kind": "negative", "observation": "stats-wsp-names", "location": "statistics without a FlowJo key are not written" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/stats.ts", "symbol": "FLOWJO_STAT_NAMES", "files": ["src/core/stats.ts", "src/core/wsp.ts", "src/core/wspWriter.ts"] },
+      "fixtures": [
+        { "fixture_id": "stats.names", "case_kind": "positive", "test_file": "tests/flowjo-stats-moments.test.ts", "test_name": "uses FlowJo keys" },
+        { "fixture_id": "stats.freqof", "case_kind": "positive", "test_file": "tests/flowjo-stats-moments.test.ts", "test_name": "Freq. of an ancestor" },
+        { "fixture_id": "stats.own", "case_kind": "negative", "test_file": "tests/flowjo-stats-moments.test.ts", "test_name": "uses FlowJo keys" }
+      ],
+      "verifier": { "verifier_id": "stats.flowjo-moments", "claim_id": "stats.wsp-names.v1", "test_file": "tests/flowjo-stats-moments.test.ts", "command": "npx vitest run tests/flowjo-stats-moments.test.ts" }
+    },
+    {
+      "obligation_id": "export.event-cap",
+      "obligation_version": 1,
+      "title": "No more than N takes every step-th event, as FlowJo 10 does",
+      "family": "export",
+      "target_location": "Exporter::WriteSample",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "export-event-cap", "location": "every step-th event until N" },
+        { "kind": "negative", "observation": "export-event-cap", "location": "N at or above the count takes every event" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/exportRules.ts", "symbol": "capPositions", "files": ["src/core/exportRules.ts", "src/core/service.ts"] },
+      "fixtures": [
+        { "fixture_id": "export.cap.whole", "case_kind": "positive", "test_file": "tests/export-rules.test.ts", "test_name": "whole sample: positions 0, step" },
+        { "fixture_id": "export.cap.gated", "case_kind": "positive", "test_file": "tests/export-rules.test.ts", "test_name": "gated population: the step-th" },
+        { "fixture_id": "export.cap.all", "case_kind": "negative", "test_file": "tests/export-rules.test.ts", "test_name": "N >= count or no cap takes every event" }
+      ],
+      "verifier": { "verifier_id": "export.flowjo", "claim_id": "export.event-cap.v1", "test_file": "tests/export-rules.test.ts", "command": "npx vitest run tests/export-rules.test.ts" }
+    },
+    {
+      "obligation_id": "export.csv-format",
+      "obligation_version": 1,
+      "title": "CSV values, channels and header follow FlowJo 10",
+      "family": "export",
+      "target_location": "Exporter::WriteRow",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "export-csv-format", "location": "%g scale values, 1024-channel values, name/stain header" },
+        { "kind": "negative", "observation": "export-csv-format", "location": "values within 1e-6 of zero print 0; channels clamp to 0..1023" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/exportRules.ts", "symbol": "csvScaleValue", "files": ["src/core/exportRules.ts", "src/core/service.ts"] },
+      "fixtures": [
+        { "fixture_id": "export.csv.g", "case_kind": "positive", "test_file": "tests/export-rules.test.ts", "test_name": "scale values print with %g" },
+        { "fixture_id": "export.csv.header", "case_kind": "positive", "test_file": "tests/export-rules.test.ts", "test_name": "header: name, stain" },
+        { "fixture_id": "export.csv.channel", "case_kind": "negative", "test_file": "tests/export-rules.test.ts", "test_name": "channel values: 1024 channels" }
+      ],
+      "verifier": { "verifier_id": "export.flowjo", "claim_id": "export.csv-format.v1", "test_file": "tests/export-rules.test.ts", "command": "npx vitest run tests/export-rules.test.ts" }
+    },
+    {
+      "obligation_id": "export.concatenate",
+      "obligation_version": 1,
+      "title": "Concatenation groups, order, cap and SampleID follow FlowJo 10",
+      "family": "export",
+      "target_location": "com.treestar.flowjo.dialogs.export.PopulationExporter2.makeConcatenateRequests",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "export-concatenate", "location": "every n, equal keyword groups; $ETIM order; SampleID" },
+        { "kind": "negative", "observation": "export-concatenate", "location": "samples without the keyword value are left out" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/exportRules.ts", "symbol": "concatGroups", "files": ["src/core/exportRules.ts", "src/core/service.ts"] },
+      "fixtures": [
+        { "fixture_id": "export.concat.everyn", "case_kind": "positive", "test_file": "tests/export-rules.test.ts", "test_name": "every n files splits in order" },
+        { "fixture_id": "export.concat.service", "case_kind": "positive", "test_file": "tests/export-rules.test.ts", "test_name": "concatenates in $ETIM order with a SampleID parameter" },
+        { "fixture_id": "export.concat.cap", "case_kind": "positive", "test_file": "tests/export-rules.test.ts", "test_name": "the cap per population is trunc" },
+        { "fixture_id": "export.concat.empty", "case_kind": "negative", "test_file": "tests/export-rules.test.ts", "test_name": "equal keyword values: groups by value" }
+      ],
+      "verifier": { "verifier_id": "export.flowjo", "claim_id": "export.concatenate.v1", "test_file": "tests/export-rules.test.ts", "command": "npx vitest run tests/export-rules.test.ts" }
     }
   ]
 }

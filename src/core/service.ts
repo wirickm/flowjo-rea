@@ -2,7 +2,8 @@
 // the Web Worker in the app and directly in Node tests.
 import { SampleEngine, type PopulationResult } from './analysis';
 import { spilloverFromFcs, type SpilloverMatrix } from './compensation';
-import { AppError } from './errors';
+import { capPositions, channelValue, concatCap, csvScaleValue, headerName, orderByEndTime, SAMPLE_ID_PARAMETER, type HeaderFormat } from './exportRules';
+import { AppError, fail } from './errors';
 import { parseFcs, type FcsChannel, type FcsFile } from './fcs';
 import { estimateAfSpectrum } from './autofluorescence';
 import { estimateSpillover, type ControlInput, type WizardResult } from './compWizard';
@@ -12,7 +13,7 @@ import { populationPath } from './model';
 import { fingerprint } from './project';
 import type { ChannelScale } from './flowjoStats';
 import { computeStat, gather, validPercentile } from './stats';
-import { makeTransform } from './transforms';
+import { makeTransform, type TransformSpec } from './transforms';
 import { fitCellCycle, type CellCycleFit } from './cellcycle';
 import { fitProliferation, type ProliferationFit } from './proliferation';
 import { kinetics, type KineticsResult } from './kinetics';
@@ -77,9 +78,16 @@ export interface WizardRequest {
 
 export interface ExportRequest extends AnalyzeRequest {
   popId: string | null;
-  format: 'csv' | 'fcs';
+  // csv: scale values; csv-channel: channel values (0..1023); fcs: FCS 3.1.
+  format: 'csv' | 'csv-channel' | 'fcs';
   channels: string[];
   compensated: boolean;
+  // FlowJo "no more than N" (specs 9; deterministic decimation, not random).
+  maxEvents?: number;
+  header?: HeaderFormat;
+  writeHeader?: boolean;
+  // Scales of the channels, for channel values.
+  transforms?: Record<string, TransformSpec>;
 }
 
 export interface PlatformRequest extends AnalyzeRequest {
@@ -235,7 +243,16 @@ export class AnalysisService {
         const mask = p ? eng.masks.get(p.id)! : eng.root;
         let values: Float64Array | null = null;
         if (c.channel) values = gather(eng.column(c.channel), mask);
-        return computeStat(c.stat, values, { count, parent, grandparent: grand, total }, c.percentile, c.channel ? r.scales?.[c.channel] : undefined);
+        // Freq. of: the nearest ancestor with the named population (specs 8.1).
+        let ancestor: number | undefined;
+        if (c.stat === 'freqOf') {
+          let a = p?.parentId ? r.populations.find((x) => x.id === p.parentId) : undefined;
+          while (a && a.name !== c.ancestor) a = a.parentId ? r.populations.find((x) => x.id === a!.parentId) : undefined;
+          if (!a) return `error: no ancestor named "${c.ancestor ?? ''}"`;
+          ancestor = eng.results.get(a.id)!.count;
+        }
+        const values2 = c.stat === 'correlation' && c.correlate ? gather(eng.column(c.correlate), mask) : null;
+        return computeStat(c.stat, values, { count, parent, grandparent: grand, total, ancestor }, c.percentile, c.channel ? r.scales?.[c.channel] : undefined, values2);
       } catch (e) {
         if (e instanceof AppError) return `error: ${e.message}`;
         throw e;
@@ -278,34 +295,77 @@ export class AnalysisService {
     return estimateSpillover(inputs, r.channels, r.positivePct);
   }
 
-  exportEvents(r: ExportRequest): Uint8Array {
+  // Population values for export, with FlowJo's event cap applied.
+  private exportColumns(r: ExportRequest, cap: number | undefined) {
     const eng = this.engine(r);
-    const f = this.files.get(r.sampleId)!;
     const mask = r.popId ? eng.masks.get(r.popId)! : eng.root;
-    const cols = r.channels.map((ch) => gather(r.compensated ? eng.column(ch) : eng.column(ch, 'uncompensated'), mask));
-    if (r.format === 'csv') {
-      const lines = [r.channels.map((c) => `"${c.replace(/"/g, '""')}"`).join(',')];
-      const n = cols[0]?.length ?? 0;
-      for (let i = 0; i < n; i++) lines.push(cols.map((c) => String(c[i])).join(','));
+    const full = r.channels.map((ch) => gather(r.compensated ? eng.column(ch) : eng.column(ch, 'uncompensated'), mask));
+    const count = full[0]?.length ?? Array.from(mask).reduce((a, b) => a + b, 0);
+    const keep = capPositions(count, cap, r.popId !== null);
+    return { count, cols: full.map((c) => Float64Array.from(keep, (i) => c[i])) };
+  }
+
+  private writeExport(r: ExportRequest, cols: Float64Array[], extraCols: { name: string; values: Float64Array }[], extra: Record<string, string>): Uint8Array {
+    const f = this.files.get(r.sampleId)!;
+    if (r.format !== 'fcs') {
+      const fmt = r.header ?? 'p';
+      const head = [...r.channels.map((ch) => headerName(ch, f.channels.find((c) => c.name === ch)?.label, fmt)), ...extraCols.map((e) => e.name)];
+      const lines = r.writeHeader === false ? [] : [head.join(',')];
+      const n = cols[0]?.length ?? extraCols[0]?.values.length ?? 0;
+      for (let i = 0; i < n; i++) {
+        const row = cols.map((c, k) => (r.format === 'csv-channel' ? String(channelValue(c[i], r.transforms?.[r.channels[k]] ?? { kind: 'none' })) : csvScaleValue(c[i])));
+        for (const e of extraCols) row.push(String(e.values[i]));
+        lines.push(row.join(','));
+      }
       return new TextEncoder().encode(lines.join('\n') + '\n');
     }
-    const chans = r.channels.map((ch, k) => {
-      // Unmixed fluorochromes have no FCS parameter; use the largest detector range.
-      const meta = f.channels.find((c) => c.name === ch);
-      return { name: ch, label: meta ? meta.label : 'unmixed', range: meta ? meta.range : Math.max(...f.channels.map((c) => c.range)), values: cols[k] };
-    });
-    const extra: Record<string, string> = {};
+    const chans = [
+      ...r.channels.map((ch, k) => {
+        // Unmixed fluorochromes have no FCS parameter; use the largest detector range.
+        const meta = f.channels.find((c) => c.name === ch);
+        return { name: ch, label: meta ? meta.label : 'unmixed', range: meta ? meta.range : Math.max(...f.channels.map((c) => c.range)), values: cols[k] };
+      }),
+      ...extraCols.map((e) => ({ name: e.name, label: '', range: Math.max(1, ...e.values), values: e.values })),
+    ];
+    const kw: Record<string, string> = {};
     // Values are written in scale units (Time already in seconds, gain applied),
-    // so $TIMESTEP is written as 1 to avoid rescaling on re-read.
-    for (const k of ['$CYT', '$DATE', '$BTIM', '$ETIM', '$FIL', '$SRC']) if (f.keywords[k]) extra[k] = f.keywords[k];
-    if (f.keywords['$TIMESTEP']) extra['$TIMESTEP'] = '1';
-    extra['FLOWJO_REA_SOURCE'] = f.keywords['$FIL'] ?? '';
-    extra['FLOWJO_REA_POPULATION'] = r.popId ? populationPath(r.populations, r.popId) : 'All events';
-    extra['FLOWJO_REA_COMPENSATED'] = r.compensated ? r.compensation : 'uncompensated';
+    // so $TIMESTEP is written as 1 to avoid rescaling on re-read (own rule;
+    // FlowJo writes raw units with the original keywords, specs 9).
+    for (const k of ['$CYT', '$DATE', '$BTIM', '$ETIM', '$FIL', '$SRC']) if (f.keywords[k]) kw[k] = f.keywords[k];
+    if (f.keywords['$TIMESTEP']) kw['$TIMESTEP'] = '1';
     // Compensated values are written as-is; the spillover keyword is omitted so
     // readers do not compensate twice.
-    if (!r.compensated && f.keywords['$SPILLOVER']) extra['$SPILLOVER'] = f.keywords['$SPILLOVER'];
-    return writeFcs(chans, extra);
+    if (!r.compensated && f.keywords['$SPILLOVER']) kw['$SPILLOVER'] = f.keywords['$SPILLOVER'];
+    return writeFcs(chans, { ...kw, ...extra });
+  }
+
+  exportEvents(r: ExportRequest): Uint8Array {
+    const f = this.files.get(r.sampleId)!;
+    const { cols } = this.exportColumns(r, r.maxEvents);
+    return this.writeExport(r, cols, [], {
+      FLOWJO_REA_SOURCE: f.keywords['$FIL'] ?? '',
+      FLOWJO_REA_POPULATION: r.popId ? populationPath(r.populations, r.popId) : 'All events',
+      FLOWJO_REA_COMPENSATED: r.compensated ? r.compensation : 'uncompensated',
+    });
+  }
+
+  // FlowJo "Concatenate": the populations in $ETIM order, each capped at
+  // trunc(sum of min(N, count) / populations), with a SampleID parameter
+  // holding each population's 1-based position (specs 9). The parameters
+  // must be the same in every population.
+  exportConcatenated(parts: ExportRequest[]): Uint8Array {
+    if (!parts.length) fail('UNSUPPORTED_FEATURE', 'Nothing to concatenate');
+    const names = parts[0].channels.join('\u0000');
+    if (parts.some((p) => p.channels.join('\u0000') !== names)) fail('UNSUPPORTED_FEATURE', 'Concatenation needs the same parameters in every sample');
+    const ordered = orderByEndTime(parts, (p) => this.files.get(p.sampleId)?.keywords['$ETIM']);
+    const counts = ordered.map((p) => this.exportColumns(p, undefined).count);
+    const cap = concatCap(counts, parts[0].maxEvents);
+    const pieces = ordered.map((p) => this.exportColumns(p, cap).cols);
+    const cols = parts[0].channels.map((_, k) => Float64Array.from(pieces.flatMap((c) => Array.from(c[k]))));
+    const ids = Float64Array.from(pieces.flatMap((c, i) => Array.from({ length: c[0]?.length ?? 0 }, () => i + 1)));
+    return this.writeExport(ordered[0], cols, [{ name: SAMPLE_ID_PARAMETER, values: ids }], {
+      FLOWJO_REA_CONCATENATED: ordered.map((p) => this.files.get(p.sampleId)?.keywords['$FIL'] ?? p.sampleId).join(', '),
+    });
   }
 
   private platformData(r: PlatformRequest) {

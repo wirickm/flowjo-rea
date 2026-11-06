@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PopulationResult } from '../core/analysis';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../core/gatingml';
 import { emptyWorkspace, newId, populationPath, uniqueName, type Gate, type Group, type KeywordRule, type PlotSettings, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
-import { copyAnalysisToGroup, deleteGroupAnalysis, propagateOwnedEdits, renameGroupAnalysis, criteriaLabel, deletionRoots, fingerprint, subtreeIds, mergeImported, relinkTarget, removeSample, derivedParameterUsers, deserializeWorkspace, groupByKey, removePopulation, serializeWorkspace, syncLiveGroups } from '../core/project';
+import { copyAnalysisToGroup, deleteGroupAnalysis, propagateOwnedEdits, renameGroupAnalysis, criteriaLabel, deletionRoots, fingerprint, subtreeIds, mergeImported, relinkTarget, removeSample, derivedParameterUsers, deserializeWorkspace, groupByKey, removePopulation, sampleValue, serializeWorkspace, syncLiveGroups } from '../core/project';
 import type { PlotResult, SampleMeta } from '../core/service';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL, validPercentile } from '../core/stats';
 import { statScales } from '../core/flowjoStats';
@@ -14,6 +14,7 @@ import { channelRange, defaultTransform, isScatterOrTime, makeAxis, sampleChanne
 import { CompensationDialog, DerivedDialog, KeywordsDialog, TransformDialog } from './Dialogs';
 import { GroupDialog } from './GroupDialog';
 import { everyNth, FLOWJO_FUNCTIONS, removeFromGroup, stainSet } from '../core/groupCriteria';
+import { concatGroups, type ConcatMode, type HeaderFormat } from '../core/exportRules';
 import { LayoutView } from './Layout';
 import { PlatformsDialog } from './Platforms';
 import type { Axis } from './gateGeometry';
@@ -506,22 +507,54 @@ export function App() {
     download('all_groups.csv', statsCsv({ group: true, annotations: allAnn, columns: ws.statColumns.map(colLabel) }, rows), 'text/csv');
   };
 
-  const exportEvents = async (format: 'csv' | 'fcs', compensated: boolean) => {
+  // Event export with FlowJo 10's options (specs 9).
+  const exportEvents = async (o: EventExportOptions) => {
     if (!sample || !sMeta) return;
-    const bytes = await run(() =>
-      client.exportEvents({
-        sampleId: sample.id, compensation: sample.compensation, populations: sample.populations, matrices: ws.matrices, derived: ws.derivedParameters,
-        // Unmixed fluorochromes exist only in compensated output.
-        popId: sel.popId, format, channels: (compensated ? channels : sMeta.channels).map((c) => c.name), compensated,
-      }),
-    );
-    if (!bytes) return;
-    const base = `${sample.fileName.replace(/\.fcs$/i, '')}_${(popPath || 'All events').replace(/[^\w.-]+/g, '_')}`;
-    download(`${base}.${format}`, bytes as BlobPart, format === 'csv' ? 'text/csv' : 'application/octet-stream');
-    note('info', `Exported ${format.toUpperCase()} for ${popPath || 'All events'} (${compensated ? 'compensated' : 'uncompensated'})`);
+    const compensated = o.params !== 'uncompensated';
+    const all = (compensated ? channels : sMeta.channels).map((c) => c.name);
+    const names = o.params === 'custom' ? all.filter((n) => o.custom.includes(n)) : all;
+    if (!names.length) { note('warn', 'Choose at least one parameter to export'); return; }
+    const transforms: Record<string, TransformSpec> = {};
+    for (const n of names) {
+      const ch = channels.find((c) => c.name === n);
+      transforms[n] = ws.channelTransforms[n] ?? (ch ? defaultTransform(ch, sMeta.keywords) : { kind: 'none' });
+    }
+    const base = (sid: string, popId: string | null) => {
+      const s = ws.samples.find((x) => x.id === sid)!;
+      return { sampleId: s.id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters, popId, format: o.format, channels: names, compensated, maxEvents: o.maxEvents, header: o.header, writeHeader: o.writeHeader, transforms };
+    };
+    const ext = o.format === 'fcs' ? 'fcs' : 'csv';
+    const type = o.format === 'fcs' ? 'application/octet-stream' : 'text/csv';
+    const safe = (t: string) => t.replace(/[^\w.-]+/g, '_');
+    if (o.mode === 'export') {
+      const bytes = await run(() => client.exportEvents(base(sample.id, sel.popId)));
+      if (!bytes) return;
+      download(`${safe(`${sample.fileName.replace(/\.fcs$/i, '')}_${popPath || 'All events'}`)}.${ext}`, bytes as BlobPart, type);
+      note('info', `Exported ${o.format} for ${popPath || 'All events'}${o.maxEvents !== undefined ? ` (no more than ${o.maxEvents} events)` : ''}`);
+      return;
+    }
+    // Concatenate: the group's samples that have this population and data.
+    const members = groupSamples.filter((s) => meta[s.id] && (!popPath || s.populations.some((p) => populationPath(s.populations, p.id) === popPath)));
+    const groups = concatGroups(members, o.concat, (s, k) => sampleValue(s, k));
+    let n = 0;
+    for (const g of groups) {
+      n++;
+      const parts = g.map((s) => base(s.id, popPath ? s.populations.find((p) => populationPath(s.populations, p.id) === popPath)!.id : null));
+      const bytes = await run(() => client.exportConcatenated(parts));
+      if (!bytes) return;
+      download(`${safe(`Concat_${n}_${popPath || 'All events'}`)}.${ext}`, bytes as BlobPart, type);
+    }
+    note('info', `Concatenated ${members.length} sample(s) into ${groups.length} file(s)`);
   };
 
-  const colLabel = (c: StatColumn) => `${c.populationPath || 'All events'}: ${STAT_LABELS[c.stat]}${c.stat === 'percentile' ? ` ${c.percentile}` : ''}${c.channel ? ` (${c.channel})` : ''}`;
+  const colLabel = (c: StatColumn) => `${c.populationPath || 'All events'}: ${c.stat === 'freqOf' ? `Freq. of ${c.ancestor} (%)` : STAT_LABELS[c.stat]}${c.stat === 'percentile' ? ` ${c.percentile}` : ''}${c.channel ? ` (${c.channel}${c.correlate ? ` vs ${c.correlate}` : ''})` : ''}`;
+  // Ancestors of the selected population, for "Freq. of" (specs 8.1).
+  const ancestorNames = (() => {
+    const out: string[] = [];
+    let a = sample && sel.popId ? sample.populations.find((p) => p.id === sel.popId)?.parentId : null;
+    while (a && sample) { const q = sample.populations.find((p) => p.id === a); if (!q) break; out.push(q.name); a = q.parentId; }
+    return out;
+  })();
 
   // --- render helpers -----------------------------------------------------------------
   const tree = (parentId: string | null, depth: number): React.ReactNode =>
@@ -563,7 +596,7 @@ export function App() {
         );
       });
 
-  const [newStat, setNewStat] = useState<{ stat: StatKind; channel: string; percentile: number }>({ stat: 'count', channel: '', percentile: 50 });
+  const [newStat, setNewStat] = useState<{ stat: StatKind; channel: string; percentile: number; ancestor: string; correlate: string }>({ stat: 'count', channel: '', percentile: 50, ancestor: '', correlate: '' });
 
   return (
     <div className="app">
@@ -882,10 +915,22 @@ export function App() {
             )}
             {newStat.stat === 'percentile' && <input type="number" min={0} max={100} step={1} value={Number.isNaN(newStat.percentile) ? '' : newStat.percentile} onChange={(e) => setNewStat({ ...newStat, percentile: e.target.value === '' ? NaN : Number(e.target.value) })} style={{ width: 60 }} data-testid="stat-percentile" title="Integer from 0 to 100" />}
             {newStat.stat === 'percentile' && !validPercentile(newStat.percentile) && <span className="error" data-testid="percentile-error">integer 0 to 100</span>}
+            {newStat.stat === 'correlation' && (
+              <select value={newStat.correlate} onChange={(e) => setNewStat({ ...newStat, correlate: e.target.value })} data-testid="stat-correlate" title="Second parameter">
+                <option value="">with...</option>
+                {channels.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+              </select>
+            )}
+            {newStat.stat === 'freqOf' && (
+              <select value={newStat.ancestor} onChange={(e) => setNewStat({ ...newStat, ancestor: e.target.value })} data-testid="stat-ancestor" title="Ancestor population">
+                <option value="">of...</option>
+                {ancestorNames.map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            )}
             <button
               data-testid="add-stat"
-              disabled={!sample || (STAT_NEEDS_CHANNEL(newStat.stat) && !newStat.channel) || (newStat.stat === 'percentile' && !validPercentile(newStat.percentile))}
-              onClick={() => updateWs((w) => { w.statColumns.push({ id: newId('col'), populationPath: popPath, stat: newStat.stat, channel: STAT_NEEDS_CHANNEL(newStat.stat) ? newStat.channel : undefined, percentile: newStat.percentile }); })}
+              disabled={!sample || (STAT_NEEDS_CHANNEL(newStat.stat) && !newStat.channel) || (newStat.stat === 'percentile' && !validPercentile(newStat.percentile)) || (newStat.stat === 'correlation' && !newStat.correlate) || (newStat.stat === 'freqOf' && !newStat.ancestor)}
+              onClick={() => updateWs((w) => { w.statColumns.push({ id: newId('col'), populationPath: popPath, stat: newStat.stat, channel: STAT_NEEDS_CHANNEL(newStat.stat) ? newStat.channel : undefined, percentile: newStat.percentile, ...(newStat.stat === 'freqOf' ? { ancestor: newStat.ancestor } : {}), ...(newStat.stat === 'correlation' ? { correlate: newStat.correlate } : {}) }); })}
             >
               Add for "{popPath || 'All events'}"
             </button>
@@ -1069,6 +1114,8 @@ export function App() {
           popLabel={popPath || 'All events'}
           hasData={!!sMeta}
           onClose={() => setDialog(null)}
+          params={channels.map((c) => c.name)}
+          keywords={groupKeys}
           onEvents={exportEvents}
           onSvg={() => {
             if (!xAxis || !plotData) return;
@@ -1113,18 +1160,84 @@ export function App() {
   );
 }
 
-function ExportDialog(p: { popLabel: string; hasData: boolean; onClose: () => void; onEvents: (f: 'csv' | 'fcs', comp: boolean) => void; onPng: () => void; onSvg: () => void; onGatingMl: () => void; onWsp: () => void }) {
-  const [comp, setComp] = useState(true);
+export interface EventExportOptions {
+  format: 'fcs' | 'csv' | 'csv-channel';
+  params: 'compensated' | 'uncompensated' | 'custom';
+  custom: string[];
+  maxEvents?: number;
+  header: HeaderFormat;
+  writeHeader: boolean;
+  mode: 'export' | 'concatenate';
+  concat: ConcatMode;
+}
+
+function ExportDialog(p: { popLabel: string; hasData: boolean; params: string[]; keywords: string[]; onClose: () => void; onEvents: (o: EventExportOptions) => void; onPng: () => void; onSvg: () => void; onGatingMl: () => void; onWsp: () => void }) {
+  // FlowJo 10's "Export or Concatenate" options (specs 9).
+  const [params, setParams] = useState<EventExportOptions['params']>('compensated');
+  const [custom, setCustom] = useState<string[]>(p.params);
+  const [capOn, setCapOn] = useState(false);
+  const [cap, setCap] = useState(10000);
+  const [header, setHeader] = useState<HeaderFormat>('p');
+  const [writeHeader, setWriteHeader] = useState(true);
+  const [mode, setMode] = useState<EventExportOptions['mode']>('export');
+  const [concatKind, setConcatKind] = useState<'all' | 'everyN' | 'equalKeyword'>('all');
+  const [everyN, setEveryN] = useState(2);
+  const [concatKey, setConcatKey] = useState('');
+  const opts = (format: EventExportOptions['format']): EventExportOptions => ({
+    format, params, custom, header, writeHeader, mode,
+    maxEvents: capOn ? Math.max(0, Math.floor(cap)) : undefined,
+    concat: concatKind === 'all' ? { kind: 'all' } : concatKind === 'everyN' ? { kind: 'everyN', n: everyN } : { kind: 'equalKeyword', keyword: concatKey },
+  });
   return (
     <div className="modal-bg" onMouseDown={(e) => e.target === e.currentTarget && p.onClose()}>
       <div className="modal" role="dialog" aria-label="Export">
-        <div className="modal-head"><b>Export</b><button onClick={p.onClose}>x</button></div>
+        <div className="modal-head"><b>Export or Concatenate</b><button onClick={p.onClose}>x</button></div>
         <div className="modal-body">
-          <h4>Gated events: {p.popLabel}</h4>
-          <label><input type="checkbox" checked={comp} onChange={(e) => setComp(e.target.checked)} /> compensated values</label>
+          <h4>Events: {p.popLabel}</h4>
           <div className="row">
-            <button disabled={!p.hasData} onClick={() => p.onEvents('csv', comp)} data-testid="export-csv">Events CSV</button>
-            <button disabled={!p.hasData} onClick={() => p.onEvents('fcs', comp)} data-testid="export-fcs">Events FCS 3.1</button>
+            <label><input type="radio" checked={mode === 'export'} onChange={() => setMode('export')} data-testid="exp-mode-export" /> Export this population</label>
+            <label><input type="radio" checked={mode === 'concatenate'} onChange={() => setMode('concatenate')} data-testid="exp-mode-concat" /> Concatenate the group</label>
+          </div>
+          {mode === 'concatenate' && (
+            <div className="row">
+              <select value={concatKind} onChange={(e) => setConcatKind(e.target.value as typeof concatKind)} data-testid="exp-concat-kind">
+                <option value="all">all files together</option>
+                <option value="everyN">every n files</option>
+                <option value="equalKeyword">files with equal keyword values</option>
+              </select>
+              {concatKind === 'everyN' && <input type="number" min={1} value={everyN} onChange={(e) => setEveryN(Math.max(1, Math.floor(Number(e.target.value) || 1)))} style={{ width: 50 }} aria-label="n" />}
+              {concatKind === 'equalKeyword' && <select value={concatKey} onChange={(e) => setConcatKey(e.target.value)} aria-label="keyword"><option value="">keyword...</option>{p.keywords.map((k) => <option key={k} value={k}>{k}</option>)}</select>}
+              <span className="muted">adds a SampleID parameter</span>
+            </div>
+          )}
+          <div className="row">
+            Parameters <select value={params} onChange={(e) => setParams(e.target.value as EventExportOptions['params'])} data-testid="exp-params">
+              <option value="compensated">all compensated</option>
+              <option value="uncompensated">all uncompensated</option>
+              <option value="custom">custom</option>
+            </select>
+          </div>
+          {params === 'custom' && (
+            <div className="row" style={{ flexWrap: 'wrap' }}>
+              {p.params.map((n) => <label key={n}><input type="checkbox" checked={custom.includes(n)} onChange={() => setCustom((c) => (c.includes(n) ? c.filter((x) => x !== n) : [...c, n]))} /> {n}</label>)}
+            </div>
+          )}
+          <div className="row">
+            <label title="FlowJo takes every k-th event (k = count / N), not a random sample"><input type="checkbox" checked={capOn} onChange={(e) => setCapOn(e.target.checked)} data-testid="exp-cap-on" /> no more than</label>
+            <input type="number" min={0} value={cap} onChange={(e) => setCap(Number(e.target.value))} disabled={!capOn} style={{ width: 80 }} data-testid="exp-cap" /> events
+          </div>
+          <div className="row">
+            CSV header <select value={header} onChange={(e) => setHeader(e.target.value as HeaderFormat)} data-testid="exp-header">
+              <option value="p">parameter name</option>
+              <option value="s">stain</option>
+              <option value="ps">both</option>
+            </select>
+            <label><input type="checkbox" checked={writeHeader} onChange={(e) => setWriteHeader(e.target.checked)} /> include header</label>
+          </div>
+          <div className="row">
+            <button disabled={!p.hasData} onClick={() => p.onEvents(opts('csv'))} data-testid="export-csv">CSV - scale values</button>
+            <button disabled={!p.hasData} onClick={() => p.onEvents(opts('csv-channel'))} data-testid="export-csv-channel">CSV - channel values</button>
+            <button disabled={!p.hasData} onClick={() => p.onEvents(opts('fcs'))} data-testid="export-fcs">FCS 3.1</button>
           </div>
           <h4>Plot and gates</h4>
           <div className="row">

@@ -8,6 +8,7 @@ import { fail } from './errors';
 import type { Dimension, Gate, Group, GroupCriteria, Population, Workspace } from './model';
 import { connectorText, functionText, MAX_KEYWORD_CRITERIA, roleText } from './groupCriteria';
 import { makeTransform, type TransformSpec } from './transforms';
+import { FLOWJO_STAT_NAMES } from './stats';
 import { esc } from './xml';
 
 export interface WspExportInput {
@@ -159,10 +160,31 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
       return null;
     };
 
+    // Statistic columns on this population path, with FlowJo's names
+    // (specs 8.1); this app's own Min / Max have no FlowJo key.
+    const chName = (ch: string) => nameOf({ kind: 'channel', channel: ch, transform: { kind: 'none' } });
+    const statsXml = (popPath: string) =>
+      ws.statColumns
+        .filter((c) => c.populationPath === popPath)
+        .map((c) => {
+          const name = FLOWJO_STAT_NAMES[c.stat];
+          if (!name) {
+            if (si === 0) warnings.push(`Statistic ${c.stat} on "${popPath || 'All events'}" has no FlowJo equivalent; not written`);
+            return '';
+          }
+          const attrs = [`name="${esc(name)}"`];
+          if (c.channel) attrs.push(`id="${esc(chName(c.channel))}"`);
+          if (c.stat === 'percentile') attrs.push(`percent="${c.percentile ?? 50}"`);
+          if (c.stat === 'freqOf' && c.ancestor) attrs.push(`ancestor="${esc(c.ancestor)}"`);
+          if (c.stat === 'correlation' && c.correlate) attrs.push(`correlate="${esc(chName(c.correlate))}"`);
+          return `<Statistic ${attrs.join(' ')} />`;
+        })
+        .join('');
     const node = (parentId: string | null): string => {
       const kids = s.populations.filter((p) => p.parentId === parentId);
-      if (!kids.length) return '';
-      return `<Subpopulations>${kids
+      const st = statsXml(parentId ? path(byId.get(parentId)!) : '');
+      if (!kids.length) return st ? `<Subpopulations>${st}</Subpopulations>` : '';
+      return `<Subpopulations>${st}${kids
         .map((p) => {
           const count = counts?.[p.id];
           const ownerName = p.owningGroup ? ws.groups.find((g) => g.id === p.owningGroup)?.name : undefined;

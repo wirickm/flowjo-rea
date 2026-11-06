@@ -60,7 +60,8 @@ describe('statistics (hand-computed expectations)', () => {
     expect(computeStat('sd', v, c)).toBeCloseTo(Math.sqrt((441 + 400 + 361 + 324 + 6084) / 4), 12);
     expect(computeStat('geomean', v, c)).toBeCloseTo((1 * 2 * 3 * 4 * 100) ** (1 / 5), 12);
     expect(computeStat('percentile', v, c, 25)).toBe(2);
-    expect(computeStat('mad', v, c)).toBe(1);
+    // FlowJo's Median Abs Dev (specs 8.2): 100 x 1.4826 x MAD / median; deviations [0,1,1,2,97], MAD = 1, median 3.
+    expect(computeStat('mad', v, c)).toBeCloseTo((100 * 1.4826 * 1) / 3, 10);
     expect(computeStat('min', v, c)).toBe(1);
     expect(computeStat('max', v, c)).toBe(100);
   });

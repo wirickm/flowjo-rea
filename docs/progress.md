@@ -1,5 +1,24 @@
 # Progress and handoff
 
+## State (2026-11-06, parity area 3: export)
+
+Event export follows FlowJo 10.6.2 (specs section 9): CSV scale values (%g)
+or channel values (1024 channels), header by name / stain / both, parameter
+sets, "no more than N" as FlowJo's deterministic step decimation (its
+tooltip says random; the engine is not), concatenation all / every n / equal
+keyword in $ETIM order with a SampleID parameter. REA ledger 20 of 20
+verified. Next area: gate tools.
+
+## State (2026-11-06, parity area 2: statistics)
+
+Statistics now follow FlowJo 10.6.2 (REA Ghidra provider; specs section 8):
+new Mode (256-channel histogram), Freq. of (named ancestor) and Correlation
+(NaN, as the 10.6.2 engine); mean, SD, CV, geometric mean and Median Abs Dev
+moved to FlowJo's histogram rules (section 4 had wrongly said they were not
+histogram-based); FlowJo's StatKey names in .wsp (fj.stat.freqofparent ...),
+statistic export added. Min/Max kept as own. REA ledger 17 of 17 verified.
+Next area: export.
+
 ## State (2026-11-06, parity area 1: groups)
 
 Groups now match FlowJo 10.6.2 (decoded with Ghidra 12.1.4; specs section

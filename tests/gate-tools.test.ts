@@ -99,6 +99,10 @@ describe('magnetic gate (FGate::MoveMagneticGate)', () => {
     expect(dx).toBeLessThanOrEqual(25);
     expect(Math.abs(dy)).toBeLessThanOrEqual(6);
   });
+  it('no data: the gate stays where it was drawn', () => {
+    const square: Pt[] = [[40, 90], [40, 120], [52, 120], [52, 90]];
+    expect(magneticOffset2D(new Float64Array(256 * 256), square)).toEqual([0, 0]);
+  });
   it('1-D: shifts toward the mean while the count keeps increasing', () => {
     const h = new Float64Array(256);
     for (let i = 100; i < 120; i++) h[i] = 5;
@@ -326,5 +330,26 @@ describe('percent gates (channelPercentile, evaluatePercentGate)', () => {
     }
     // About half the events on either sample, though the values differ by 2x.
     for (const c of counts) { expect(c).toBeGreaterThan(48000); expect(c).toBeLessThan(52000); }
+  });
+});
+
+describe('quad and bisector membership (native QuadGate kinds 7 and 8)', () => {
+  const lin = { kind: 'linear' as const, T: 1024, A: 0 };
+  const X: Dimension = { kind: 'channel', channel: 'X', transform: lin };
+  const Y: Dimension = { kind: 'channel', channel: 'Y', transform: lin };
+  const run = async (xs: number[], ys: number[], pops: Population[]) => {
+    const svc = new AnalysisService();
+    await svc.load('s', 's.fcs', writeFcs([{ name: 'X', range: 1024, values: Float64Array.from(xs) }, { name: 'Y', range: 1024, values: Float64Array.from(ys) }], {}));
+    return svc.analyze({ sampleId: 's', compensation: 'none', populations: pops, matrices: [] }).results.map((r) => r.count);
+  };
+  it('quad: a value on a divider goes right / up; each event in exactly one quadrant', async () => {
+    const c = 512 / 1024;
+    const quads: Population[] = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([a, b], i) => ({ id: `q${i}`, name: `q${i}`, parentId: null, gate: { type: 'quadrant', dims: [X, Y], dividers: [[c], [c]], side: [a, b] } }));
+    expect(await run([512, 511, 512, 100], [512, 512, 511, 100], quads)).toEqual([1, 1, 1, 1]);
+  });
+  it('bisector: below the split left, the split value itself right', async () => {
+    const s = 512 / 1024;
+    const halves: Population[] = [{ id: 'l', name: 'l', parentId: null, gate: { type: 'rect', dims: [X], min: [null], max: [s] } }, { id: 'r', name: 'r', parentId: null, gate: { type: 'rect', dims: [X], min: [s], max: [null] } }];
+    expect(await run([511, 512, 513], [0, 0, 0], halves)).toEqual([1, 2]);
   });
 });

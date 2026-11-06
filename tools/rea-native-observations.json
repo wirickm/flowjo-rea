@@ -24,7 +24,26 @@
       { "address": "0x15d490", "symbol": "GParameter::Correlation" },
       { "address": "0x3773d0", "symbol": "Exporter::WriteSample" },
       { "address": "0x3777c0", "symbol": "Exporter::WriteRow" },
-      { "address": "0x376b50", "symbol": "Exporter::WriteParamHeaderRow" }
+      { "address": "0x376b50", "symbol": "Exporter::WriteParamHeaderRow" },
+      { "address": "0x4d1450", "symbol": "QuadGate::QuadGate (gate kind from the gate type)" },
+      { "address": "0x4d3690", "symbol": "QuadGate::ComputeQuadGate (per event)" },
+      { "address": "0x4d3b20", "symbol": "QuadGate::ComputeQuadOffsetGate (per event)" },
+      { "address": "0x4d3ef0", "symbol": "QuadGate::ComputeBisectorGate" },
+      { "address": "0x4d5560", "symbol": "QuadGate::ComputeBisectorGate (per event)" },
+      { "address": "0x4d38f0", "symbol": "QuadGate::ComputeSpiderGate (per event)" },
+      { "address": "0x4e8040", "symbol": "QuadGate::ComputeSpiderGate lambda (label grid)" },
+      { "address": "0x7de10", "symbol": "FGate::MoveMagneticGate" },
+      { "address": "0x832f0", "symbol": "FGate::CentroidOffset" },
+      { "address": "0x82ec0", "symbol": "FGate::MoveHistogramGate" },
+      { "address": "0x82b00", "symbol": "FGate::AdjustGateAndRecompute" },
+      { "address": "0xbd300", "symbol": "GGraph::ContourPlot" },
+      { "address": "0x29ab40", "symbol": "GHistogram2D::MakeContourPlot" },
+      { "address": "0x290c10", "symbol": "GHistogram2D::Smooth" },
+      { "address": "0x29af80", "symbol": "GHistogram2D::BuildBinArray" },
+      { "address": "0x29b2b0", "symbol": "GHistogram2D::BuildPolygonList" },
+      { "address": "0xe1f50", "symbol": "GHistogram::ProcessQuery" },
+      { "address": "0xe9400", "symbol": "BasicHistogram::Smooth" },
+      { "address": "0x21b370", "symbol": "Smoothing::SmoothHistogram" }
     ]
   },
   "jar": {
@@ -45,6 +64,17 @@
     "stats-mad": ["0x15d240"],
     "stats-correlation-nan": ["0x15d490"],
     "export-event-cap": ["0x3773d0"],
-    "export-csv-format": ["0x3777c0",  "0x376b50"]
+    "export-csv-format": ["0x3777c0",  "0x376b50"],
+    "gate-quad-bisector": ["0x4d1450",  "0x4d3690",  "0x4d3b20",  "0x4d3ef0",  "0x4d5560"],
+    "gate-spider": ["0x4d38f0",  "0x4e8040"],
+    "gate-magnetic": ["0x7de10",  "0x832f0",  "0x82ec0",  "0x82b00"],
+    "gate-autogate-contour": ["0xbd300",  "0x29ab40",  "0x290c10",  "0x29af80",  "0x29b2b0"],
+    "gate-bifur-histogram": ["0xe1f50",  "0xe9400",  "0x21b370"],
+    "gate-toolbar-names": ["jar"],
+    "gate-curly-spider-geometry": ["jar"],
+    "gate-pencil-autopick": ["jar"],
+    "gate-convert-clipboard": ["jar"],
+    "gate-manual-anchored": ["jar"],
+    "gate-bifurgate": ["jar"]
   }
 }

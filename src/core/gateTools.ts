@@ -161,7 +161,7 @@ export function spiderLabelGrid(R: number, bySlot: Pt[][]): Uint8Array {
 export const MAGNETIC_BINS = 256;
 export const MAGNETIC_MAX_STEPS = 512;
 const MAGNETIC_SLOPE = 2.41; // about tan 67.5 degrees
-function centroidOffset(hist: Float64Array, poly: Pt[], ox: number, oy: number): Pt {
+function centroidOffset(hist: Float64Array, poly: Pt[], ox: number, oy: number): Pt | null {
   const B = MAGNETIC_BINS;
   const vx = poly.map((p) => p[0] + ox), vy = poly.map((p) => p[1] + oy);
   const x0 = Math.max(0, Math.ceil(Math.min(...vx))), x1 = Math.min(B - 1, Math.floor(Math.max(...vx)));
@@ -179,7 +179,7 @@ function centroidOffset(hist: Float64Array, poly: Pt[], ox: number, oy: number):
   // No data inside: the whole histogram against the middle of the gate's box.
   let W = 0, X = 0, Y = 0;
   for (let x = 0; x < B; x++) for (let y = 0; y < B; y++) { const c = Math.trunc(hist[x * B + y]); W += c; X += c * x; Y += c * y; }
-  if (W === 0) return [0, 0];
+  if (W === 0) return null; // no data at all: the gate is not moved
   return [X / W - (Math.min(...vx) + Math.max(...vx)) / 2, Y / W - (Math.min(...vy) + Math.max(...vy)) / 2];
 }
 export function magneticOffset2D(hist: Float64Array, poly: Pt[]): Pt {
@@ -189,7 +189,9 @@ export function magneticOffset2D(hist: Float64Array, poly: Pt[]): Pt {
   let prev: { pos: Pt; score: number } | null = null;
   for (let step = 0; step < MAGNETIC_MAX_STEPS; step++) {
     const key = `${pos[0]},${pos[1]}`;
-    const [dx, dy] = centroidOffset(hist, poly, pos[0], pos[1]);
+    const off = centroidOffset(hist, poly, pos[0], pos[1]);
+    if (!off) return pos;
+    const [dx, dy] = off;
     const score = dx * dx + dy * dy;
     if (seen.has(key)) return prev && prev.score < seen.get(key)! ? prev.pos : pos;
     seen.set(key, score);

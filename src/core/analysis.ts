@@ -373,7 +373,8 @@ export class SampleEngine {
           const side = g.side[k];
           const lo = side === 0 ? -Infinity : div[side - 1];
           const hi = side >= div.length ? Infinity : div[side];
-          for (let i = 0; i < n; i++) if (!(c[i] >= lo && c[i] < hi)) out[i] = 0;
+          // NaN counts as below the divider (native QuadGate).
+          for (let i = 0; i < n; i++) if (Number.isNaN(c[i]) ? side !== 0 : !(c[i] >= lo && c[i] < hi)) out[i] = 0;
         });
         return out;
       }

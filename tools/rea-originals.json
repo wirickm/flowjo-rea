@@ -220,6 +220,94 @@
       "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/dialogs/export/PopulationExporter2.class" }],
       "behavior": "Concatenation groups: all, every n consecutive, or equal keyword values (string order, empty values left out); populations ordered by $ETIM; per-population cap trunc(sum of min(N, count) / populations); a SampleID parameter holds the 1-based position.",
       "spec_section": "9"
+    },
+    {
+      "key": "gate-quad-bisector",
+      "subject": "engine",
+      "symbols": ["QuadGate::QuadGate(GateSpec const*, Sample*, TaskMgr*)", "QuadGate::ComputeQuadGate(TransformedParameter*, TransformedParameter*, long, long)", "QuadGate::ComputeQuadOffsetGate(TransformedParameter*, TransformedParameter*, long, long)", "QuadGate::ComputeBisectorGate(TransformedParameter*)", "QuadGate::ComputeBisectorGate(TransformedParameter*, TransformedParameter*, long, long)"],
+      "locations": [{ "kind": "address-range", "start": "0x4d1450", "end": "0x4d1e10" }, { "kind": "address-range", "start": "0x4d3690", "end": "0x4d38f0" }, { "kind": "address-range", "start": "0x4d3b20", "end": "0x4d3ef0" }, { "kind": "address-range", "start": "0x4d3ef0", "end": "0x4d5560" }, { "kind": "address-range", "start": "0x4d5560", "end": "0x4d5660" }],
+      "behavior": "Sibling quads are one composite: quad (kind 7) centre from the upper-left child, x < cx left and y < cy lower (a value on a line goes right or up, NaN below), exact on scale values; offset quad when the upper-right child's corner differs (one divider steps); bisector (kind 8) below the split left, the split value and above right, NaN left.",
+      "spec_section": "10.2"
+    },
+    {
+      "key": "gate-spider",
+      "subject": "engine",
+      "symbols": ["QuadGate::ComputeSpiderGate(TransformedParameter*, TransformedParameter*, long, long)", "QuadGate::ComputeSpiderGate lambda $_4"],
+      "locations": [{ "kind": "address-range", "start": "0x4d38f0", "end": "0x4d3b20" }, { "kind": "address-range", "start": "0x4e8040", "end": "0x4eabc0" }],
+      "behavior": "PolyQuad (kind 11): four polygons ordered by the bounding-box corner each has; an R x R label grid gives each lattice point the first polygon (upper-left, upper-right, lower-left, lower-right) containing it, points in none count as upper-left; events take the label of their cell (polygon cell mapping).",
+      "spec_section": "10.3"
+    },
+    {
+      "key": "gate-magnetic",
+      "subject": "engine",
+      "symbols": ["FGate::MoveMagneticGate(TaskMgr*)", "FGate::CentroidOffset", "FGate::MoveHistogramGate", "FGate::AdjustGateAndRecompute"],
+      "locations": [{ "kind": "address-range", "start": "0x7de10", "end": "0x7e6b0" }, { "kind": "address-range", "start": "0x832f0", "end": "0x839a0" }, { "kind": "address-range", "start": "0x82ec0", "end": "0x832f0" }, { "kind": "address-range", "start": "0x82b00", "end": "0x82ec0" }],
+      "behavior": "Magnetic gate: from the drawn position, walk one cell at a time over a 256 x 256 parent histogram toward the count-weighted centre of the covered cells (x when |dy| <= 2.41 |dx|, y when |dx| <= 2.41 |dy|, sign of 0 is +1), stopping after 512 steps or on a revisit (the lower-scoring of the last two); 1-D: shift by bins while the count keeps increasing.",
+      "spec_section": "10.4"
+    },
+    {
+      "key": "gate-autogate-contour",
+      "subject": "engine",
+      "symbols": ["GGraph::ContourPlot", "GHistogram2D::MakeContourPlot", "GHistogram2D::Smooth", "GHistogram2D::BuildBinArray", "GHistogram2D::BuildPolygonList"],
+      "locations": [{ "kind": "address-range", "start": "0xbd300", "end": "0xbd690" }, { "kind": "address-range", "start": "0x29ab40", "end": "0x29af40" }, { "kind": "address-range", "start": "0x290c10", "end": "0x290cc0" }, { "kind": "address-range", "start": "0x29af80", "end": "0x29b2b0" }, { "kind": "address-range", "start": "0x29b2b0", "end": "0x29b5d0" }],
+      "behavior": "Contour plot: adaptive smoothing (s = ceil(13 n^-1/4), w(j) = exp(-0.5 j^2 sqrt(n) (2.4/13)^2), kernel sums to 1, margins mirrored); bins above 0.005 sorted by density, a level each time the running mass passes N / levels; closed iso-lines, frame-touching regions closed along the frame.",
+      "spec_section": "10.5"
+    },
+    {
+      "key": "gate-bifur-histogram",
+      "subject": "engine",
+      "symbols": ["GHistogram::ProcessQuery", "BasicHistogram::Smooth(short)", "Smoothing::SmoothHistogram"],
+      "locations": [{ "kind": "address-range", "start": "0xe1f50", "end": "0xe2a60" }, { "kind": "address-range", "start": "0xe9400", "end": "0xe96d0" }, { "kind": "address-range", "start": "0x21b370", "end": "0x21b9a0" }],
+      "behavior": "1-D histogram request without a length: min(channel range, 4096) channels; smoothing spreads each bin of count n over ceil(13 n^-1/4) bins each side with the same Gaussian weights; left margin mirrored, the first two padding bins past the right edge lost; values printed with %9.0f (whole counts).",
+      "spec_section": "10.8"
+    },
+    {
+      "key": "gate-toolbar-names",
+      "subject": "jar",
+      "symbols": ["com.treestar.flowjo.application.graphwindow.gatewindow.view.GateWinToolBar.createToolActions", "com.treestar.flowjo.core.gates.RangeGateCreator.createBisectingChildren", "com.treestar.flowjo.application.graphwindow.GraphEditorQuads (findFirstQ, altquadOrder)"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/application/graphwindow/gatewindow/view/GateWinToolBar.class" }, { "kind": "artifact-path", "path": "com/treestar/flowjo/core/gates/RangeGateCreator.class" }],
+      "behavior": "Tools: Arrow, Rectangle, Range, Quad, Bisector, Ellipse, Polygon, Pencil, Auto Gate, Curly Quad, Spider Quad; keys S E F A P I R Q X C; labels = stain else parameter; quads 'Q<n>: <x>+/- , <y>+/-' (UL Q b, UR b+1, LR b+2, LL b+3, b past used numbers); bisector '<label>-' / '<label>+', clash '<parameter>::<label>-/+'.",
+      "spec_section": "10.1"
+    },
+    {
+      "key": "gate-curly-spider-geometry",
+      "subject": "jar",
+      "symbols": ["com.treestar.flowjo.core.gates.CurlyQuadGate.getHorizontalCurlyFunction", "com.treestar.flowjo.core.gates.CurlyQuadGate.getVerticalCurlyFunction", "com.treestar.flowjo.core.gates.CurlyQuadGate.writeQuery", "com.treestar.flowjo.application.graphwindow.SpiderPoint", "com.treestar.flowjo.core.gates.PolyGate (spider constructor, quadId)"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/core/gates/CurlyQuadGate.class" }, { "kind": "artifact-path", "path": "com/treestar/flowjo/application/graphwindow/SpiderPoint.class" }, { "kind": "artifact-path", "path": "com/treestar/flowjo/core/gates/PolyGate.class" }],
+      "behavior": "Curly quad on a 256-pixel frame, k = 0.001 fixed and not saved, arms sampled about 1/40 of the remaining span, sent as polygons; spider polygons (corner x, side y), corner, (side x, corner y), centre, side points 10 px from the click, corners one unit outside the axis; .wsp: gating:CurlyQuad, spider PolygonGate quadId 0..3.",
+      "spec_section": "10.3"
+    },
+    {
+      "key": "gate-pencil-autopick",
+      "subject": "jar",
+      "symbols": ["com.treestar.layout.presentation.FigPoly.processFreehandDrag", "com.treestar.layout.presentation.FigPoly.reduce", "com.treestar.layout.editor.layers.LayerAutoGate.getClosestPoly"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/layout/presentation/FigPoly.class" }, { "kind": "artifact-path", "path": "com/treestar/layout/editor/layers/LayerAutoGate.class" }],
+      "behavior": "Pencil commits a vertex beyond 12 px when (d + a) / c > 1.04 or d / bend > 12, fewer than 4 points abandons; Auto Gate always at the 2% contour level, 256 resolution, picks the polygon with the nearest vertex (last vertex skipped, first wins) and keeps every (n div max(20, trunc(0.1 n)))-th vertex.",
+      "spec_section": "10.5"
+    },
+    {
+      "key": "gate-convert-clipboard",
+      "subject": "jar",
+      "symbols": ["com.treestar.flowjo.core.gates.Gate.convert", "com.treestar.flowjo.core.gates.EllipseGate.updateFromRect", "com.treestar.flowjo.application.workspace.manager.WSClipboard", "com.treestar.flowjo.application.workspace.treetables.SampleTreeTable.addDroppedNode", "com.treestar.flowjo.core.nodes.PopNode.preAdd"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/core/gates/Gate.class" }, { "kind": "artifact-path", "path": "com/treestar/flowjo/core/gates/EllipseGate.class" }],
+      "behavior": "Convert: rect corners to polygon; bounding boxes snapped outward to whole scale units; ellipse outline 180 frame pixels reduced to 20; rect to ellipse through the corners. Copy adds sibling quads; paste keeps coordinates, clears the group, skips a target with the same child name and refuses a sample missing a parameter.",
+      "spec_section": "10.7"
+    },
+    {
+      "key": "gate-manual-anchored",
+      "subject": "jar",
+      "symbols": ["com.treestar.flowjo.application.graphwindow.dialog.ManualGateDP", "com.treestar.flowjo.core.Transform.percentileToScale", "com.treestar.flowjo.core.histogram.SmoothedFunction.channelPercentile", "com.treestar.flowjo.core.gates.TetheredRangeGate"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/application/graphwindow/dialog/ManualGateDP.class" }, { "kind": "artifact-path", "path": "com/treestar/flowjo/core/gates/TetheredRangeGate.class" }],
+      "behavior": "Manual entry: Lower / Upper in Intensity or Percentile; percent gates recomputed per sample from the parent's smoothed histogram (4096 buckets x, 256 y), whole-count running sum to p x count; anchored range bound = statistic x multiplier (clicked value / statistic, 2 decimals, Shift snaps, Alt upper), not draggable.",
+      "spec_section": "10.6"
+    },
+    {
+      "key": "gate-bifurgate",
+      "subject": "jar",
+      "symbols": ["com.treestar.flowjo.application.workspace.actions.WSAutoQuadAction", "com.treestar.flowjo.core.histogram.PeakFinder.findPeaks", "com.treestar.flowjo.core.histogram.PeakList.makeBimodal"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/application/workspace/actions/WSAutoQuadAction.class" }],
+      "behavior": "BifurGate: per fluorescent parameter off the gating path, the parent's smoothed 4096-channel histogram; peaks found by half-width walks and regression slopes, small or low peaks dropped, the two largest kept; the split is the first lowest channel between their interpolated medians; '<label>-' / '<label>+' children, unimodal gives none.",
+      "spec_section": "10.8"
     }
   ]
 }

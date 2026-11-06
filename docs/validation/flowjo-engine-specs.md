@@ -987,6 +987,59 @@ Implemented in `src/core/fcs.ts`.
   with f2 = 0 read as 1, warned), and the cytometer-specific quirks
   (Cytomics `$PnB` 10 read as 16, CXP / BCI masking).
 
+## 14. Compensation (FlowJo 10.6.2)
+
+Read with REA 6.8.0's Ghidra provider on the native engine
+(`WeightOptimizer::CalculateSSM`, `WeightOptimizer::CalculateSSMCoefficient`,
+`Compensator::Compensate`, `Compensator::PreCompensate`,
+`Compensator::PrepareCompensatedParameters`, `CompensationSpec::FromXML`)
+and headless Ghidra / javap on the Java side (`MatrixController`,
+`CompensationMatrix`, `WizardMatrix`, `ParameterEntry`, `EngineSSM`).
+Implemented in `src/core/compFlowjo.ts` and the Compensation dialog.
+
+### 14.1 Matrix files (matches)
+
+- .mtx: a Gating-ML root holding one `transforms:spilloverMatrix`
+  (`spectral`, `prefix` "Comp-", `name`, `editable`, `version`, `status`,
+  `transforms:id`) with `data-type:parameters` (`data-type:name`,
+  `userProvidedCompInfix`) and one `transforms:spillover` row per channel
+  of positional `transforms:coefficient transforms:value` entries. Values
+  are spillover: row = stained channel, column = detector. Loading accepts
+  the legacy `comp:*` names; a missing value is 0.
+- CSV: an empty corner cell then the detectors; each row the channel then its
+  spillover values; comma separated, "\n" endings.
+- Own rule: legacy text matrix formats (`WorkspaceConverter`) are not read;
+  the number format is the shortest exact decimal (FlowJo's
+  `engineFormat` is not decoded).
+
+### 14.2 Wizard (matches)
+
+- Per single-stain control: its stained channel, a positive and a negative
+  population (or the universal negative). Each population needs at least 100
+  events and 2% of its parent ("Population %s does not contain enough
+  events"); a population directly under the sample warns ("We recommend
+  applying a scatter gate to cleanup %s"); a missing one is an error.
+- Spillover(i, j) = (median P on j - median N on j) / (median P on i -
+  median N on i), with a difference of exactly 0 taken as 1 (so the
+  diagonal is 1); medians are FlowJo's histogram medians of uncompensated
+  values. A difference below 1 warns ("Median of positive population is too
+  small. ..."). Status FINALIZED, ERRONEOUS or EMPTY.
+- This app's earlier percentage-based wizard stays as an extra (own rule).
+
+### 14.3 Spillover spreading matrix (matches)
+
+- SSM(i, j) = sqrt((P84_P,j - med_P,j)^2 - (P84_N,j - med_N,j)^2) /
+  sqrt(med_P,i - med_N,i) with 4096-channel percentiles; 0 when the
+  denominator is not positive or the result is NaN. Saved as CSV
+  "SSM_<matrix>.csv": "SSM" then the parameters; rows the parameter without
+  the comp prefix, then the values.
+
+### 14.4 Applying a matrix (matches)
+
+- Compensated values solve observed = true x S per event (LU for square
+  matrices, least squares for spectral), as this app already did
+  (specs 6.3); compensated parameters are named "Comp-" + name.
+
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 
 Source: static analysis of `libNativeEngine.dylib` from the public FlowJo

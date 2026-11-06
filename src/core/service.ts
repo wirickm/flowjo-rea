@@ -12,6 +12,7 @@ import type { DerivedParameter, Dimension, Population, StatColumn } from './mode
 import { populationPath } from './model';
 import { fingerprint } from './project';
 import { channelOf, valueOf, type ChannelScale } from './flowjoStats';
+import { flowjoWizard, spilloverSpreading, type FlowjoWizardResult, type WizardEntry, type WizardPopulation } from './compFlowjo';
 import { BIFUR_BINS, bifurValley, smoothHistogram1D } from './gateTools';
 import { computeStat, gather, validPercentile } from './stats';
 import { makeTransform, type TransformSpec } from './transforms';
@@ -309,6 +310,24 @@ export class AnalysisService {
       };
     });
     return estimateSpillover(inputs, r.channels, r.positivePct);
+  }
+
+  // FlowJo 10's compensation wizard on positive / negative populations of
+  // single-stain controls, with the spillover spreading matrix (specs 14).
+  flowjoWizard(r: { controls: { sampleId: string; compensation: string; populations: Population[]; primary: string; posPath: string | null; negPath: string | null; neg?: { sampleId: string; compensation: string; populations: Population[] } }[]; matrices: SpilloverMatrix[]; detectors: string[]; scales: Record<string, ChannelScale>; name?: string }): FlowjoWizardResult & { ssm: { channels: string[]; values: number[][] } } {
+    const entries: WizardEntry[] = r.controls.map((c) => {
+      const pop = (path: string | null, src: { sampleId: string; compensation: string; populations: Population[] } = c): WizardPopulation | null => {
+        if (!path) return null;
+        const p = src.populations.find((x) => populationPath(src.populations, x.id) === path);
+        if (!p) return null;
+        const eng = this.engine({ sampleId: src.sampleId, compensation: src.compensation, populations: src.populations, matrices: r.matrices });
+        const mask = eng.masks.get(p.id)!;
+        return { name: path, values: new Map(r.detectors.map((d) => [d, gather(eng.column(d, 'uncompensated'), mask)])), parentCount: eng.results.get(p.id)!.parentCount, cleaned: p.parentId !== null };
+      };
+      return { primary: c.primary, pos: pop(c.posPath), neg: pop(c.negPath, c.neg ?? c) };
+    });
+    const res = flowjoWizard(entries, r.detectors, r.scales, r.name);
+    return { ...res, ssm: spilloverSpreading(entries, r.detectors, r.scales) };
   }
 
   // Population values for export, with FlowJo's event cap applied.

@@ -733,6 +733,51 @@
         { "fixture_id": "fcs.encrypt", "case_kind": "negative", "test_file": "tests/fcs-flowjo.test.ts", "test_name": "encrypted data is refused" }
       ],
       "verifier": { "verifier_id": "fcs.flowjo", "claim_id": "fcs.read.v1", "test_file": "tests/fcs-flowjo.test.ts", "command": "npx vitest run tests/fcs-flowjo.test.ts" }
+    },
+    {
+      "obligation_id": "compensation.files",
+      "obligation_version": 1,
+      "title": "FlowJo .mtx and CSV matrix files are written and read as FlowJo 10 does",
+      "family": "compensation",
+      "target_location": "MatrixController.saveMatrixToFJComp; CompensationMatrix.toCSV",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "comp-files-wizard", "location": ".mtx layout and CSV layout" },
+        { "kind": "negative", "observation": "comp-files-wizard", "location": "legacy comp:* names and missing values" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/compFlowjo.ts", "symbol": "writeMtx", "files": ["src/core/compFlowjo.ts", "src/ui/Dialogs.tsx"] },
+      "fixtures": [
+        { "fixture_id": "comp.mtx", "case_kind": "positive", "test_file": "tests/comp-flowjo.test.ts", "test_name": ".mtx: Gating-ML root" },
+        { "fixture_id": "comp.legacy", "case_kind": "negative", "test_file": "tests/comp-flowjo.test.ts", "test_name": "legacy comp:* names are accepted" },
+        { "fixture_id": "comp.csv", "case_kind": "positive", "test_file": "tests/comp-flowjo.test.ts", "test_name": "CSV: an empty corner cell" }
+      ],
+      "verifier": { "verifier_id": "comp.flowjo", "claim_id": "compensation.files.v1", "test_file": "tests/comp-flowjo.test.ts", "command": "npx vitest run tests/comp-flowjo.test.ts" }
+    },
+    {
+      "obligation_id": "compensation.wizard-ssm",
+      "obligation_version": 1,
+      "title": "The wizard and the spillover spreading matrix follow FlowJo 10",
+      "family": "compensation",
+      "target_location": "WizardMatrix.calculate; WeightOptimizer::CalculateSSMCoefficient",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "comp-files-wizard", "location": "spillover from population medians" },
+        { "kind": "negative", "observation": "comp-files-wizard", "location": "too few events, missing populations" },
+        { "kind": "positive", "observation": "comp-ssm", "location": "SSM coefficient" },
+        { "kind": "negative", "observation": "comp-ssm", "location": "undefined SSM gives 0" },
+        { "kind": "positive", "observation": "comp-apply", "location": "compensation solve and naming" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/compFlowjo.ts", "symbol": "flowjoWizard", "files": ["src/core/compFlowjo.ts", "src/core/service.ts", "src/ui/Dialogs.tsx"] },
+      "fixtures": [
+        { "fixture_id": "comp.wiz", "case_kind": "positive", "test_file": "tests/comp-flowjo.test.ts", "test_name": "spillover = (med P - med N)" },
+        { "fixture_id": "comp.wiz.err", "case_kind": "negative", "test_file": "tests/comp-flowjo.test.ts", "test_name": "too few events (100, 2% of parent)" },
+        { "fixture_id": "comp.ssm", "case_kind": "positive", "test_file": "tests/comp-flowjo.test.ts", "test_name": "sqrt((P84_P - med_P)^2" },
+        { "fixture_id": "comp.ssm.matrix", "case_kind": "positive", "test_file": "tests/comp-flowjo.test.ts", "test_name": "matrix over the controlled detectors" },
+        { "fixture_id": "comp.service", "case_kind": "positive", "test_file": "tests/comp-flowjo.test.ts", "test_name": "uses each control" }
+      ],
+      "verifier": { "verifier_id": "comp.flowjo", "claim_id": "compensation.wizard-ssm.v1", "test_file": "tests/comp-flowjo.test.ts", "command": "npx vitest run tests/comp-flowjo.test.ts" }
     }
   ]
 }

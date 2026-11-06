@@ -80,7 +80,12 @@
       { "address": "0x58ef10", "symbol": "FCSPackedDataReader::ReadData" },
       { "address": "0x592ef0", "symbol": "FCSCytek3ByteDataReader::GetValue" },
       { "address": "0x51d10", "symbol": "FCSUtil::SetByteOrder" },
-      { "address": "0x58cd90", "symbol": "FCSDataReader::FCSDataReader" }
+      { "address": "0x58cd90", "symbol": "FCSDataReader::FCSDataReader" },
+      { "address": "0x1eec70", "symbol": "WeightOptimizer::CalculateSSM" },
+      { "address": "0x1f3740", "symbol": "WeightOptimizer::CalculateSSMCoefficient" },
+      { "address": "0x1f5520", "symbol": "Compensator::Compensate" },
+      { "address": "0x1f6550", "symbol": "Compensator::PreCompensate" },
+      { "address": "0x1f5bc0", "symbol": "Compensator::PrepareCompensatedParameters" }
     ]
   },
   "jar": {
@@ -126,6 +131,9 @@
     "dp-spec": ["0x2a050",  "0x3b5a20",  "0x172130"],
     "dp-dialog-wsp": ["jar"],
     "fcs-header": ["0x4cc50",  "0x51190",  "0x51800"],
-    "fcs-layout": ["0x50060",  "0x4d6d0",  "0x58ef10",  "0x592ef0",  "0x51d10",  "0x58cd90"]
+    "fcs-layout": ["0x50060",  "0x4d6d0",  "0x58ef10",  "0x592ef0",  "0x51d10",  "0x58cd90"],
+    "comp-ssm": ["0x1eec70",  "0x1f3740"],
+    "comp-apply": ["0x1f5520",  "0x1f6550",  "0x1f5bc0"],
+    "comp-files-wizard": ["jar"]
   }
 }

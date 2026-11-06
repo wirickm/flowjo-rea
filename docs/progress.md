@@ -1,5 +1,13 @@
 # Progress and handoff
 
+## State (2026-11-06, parity area 8: compensation)
+
+Compensation follows FlowJo 10.6.2 (specs section 14): .mtx save and load,
+FlowJo CSV save, the wizard on positive / negative populations with
+FlowJo's medians, rules and badges (universal negative included), and the
+spillover spreading matrix with FlowJo's formula and CSV. REA ledger 37 of
+37 verified. Next area: cell cycle and proliferation.
+
 ## State (2026-11-06, parity area 7: FCS reading)
 
 FCS reading follows FlowJo 10.6.2 (specs section 13): FCS 3.2 accepted

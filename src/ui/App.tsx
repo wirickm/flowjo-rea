@@ -1223,6 +1223,15 @@ export function App() {
             for (const d of res.diagnostics) for (const w of d.warnings) note('warn', `${d.label}: ${w}`);
             return res;
           }}
+          pathsBySample={Object.fromEntries(groupSamples.map((s) => [s.id, s.populations.map((q) => populationPath(s.populations, q.id))]))}
+          onFlowjoWizard={async (entries) => {
+            const sm = (id: string) => ws.samples.find((x) => x.id === id)!;
+            const controls = entries.map((e) => { const s = sm(e.sampleId), n = sm(e.negSampleId || e.sampleId); return { sampleId: s.id, compensation: s.compensation, populations: s.populations, primary: e.primary, posPath: e.posPath, negPath: e.negPath, neg: { sampleId: n.id, compensation: n.compensation, populations: n.populations } }; });
+            const detectors = (sMeta?.channels ?? []).filter((c) => !isScatterOrTime(c.name)).map((c) => c.name);
+            const res = await client.flowjoWizard({ controls, matrices: ws.matrices, detectors, scales: statScales(ws.channelTransforms, sample.flowjoLinearRanges, detectors) });
+            note('info', `FlowJo compensation wizard: ${res.status}`);
+            return res;
+          }}
           onEstimateAf={async (sampleId, detectors, gatePath) => {
             const s = ws.samples.find((x) => x.id === sampleId)!;
             const spectrum = await client.estimateAf({ sampleId, detectors, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, gatePath });

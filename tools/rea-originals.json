@@ -420,6 +420,30 @@
       "locations": [{ "kind": "address-range", "start": "0x50060", "end": "0x50a60" }, { "kind": "address-range", "start": "0x4d6d0", "end": "0x4da90" }, { "kind": "address-range", "start": "0x58ef10", "end": "0x58f820" }, { "kind": "address-range", "start": "0x592ef0", "end": "0x592f40" }, { "kind": "address-range", "start": "0x51d10", "end": "0x51db0" }, { "kind": "address-range", "start": "0x58cd90", "end": "0x58da50" }],
       "behavior": "Widths <= 8 -> 1 byte, 9-16 -> 2, 24, 32, 64, others 'Encountered unhandled data width'; packed bit stream (LSB first, not reset per event) when the last <= 16-bit parameter is not 8 or 16; 3-byte little-endian unless big-endian; $BYTEORD 1,2 / 1,2,3,4 / 12 / 1234 little else full reversal; integers masked with next-power-of-two($PnR) - 1; $TOT 0 -> DATA length x 8 / bits per event.",
       "spec_section": "13.2"
+    },
+    {
+      "key": "comp-ssm",
+      "subject": "engine",
+      "symbols": ["WeightOptimizer::CalculateSSM", "WeightOptimizer::CalculateSSMCoefficient"],
+      "locations": [{ "kind": "address-range", "start": "0x1eec70", "end": "0x1efe10" }, { "kind": "address-range", "start": "0x1f3740", "end": "0x1f37c0" }],
+      "behavior": "SSM(i, j) = sqrt((P84_P,j - med_P,j)^2 - (P84_N,j - med_N,j)^2) / sqrt(med_P,i - med_N,i) from 4096-channel percentiles of the positive and negative populations; 0 when the denominator is not positive or the result is NaN.",
+      "spec_section": "14.3"
+    },
+    {
+      "key": "comp-apply",
+      "subject": "engine",
+      "symbols": ["Compensator::Compensate", "Compensator::PreCompensate", "Compensator::PrepareCompensatedParameters"],
+      "locations": [{ "kind": "address-range", "start": "0x1f5520", "end": "0x1f5bc0" }, { "kind": "address-range", "start": "0x1f6550", "end": "0x1f6b40" }, { "kind": "address-range", "start": "0x1f5bc0", "end": "0x1f6100" }],
+      "behavior": "Spillover LU-decomposed (eigen least squares for spectral), each event solved; compensated parameters named Comp- + name.",
+      "spec_section": "14.4"
+    },
+    {
+      "key": "comp-files-wizard",
+      "subject": "jar",
+      "symbols": ["com.treestar.flowjo.application.compeditor.MatrixController", "com.treestar.flowjo.application.compeditor.model.CompensationMatrix", "com.treestar.flowjo.application.compeditor.model.WizardMatrix"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/application/compeditor/MatrixController.class" }, { "kind": "artifact-path", "path": "com/treestar/flowjo/application/compeditor/model/CompensationMatrix.class" }, { "kind": "artifact-path", "path": "com/treestar/flowjo/application/compeditor/model/WizardMatrix.class" }],
+      "behavior": ".mtx = Gating-ML root with transforms:spilloverMatrix (parameters, spillover rows of positional coefficients); CSV corner-cell layout; wizard spillover = (medP_j - medN_j)/(medP_i - medN_i) with 0 -> 1, populations need 100 events and 2% of parent, FlowJo badge texts.",
+      "spec_section": "14.1"
     }
   ]
 }

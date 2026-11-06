@@ -5,7 +5,8 @@ import { AppError, fail } from './errors';
 import type { FcsFile } from './fcs';
 import type { DerivedParameter, Dimension, Gate, Population, SampleState, Workspace } from './model';
 import { axesFromGate } from './ellipse';
-import { ellipseLatticePolygon, eventCell, gridCoord, latticeMask, polygonGridMask, vertexCoord } from './gateGrid';
+import { defaultGrid, ellipseLatticePolygon, eventCell, gridCoord, latticeMask, polygonGridMask, vertexCoord } from './gateGrid';
+import { curlyQuadPolygon, magneticOffset1D, magneticOffset2D, MAGNETIC_BINS, spiderLabelGrid } from './gateTools';
 import { splineDividers } from './spline';
 import { makeTransform } from './transforms';
 
@@ -16,6 +17,8 @@ export interface PopulationResult {
   count: number;
   parentCount: number;
   error?: string;
+  // A magnetic gate as moved on this sample (specs 10.4).
+  moved?: Gate;
 }
 
 export class SampleEngine {
@@ -142,8 +145,11 @@ export class SampleEngine {
       }
       let mask: Uint8Array;
       let error: string | undefined;
+      let moved: Gate | undefined;
       try {
-        mask = this.gateMask(p.gate, (ref) => {
+        const gate = p.magnetic ? this.magneticGate(p.gate, parentMask) : p.gate;
+        if (gate !== p.gate) moved = gate;
+        mask = this.gateMask(gate, (ref) => {
           const r = byId.get(ref);
           if (!r) fail('GATE_INVALID', `Boolean gate references missing population ${ref}`);
           return evalPop(r);
@@ -163,11 +169,54 @@ export class SampleEngine {
         count += mask[i];
         parentCount += parentMask[i];
       }
-      this.results.set(p.id, { id: p.id, name: p.name, parentId: p.parentId, count, parentCount, error });
+      this.results.set(p.id, { id: p.id, name: p.name, parentId: p.parentId, count, parentCount, error, ...(moved ? { moved } : {}) });
       return mask;
     };
     for (const p of pops) evalPop(p);
     return this;
+  }
+
+  // FlowJo magnetic gate (FGate::MoveMagneticGate, specs 10.4): the gate as
+  // drawn, moved over a 256-cell histogram of the parent population. Polygon
+  // and rectangle gates move; other gates are used as drawn.
+  magneticGate(g: Gate, parentMask: Uint8Array): Gate {
+    const B = MAGNETIC_BINS;
+    if (g.type === 'rect' && g.dims.length === 1 && g.min[0] !== null && g.max[0] !== null) {
+      const grid = defaultGrid([g.dims[0], g.dims[0]], B);
+      if (!grid) return g;
+      const ax = grid.axes[0];
+      const xs = this.dimension(g.dims[0]);
+      const hist = new Float64Array(B);
+      for (let i = 0; i < xs.length; i++) if (parentMask[i] && !Number.isNaN(xs[i])) hist[eventCell(ax, B, xs[i])]++;
+      const shift = magneticOffset1D(hist, vertexCoord(ax, B, g.min[0]), vertexCoord(ax, B, g.max[0]));
+      const d = (shift * (ax.max - ax.min)) / B;
+      return { ...g, min: [g.min[0] + d], max: [g.max[0] + d] };
+    }
+    let verts: [number, number][];
+    if (g.type === 'polygon') verts = g.vertices;
+    else if (g.type === 'rect' && g.dims.length === 2 && g.min.every((v) => v !== null) && g.max.every((v) => v !== null)) {
+      const [x0, y0] = g.min as number[], [x1, y1] = g.max as number[];
+      verts = [[x0, y0], [x0, y1], [x1, y1], [x1, y0]];
+    } else return g;
+    const dims = g.dims as [Dimension, Dimension];
+    const grid = defaultGrid(dims, B);
+    if (!grid) return g;
+    const [ax, ay] = grid.axes;
+    // Cells with y counting down, as the engine flips y (256 - byte).
+    const xs = this.dimension(dims[0]);
+    const ys = this.dimension(dims[1]);
+    const hist = new Float64Array(B * B);
+    for (let i = 0; i < xs.length; i++) {
+      if (!parentMask[i] || Number.isNaN(xs[i]) || Number.isNaN(ys[i])) continue;
+      const fy = B - 1 - eventCell(ay, B, ys[i]);
+      hist[eventCell(ax, B, xs[i]) * B + fy]++;
+    }
+    const poly = verts.map((v): [number, number] => [vertexCoord(ax, B, v[0]), B - 1 - vertexCoord(ay, B, v[1])]);
+    const [dx, dy] = magneticOffset2D(hist, poly);
+    const ox = (dx * (ax.max - ax.min)) / B, oy = (-dy * (ay.max - ay.min)) / B;
+    if (g.type === 'polygon') return { ...g, vertices: g.vertices.map(([a, b]) => [a + ox, b + oy]) };
+    const r = g as Extract<Gate, { type: 'rect' }>;
+    return { ...r, min: [r.min[0]! + ox, r.min[1]! + oy], max: [r.max[0]! + ox, r.max[1]! + oy] };
   }
 
   gateMask(g: Gate, ref: (id: string) => Uint8Array): Uint8Array {
@@ -296,6 +345,30 @@ export class SampleEngine {
           const rx = x >= xAt(y) ? 1 : 0;
           const ry = y >= yAt(x) ? 1 : 0;
           out[i] = rx === g.side[0] && ry === g.side[1] ? 1 : 0;
+        }
+        return out;
+      }
+      case 'curlyQuad': {
+        // FlowJo sends the four curly quadrants to the engine as one
+        // gating:PolyQuad (specs 10.2), so they are gated as a spider quad.
+        const [[x0, x1], [y0, y1]] = g.frame;
+        if (!(x1 > x0 && y1 > y0) || !(g.quadrant >= 0 && g.quadrant <= 3)) fail('GATE_INVALID', 'Curly quad frame or quadrant is invalid');
+        const polygons = [0, 1, 2, 3].map((q) => curlyQuadPolygon(g.center, q, [x0, x1], [y0, y1]));
+        return this.gateMask({ type: 'spider', dims: g.dims, polygons, slot: g.quadrant, grid: g.grid }, ref);
+      }
+      case 'spider': {
+        if (g.polygons.length !== 4 || g.polygons.some((q) => q.length < 3)) fail('GATE_INVALID', 'Spider quad needs four polygons');
+        const grid = g.grid ?? defaultGrid(g.dims);
+        if (!grid) fail('GATE_INVALID', 'Spider quad needs a finite display range on both axes');
+        const R = grid.resolution;
+        const [ax, ay] = grid.axes;
+        const lattice = g.polygons.map((q) => q.map((v): [number, number] => [vertexCoord(ax, R, v[0]), vertexCoord(ay, R, v[1])]));
+        const labels = spiderLabelGrid(R, lattice);
+        const xs = this.dimension(g.dims[0]);
+        const ys = this.dimension(g.dims[1]);
+        for (let i = 0; i < n; i++) {
+          if (Number.isNaN(xs[i]) || Number.isNaN(ys[i])) continue;
+          out[i] = labels[eventCell(ax, R, xs[i]) * R + eventCell(ay, R, ys[i])] === g.slot ? 1 : 0;
         }
         return out;
       }

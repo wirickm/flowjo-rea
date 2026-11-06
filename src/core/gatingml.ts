@@ -1,6 +1,7 @@
 // ISAC Gating-ML 2.0 import/export (Spidlen et al., Cytometry A 2015).
 import type { SpilloverMatrix } from './compensation';
 import { fail } from './errors';
+import { curlyQuadPolygon } from './gateTools';
 import type { Dimension, Gate, Population } from './model';
 import type { TransformSpec } from './transforms';
 import { attr, esc, kid, kids, local, numAttr, parseXml, text, type El } from './xml';
@@ -250,7 +251,14 @@ export function exportGatingMl(pops: Population[], matrices: SpilloverMatrix[], 
   };
   const unscaled = (d: Dimension): Dimension => (d.kind === 'channel' && d.transform.kind === 'scale' ? { ...d, transform: { kind: 'none' } } : d);
   for (const p of list) {
-    const g = p.gate;
+    // Curly and spider quadrants are written as their polygon (Gating-ML
+    // gates are exact, so lattice ties may differ; specs 6.5 own rule).
+    const g0 = p.gate;
+    const g: Gate = g0.type === 'curlyQuad'
+      ? { type: 'polygon', dims: g0.dims, vertices: curlyQuadPolygon(g0.center, g0.quadrant, g0.frame[0], g0.frame[1]) }
+      : g0.type === 'spider'
+        ? { type: 'polygon', dims: g0.dims, vertices: g0.polygons[g0.slot] }
+        : g0;
     // An exclusion population is written as its inclusive gate plus a NOT
     // boolean carrying the population's id (re-imports as two populations).
     const gid = p.exclude ? `${p.id}_incl` : p.id;

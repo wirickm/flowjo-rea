@@ -2,6 +2,8 @@
 // transforms) and a plot's axis display space.
 import type { Dimension, Gate, Population } from '../core/model';
 import { axesFromGate, handles, outline, type EllipseAxes } from '../core/ellipse';
+import { curlyQuadPolygon, spiderShape, type SpiderShape } from '../core/gateTools';
+import { deletionRoots } from '../core/project';
 import { splineDividers } from '../core/spline';
 import { makeTransform, type Transform, type TransformSpec } from '../core/transforms';
 
@@ -56,7 +58,12 @@ export type Drawable =
   | { pop: Population; kind: 'quadrant'; x: number; y: number }
   // Control points and sampled divider curves in axis space; editable when
   // both plot scales equal the gate's.
-  | { pop: Population; kind: 'spline'; xPts: [number, number][]; yPts: [number, number][]; xCurve: [number, number][]; yCurve: [number, number][]; editable: boolean };
+  | { pop: Population; kind: 'spline'; xPts: [number, number][]; yPts: [number, number][]; xCurve: [number, number][]; yCurve: [number, number][]; editable: boolean }
+  // Curly quadrant outline and its centre (axis space).
+  | { pop: Population; kind: 'curly'; pts: [number, number][]; center: [number, number]; editable: boolean }
+  // Spider quadrant polygon; shape (axis space) holds the shared centre and
+  // side points of all four.
+  | { pop: Population; kind: 'spider'; pts: [number, number][]; shape: SpiderShape; editable: boolean };
 
 // Gates of child populations drawable on this plot.
 export function drawableGates(pops: Population[], parentId: string | null, x: Axis, y: Axis | null): Drawable[] {
@@ -90,6 +97,13 @@ export function drawableGates(pops: Population[], parentId: string | null, x: Ax
       out.push(ellipseDrawable(p, axesFromGate(g.mean, g.cov, g.distanceSquare), x, y));
     } else if (g.type === 'splineQuadrant' && y && ch[0] === x.channel && ch[1] === y.channel) {
       out.push(splineDrawable(p, g.xDivider, g.yDivider, x, y));
+    } else if (g.type === 'curlyQuad' && y && ch[0] === x.channel && ch[1] === y.channel) {
+      const toAxis = ([a, b]: [number, number]): [number, number] => [dimToAxis(a, g.dims[0], x), dimToAxis(b, g.dims[1], y)];
+      out.push({ pop: p, kind: 'curly', pts: curlyQuadPolygon(g.center, g.quadrant, g.frame[0], g.frame[1]).map(toAxis), center: toAxis(g.center), editable: sameScale(g.dims[0].transform, x.spec) && sameScale(g.dims[1].transform, y.spec) });
+    } else if (g.type === 'spider' && y && ch[0] === x.channel && ch[1] === y.channel && g.polygons.length === 4) {
+      const toAxis = ([a, b]: [number, number]): [number, number] => [dimToAxis(a, g.dims[0], x), dimToAxis(b, g.dims[1], y)];
+      const polys = g.polygons.map((q) => q.map(toAxis));
+      out.push({ pop: p, kind: 'spider', pts: polys[g.slot], shape: spiderShape(polys), editable: sameScale(g.dims[0].transform, x.spec) && sameScale(g.dims[1].transform, y.spec) && polys.every((q) => q.length === 4) });
     } else if (g.type === 'quadrant' && y && g.dims.length === 2 && ch[0] === x.channel && ch[1] === y.channel && g.dividers[0].length === 1 && g.dividers[1].length === 1) {
       out.push({ pop: p, kind: 'quadrant', x: dimToAxis(g.dividers[0][0], g.dims[0], x), y: dimToAxis(g.dividers[1][0], g.dims[1], y) });
     }
@@ -132,17 +146,11 @@ export function splineDrawable(pop: Population, xDivider: [number, number][], yD
   return { pop, kind: 'spline', xPts: xDivider.map(toAxis), yPts: yDivider.map(toAxis), xCurve, yCurve, editable: sameScale(dx.transform, x.spec) && sameScale(dy.transform, y.spec) };
 }
 
-// Populations sharing one quadrant split (moved and edited together).
+// Quad populations moved and edited together: FlowJo groups sibling quads by
+// their parameter pair (NodeList.getQuadGateNodes, addSiblingQuads; specs 6.2).
 export function quadrantSiblings(pops: Population[], p: Population): Population[] {
-  const key = (q: Population) => {
-    const g = q.gate;
-    if (g.type === 'quadrant') return JSON.stringify(['q', g.dims, g.dividers]);
-    if (g.type === 'splineQuadrant') return JSON.stringify(['s', g.dims, g.xDivider, g.yDivider]);
-    return null;
-  };
-  const k = key(p);
-  if (k === null) return [p];
-  return pops.filter((q) => q.parentId === p.parentId && key(q) === k);
+  const ids = new Set(deletionRoots(pops, p.id));
+  return pops.filter((q) => ids.has(q.id) && q.gate.type === p.gate.type);
 }
 
 export function pointInPolygon(x: number, y: number, pts: [number, number][]) {
@@ -151,4 +159,9 @@ export function pointInPolygon(x: number, y: number, pts: [number, number][]) {
     if (pts[a][1] > y !== pts[b][1] > y && x < ((pts[b][0] - pts[a][0]) * (y - pts[a][1])) / (pts[b][1] - pts[a][1]) + pts[a][0]) inside = !inside;
   }
   return inside;
+}
+
+// Spider handles: centre, then the top, bottom, left and right side points.
+export function spiderHandles(sh: SpiderShape): [number, number][] {
+  return [sh.center, [sh.top, sh.y1], [sh.bottom, sh.y0], [sh.x0, sh.left], [sh.x1, sh.right]];
 }

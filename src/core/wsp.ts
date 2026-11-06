@@ -160,6 +160,18 @@ export function parseWsp(xml: string): WspImport {
     const pending: { pop: Population; deps: string[] }[] = [];
     let seq = 0;
 
+    const polyAxis = (sc: ScaleInfo, t: ReturnType<typeof makeTransform>): GridAxis => {
+      const lr = sc.linearRange;
+      if (lr) return { mode: 'round', min: lr[0], max: lr[1] };
+      const sp = sc.spec;
+      const logicle = sp.kind === 'logicle' ? { logicle: { T: sp.T, W: sp.W, M: sp.M, A: sp.A } } : {};
+      return { mode: 'floor', min: t.displayMin, max: t.displayMax, ...logicle };
+    };
+    // Polygon vertices of a quadrant (quadId 0 lower-left, 1 lower-right,
+    // 2 upper-left, 3 upper-right): four siblings on one parameter pair form a
+    // spider quad (specs 10.3).
+    const spiderParts = new Map<[number, number][], number>();
+
     const gateFrom = (gEl: El, popName: string): Gate | null => {
       const g = kids(gEl)[0];
       if (!g) return null;
@@ -202,6 +214,27 @@ export function parseWsp(xml: string): WspImport {
           }
           return { type: 'rect', dims, min, max };
         }
+        case 'CurlyQuad': {
+          // FlowJo curly quad (specs 10.2): each quadrant stores the centre as
+          // its one closed bound per axis; the open sides give the quadrant
+          // (both upper bounds set: lower-left, ...). The outline is rebuilt
+          // on the axes' display range.
+          if (names.length !== 2) fail('WORKSPACE_INVALID', `Curly quad "${popName}" is not 2-D`);
+          const sc = names.map(scaleOf);
+          const tf = sc.map((x) => makeTransform(x.spec));
+          const dims = names.map((n, k) => {
+            const r = resolveDim(n);
+            return { kind: 'channel' as const, channel: r.channel, compensation: r.comp, transform: sc[k].spec };
+          }) as [Dimension, Dimension];
+          const lo = dimEls.map((d) => numAttr(d, 'min')), hi = dimEls.map((d) => numAttr(d, 'max'));
+          const at = (k: number, v: number) => (sc[k].spec.kind === 'scale' || sc[k].spec.kind === 'none' ? v : tf[k].apply(v));
+          const center = [0, 1].map((k) => at(k, (hi[k] ?? lo[k])!)) as [number, number];
+          if (center.some((v) => !Number.isFinite(v))) fail('WORKSPACE_INVALID', `Curly quad "${popName}" has no centre`);
+          const right = hi[0] === undefined, upper = hi[1] === undefined;
+          const quadrant = upper ? (right ? 1 : 0) : right ? 3 : 2;
+          const axes = [polyAxis(sc[0], tf[0]), polyAxis(sc[1], tf[1])] as [GridAxis, GridAxis];
+          return { type: 'curlyQuad', dims, center, quadrant, frame: [[axes[0].min, axes[0].max], [axes[1].min, axes[1].max]], grid: { resolution: numAttr(g, 'gateResolution') ?? 256, axes } };
+        }
         case 'PolygonGate': {
           if (names.length !== 2) fail('WORKSPACE_INVALID', `Polygon gate "${popName}" is not 2-D`);
           const sc = names.map(scaleOf);
@@ -217,15 +250,10 @@ export function parseWsp(xml: string): WspImport {
             return [at(0), at(1)] as [number, number];
           });
           // FlowJo 10 evaluates polygons on its gate grid (docs/validation/flowjo-engine-specs.md).
-          const axis = (k: number): GridAxis => {
-            const lr = sc[k].linearRange;
-            if (lr) return { mode: 'round', min: lr[0], max: lr[1] };
-            const sp = sc[k].spec;
-            const logicle = sp.kind === 'logicle' ? { logicle: { T: sp.T, W: sp.W, M: sp.M, A: sp.A } } : {};
-            return { mode: 'floor', min: tf[k].displayMin, max: tf[k].displayMax, ...logicle };
-          };
           const resolution = numAttr(g, 'gateResolution') ?? 256;
-          return { type: 'polygon', dims, vertices, grid: { resolution, axes: [axis(0), axis(1)] } };
+          const quadId = numAttr(g, 'quadId');
+          if (quadId !== undefined && quadId >= 0 && quadId <= 3) spiderParts.set(vertices, quadId);
+          return { type: 'polygon', dims, vertices, grid: { resolution, axes: [polyAxis(sc[0], tf[0]), polyAxis(sc[1], tf[1])] } };
         }
         case 'EllipsoidGate': {
           if (names.length !== 2) fail('WORKSPACE_INVALID', `Ellipse gate "${popName}" is not 2-D`);
@@ -356,7 +384,8 @@ export function parseWsp(xml: string): WspImport {
           }
           // eventsInside="0" (exclusion): the population is the events outside the gate.
           const exclude = attr(kids(gEl!)[0], 'eventsInside') === '0';
-          const pop: Population = { id, name, parentId, gate, ...(exclude ? { exclude: true } : {}) };
+          const magnetic = ['1', 'true'].includes(attr(kids(gEl!)[0], 'magnetic') ?? '');
+          const pop: Population = { id, name, parentId, gate, ...(exclude ? { exclude: true } : {}), ...(magnetic ? { magnetic: true } : {}) };
           if (attr(p, 'owningGroup')) owners.set(pop, attr(p, 'owningGroup')!);
           pops.push(pop);
         } else {
@@ -371,6 +400,23 @@ export function parseWsp(xml: string): WspImport {
       }
     };
     walk(node, null, '');
+    // Spider quads: four sibling quadrant polygons on the same parameters.
+    const quadGroups = new Map<string, Population[]>();
+    for (const p of pops) {
+      if (p.gate.type !== 'polygon' || !spiderParts.has(p.gate.vertices)) continue;
+      const k = JSON.stringify([p.parentId, p.gate.dims.map((d) => (d.kind === 'channel' ? d.channel : ''))]);
+      quadGroups.set(k, [...(quadGroups.get(k) ?? []), p]);
+    }
+    for (const group of quadGroups.values()) {
+      const slotOf = (p: Population) => [2, 3, 0, 1][spiderParts.get((p.gate as Extract<Gate, { type: 'polygon' }>).vertices)!];
+      if (group.length !== 4 || new Set(group.map(slotOf)).size !== 4) continue;
+      const sorted = [...group].sort((a, b) => slotOf(a) - slotOf(b));
+      const polygons = sorted.map((p) => (p.gate as Extract<Gate, { type: 'polygon' }>).vertices);
+      for (const p of group) {
+        const pg = p.gate as Extract<Gate, { type: 'polygon' }>;
+        p.gate = { type: 'spider', dims: pg.dims, polygons, slot: slotOf(p), grid: pg.grid };
+      }
+    }
     for (const { pop, deps } of pending) {
       const g = pop.gate as Extract<Gate, { type: 'boolean' }>;
       for (const d of deps) {

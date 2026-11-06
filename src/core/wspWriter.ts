@@ -96,10 +96,13 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
         return null;
       }
       const inside = p.exclude ? 0 : 1; // FlowJo exclusion gates: observed attribute, unexercised by fixtures
+      // FlowJo magnetic gates: magnetic="1" on the gate (specs 10.4); the
+      // per-sample offset (adjustX/Y) is recomputed, so it is not written.
+      const mag = p.magnetic ? ' magnetic="1"' : '';
       const dims = g.dims as Extract<Dimension, { kind: 'channel' }>[];
       const names = dims.map(nameOf);
       if (g.type === 'rect') {
-        return `<gating:RectangleGate eventsInside="${inside}">${dims.map((d, k) => dimXml(names[k], (g.min[k] !== null ? ` gating:min="${raw(g.min[k]!, d)}"` : '') + (g.max[k] !== null ? ` gating:max="${raw(g.max[k]!, d)}"` : ''))).join('')}</gating:RectangleGate>`;
+        return `<gating:RectangleGate eventsInside="${inside}"${mag}>${dims.map((d, k) => dimXml(names[k], (g.min[k] !== null ? ` gating:min="${raw(g.min[k]!, d)}"` : '') + (g.max[k] !== null ? ` gating:max="${raw(g.max[k]!, d)}"` : ''))).join('')}</gating:RectangleGate>`;
       }
       if (g.type === 'quadrant') {
         // FlowJo stores quadrants as rectangles (observed).
@@ -120,8 +123,21 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
         const same = JSON.stringify(fj.spec) === JSON.stringify(linearish ? { kind: 'none' } : d.transform);
         if (!same) warn(`"${path(p)}" was drawn on a ${d.transform.kind} scale but ${names[k]} is exported with a ${fj.spec.kind} scale; FlowJo may interpret the shape differently`);
       });
+      if (g.type === 'curlyQuad') {
+        // gating:CurlyQuad: the centre as the closed bound per axis, the
+        // quadrant's outer sides open (specs 10.2); the curve is not saved.
+        const up = g.quadrant <= 1, right = g.quadrant === 1 || g.quadrant === 3;
+        const bound = (k: number, open: boolean) => dimXml(names[k], open ? ` gating:min="${raw(g.center[k], dims[k])}"` : ` gating:max="${raw(g.center[k], dims[k])}"`);
+        return `<gating:CurlyQuad eventsInside="${inside}"${mag}>${bound(0, right)}${bound(1, up)}</gating:CurlyQuad>`;
+      }
+      if (g.type === 'spider') {
+        // Spider quad: one polygon per quadrant with quadId (0 lower-left,
+        // 1 lower-right, 2 upper-left, 3 upper-right; specs 10.3).
+        const quadId = [2, 3, 0, 1][g.slot];
+        return `<gating:PolygonGate eventsInside="${inside}" quadId="${quadId}" gateResolution="${g.grid?.resolution ?? 256}"${mag}>${dimXml(names[0])}${dimXml(names[1])}${g.polygons[g.slot].map(([a, b]) => `<gating:vertex>${coord(raw(a, dims[0]))}${coord(raw(b, dims[1]))}</gating:vertex>`).join('')}</gating:PolygonGate>`;
+      }
       if (g.type === 'polygon') {
-        return `<gating:PolygonGate eventsInside="${inside}" gateResolution="${g.grid?.resolution ?? 256}">${dimXml(names[0])}${dimXml(names[1])}${g.vertices.map(([a, b]) => `<gating:vertex>${coord(raw(a, dims[0]))}${coord(raw(b, dims[1]))}</gating:vertex>`).join('')}</gating:PolygonGate>`;
+        return `<gating:PolygonGate eventsInside="${inside}"${mag} gateResolution="${g.grid?.resolution ?? 256}">${dimXml(names[0])}${dimXml(names[1])}${g.vertices.map(([a, b]) => `<gating:vertex>${coord(raw(a, dims[0]))}${coord(raw(b, dims[1]))}</gating:vertex>`).join('')}</gating:PolygonGate>`;
       }
       if (g.type === 'ellipsoid') {
         if (dims.length !== 2) {

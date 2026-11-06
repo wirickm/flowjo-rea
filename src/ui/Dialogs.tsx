@@ -7,6 +7,14 @@ import { withAutofluorescence } from '../core/autofluorescence';
 import { derivedFormula, type DerivedParameter } from '../core/model';
 import { compileFormula, defaultDerivedName, derivedNameError, EVENT_NUMBER, FORMULA_FUNCTIONS } from '../core/formula';
 import { specForKind } from './axes';
+import { readMtx, ssmCsv, writeMatrixCsv, writeMtx, type FlowjoWizardResult } from '../core/compFlowjo';
+
+function saveText(name: string, text: string, type: string) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 export function Modal(p: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   return (
@@ -116,7 +124,14 @@ export function CompensationDialog(p: {
   gatePaths: string[];
   onWizard: (roles: { sampleId: string; primary: string | null }[], positivePct: number, gatePath: string) => Promise<WizardResult>;
   onEstimateAf: (sampleId: string, detectors: string[], gatePath: string) => Promise<number[]>;
+  // FlowJo wizard: population paths per control sample, and the run.
+  pathsBySample: Record<string, string[]>;
+  onFlowjoWizard: (entries: { sampleId: string; primary: string; posPath: string | null; negSampleId: string; negPath: string | null }[]) => Promise<FlowjoWizardResult & { ssm: { channels: string[]; values: number[][] } }>;
 }) {
+  const [fj, setFj] = useState<Record<string, { primary: string; pos: string; neg: string }>>({});
+  const [univ, setUniv] = useState('');
+  const [fjRes, setFjRes] = useState<(FlowjoWizardResult & { ssm: { channels: string[]; values: number[][] } }) | null>(null);
+  const [fjErr, setFjErr] = useState('');
   const [mats, setMats] = useState<SpilloverMatrix[]>(p.matrices);
   const [roles, setRoles] = useState<Record<string, string>>({}); // sampleId -> '' | 'unstained' | channel
   const [pct, setPct] = useState(10);
@@ -177,7 +192,83 @@ export function CompensationDialog(p: {
           />
         </label>
       </div>
+      <div className="row">
+        <label className="file-btn">
+          Load FlowJo matrix (.mtx)
+          <input
+            type="file"
+            accept=".mtx,.xml"
+            data-testid="mtx-load"
+            onChange={async (e) => {
+              const f = e.target.files?.[0];
+              if (!f) return;
+              try {
+                const m = readMtx(await f.text(), f.name.replace(/\.[^.]+$/, ''));
+                add({ ...m, id: `m_${Date.now().toString(36)}` });
+                setMsg('');
+              } catch (err) {
+                setMsg((err as Error).message);
+              }
+              e.target.value = '';
+            }}
+          />
+        </label>
+      </div>
       {msg && <p className="error">{msg}</p>}
+      <details data-testid="fj-wizard">
+        <summary>FlowJo compensation wizard (positive / negative populations)</summary>
+        <p className="muted">As FlowJo 10: for each single-stain control pick its stained channel and its positive and negative populations (or a universal negative). Spillover = (median positive - median negative) in each detector / the same difference in the stained detector; populations need 100 events and 2% of their parent. Also gives the spillover spreading matrix (SSM).</p>
+        <div className="row">
+          Univ. Negative <select value={univ} onChange={(e) => setUniv(e.target.value)} data-testid="fj-univ">
+            <option value="">none</option>
+            {p.controls.flatMap((c) => (p.pathsBySample[c.id] ?? []).map((path) => <option key={`${c.id}|${path}`} value={`${c.id}|${path}`}>{c.fileName}: {path}</option>))}
+          </select>
+        </div>
+        <table className="grid">
+          <thead><tr><th>Control</th><th>Stained channel</th><th>Positive</th><th>Negative</th></tr></thead>
+          <tbody>
+            {p.controls.filter((c) => c.loaded).map((c) => {
+              const r = fj[c.id] ?? { primary: '', pos: '', neg: '' };
+              const set = (patch: Partial<typeof r>) => setFj({ ...fj, [c.id]: { ...r, ...patch } });
+              const paths = p.pathsBySample[c.id] ?? [];
+              return (
+                <tr key={c.id}>
+                  <td>{c.fileName}</td>
+                  <td><select value={r.primary} onChange={(e) => set({ primary: e.target.value })} data-testid={`fj-primary-${c.fileName}`}><option value="">not a control</option>{p.channels.map((ch) => <option key={ch}>{ch}</option>)}</select></td>
+                  <td><select value={r.pos} onChange={(e) => set({ pos: e.target.value })} data-testid={`fj-pos-${c.fileName}`}><option value="">-</option>{paths.map((x) => <option key={x}>{x}</option>)}</select></td>
+                  <td><select value={r.neg} onChange={(e) => set({ neg: e.target.value })} data-testid={`fj-neg-${c.fileName}`}><option value="">{univ ? 'universal negative' : '-'}</option>{paths.map((x) => <option key={x}>{x}</option>)}</select></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <button data-testid="fj-run" onClick={async () => {
+          setFjErr(''); setFjRes(null);
+          try {
+            const [us, up] = univ ? [univ.slice(0, univ.indexOf('|')), univ.slice(univ.indexOf('|') + 1)] : ['', ''];
+            const entries = Object.entries(fj).filter(([, v]) => v.primary).map(([sampleId, v]) => ({ sampleId, primary: v.primary, posPath: v.pos || null, negSampleId: v.neg ? sampleId : us, negPath: v.neg || up || null }));
+            const r = await p.onFlowjoWizard(entries);
+            setFjRes(r);
+            if (r.matrix) add({ ...r.matrix, id: `m_${Date.now().toString(36)}`, name: `Wizard matrix (${r.matrix.channels.length} controls)` });
+          } catch (e) { setFjErr((e as Error).message); }
+        }}>Calculate</button>
+        {fjErr && <p className="error">{fjErr}</p>}
+        {fjRes && (
+          <div data-testid="fj-result">
+            <p>Status: <b data-testid="fj-status">{fjRes.status}</b></p>
+            {fjRes.badges.map((b, i) => <p key={i} className={b.level === 'error' ? 'error' : 'warn'} data-testid="fj-badge">{b.primary}: {b.text}</p>)}
+            {fjRes.ssm.channels.length > 0 && (
+              <>
+                <table className="grid" data-testid="fj-ssm">
+                  <thead><tr><th>SSM</th>{fjRes.ssm.channels.map((c) => <th key={c}>{c}</th>)}</tr></thead>
+                  <tbody>{fjRes.ssm.values.map((r, i) => <tr key={i}><th>{fjRes.ssm.channels[i]}</th>{r.map((v, j) => <td key={j}>{v.toFixed(3)}</td>)}</tr>)}</tbody>
+                </table>
+                <button data-testid="fj-ssm-save" onClick={() => saveText(`SSM_${m?.name ?? 'matrix'}.csv`, ssmCsv(fjRes.ssm), 'text/csv')}>Save SSM</button>
+              </>
+            )}
+          </div>
+        )}
+      </details>
       <details data-testid="wizard">
         <summary>Compensation wizard (from single-stain controls)</summary>
         <p className="muted">Assign each control tube its stained channel (or Unstained). Spillover = (median of the brightest {pct}% minus median of the negative) in each channel, divided by the same difference in the stained channel. Negative = unstained control if assigned, else the dimmest {pct}% of the same tube. Not compared with FlowJo's wizard.</p>
@@ -238,6 +329,8 @@ export function CompensationDialog(p: {
         <select value={selected} onChange={(e) => setSelected(e.target.value)} data-testid="matrix-select">
           {mats.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
         </select>
+        <button disabled={!m} data-testid="mtx-save" onClick={() => m && saveText(`${m.name}.mtx`, writeMtx(m), 'application/xml')}>Save as .mtx</button>
+        <button disabled={!m} data-testid="mtx-save-csv" onClick={() => m && saveText(`${m.name}.csv`, writeMatrixCsv(m), 'text/csv')}>Save as CSV</button>
         {m && <button onClick={() => { setMats(mats.filter((x) => x.id !== m.id)); setSelected(''); }}>Delete matrix</button>}
       </div>
       {m && (

@@ -197,8 +197,8 @@ statistics 39, platforms 29, transforms 19, export 15, compensation 9).
 | A9 | Statistics | Mode, Correlation, Freq. of (any ancestor). Mode = the first (lowest) channel with the highest count in the parameter's histogram, channel index times range / channels, then converted to a data value | Mode (256-channel rule), Freq. of (named ancestor), Correlation (NaN, as the 10.6.2 engine) (2026-11-06) | Match (specs 8) | `Statistic.MODE/CORRELATION/FREQOF`; Mode: REA Ghidra `GParameter::Mode` `ev_14466f77...`, `BasicHistogram::ChannelMode` `ev_c5cc3d11...`; histogram size for statistics assumed 4096 as for the median (specs 4); Correlation and Freq. of rules not read | high (Mode rule); medium (bin count) |
 | A10 | Statistics | No Min statistic (engine names a Max) | Min and Max kept as own statistics; not written to .wsp (no FlowJo key) (2026-11-06) | Own rule (documented) | `Statistic` constants; engine stat-name literals | medium |
 | A11 | Statistics | Comparison statistics (KS, Overton, chi-square, probability binning) | moved to Platforms (Compare Populations), A39 | Moved to A39 | `StatKey`, `KolmogorovSmirnoff`, `MultiDimCompare` | high |
-| A12 | FCS read | Versions 2.0, 3.0, 3.1; 3.2 tag recognized | 2.0, 3.0, 3.1; 3.2 refused with an explicit error | Differs | engine literal `FCS3.2`; extent of 3.2 support Unknown | medium |
-| A13 | FCS read | Packed (non-byte) and mixed bit widths, 3-byte variants | rejected with an explicit error | Missing | `FCSPackedDataReader`, `FCSMixedDataLengthRawDataReader`, `FCS3ByteDataReader` | high (names) |
+| A12 | FCS read | Versions 1.0, 2.0, 3.0, 3.1, 3.2 (3.2's $PnDATATYPE ignored) | the same (2026-11-06) | Match (specs 13.1) | REA Ghidra `FCSUtil::ReadFCSHeader`, `FCSUtil::ParameterKeyword` | high |
+| A13 | FCS read | Packed (non-byte) and mixed bit widths, 3-byte values, any $BYTEORD (non-standard orders reversed), $PnR power-of-two mask | the same (2026-11-06) | Match (specs 13.2); own rules for ASCII / histogram modes (refused) and missing $BYTEORD (13.3) | REA Ghidra `FCSUtil::CreateDataReader`, `FCSPackedDataReader`, `FCSCytek3ByteDataReader`, `FCSUtil::SetByteOrder` | high |
 | A14 | FCS read | `$NEXTDATA` data sets | one data set at a time | Match | `FCSUtil::ReadDataPage` | medium |
 | A15 | Export | FCS 3 events | FCS 3.1 float32; parameters all compensated / all uncompensated / chosen set (2026-11-06) | Match (format, parameters); own rule for FCS units (specs 9) | `FCS3Exporter`; `ExportParameters{ALL_UNCOMPENSATED,ALL_COMPENSATED,CUSTOM}` | high |
 | A16 | Export | CSV of scale values or channel values; header by stain, parameter or both | CSV scale values (%g) or channel values (1024); header by name, stain or both (2026-11-06) | Match (specs 9) | `ExportFileTypes{CSV_SCALE,CSV_CHANNEL}`, `HeaderParameter`; channel mapping not recovered (`GParameter::ScaleToChannel` dispatches through a virtual table Ghidra could not resolve, `ev_86470e58...`) | high (exists); mapping Unknown |
@@ -366,7 +366,7 @@ rows above: High = every row Match or a documented own rule.
 | Transforms (main types) | High | 2026-11-01 |
 | Naming, delete, relink, undo | High | 2026-11-05 |
 | **Groups** | **High** | 2026-11-06 (specs 7; obligations groups.*) |
-| FCS reading | Medium | |
+| **FCS reading** | **High** | 2026-11-06 (specs 13; obligation fcs.read) |
 | Compensation | Medium | |
 | Cell cycle, proliferation | Medium | |
 | **Gate tools** | **High** | 2026-11-06 (specs 10; obligations gates.*) |

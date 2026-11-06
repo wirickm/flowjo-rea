@@ -709,6 +709,30 @@
         { "fixture_id": "dp.wsp", "case_kind": "positive", "test_file": "tests/formula.test.ts", "test_name": "DerivedParameter nodes survive .wsp export and import" }
       ],
       "verifier": { "verifier_id": "derived.flowjo", "claim_id": "derived.dialog-wsp.v1", "test_file": "tests/formula.test.ts", "command": "npx vitest run tests/formula.test.ts" }
+    },
+    {
+      "obligation_id": "fcs.read",
+      "obligation_version": 1,
+      "title": "FCS versions, widths, packing and byte order are read as FlowJo 10's engine does",
+      "family": "fcs",
+      "target_location": "FCSUtil::ReadFCSHeader; FCSUtil::CreateDataReader; FCSPackedDataReader",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "fcs-header", "location": "FCS 3.2 accepted, $PnDATATYPE ignored" },
+        { "kind": "positive", "observation": "fcs-layout", "location": "packed, 24-bit and mixed widths" },
+        { "kind": "negative", "observation": "fcs-layout", "location": "unhandled widths and encrypted data refused" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/fcs.ts", "symbol": "parseFcs", "files": ["src/core/fcs.ts"] },
+      "fixtures": [
+        { "fixture_id": "fcs.v32", "case_kind": "positive", "test_file": "tests/fcs-flowjo.test.ts", "test_name": "accepts FCS 3.2" },
+        { "fixture_id": "fcs.packed", "case_kind": "positive", "test_file": "tests/fcs-flowjo.test.ts", "test_name": "packed 10-bit values" },
+        { "fixture_id": "fcs.24bit", "case_kind": "positive", "test_file": "tests/fcs-flowjo.test.ts", "test_name": "24-bit values" },
+        { "fixture_id": "fcs.mixed", "case_kind": "positive", "test_file": "tests/fcs-flowjo.test.ts", "test_name": "mixed 8 / 16 / 32-bit widths" },
+        { "fixture_id": "fcs.width", "case_kind": "negative", "test_file": "tests/fcs-flowjo.test.ts", "test_name": "unhandled widths are refused" },
+        { "fixture_id": "fcs.encrypt", "case_kind": "negative", "test_file": "tests/fcs-flowjo.test.ts", "test_name": "encrypted data is refused" }
+      ],
+      "verifier": { "verifier_id": "fcs.flowjo", "claim_id": "fcs.read.v1", "test_file": "tests/fcs-flowjo.test.ts", "command": "npx vitest run tests/fcs-flowjo.test.ts" }
     }
   ]
 }

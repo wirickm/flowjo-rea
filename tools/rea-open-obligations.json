@@ -70,41 +70,6 @@
       "comparison_status": "Missing (a browser app would need its own storage rule; own decision)."
     },
     {
-      "obligation_id": "fcs.packed-mixed-widths",
-      "obligation_version": 1,
-      "title": "FCS files with non-byte or mixed parameter bit widths are read",
-      "application_layer": "application",
-      "family": "file-format",
-      "target": {
-        "artifact_sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c",
-        "application_node_id": null,
-        "semantic_node_id": null,
-        "location": "FCSPackedDataReader, FCSMixedDataLengthRawDataReader (engine symbols)"
-      },
-      "required": true,
-      "required_case_kinds": [
-        "positive",
-        "negative",
-        "malformed"
-      ],
-      "required_original_authority": "static",
-      "required_fixture_authority": "integration",
-      "required_verifier_authority": "integration",
-      "requires_parser_type": false,
-      "dependency_obligation_ids": [],
-      "residual_unknown_ids": [],
-      "unavailable_authority": [
-        "runtime"
-      ],
-      "required_next_evidence": [
-        "Decide match or own rule (Missing: rejected with an explicit error.); then an owner in src/, fixtures for each case kind and a verifier test, and move the entry to tools/rea-obligations.json with an observation in tools/rea-originals.json."
-      ],
-      "disposition": "active",
-      "review_evidence_ids": [],
-      "spec_section": "6.8",
-      "comparison_status": "Missing: rejected with an explicit error."
-    },
-    {
       "obligation_id": "compensation.mtx-files",
       "obligation_version": 1,
       "title": "Compensation matrices load from and save to FlowJo .mtx (Gating-ML based) files",

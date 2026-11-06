@@ -71,7 +71,16 @@
       { "address": "0x4d1050", "symbol": "Parser::ConvertErrorToString" },
       { "address": "0x2a050", "symbol": "DerivedType::FromXML" },
       { "address": "0x3b5a20", "symbol": "AlgebraicParameterSpec::FromXML" },
-      { "address": "0x172130", "symbol": "Sample::CreateAlgebraicDerivedParameter" }
+      { "address": "0x172130", "symbol": "Sample::CreateAlgebraicDerivedParameter" },
+      { "address": "0x4cc50", "symbol": "FCSUtil::ReadFCSHeader" },
+      { "address": "0x51190", "symbol": "FCSUtil::HandleStdKey" },
+      { "address": "0x51800", "symbol": "FCSUtil::ParameterKeyword" },
+      { "address": "0x50060", "symbol": "FCSUtil::InitReadingFields" },
+      { "address": "0x4d6d0", "symbol": "FCSUtil::CreateDataReader" },
+      { "address": "0x58ef10", "symbol": "FCSPackedDataReader::ReadData" },
+      { "address": "0x592ef0", "symbol": "FCSCytek3ByteDataReader::GetValue" },
+      { "address": "0x51d10", "symbol": "FCSUtil::SetByteOrder" },
+      { "address": "0x58cd90", "symbol": "FCSDataReader::FCSDataReader" }
     ]
   },
   "jar": {
@@ -115,6 +124,8 @@
     "dp-names-eval": ["0x172300",  "0x178440",  "0x178770",  "0x4f2d80",  "0x4d0320"],
     "dp-parser": ["0x4cefa0",  "0x4ce630",  "0x4cea90",  "0x4cf2d0",  "0x4cc4f0",  "0x4d1050"],
     "dp-spec": ["0x2a050",  "0x3b5a20",  "0x172130"],
-    "dp-dialog-wsp": ["jar"]
+    "dp-dialog-wsp": ["jar"],
+    "fcs-header": ["0x4cc50",  "0x51190",  "0x51800"],
+    "fcs-layout": ["0x50060",  "0x4d6d0",  "0x58ef10",  "0x592ef0",  "0x51d10",  "0x58cd90"]
   }
 }

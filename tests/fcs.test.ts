@@ -100,7 +100,12 @@ describe('synthetic FCS files', () => {
   it('rejects missing required keywords', () => expect(code(() => parseFcs(makeFcs('/$BYTEORD/1,2,3,4/$DATATYPE/F/$PAR/1/$TOT/1/', f32([1]))))).toBe('FCS_MISSING_KEYWORD'));
   it('rejects histogram mode', () => expect(code(() => parseFcs(makeFcs(kw('$MODE/H/').replace('$MODE/L/', ''), f32([1, 2, 3, 4]))))).toBe('FCS_UNSUPPORTED'));
   it('rejects ASCII datatype', () => expect(code(() => parseFcs(makeFcs(kw().replace('$DATATYPE/F', '$DATATYPE/A'), f32([1, 2, 3, 4]))))).toBe('FCS_UNSUPPORTED'));
-  it('rejects mixed byte order', () => expect(code(() => parseFcs(makeFcs(kw().replace('1,2,3,4', '3,4,1,2'), f32([1, 2, 3, 4]))))).toBe('FCS_UNSUPPORTED'));
+  // FlowJo 10.6.2 (FCSUtil::SetByteOrder, specs 13.2): any order other than
+  // 1,2,3,4 / 1,2 is read as a full byte reversal, with a warning here.
+  it('reads mixed byte order as a full reversal, as FlowJo does', () => {
+    const f = parseFcs(makeFcs(kw().replace('1,2,3,4', '3,4,1,2'), f32([1, 2, 3, 4])));
+    expect(f.warnings.join(' ')).toMatch(/full byte reversal/);
+  });
   it('falls back to Latin-1 for non-UTF-8 TEXT with a warning', () => {
     const t = new TextEncoder().encode(kw('$CYT/X/'));
     const raw = makeFcs(kw('$CYT/X/'), f32([1, 2, 3, 4]));

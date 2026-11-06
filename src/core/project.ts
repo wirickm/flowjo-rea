@@ -453,24 +453,32 @@ export function copyPopulations(pops: Population[], ids: string[]): Population[]
   const keep = subtreeIds(pops, roots);
   return structuredClone(pops.filter((p) => keep.has(p.id)));
 }
-// Paste: the copied populations under each target (null = the sample root),
-// coordinates and parameter names unchanged, group ownership cleared. A name
-// already used under the target gets a unique name (this app's rule).
+// Paste (SampleTreeTable.addDroppedNode, PopNode.preAdd): the copied
+// populations under each target (null = the sample root), coordinates and
+// parameter names unchanged, group ownership cleared. A target that already
+// has a child of the same name is skipped, as is a sample that lacks one of
+// the gate parameters (FlowJo shows a notice). Returns the notices.
 export function pastePopulations(s: SampleState, clip: Population[], targets: (string | null)[]): string[] {
   const inClip = new Set(clip.map((p) => p.id));
   const roots = clip.filter((p) => !p.parentId || !inClip.has(p.parentId));
-  const added: string[] = [];
+  const notes: string[] = [];
+  const params = clip.flatMap((p) => (p.gate.type === 'boolean' ? [] : p.gate.dims.flatMap((d) => (d.kind === 'channel' ? [d.channel] : [d.num, d.den]))));
+  const missing = [...new Set(params)].filter((c) => s.channelNames.length && !s.channelNames.includes(c));
+  if (missing.length) return [`${s.fileName}: the copied gates use parameters this sample lacks (${missing.join(', ')}); not pasted`];
   for (const target of targets) {
+    const taken = new Set(s.populations.filter((q) => q.parentId === target).map((q) => q.name));
+    const clash = roots.find((r) => taken.has(r.name));
+    if (clash) {
+      notes.push(`"${clash.name}" already exists there; not pasted`);
+      continue;
+    }
     const idMap = new Map(clip.map((p) => [p.id, newId('pop')]));
     for (const p of clip) {
-      const parentId = roots.includes(p) ? target : idMap.get(p.parentId!)!;
-      const taken = s.populations.filter((q) => q.parentId === parentId).map((q) => q.name);
       const gate = structuredClone(p.gate);
       if (gate.type === 'boolean') gate.operands = gate.operands.map((o) => ({ ...o, ref: idMap.get(o.ref) ?? o.ref }));
       const { owningGroup: _owner, ...rest } = p;
-      s.populations.push({ ...rest, id: idMap.get(p.id)!, parentId, name: uniqueName(p.name, taken), gate });
-      added.push(idMap.get(p.id)!);
+      s.populations.push({ ...rest, id: idMap.get(p.id)!, parentId: roots.includes(p) ? target : idMap.get(p.parentId!)!, gate });
     }
   }
-  return added;
+  return notes;
 }

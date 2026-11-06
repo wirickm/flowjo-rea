@@ -4,10 +4,11 @@
 // QuadGate, FGate::MoveMagneticGate, GHistogram2D contour code) and headless
 // Ghidra / javap (CurlyQuadGate, FigPoly, Gate.convert, LayerAutoGate);
 // implemented independently. This module is the one owner of these rules.
-import { axesFromGate, gateFromAxes, outline } from './ellipse';
-import { defaultGrid, insideOrOnPolygon } from './gateGrid';
+import { axesFromGate, gateFromAxes } from './ellipse';
+import { defaultGrid, ellipseLatticePolygon, insideOrOnPolygon } from './gateGrid';
 import type { Dimension, Gate } from './model';
 import { makeTransform } from './transforms';
+import { channelOf, valueOf, type ChannelScale } from './flowjoStats';
 
 type Pt = [number, number];
 const jround = (v: number) => Math.floor(v + 0.5); // Java Math.round
@@ -127,10 +128,6 @@ export function boundsSnapped(pts: Pt[]): { min: Pt; max: Pt } {
   const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
   return { min: [Math.floor(Math.min(...xs)), Math.floor(Math.min(...ys))], max: [Math.ceil(Math.max(...xs)), Math.ceil(Math.max(...ys))] };
 }
-export const ellipseToPolygon = (outline: Pt[]): Pt[] => {
-  const dedup = outline.filter((p, i) => i === 0 || p[0] !== outline[i - 1][0] || p[1] !== outline[i - 1][1]);
-  return reducePoints(dedup, 20);
-};
 
 // ---------------------------------------------------------------------------
 // Spider quad (native QuadGate kind 11, gating:PolyQuad; curly quads too).
@@ -441,27 +438,198 @@ export function convertGate(g: Gate, to: ConvertTo): Gate | null {
     const { min, max } = boundsSnapped(raw);
     return { min: [tf[0].apply(min[0]), tf[1].apply(min[1])], max: [tf[0].apply(max[0]), tf[1].apply(max[1])] };
   };
-  // The polygon outline of the source gate, in gate units.
-  const outlinePts = (): Pt[] => {
-    if (g.type === 'polygon') return g.vertices;
-    if (g.type === 'rect') return rectToPolygon(g.min[0]!, g.min[1]!, g.max[0]!, g.max[1]!);
-    return outline(axesFromGate(g.mean, g.cov, g.distanceSquare), 180);
+  // FlowJo draws ellipses on a 256-pixel frame spanning each axis's display
+  // range; frame pixels and gate units map linearly per axis.
+  const span = tf.map((t) => [t.displayMin, t.displayMax] as [number, number]);
+  if (span.some(([lo, hi]) => !(hi > lo))) return null;
+  const F = CURLY_FRAME;
+  const toPx = (v: number, k: number) => ((v - span[k][0]) / (span[k][1] - span[k][0])) * F;
+  const fromPx = (v: number, k: number) => span[k][0] + (v / F) * (span[k][1] - span[k][0]);
+  // Ellipse to polygon (PolyGate(EllipseGate)): the 180-vertex outline in
+  // whole frame pixels, repeated points skipped, then reducePoints(20).
+  const ellipseOutline = (): Pt[] => {
+    if (g.type !== 'ellipsoid') return [];
+    const sxk = F / (span[0][1] - span[0][0]), syk = F / (span[1][1] - span[1][0]);
+    const cov = [[g.cov[0][0] * sxk * sxk, g.cov[0][1] * sxk * syk], [g.cov[1][0] * sxk * syk, g.cov[1][1] * syk * syk]];
+    const e = axesFromGate([toPx(g.mean[0], 0), toPx(g.mean[1], 1)], cov, g.distanceSquare);
+    const c = Math.cos(e.theta), sn = Math.sin(e.theta);
+    const edges: Pt[] = [[e.cx + e.a * c, e.cy + e.a * sn], [e.cx - e.a * c, e.cy - e.a * sn], [e.cx - e.b * sn, e.cy + e.b * c], [e.cx + e.b * sn, e.cy - e.b * c]];
+    const { vx, vy } = ellipseLatticePolygon(edges);
+    return reducePoints(vx.map((x, i): Pt => [fromPx(x, 0), fromPx(vy[i], 1)]), 20);
   };
-  if (to === 'polygon') {
-    const vertices = g.type === 'rect' ? outlinePts() : ellipseToPolygon(outlinePts());
-    return { type: 'polygon', dims, vertices, grid: defaultGrid(dims) };
-  }
+  const outlinePts = (): Pt[] => (g.type === 'polygon' ? g.vertices : g.type === 'rect' ? rectToPolygon(g.min[0]!, g.min[1]!, g.max[0]!, g.max[1]!) : ellipseOutline());
+  if (to === 'polygon') return { type: 'polygon', dims, vertices: outlinePts(), grid: defaultGrid(dims) };
   // Polygon and ellipse go to a rectangle first (polygon to ellipse is
   // polygon to rectangle to ellipse).
   const box = g.type === 'rect' ? { min: [g.min[0]!, g.min[1]!], max: [g.max[0]!, g.max[1]!] } : snapBox(outlinePts());
   if (to === 'rect') return { type: 'rect', dims, min: box.min, max: box.max };
-  // Rectangle to ellipse (EllipseGate.updateFromRect): foci at the midpoints
-  // of the sides across the longer extent, sum of focal distances = width +
-  // height, centred on the rectangle.
-  const w = box.max[0] - box.min[0], h = box.max[1] - box.min[1];
-  const a = (w + h) / 2, c = Math.max(w, h) / 2;
-  const b = Math.sqrt(Math.max(0, a * a - c * c));
-  if (!(a > 0 && b > 0)) return null;
-  const axes = { cx: (box.min[0] + box.max[0]) / 2, cy: (box.min[1] + box.max[1]) / 2, a, b, theta: w >= h ? 0 : Math.PI / 2 };
+  // Rectangle to ellipse (EllipseGate.updateFromRect): the corners become the
+  // edge points, so both axes are the diagonals: a circle in frame pixels
+  // through the four corners, centred on the rectangle.
+  const px = [toPx(box.min[0], 0), toPx(box.max[0], 0)], py = [toPx(box.min[1], 1), toPx(box.max[1], 1)];
+  const R = Math.hypot(px[1] - px[0], py[1] - py[0]) / 2;
+  if (!(R > 0)) return null;
+  const rx = fromPx(R, 0) - fromPx(0, 0), ry = fromPx(R, 1) - fromPx(0, 1);
+  const axes = { cx: (box.min[0] + box.max[0]) / 2, cy: (box.min[1] + box.max[1]) / 2, a: Math.max(rx, ry), b: Math.min(rx, ry), theta: rx >= ry ? 0 : Math.PI / 2 };
   return { type: 'ellipsoid', dims, ...gateFromAxes(axes), grid: defaultGrid(dims) };
+}
+
+// ---------------------------------------------------------------------------
+// BifurGate (ws.autoquad: WSAutoQuadAction, RangeGateCreator.createQuadGates,
+// PeakFinder, native BasicHistogram::Smooth). For each fluorescent parameter
+// the parent's smoothed 4096-channel histogram is searched for peaks, reduced
+// to the two largest, and split at the lowest channel between them.
+export const BIFUR_BINS = 4096;
+const roundHalfEven = (v: number) => {
+  const f = Math.floor(v), d = v - f;
+  return d > 0.5 ? f + 1 : d < 0.5 ? f : f % 2 === 0 ? f : f + 1;
+};
+// 1-D smoothing (Smoothing::SmoothHistogram): each bin of count n spreads
+// n w[|j|] over j = -s..s, s = ceil(13 n^-1/4), w[j] = exp(-0.5 j^2
+// (2.4/13)^2 sqrt(n)) summing to 1. Mass past the left edge is mirrored
+// back (padding bin k onto bin k); past the right edge the first two padding
+// bins are lost and padding bin o (o >= 2) lands on bin len + 1 - o. Values
+// are returned rounded to whole counts ("%9.0f").
+export function smoothHistogram1D(counts: Float64Array): Float64Array {
+  const L = counts.length, M = SMOOTH_MARGIN;
+  const buf = new Float64Array(L + 2 * M);
+  for (let i = 0; i < L; i++) {
+    const n = counts[i];
+    if (!(n > 0)) continue;
+    const key = Math.trunc(n);
+    const s = Math.ceil(Math.fround(SMOOTH_MARGIN * Math.fround(key ** -0.25)));
+    const w = Array.from({ length: s + 1 }, (_, j) => Math.exp(-0.5 * j * j * SMOOTH_SPREAD * SMOOTH_SPREAD * Math.sqrt(key)));
+    let sum = w[0];
+    for (let j = 1; j <= s; j++) sum += 2 * w[j];
+    for (let j = -s; j <= s; j++) buf[M + i + j] += (n * w[Math.abs(j)]) / sum;
+  }
+  const out = buf.slice(M, M + L);
+  for (let k = 0; k < M; k++) out[k] += buf[M - 1 - k];
+  for (let o = 2; o < M; o++) out[L + 1 - o] += buf[M + L + o];
+  return out.map(roundHalfEven);
+}
+
+export interface HistPeak { count: number; position: number; height: number }
+// PeakFinder.findPeaks(0) on integer counts y (length n).
+export function findPeaks(y0: Float64Array, maxPeaks = 100): HistPeak[] {
+  const n = y0.length;
+  const y = Float64Array.from(y0);
+  let N = 0;
+  for (let i = 0; i < n; i++) N += Math.trunc(y[i]);
+  let sumHeights = 0, nCounted = 1, removed = 0, done = false, peakPos = 0;
+  const peaks: HistPeak[] = [];
+  const slopeAt = (a: number, b: number) => {
+    if (b <= a) return 0;
+    let sx = 0, sy = 0, sxx = 0, sxy = 0;
+    const m = b - a + 1;
+    for (let j = a; j <= b; j++) { sx += j; sy += y[j]; sxx += j * j; sxy += j * y[j]; }
+    const den = m * sxx - sx * sx;
+    return den === 0 ? 0 : (m * sxy - sx * sy) / den;
+  };
+  try {
+    while (!done && peaks.length < maxPeaks) {
+      let peakVal = 0;
+      for (let i = 0; i < n; i++) if (y[i] > peakVal) { peakVal = y[i]; peakPos = i; }
+      if (peakVal === 0) break;
+      const half = peakVal / 2;
+      const edge = [peakPos, peakPos], outer = [peakPos, peakPos];
+      for (const side of [0, 1]) {
+        const step = side === 0 ? -1 : 1;
+        let h = 0, stop = false, set = false, i = peakPos;
+        while (i >= 0 && i < n && !stop) {
+          let w = Math.trunc(Math.min(n / 8, Math.max(n / 32, h)));
+          w = Math.min(w, 2 * Math.abs(i - peakPos));
+          const a = Math.max(0, i - Math.trunc(w / 2)), b = Math.min(n - 1, i + Math.trunc(w / 2));
+          const slope = slopeAt(a, b);
+          const rising = side === 0 ? slope < 0 : slope > 0;
+          const dist = Math.abs(i - peakPos);
+          if (h > 0 && !set) {
+            const thr = (Math.abs(peakVal - y[i]) / half) * h;
+            if (y[i] === 0) { edge[side] = i; set = true; stop = true; }
+            else if (dist > 1.5 * thr) { edge[side] = i; set = true; }
+            else if (dist > thr && rising) { edge[side] = i; set = true; stop = true; }
+          } else if (h > 0) {
+            if (y[i] === 0 || rising) stop = true;
+          } else if (y[i] < half) {
+            const prev = i > 0 ? y[i - 1] : 0;
+            const hh = dist - (half - y[i]) / (prev - half);
+            h = hh > 0 && Number.isFinite(hh) ? hh : 0;
+          }
+          i += step;
+        }
+        outer[side] = Math.min(n - 1, Math.max(0, i));
+        if (!set) edge[side] = outer[side] = side === 0 ? 0 : n - 1;
+      }
+      let count = 0;
+      for (let j = edge[0]; j < edge[1]; j++) count += Math.trunc(y[j]);
+      const halfCount = Math.floor(count / 2);
+      let acc = 0, j = edge[0];
+      while (j <= edge[1] && acc < halfCount) { acc += y[j]; j++; }
+      const position = j === 0 ? 0 : j - (acc - halfCount) / y[j - 1];
+      for (let k = outer[0]; k <= outer[1]; k++) { removed += y[k]; y[k] = 0; }
+      const minCount = Math.min(100, N / 100);
+      const heightThr = sumHeights / nCounted / 10;
+      if (count < minCount || peakVal < heightThr) {
+        done = removed / N > 0.95;
+        continue;
+      }
+      peaks.push({ count, position, height: peakVal });
+      if (position > 2 && position <= n - 2) { sumHeights += peakVal; nCounted++; }
+    }
+  } catch {
+    // FlowJo ends the search silently, keeping the peaks found so far.
+  }
+  return peaks.map((p, k) => ({ p, k })).sort((a, b) => a.p.position - b.p.position || a.k - b.k).map((x) => x.p);
+}
+// The two largest peaks (makeBimodal) and the first lowest channel between
+// their positions (both inclusive); -1 when fewer than two peaks ("Unimodal").
+export function bifurValley(y: Float64Array): number {
+  const peaks = findPeaks(y);
+  while (peaks.length > 2) {
+    let k = 0;
+    for (let i = 1; i < peaks.length; i++) if (peaks[i].count < peaks[k].count) k = i;
+    peaks.splice(k, 1);
+  }
+  if (peaks.length < 2) return -1;
+  let best = 1e11, at = -1;
+  for (let i = Math.trunc(peaks[0].position); i <= Math.trunc(peaks[1].position); i++) if (y[i] < best) { best = y[i]; at = i; }
+  return at;
+}
+
+// ---------------------------------------------------------------------------
+// Percent gates (ManualGateDP, Transform.percentileToScale,
+// SmoothedFunction.channelPercentile). p is the stored percent: 100 or more
+// gives the top channel, 0 or less channel 0, 1 or more is divided by 100 and
+// a value in (0, 1) is read as a fraction (as FlowJo does). Buckets are summed
+// in order, the running total cut to a whole number, until it reaches p x
+// count; the result is that bucket (0 for the first, max - 1 at the top).
+export function channelPercentile(y: Float64Array, p: number): number {
+  const n = y.length;
+  let count = 0;
+  for (let i = 0; i < n; i++) count += y[i];
+  if (count === 0 || p <= 0) return 0;
+  if (p >= 100) return n;
+  const f = p >= 1 ? p / 100 : p;
+  const target = f * count;
+  let total = 0, c = 0, last = 0;
+  for (let i = 0; i < n; i++) {
+    total = Math.trunc(total + y[i]);
+    c = i;
+    if (total >= target) break;
+    if (y[i] > 0) last = i;
+  }
+  if (c === 0) return 0;
+  if (c >= n - 1) return n - 1;
+  const prev = y[c - 1];
+  return prev === 0 ? c : c - ((total - target) / prev) * (c - 1 - last);
+}
+// Scale value of a percent bound from the parent's values on one dimension:
+// x axes use a 4096-bucket histogram, y axes of a rectangle 256 buckets
+// (RectGate quirk); the channel is scaled to 4096 and converted to scale.
+export function percentBound(values: Float64Array, scale: ChannelScale, p: number, buckets: number): number {
+  const counts = new Float64Array(buckets);
+  const k = BIFUR_BINS / buckets;
+  for (let i = 0; i < values.length; i++) if (!Number.isNaN(values[i])) counts[Math.trunc(channelOf(scale, values[i]) / k)]++;
+  const ch = channelPercentile(smoothHistogram1D(counts), p) * Math.trunc(BIFUR_BINS / buckets);
+  return valueOf(scale, Math.min(BIFUR_BINS - 1, ch));
 }

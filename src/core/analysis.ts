@@ -3,10 +3,11 @@
 import { compensate, invert, isSpectral, spilloverFromFcs, unmix, type SpilloverMatrix } from './compensation';
 import { AppError, fail } from './errors';
 import type { FcsFile } from './fcs';
-import type { DerivedParameter, Dimension, Gate, Population, SampleState, Workspace } from './model';
+import { populationPath, type AnchorBound, type DerivedParameter, type Dimension, type Gate, type Population, type SampleState, type Workspace } from './model';
 import { axesFromGate } from './ellipse';
 import { defaultGrid, ellipseLatticePolygon, eventCell, gridCoord, latticeMask, polygonGridMask, vertexCoord } from './gateGrid';
-import { curlyQuadPolygon, magneticOffset1D, magneticOffset2D, MAGNETIC_BINS, spiderLabelGrid } from './gateTools';
+import { BIFUR_BINS, curlyQuadPolygon, magneticOffset1D, magneticOffset2D, MAGNETIC_BINS, percentBound, spiderLabelGrid } from './gateTools';
+import { computeStat, gather } from './stats';
 import { splineDividers } from './spline';
 import { makeTransform } from './transforms';
 
@@ -147,8 +148,14 @@ export class SampleEngine {
       let error: string | undefined;
       let moved: Gate | undefined;
       try {
-        const gate = p.magnetic ? this.magneticGate(p.gate, parentMask) : p.gate;
-        if (gate !== p.gate) moved = gate;
+        const g0 = p.gate.type === 'anchored' ? this.anchoredGate(p.gate, (path) => {
+          const q = pops.find((x) => populationPath(pops, x.id) === path);
+          if (!q) fail('GATE_INVALID', `Anchored gate statistic population "${path}" not found`);
+          return { mask: evalPop(q), result: this.results.get(q.id)!, parentResult: q.parentId ? this.results.get(q.parentId) : undefined };
+        }) : p.gate;
+        const g1 = g0.type === 'rect' && g0.percent ? this.percentGate(g0, parentMask) : g0;
+        const gate = p.magnetic ? this.magneticGate(g1, parentMask) : g1;
+        if (gate !== p.gate) moved = gate; // magnetic: moved; anchored: resolved bounds
         mask = this.gateMask(gate, (ref) => {
           const r = byId.get(ref);
           if (!r) fail('GATE_INVALID', `Boolean gate references missing population ${ref}`);
@@ -174,6 +181,43 @@ export class SampleEngine {
     };
     for (const p of pops) evalPop(p);
     return this;
+  }
+
+  // FlowJo anchored range (TetheredRangeGate, specs 10.6): each bound is the
+  // statistic of its population on this sample times the multiplier, as a
+  // plain range (lower bound inclusive, upper exclusive, as rectangles).
+  anchoredGate(g: Extract<Gate, { type: 'anchored' }>, pop: (path: string) => { mask: Uint8Array; result: PopulationResult; parentResult?: PopulationResult }): Gate {
+    const total = this.root.length;
+    const t = makeTransform(g.dims[0].transform);
+    const bound = (b: AnchorBound | null): number | null => {
+      if (!b) return null;
+      const r = b.populationPath === '' ? null : pop(b.populationPath);
+      const mask = r ? r.mask : this.root;
+      let values: Float64Array | null = null;
+      if (b.channel) {
+        const col = this.column(b.channel);
+        const v: number[] = [];
+        for (let i = 0; i < mask.length; i++) if (mask[i]) v.push(col[i]);
+        values = Float64Array.from(v);
+      }
+      const count = r ? r.result.count : total, parent = r ? r.result.parentCount : total;
+      const stat = computeStat(b.stat, values, { count, parent, grandparent: r?.parentResult?.parentCount ?? total, total }, b.percentile, b.scale);
+      if (typeof stat !== 'number' || !Number.isFinite(stat)) fail('GATE_INVALID', `Anchored gate statistic ${b.stat} is not a number on this sample`);
+      return t.apply(stat * b.multiplier);
+    };
+    return { type: 'rect', dims: g.dims, min: [bound(g.min)], max: [bound(g.max)] };
+  }
+
+  // FlowJo percent gate (evaluatePercentGate, specs 10.6): percent bounds
+  // become scale bounds from the parent's smoothed histogram on this sample.
+  percentGate(g: Extract<Gate, { type: 'rect' }>, parentMask: Uint8Array): Gate {
+    const pc = g.percent!;
+    const bound = (k: number, p: number | null, fixed: number | null) => {
+      if (p === null) return fixed;
+      const v = gather(this.column((g.dims[k] as Extract<Dimension, { kind: 'channel' }>).channel, g.dims[k].compensation), parentMask);
+      return makeTransform(g.dims[k].transform).apply(percentBound(v, pc.scales[k], p, k === 1 ? 256 : BIFUR_BINS));
+    };
+    return { type: 'rect', dims: g.dims, min: g.dims.map((_, k) => bound(k, pc.min[k] ?? null, g.min[k])), max: g.dims.map((_, k) => bound(k, pc.max[k] ?? null, g.max[k])) };
   }
 
   // FlowJo magnetic gate (FGate::MoveMagneticGate, specs 10.4): the gate as
@@ -372,6 +416,9 @@ export class SampleEngine {
         }
         return out;
       }
+      case 'anchored':
+        // Bounds depend on statistics of other populations: resolved in run().
+        return this.gateMask(this.anchoredGate(g, () => fail('GATE_INVALID', 'Anchored gate needs its statistic population')), ref);
       case 'boolean': {
         const ms = g.operands.map((o) => {
           const m = ref(o.ref);

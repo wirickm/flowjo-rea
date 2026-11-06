@@ -27,7 +27,11 @@ export interface GateGrid {
 
 export type Gate =
   // Each bound may be null (open). Membership: min <= x < max (Gating-ML 2.0).
-  | { type: 'rect'; dims: Dimension[]; min: (number | null)[]; max: (number | null)[] }
+  // percent: FlowJo percent gate (manual entry in Percentile units, specs
+  // 10.6): bounds recomputed on each sample from the parent's smoothed
+  // histogram; min/max hold the percentiles (null = not a percent bound) and
+  // scales the FlowJo channel scale of each dimension.
+  | { type: 'rect'; dims: Dimension[]; min: (number | null)[]; max: (number | null)[]; percent?: { min: (number | null)[]; max: (number | null)[]; scales: import('./flowjoStats').ChannelScale[] } }
   // grid: evaluate on FlowJo 10's gate grid (src/core/gateGrid.ts); absent =
   // exact point-in-polygon (Gating-ML semantics).
   | { type: 'polygon'; dims: [Dimension, Dimension]; vertices: [number, number][]; grid?: GateGrid }
@@ -55,7 +59,22 @@ export type Gate =
   // point belongs to the first polygon containing it; points in none count as
   // slot 0, as in FlowJo.
   | { type: 'spider'; dims: [Dimension, Dimension]; polygons: [number, number][][]; slot: number; grid?: GateGrid }
+  // FlowJo anchored range (TetheredRangeGate, specs 10.6): a 1-D range whose
+  // bounds are a live statistic times a multiplier; a missing bound is open.
+  | { type: 'anchored'; dims: [Dimension]; min: AnchorBound | null; max: AnchorBound | null }
   | { type: 'boolean'; op: 'and' | 'or' | 'not'; operands: { ref: string; complement?: boolean }[] };
+
+// A statistic of a population of the same sample (populationPath '' = all
+// events) times a multiplier, in scale (data) units. scale: the FlowJo channel
+// scale the statistic is computed on (snapshotted when the gate is made).
+export interface AnchorBound {
+  populationPath: string;
+  stat: StatKind;
+  channel?: string;
+  percentile?: number;
+  multiplier: number;
+  scale?: import('./flowjoStats').ChannelScale;
+}
 
 export interface Population {
   id: string;

@@ -11,7 +11,8 @@ import { writeFcs } from './fcsWriter';
 import type { DerivedParameter, Dimension, Population, StatColumn } from './model';
 import { populationPath } from './model';
 import { fingerprint } from './project';
-import type { ChannelScale } from './flowjoStats';
+import { channelOf, valueOf, type ChannelScale } from './flowjoStats';
+import { BIFUR_BINS, bifurValley, smoothHistogram1D } from './gateTools';
 import { computeStat, gather, validPercentile } from './stats';
 import { makeTransform, type TransformSpec } from './transforms';
 import { fitCellCycle, type CellCycleFit } from './cellcycle';
@@ -404,6 +405,25 @@ export class AnalysisService {
   }
 
   // Display-space values of one event dimension, for tests and tooling.
+  // BifurGate (ws.autoquad, specs 10.8): for each channel, the split (data
+  // units) at the valley of the smoothed 4096-channel histogram of the
+  // selected population's parent (all events for a top-level population or
+  // the root), or null when the histogram is unimodal.
+  bifurcate(r: AnalyzeRequest & { popId: string | null; channels: string[]; scales: Record<string, ChannelScale> }): { channel: string; split: number | null }[] {
+    const eng = this.engine(r);
+    const pop = r.popId ? r.populations.find((p) => p.id === r.popId) : null;
+    const mask = pop?.parentId ? eng.masks.get(pop.parentId)! : eng.root;
+    return r.channels.map((channel) => {
+      const s = r.scales[channel];
+      if (!s) return { channel, split: null };
+      const v = gather(eng.column(channel), mask);
+      const counts = new Float64Array(BIFUR_BINS);
+      for (let i = 0; i < v.length; i++) if (!Number.isNaN(v[i])) counts[channelOf(s, v[i])]++;
+      const valley = bifurValley(smoothHistogram1D(counts));
+      return { channel, split: valley < 0 ? null : valueOf(s, valley) };
+    });
+  }
+
   dimensionValues(r: AnalyzeRequest, d: Dimension): Float64Array {
     return this.engine(r).dimension(d);
   }

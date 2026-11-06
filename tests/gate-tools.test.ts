@@ -5,11 +5,14 @@ import { describe, expect, it } from 'vitest';
 import {
   autoGateContours, boundsSnapped, contourPolygons, contourThresholds, curlyQuadFramePolygons, freehandCommit, freehandPath,
   magneticOffset1D, magneticOffset2D, nearestContour, rectToPolygon, reduceFig, reducePoints, smoothHistogram, smoothingKernel,
-  spiderLabelGrid,
+  spiderLabelGrid, quadNames, firstQuadNumber, gateLabel, bisectorNames, convertGate, spiderPolygons, BIFUR_BINS, bifurValley, findPeaks, smoothHistogram1D, channelPercentile,
 } from '../src/core/gateTools';
+import { copyPopulations, pastePopulations } from '../src/core/project';
+import { parseWsp } from '../src/core/wsp';
+import { writeWsp } from '../src/core/wspWriter';
 import { AnalysisService } from '../src/core/service';
 import { writeFcs } from '../src/core/fcsWriter';
-import type { Dimension, Population } from '../src/core/model';
+import { emptyWorkspace, type Dimension, type Gate, type Population, type SampleState } from '../src/core/model';
 
 type Pt = [number, number];
 
@@ -161,5 +164,167 @@ describe('analysis: curly quad and spider gates (PolyQuad label grid)', () => {
     const counts = results.map((x) => x.count);
     expect(counts.reduce((a, b) => a + b, 0)).toBe(n);
     expect(counts.every((c) => c > 0)).toBe(true);
+  });
+});
+
+describe('names (quad, bisector)', () => {
+  it('quads: "Q<n>: <x>+/- , <y>+/-" with UL = Q b, UR = Q b+1, LR = Q b+2, LL = Q b+3; b skips used numbers', () => {
+    expect(quadNames(1, 'CD3', 'CD4')).toEqual(['Q1: CD3- , CD4+', 'Q2: CD3+ , CD4+', 'Q4: CD3- , CD4-', 'Q3: CD3+ , CD4-']);
+    expect(firstQuadNumber([])).toBe(1);
+    expect(firstQuadNumber(['Q1: a', 'Q4: b'])).toBe(5);
+    expect(firstQuadNumber(['Q10 x'])).toBe(2); // "Q10" also counts as "Q1"
+  });
+  it('labels use the stain when present; bisector "<label>-" / "<label>+", clash -> "<param>::<label>+"', () => {
+    expect(gateLabel('FL1-A', 'CD3')).toBe('CD3');
+    expect(gateLabel('FL1-A', ' ')).toBe('FL1-A');
+    expect(bisectorNames('CD3', 'FL1-A', [])).toEqual(['CD3-', 'CD3+']);
+    expect(bisectorNames('CD3', 'FL1-A', ['CD3+'])).toEqual(['CD3-', 'FL1-A::CD3+']);
+  });
+});
+
+describe('convert (Gate.convert)', () => {
+  const lin = { kind: 'linear' as const, T: 1000, A: 0 };
+  const dims: [Dimension, Dimension] = [{ kind: 'channel', channel: 'X', transform: lin }, { kind: 'channel', channel: 'Y', transform: lin }];
+  it('polygon to rect snaps the bounding box outward to whole data units', () => {
+    const r = convertGate({ type: 'polygon', dims, vertices: [[0.1004, 0.2], [0.3, 0.4006], [0.2, 0.1]] }, 'rect') as Extract<Gate, { type: 'rect' }>;
+    expect(r.min.map((v) => Math.round(v! * 1000))).toEqual([100, 100]);
+    expect(r.max.map((v) => Math.round(v! * 1000))).toEqual([300, 401]);
+  });
+  it('rect to ellipse: a circle in frame pixels through the four corners', () => {
+    const e = convertGate({ type: 'rect', dims, min: [0.25, 0.25], max: [0.75, 0.75] }, 'ellipse') as Extract<Gate, { type: 'ellipsoid' }>;
+    const d2 = (x: number, y: number) => {
+      const [[a, b], [, c]] = e.cov; const det = a * c - b * b; const dx = x - e.mean[0], dy = y - e.mean[1];
+      return (c * dx * dx - 2 * b * dx * dy + a * dy * dy) / det;
+    };
+    expect(d2(0.75, 0.75)).toBeCloseTo(e.distanceSquare, 9);
+    expect(d2(0.25, 0.75)).toBeCloseTo(e.distanceSquare, 9);
+  });
+  it('ellipse to polygon: 180-vertex frame outline reduced to 20 vertices; rect to polygon corner order', () => {
+    const e = convertGate({ type: 'rect', dims, min: [0.25, 0.25], max: [0.75, 0.75] }, 'ellipse')!;
+    const p = convertGate(e, 'polygon') as Extract<Gate, { type: 'polygon' }>;
+    expect(p.vertices.length).toBeGreaterThanOrEqual(18);
+    expect(p.vertices.length).toBeLessThanOrEqual(21);
+    expect((convertGate({ type: 'rect', dims, min: [0.1, 0.2], max: [0.3, 0.4] }, 'polygon') as Extract<Gate, { type: 'polygon' }>).vertices).toEqual([[0.1, 0.2], [0.1, 0.4], [0.3, 0.4], [0.3, 0.2]]);
+  });
+});
+
+describe('copy and paste (WSClipboard)', () => {
+  const lin = { kind: 'linear' as const, T: 1024, A: 0 };
+  const X: Dimension = { kind: 'channel', channel: 'X', transform: lin };
+  const Y: Dimension = { kind: 'channel', channel: 'Y', transform: lin };
+  const q = (id: string, side: number[]): Population => ({ id, name: id, parentId: null, gate: { type: 'quadrant', dims: [X, Y], dividers: [[0.5], [0.5]], side } });
+  const sample = (): SampleState => ({ id: 's', fileName: 's.fcs', fileSize: 0, fingerprint: '', datasetIndex: 0, compensation: 'none', keywordsSnapshot: {}, channelNames: ['X', 'Y'], eventCount: 0, populations: [q('a', [0, 0]), q('b', [1, 0]), q('c', [0, 1]), q('d', [1, 1]), { id: 'r', name: 'R', parentId: null, gate: { type: 'rect', dims: [X], min: [0.1], max: [0.2] } }] });
+  it('copying one quad copies its siblings; paste under a target keeps coordinates', () => {
+    const s = sample();
+    const clip = copyPopulations(s.populations, ['a']);
+    expect(clip.map((p) => p.id).sort()).toEqual(['a', 'b', 'c', 'd']);
+    expect(pastePopulations(s, clip, ['r'])).toEqual([]);
+    expect(s.populations.filter((p) => p.parentId === 'r').map((p) => p.name).sort()).toEqual(['a', 'b', 'c', 'd']);
+  });
+  it('a name clash skips the target; missing parameters skip the sample', () => {
+    const s = sample();
+    const clip = copyPopulations(s.populations, ['r']);
+    expect(pastePopulations(s, clip, [null])[0]).toMatch(/already exists/);
+    const other = { ...sample(), channelNames: ['Z'] };
+    expect(pastePopulations(other, clip, [null])[0]).toMatch(/lacks/);
+  });
+});
+
+describe('anchored range (TetheredRangeGate) and .wsp round trip', () => {
+  it('bound = statistic of the named population on this sample x multiplier', async () => {
+    const xs = Float64Array.from({ length: 100 }, (_, i) => i * 10);
+    const svc = new AnalysisService();
+    await svc.load('s', 's.fcs', writeFcs([{ name: 'X', range: 1024, values: xs }], {}));
+    const X: Dimension = { kind: 'channel', channel: 'X', transform: { kind: 'linear', T: 1024, A: 0 } };
+    const pops: Population[] = [{ id: 'a', name: 'A', parentId: null, gate: { type: 'anchored', dims: [X], min: { populationPath: '', stat: 'count', multiplier: 5 }, max: null } }];
+    const { results } = svc.analyze({ sampleId: 's', compensation: 'none', populations: pops, matrices: [] });
+    // count 100 x 5 = 500 -> events 500..990 (50 events).
+    expect(results[0].count).toBe(50);
+    expect(results[0].moved?.type).toBe('rect');
+  });
+  it('curly quad, spider and magnetic survive .wsp export and import', () => {
+    const ws = emptyWorkspace();
+    const lin = { kind: 'linear' as const, T: 262144, A: 0 };
+    const dims: [Dimension, Dimension] = [{ kind: 'channel', channel: 'FSC-A', transform: lin }, { kind: 'channel', channel: 'SSC-A', transform: lin }];
+    const polygons = spiderPolygons({ center: [0.5, 0.5], top: 0.55, bottom: 0.45, left: 0.5, right: 0.6, x0: -0.001, x1: 1, y0: -0.001, y1: 1.001 });
+    ws.samples.push({ id: 's', fileName: 's.fcs', fileSize: 0, fingerprint: '', datasetIndex: 0, compensation: 'none', keywordsSnapshot: {}, channelNames: ['FSC-A', 'SSC-A'], eventCount: 1, populations: [
+      ...[0, 1, 2, 3].map((q): Population => ({ id: `c${q}`, name: `C${q}`, parentId: null, gate: { type: 'curlyQuad', dims, center: [0.4, 0.3], quadrant: q, frame: [[0, 1], [0, 1]] } })),
+      ...[0, 1, 2, 3].map((slot): Population => ({ id: `s${slot}`, name: `S${slot}`, parentId: null, gate: { type: 'spider', dims, polygons, slot } })),
+      { id: 'm', name: 'M', parentId: null, magnetic: true, gate: { type: 'polygon', dims, vertices: [[0.1, 0.1], [0.2, 0.1], [0.2, 0.2]] } },
+    ] });
+    ws.groups[0].sampleIds = ['s'];
+    const { xml } = writeWsp({ ws, sampleMatrix: () => null });
+    expect(xml).toContain('<gating:CurlyQuad');
+    expect(xml).toContain('quadId="2"');
+    expect(xml).toContain('magnetic="1"');
+    const back = parseWsp(xml).workspace.samples[0].populations;
+    const curly = back.filter((p) => p.gate.type === 'curlyQuad').map((p) => (p.gate as Extract<Gate, { type: 'curlyQuad' }>).quadrant);
+    expect(curly).toEqual([0, 1, 2, 3]);
+    const spider = back.filter((p) => p.gate.type === 'spider').map((p) => (p.gate as Extract<Gate, { type: 'spider' }>).slot);
+    expect(spider).toEqual([0, 1, 2, 3]);
+    expect(back.find((p) => p.name === 'M')?.magnetic).toBe(true);
+  });
+});
+
+describe('BifurGate (PeakFinder, smoothed 4096-channel histogram)', () => {
+  const gaussHist = (centres: [number, number, number][]) => {
+    const h = new Float64Array(BIFUR_BINS);
+    for (const [c, sd, n] of centres) for (let i = 0; i < BIFUR_BINS; i++) h[i] += Math.round((n / (sd * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * ((i - c) / sd) ** 2));
+    return h;
+  };
+  it('1-D smoothing keeps whole counts and folds the left margin back', () => {
+    const h = new Float64Array(64);
+    h[0] = 100; h[30] = 1;
+    const s = smoothHistogram1D(h);
+    expect(s.every((v) => Number.isInteger(v))).toBe(true);
+    expect(s.reduce((a, b) => a + b, 0)).toBeGreaterThanOrEqual(99);
+    expect(s[0]).toBeGreaterThan(s[3]);
+  });
+  it('right margin: the first two padding bins are lost', () => {
+    const h = new Float64Array(64);
+    h[63] = 1; // s = 13: mass at offsets +1 and +2 past the end is dropped
+    const raw = smoothHistogram1D(h);
+    expect(raw.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(1);
+  });
+  it('finds both peaks of a bimodal histogram, positions near the centres, sorted', () => {
+    const y = smoothHistogram1D(gaussHist([[1000, 80, 20000], [3000, 120, 30000]]));
+    const peaks = findPeaks(y);
+    expect(peaks.length).toBeGreaterThanOrEqual(2);
+    const big = [...peaks].sort((a, b) => b.count - a.count).slice(0, 2).map((p) => p.position).sort((a, b) => a - b);
+    expect(Math.abs(big[0] - 1000)).toBeLessThan(20);
+    expect(Math.abs(big[1] - 3000)).toBeLessThan(20);
+  });
+  it('valley = the first lowest channel between the two largest peaks; unimodal gives -1', () => {
+    const y = smoothHistogram1D(gaussHist([[1000, 80, 20000], [3000, 120, 30000]]));
+    const v = bifurValley(y);
+    const between = Array.from(y.slice(1000, 3001));
+    // Empty channels between well-separated peaks: the first one wins.
+    expect(v).toBe(1000 + between.indexOf(Math.min(...between)));
+    expect(bifurValley(smoothHistogram1D(gaussHist([[2000, 100, 20000]])))).toBe(-1);
+  });
+});
+
+describe('percent gates (channelPercentile, evaluatePercentGate)', () => {
+  it('channelPercentile: special cases and the bucket reaching p x count', () => {
+    const y = Float64Array.from([0, 10, 10, 10, 10, 0, 0, 0]);
+    expect(channelPercentile(y, 0)).toBe(0);
+    expect(channelPercentile(y, 100)).toBe(8);
+    expect(channelPercentile(y, 50)).toBe(2);
+    expect(channelPercentile(y, 0.5)).toBe(2); // a value below 1 is a fraction (FlowJo quirk)
+    expect(channelPercentile(new Float64Array(8), 50)).toBe(0);
+  });
+  it('a percent range is recomputed from each sample\'s parent', async () => {
+    const lin = { kind: 'linear' as const, T: 1024, A: 0 };
+    const X: Dimension = { kind: 'channel', channel: 'X', transform: lin };
+    const gate: Gate = { type: 'rect', dims: [X], min: [0], max: [1], percent: { min: [25], max: [75], scales: [{ kind: 'linear', min: 0, max: 1024 }] } };
+    const counts = [] as number[];
+    for (const scale of [1, 0.5]) {
+      const svc = new AnalysisService();
+      // Dense enough that the smoothed histogram (whole counts) is not empty.
+      await svc.load('s', 's.fcs', writeFcs([{ name: 'X', range: 1024, values: Float64Array.from({ length: 100000 }, (_, i) => (i / 100) * scale) }], {}));
+      counts.push(svc.analyze({ sampleId: 's', compensation: 'none', populations: [{ id: 'a', name: 'A', parentId: null, gate }], matrices: [] }).results[0].count);
+    }
+    // About half the events on either sample, though the values differ by 2x.
+    for (const c of counts) { expect(c).toBeGreaterThan(48000); expect(c).toBeLessThan(52000); }
   });
 });

@@ -91,6 +91,10 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
         warn(`"${path(p)}" uses a ratio dimension; not representable, skipped`);
         return null;
       }
+      if (g.type === 'anchored') {
+        warn(`"${path(p)}" is an anchored range; its statistic bounds are not written (FlowJo's statistic reference format is not decoded), skipped`);
+        return null;
+      }
       if (g.type === 'splineQuadrant') {
         warn(`"${path(p)}" is a spline quadrant; no observed FlowJo equivalent, skipped`);
         return null;
@@ -102,6 +106,7 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
       const dims = g.dims as Extract<Dimension, { kind: 'channel' }>[];
       const names = dims.map(nameOf);
       if (g.type === 'rect') {
+        if (g.percent) warn(`"${path(p)}" is a percent gate; written with fixed bounds (FlowJo's percent attributes for this case are not decoded)`);
         return `<gating:RectangleGate eventsInside="${inside}"${mag}>${dims.map((d, k) => dimXml(names[k], (g.min[k] !== null ? ` gating:min="${raw(g.min[k]!, d)}"` : '') + (g.max[k] !== null ? ` gating:max="${raw(g.max[k]!, d)}"` : ''))).join('')}</gating:RectangleGate>`;
       }
       if (g.type === 'quadrant') {

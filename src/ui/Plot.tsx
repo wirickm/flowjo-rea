@@ -58,8 +58,10 @@ interface Props {
   yLabel?: string;
   // 256 x 256 counts of the parent (index x * 256 + y) for the auto gate.
   autoCounts?: { counts: Float64Array; n: number } | null;
-  // Magnetic gates as moved on this sample (by population id).
+  // Magnetic gates as moved on this sample, anchored ranges as resolved.
   moved?: Record<string, Gate>;
+  // Anchored gating armed: a histogram click gives (axis value, Alt, Shift).
+  onAnchor?: (v: number, alt: boolean, shift: boolean) => void;
 }
 
 type Pt = [number, number];
@@ -152,6 +154,11 @@ export function Plot(p: Props) {
         if (v >= 0) return { g, vertex: v };
         if (pt[0] >= g.x0 && pt[0] <= g.x1 && pt[1] >= g.y0 && pt[1] <= g.y1) return { g };
       } else if (g.kind === 'range') {
+        // Anchored ranges follow their statistic and cannot be dragged.
+        if (p.populations.find((q) => q.id === g.pop.id)?.gate.type === 'anchored') {
+          if (pt[0] >= g.x0 && pt[0] <= g.x1) return { g, mode: 'none' };
+          continue;
+        }
         // A bisector half: dragging near the split moves both halves.
         const bis = quadrantSiblings(p.populations, g.pop).length === 2;
         if (Math.abs(sx(pt[0]) - sx(g.x0)) < 6) return bis ? { g } : { g, vertex: 0 };
@@ -228,6 +235,10 @@ export function Plot(p: Props) {
 
   const onDown = (e: React.MouseEvent) => {
     const pt = pos(e);
+    if (p.onAnchor && !p.y) {
+      p.onAnchor(pt[0], e.altKey, e.shiftKey);
+      return;
+    }
     if (p.tool === 'select') {
       const h = hit(pt);
       if (h) {

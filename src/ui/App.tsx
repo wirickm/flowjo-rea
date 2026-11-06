@@ -20,7 +20,7 @@ import { LayoutView } from './Layout';
 import { PlatformsDialog } from './Platforms';
 import type { Axis } from './gateGeometry';
 import { Plot, TOOL_HINTS, TOOL_KEYS, TOOL_LABELS, TOOLS_1D, TOOLS_2D, type PlotKind, type Tool } from './Plot';
-import { AUTO_GATE_BINS, gateLabel } from '../core/gateTools';
+import { AUTO_GATE_BINS, bisectorNames, gateLabel } from '../core/gateTools';
 import { PLOT, renderPlot } from './renderPlot';
 import { asCanvas, SvgContext } from './svgContext';
 import { drawableGates } from './gateGeometry';
@@ -80,6 +80,8 @@ export function App() {
   const [nth, setNth] = useState(2);
   const [rule, setRule] = useState<{ keyword: string; op: KeywordRule['op']; value: string }>({ keyword: '', op: 'contains', value: '' });
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // Anchored gating: the statistic column armed for the next histogram click.
+  const [anchorCol, setAnchorCol] = useState<string | null>(null);
   // Workspace gate clipboard (FlowJo WSClipboard).
   const [clip, setClip] = useState<Population[] | null>(null);
   // In-app question with labelled answers; resolves to the chosen label or null (cancel).
@@ -840,10 +842,33 @@ export function App() {
                 })}
                 onConvert={(gate) => updateGates([{ id: sel.popId!, gate }])}
                 onCopy={() => { setClip(copyPopulations(sample.populations, [sel.popId!])); note('info', `Copied "${popPath}"`); }}
-                onPaste={() => updateWs((w) => {
+                onBifurcate={() => run(async () => {
+                  // ws.autoquad: fluorescent parameters not on the gating path,
+                  // skipping -H / -W when the -A parameter exists.
+                  const names = channels.map((c) => c.name);
+                  const onPath = new Set<string>();
+                  for (let q = sample.populations.find((x) => x.id === sel.popId); q; q = q.parentId ? sample.populations.find((x) => x.id === q!.parentId) : undefined) {
+                    if (q.gate.type !== 'boolean') for (const d of q.gate.dims) if (d.kind === 'channel') onPath.add(d.channel);
+                  }
+                  const fl = names.filter((n) => !isScatterOrTime(n) && !onPath.has(n) && !(/-[HW]$/.test(n) && names.includes(n.replace(/-[HW]$/, '-A'))));
+                  const res = await client.bifurcate({ sampleId: sample.id, compensation: sample.compensation, populations: sample.populations, matrices: ws.matrices, derived: ws.derivedParameters, popId: sel.popId, channels: fl, scales: statScales(ws.channelTransforms, sample.flowjoLinearRanges, fl) });
+                  const made: { name: string; gate: Gate }[] = [];
+                  const taken = sample.populations.filter((x) => x.parentId === sel.popId).map((x) => x.name);
+                  for (const r of res) {
+                    if (r.split === null) { note('info', `BifurGate: ${r.channel} is unimodal; no gate`); continue; }
+                    const ch = channels.find((c) => c.name === r.channel)!;
+                    const spec = ws.channelTransforms[r.channel] ?? defaultTransform(ch, sMeta!.keywords);
+                    const at = makeTransform(spec).apply(r.split);
+                    const X = { kind: 'channel' as const, channel: r.channel, transform: spec };
+                    const [lo, hi] = bisectorNames(gateLabel(r.channel, ch.label), r.channel, [...taken, ...made.map((m) => m.name)]);
+                    made.push({ name: lo, gate: { type: 'rect', dims: [X], min: [null], max: [at] } }, { name: hi, gate: { type: 'rect', dims: [X], min: [at], max: [null] } });
+                  }
+                  if (made.length) createGates(made);
+                })}
+                onPaste={() => updateWs((w, say) => {
                   const sw = w.samples.find((x) => x.id === sample.id)!;
                   const targets = multi.length ? multi : [sel.popId];
-                  pastePopulations(sw, clip!, targets);
+                  pastePopulations(sw, clip!, targets).forEach((m) => say('warn', m));
                 })}
               />
               <div className="row">
@@ -932,6 +957,21 @@ export function App() {
                 yLabel={yAxis ? gateLabel(yAxis.channel, channels.find((c) => c.name === yAxis.channel)?.label) : undefined}
                 autoCounts={autoCounts}
                 moved={movedGates}
+                onAnchor={anchorCol && kind === 'histogram' ? (v, alt, shift) => {
+                  // TetheredRangeGate creation: multiplier = scale value at the
+                  // click / statistic value, 2 decimals (1 when the statistic is
+                  // 0); Shift snaps to a whole number within 0.05; Alt makes
+                  // the upper bound.
+                  const c = ws.statColumns.find((x) => x.id === anchorCol);
+                  const val = c && stats[sample.id]?.[ws.statColumns.indexOf(c)];
+                  if (!c || typeof val !== 'number' || !Number.isFinite(val)) return note('warn', 'Anchored gating needs the statistic value for this sample');
+                  let mult = val === 0 ? 1 : Math.round((xAxis.t.inverse(v) / val) * 100) / 100;
+                  if (shift && Math.abs(mult - Math.round(mult)) <= 0.05) mult = Math.round(mult);
+                  const bound = { populationPath: c.populationPath, stat: c.stat, channel: c.channel, percentile: c.percentile, multiplier: mult, scale: statScales(ws.channelTransforms, sample.flowjoLinearRanges, [c.channel!])[c.channel!] };
+                  const X = { kind: 'channel' as const, channel: xAxis.channel, transform: xAxis.spec };
+                  createGates([{ name: uniqueName(`${STAT_LABELS[c.stat]} x ${mult}`, sample.populations.filter((p) => p.parentId === sel.popId).map((p) => p.name)), gate: { type: 'anchored', dims: [X], min: alt ? null : bound, max: alt ? bound : null } }]);
+                  setAnchorCol(null);
+                } : undefined}
               />
               <div className="row">
                 <button data-testid="add-to-layout" onClick={() => { updateWs((w) => { w.layout = [...(w.layout ?? []), { id: newId('lay'), populationPath: popPath, ...plotSettings }]; }); note('info', `Added ${popPath || 'All events'} (${plotSettings.x}${kind === 'histogram' ? '' : ` vs ${plotSettings.y}`}) to the layout`); }}>Add to layout</button>
@@ -1022,7 +1062,7 @@ export function App() {
                     <th>Sample</th>
                     {annotationKeys.map((k) => <th key={`ann-${k}`}>{k}</th>)}
                     {ws.statColumns.map((c) => (
-                      <th key={c.id}>{colLabel(c)} <button className="x" onClick={() => updateWs((w) => { w.statColumns = w.statColumns.filter((x) => x.id !== c.id); })} aria-label="remove column">x</button></th>
+                      <th key={c.id}>{colLabel(c)} {c.channel && <button className={anchorCol === c.id ? 'x active' : 'x'} data-testid={`anchor-${c.id}`} title="Anchored Gating: then click a histogram of the sample to make a range whose bound is this statistic times a multiplier (Alt: upper bound, Shift: whole multiplier)" onClick={() => setAnchorCol(anchorCol === c.id ? null : c.id)}>anchor</button>} <button className="x" onClick={() => updateWs((w) => { w.statColumns = w.statColumns.filter((x) => x.id !== c.id); })} aria-label="remove column">x</button></th>
                     ))}
                   </tr>
                 </thead>
@@ -1177,6 +1217,7 @@ export function App() {
           xLabel={gateLabel(xAxis.channel, channels.find((c) => c.name === xAxis.channel)?.label)}
           yLabel={yAxis ? gateLabel(yAxis.channel, channels.find((c) => c.name === yAxis.channel)?.label) : ''}
           children={sample.populations.filter((p) => p.parentId === sel.popId).map((p) => p.name)}
+          scales={[xAxis.channel, kind === 'histogram' ? undefined : yAxis?.channel].map((ch) => (ch ? statScales(ws.channelTransforms, sample.flowjoLinearRanges, [ch])[ch] : undefined))}
           onCreate={createGates}
           onClose={() => setDialog(null)}
         />

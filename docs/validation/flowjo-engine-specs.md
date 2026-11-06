@@ -759,6 +759,115 @@ cannot open JVM classes): `GateWinToolBar`, `EditorKeys`, `CurlyQuadGate`,
 - Children "<label>-" (open below) and "<label>+" (open above) under the
   selected population, named as the bisector.
 
+## 11. Kinetics (FlowJo 10.6.2)
+
+Read with REA 6.8.0's Ghidra provider on the native engine (`Kinetics`,
+`KineticsRequest`, `GTimeSeries`, `GVector::Smooth`, `GParameter::FindTimeSlice`)
+and with headless Ghidra 12.1.4 / javap on the Kinetics window
+(`KineticsController`, `KineticsStatisticFormat`, `KineticsSmoothing`,
+`TimesliceStatistics`, `KinToggleAutoSlice`, `MultiTimesliceDlog`,
+`KineticsThresholdDlog`, `KineticsNode`). Static reading only. Implemented in
+`src/core/kinetics.ts` (rules), `src/core/service.ts` (orchestration) and
+`src/ui/Kinetics.tsx` (window). Timeslices live here, not among the gate
+tools (section 10.1).
+
+### 11.1 Options (matches)
+
+- Statistics (saved by name): Median, Mean, Geometric Mean, Percentile,
+  "% of cells over Threshold T", "Median (for cells > T)", "Mean (for cells
+  > T)", "Geom. mean (for cells > T)", "Percentile (for cells > T)". The two
+  percentile statistics need a percentile (default 90); the last five a
+  threshold. Smoothing: None, Gaussian, Moving Average. Defaults: Median,
+  no smoothing.
+- The X parameter is the sample's Time parameter, or the event number when
+  there is none. FlowJo's default Y is the first parameter with "/" in its
+  name, else Ratio; this app falls back to the first other parameter.
+
+### 11.2 The series (matches)
+
+- Range R = time of the last event in file order minus the first (a last
+  time of 0 counts as 1). Bin width max(1, trunc((R - 1) / 4096 + 1)),
+  bins trunc((R + width) / width), at most 4096. Each statistic needs a
+  minimum of events per bin (Median 20; Mean, Geometric Mean, % over T 10;
+  Median > T 60; Mean / Geom. mean > T 30; Percentile max(20, 500 /
+  min(p, 100 - p)), three times that above T); when bins x minimum exceeds
+  the population count N, k = max(10, N div minimum) bins of width
+  trunc(R / k + 1). An event's bin is trunc(t / width), clamped; the
+  origin is 0.
+- Statistics on scale values. Without a threshold, T = 0: values below 0 are
+  left out of Mean, Median, Geometric Mean and Percentile. Mean: single-
+  precision mean of y >= T. Geometric Mean: mean of the display-scale
+  channel numbers, back to scale. % over T: 100 x (y >= T) / gated events of
+  the bin. Median and percentiles stream the events in file order into a
+  4096-channel histogram: the event that opens a new bin is counted in the
+  bin before it (and lost from its own), and the file's last event is always
+  processed. Empty bins are missing and print as 0.
+- Smoothing (width 3): moving average with equal weights; Gaussian with
+  weights exp(+k^2 / 9), as FlowJo 10.6.2 computes them (the exponent is
+  positive, so far neighbours weigh more). Only present bins take part;
+  missing bins stay missing. Values are printed with %6.5f.
+- The time axis shown is [0, $ETIM - $BTIM] in whole seconds ("Time (SI
+  Units)"), or the range R when that is under 1; scale = total / points.
+
+### 11.3 Threshold (matches)
+
+- "Define new threshold value": an absolute value (default 0.1), or a
+  percentile (default 95) of the events within a timeslice. For the
+  percentile the engine uses the timeslice's start and end, truncated, as an
+  event-index range (FlowJo 10.6.2's behaviour); 100 gives the maximum, 0 the
+  minimum.
+
+### 11.4 Timeslices (matches)
+
+- A timeslice is a name, start and end (X parameter scale units), a bar
+  height and a colour (red, blue, cyan, green, magenta, orange, pink,
+  yellow, repeating). All Events covers [0, points x scale] and is not
+  saved. Slices sort by start, the longer first on ties.
+- Dragging on the plot makes "Range #k" (k = slice count, raised until free),
+  confirmed in a name prompt; a taken name gets "-1", "-2". Double-clicking a
+  row edits name, start and end (whole numbers; times only when start <
+  end).
+- Multiple ranges: prefix and number (default 5); back-to-back slices of
+  total / number from the All Events start while they fit, named prefix1,
+  ...; bar heights 50, 75, 55, 80, ...
+- Auto slicing toggles: around the longest run of zeros (none: [n/3, n]) and
+  the first maximum, "Auto #c", "Auto #c+1" (and "Auto #c+2"); turning it
+  off removes the "Auto #" slices.
+
+### 11.5 Timeslice statistics (matches)
+
+- The series is gap-filled once (a zero between two non-zero neighbours
+  becomes their average). Channels come from the X parameter: round(t x
+  tmax / W), tmax its scale maximum and W its scale width; dt = (end -
+  start) / (end channel - start channel); points trunc(start / dt) up to
+  trunc(end / dt), exclusive. A zero with a zero neighbour is a gap and is
+  skipped.
+- Peak (first maximum), Peak t = (peak index + 1) x dt, Mean Y = sum /
+  (points x dt), AUC = Mean Y x (index span), Slope = least-squares slope
+  over the index / dt (0 for one point); no points: NaN and AUC 0. dt is
+  shown as end - start.
+- Table columns Timeslice, Start t, End t, Peak t, Peak, Mean Y, Slope,
+  AUC, dt; times as whole numbers. Copy Time Series writes "round(i x
+  scale)<tab>value" per point.
+
+### 11.6 Workspace and statistics table (matches)
+
+- `KineticsNode` inside the population's `Subpopulations`: `yAxis`,
+  `statistic`, `percentile`, `smoothing`, `absoluteThreshold` ("1" / "0"),
+  `threshold` / `thresholdPercentile` (-999999 when unset, "#.##########"),
+  `thresholdTimesliceName`, `yAuto`, `yMin`, `yMax`, `colorIndex`;
+  `Timeslice` children (`name`, `startTime`, `endTime`, `y`, `color`
+  "#rrggbb").
+- Timeslice statistics as table columns: `plat.kin.startt`, `endt`,
+  `peakt`, `peak`, `meany`, `slope`, `auc`, `dt` with `id` = the timeslice,
+  inside the node's own `Subpopulations`; a missing slice gives NaN.
+- Own rules: settings are kept per population path (shared across samples,
+  as this app's plots are); `yAuto`, `yMin`, `yMax` are written with
+  FlowJo's defaults (the plot always auto-scales, padded min x 0.97 and max
+  x 1.03 as FlowJo does).
+- Medium confidence: the Geometric Mean channel count, and the Time scale
+  (tmax, W) taken as the Time channel range, with no $TIMESTEP gain.
+
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 
 Source: static analysis of `libNativeEngine.dylib` from the public FlowJo

@@ -17,7 +17,9 @@ import { computeStat, gather, validPercentile } from './stats';
 import { makeTransform, type TransformSpec } from './transforms';
 import { fitCellCycle, type CellCycleFit } from './cellcycle';
 import { fitProliferation, type ProliferationFit } from './proliferation';
-import { kinetics, type KineticsResult } from './kinetics';
+import { allEventsSlice, checkKinetics, kineticsSeries, kineticsTimeAxis, percentileThreshold, sortSlices, timesliceStats, usesThreshold, type KineticsSettings, type SliceStats, type Timeslice } from './kinetics';
+
+export interface KineticsReport { values: Float64Array; range: number; width: number; threshold: number | null; total: number; scale: number; timeWidth: number; slices: (Timeslice & SliceStats)[] }
 
 export interface SampleMeta {
   sampleId: string;
@@ -66,6 +68,8 @@ export interface StatsRequest extends AnalyzeRequest {
   columns: StatColumn[];
   // FlowJo channel scales (by channel name) for FlowJo-convention statistics.
   scales?: Record<string, ChannelScale>;
+  // Kinetics node settings by population path, for kinetic columns.
+  kinetics?: Record<string, KineticsSettings>;
 }
 
 export interface WizardRequest {
@@ -252,6 +256,17 @@ export class AnalysisService {
           if (!a) return `error: no ancestor named "${c.ancestor ?? ''}"`;
           ancestor = eng.results.get(a.id)!.count;
         }
+        if (c.stat === 'kinetic') {
+          const st = r.kinetics?.[c.populationPath];
+          if (!st || !c.kin) return 'error: no Kinetics node on this population';
+          const f = this.files.get(r.sampleId)!;
+          const timeCh = f.channels.find((x) => /^time$/i.test(x.name))?.name ?? null;
+          const secs = (t?: string) => { const m = /^(\d+):(\d+):(\d+)/.exec((t ?? '').trim()); return m ? Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) : undefined; };
+          const b = secs(f.keywords['$BTIM']), e = secs(f.keywords['$ETIM']);
+          const rep = this.kinetics({ ...r, popId: p ? p.id : null, channel: st.yAxis, timeChannel: timeCh, settings: st, scale: r.scales?.[st.yAxis] ?? { kind: 'linear', min: 0, max: f.channels.find((x) => x.name === st.yAxis)?.range ?? 1024 }, durationSeconds: b !== undefined && e !== undefined && e - b > 0 ? e - b : undefined });
+          const sl = rep.slices.find((x) => x.name === c.kin!.timeslice);
+          return sl ? sl[c.kin.key] : NaN;
+        }
         const values2 = c.stat === 'correlation' && c.correlate ? gather(eng.column(c.correlate), mask) : null;
         return computeStat(c.stat, values, { count, parent, grandparent: grand, total, ancestor }, c.percentile, c.channel ? r.scales?.[c.channel] : undefined, values2);
       } catch (e) {
@@ -398,10 +413,34 @@ export class AnalysisService {
     return fitProliferation(this.platformData(r).values, { maxGenerations: r.maxGenerations });
   }
 
-  kinetics(r: PlatformRequest & { timeChannel: string; bins: number; stat: 'count' | 'mean' | 'median' | 'pctPositive'; threshold?: number }): KineticsResult {
-    const { eng, mask } = this.platformData(r);
-    const values = r.stat === 'count' ? null : eng.column(r.channel);
-    return kinetics(eng.column(r.timeChannel), values, mask, { bins: r.bins, stat: r.stat, threshold: r.threshold });
+  // FlowJo 10.6.2 kinetics (specs 11): the series of the chosen statistic
+  // over time for the population, then each timeslice's statistics. Without
+  // a Time parameter the event number is the time, as the engine does.
+  kinetics(r: PlatformRequest & { timeChannel: string | null; settings: KineticsSettings; scale: ChannelScale; durationSeconds?: number; timeRange?: [number, number] }): KineticsReport {
+    checkKinetics(r.settings);
+    const { eng, mask } = this.platformData({ ...r, channel: r.settings.yAxis });
+    const y = eng.column(r.settings.yAxis);
+    const time = r.timeChannel ? eng.column(r.timeChannel) : Float64Array.from({ length: y.length }, (_, i) => i);
+    const st = r.settings;
+    const withAxis = (n: number, range: number) => kineticsTimeAxis(n, range, r.durationSeconds);
+    let threshold: number | null = null;
+    if (usesThreshold(st.statistic)) {
+      const th = st.threshold;
+      if (!th) fail('GATE_INVALID', 'Kinetics: define a threshold for this statistic');
+      if (th.kind === 'absolute') threshold = th.value;
+      else {
+        const sl = st.timeslices.find((x) => x.name === th.timeslice);
+        if (!sl) fail('GATE_INVALID', `Kinetics: threshold timeslice "${th.timeslice}" not found`);
+        threshold = percentileThreshold(y, mask, th.percentile, sl.startTime, sl.endTime, r.scale);
+      }
+    }
+    const series = kineticsSeries(time, y, mask, { stat: st.statistic, percentile: st.percentile, smoothing: st.smoothing, threshold: threshold ?? 0, scale: r.scale });
+    const axis = withAxis(series.values.length, series.range);
+    // The X parameter's scale: the Time channel range (or the event count).
+    const f = this.files.get(r.sampleId)!;
+    const tr = r.timeRange ?? (r.timeChannel ? [0, f.channels.find((c) => c.name === r.timeChannel)?.range ?? time.length] : [0, time.length]);
+    const slices = [allEventsSlice(series.values.length, axis.scale), ...sortSlices(st.timeslices)].map((sl) => ({ ...sl, ...timesliceStats(series.values, sl, tr[1], tr[1] - tr[0]) }));
+    return { values: series.values, range: series.range, width: series.width, threshold, total: axis.total, scale: axis.scale, timeWidth: tr[1] - tr[0], slices };
   }
 
   // Display-space values of one event dimension, for tests and tooling.

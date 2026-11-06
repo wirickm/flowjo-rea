@@ -18,6 +18,8 @@ import { everyNth, FLOWJO_FUNCTIONS, removeFromGroup, stainSet } from '../core/g
 import { concatGroups, type ConcatMode, type HeaderFormat } from '../core/exportRules';
 import { LayoutView } from './Layout';
 import { PlatformsDialog } from './Platforms';
+import { KineticsPanel } from './Kinetics';
+import { defaultKinetics, KIN_KEYS, KIN_LABELS } from '../core/kinetics';
 import type { Axis } from './gateGeometry';
 import { Plot, TOOL_HINTS, TOOL_KEYS, TOOL_LABELS, TOOLS_1D, TOOLS_2D, type PlotKind, type Tool } from './Plot';
 import { AUTO_GATE_BINS, bisectorNames, gateLabel } from '../core/gateTools';
@@ -370,7 +372,7 @@ export function App() {
 
   // Statistics of one sample from the current workspace (never a cached table value).
   const statsFor = (s: Workspace['samples'][number]) =>
-    client.stats({ sampleId: s.id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters, columns: ws.statColumns, scales: statScales(ws.channelTransforms, s.flowjoLinearRanges, ws.statColumns.map((c) => c.channel)) });
+    client.stats({ sampleId: s.id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters, columns: ws.statColumns, kinetics: ws.kinetics, scales: statScales(ws.channelTransforms, s.flowjoLinearRanges, [...ws.statColumns.map((c) => c.channel), ...Object.values(ws.kinetics ?? {}).map((k) => k.yAxis)]) });
 
   // statistics table across the current group. Values that need recalculation
   // are cleared first, so the table shows "-" rather than old values (FlowJo 10,
@@ -581,7 +583,7 @@ export function App() {
     note('info', `Concatenated ${members.length} sample(s) into ${groups.length} file(s)`);
   };
 
-  const colLabel = (c: StatColumn) => `${c.populationPath || 'All events'}: ${c.stat === 'freqOf' ? `Freq. of ${c.ancestor} (%)` : STAT_LABELS[c.stat]}${c.stat === 'percentile' ? ` ${c.percentile}` : ''}${c.channel ? ` (${c.channel}${c.correlate ? ` vs ${c.correlate}` : ''})` : ''}`;
+  const colLabel = (c: StatColumn) => c.stat === 'kinetic' && c.kin ? `${c.populationPath || 'All events'}: ${KIN_LABELS[c.kin.key]} (${c.kin.timeslice})` : `${c.populationPath || 'All events'}: ${c.stat === 'freqOf' ? `Freq. of ${c.ancestor} (%)` : STAT_LABELS[c.stat]}${c.stat === 'percentile' ? ` ${c.percentile}` : ''}${c.channel ? ` (${c.channel}${c.correlate ? ` vs ${c.correlate}` : ''})` : ''}`;
   // Ancestors of the selected population, for "Freq. of" (specs 8.1).
   const ancestorNames = (() => {
     const out: string[] = [];
@@ -1004,7 +1006,7 @@ export function App() {
           <h3>Statistics - {group?.name}</h3>
           <div className="row">
             <select value={newStat.stat} onChange={(e) => setNewStat({ ...newStat, stat: e.target.value as StatKind })} data-testid="stat-kind">
-              {Object.entries(STAT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              {Object.entries(STAT_LABELS).filter(([k]) => k !== 'kinetic').map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
             {STAT_NEEDS_CHANNEL(newStat.stat) && (
               <select value={newStat.channel} onChange={(e) => setNewStat({ ...newStat, channel: e.target.value })} data-testid="stat-channel">
@@ -1119,7 +1121,35 @@ export function App() {
             onClose={() => setDialog(null)}
             runCellCycle={(channel, model) => runOrThrow(() => client.cellCycle({ ...base, channel, model }))}
             runProliferation={(channel, maxGenerations) => runOrThrow(() => client.proliferation({ ...base, channel, maxGenerations }))}
-            runKinetics={(channel, stat, bins, threshold) => runOrThrow(() => client.kinetics({ ...base, channel, stat, bins, threshold, timeChannel: channels.find((c) => /^time$/i.test(c.name))!.name }))}
+            kinetics={(() => {
+              // FlowJo's default Y: the first parameter with "/" in its name,
+              // else Ratio; this app falls back to the first non-time channel.
+              const names = channels.map((c) => c.name);
+              const timeCh = channels.find((c) => /^time$/i.test(c.name))?.name ?? null;
+              const yDefault = names.find((n) => n.indexOf('/') > 0) ?? names.find((n) => /^ratio$/i.test(n)) ?? names.find((n) => n !== timeCh) ?? '';
+              const settings = ws.kinetics?.[popPath] ?? defaultKinetics(yDefault);
+              const kw = sMeta.keywords;
+              const secs = (t?: string) => { const m = /^(\d+):(\d+):(\d+)/.exec((t ?? '').trim()); return m ? Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) : undefined; };
+              const b = secs(kw['$BTIM']), e = secs(kw['$ETIM']);
+              const timeRange = timeCh ? (sample.flowjoLinearRanges?.[timeCh] ?? [0, channels.find((c) => c.name === timeCh)!.range]) : undefined;
+              return (
+                <KineticsPanel
+                  channels={names.filter((n) => n !== timeCh)}
+                  settings={settings}
+                  onSettings={(st) => updateWs((w) => { w.kinetics = { ...(w.kinetics ?? {}), [popPath]: st }; })}
+                  onAddToTable={(names) => updateWs((w) => {
+                    // A column per timeslice for every key but RANGE.
+                    for (const t of names) for (const key of KIN_KEYS) if (!w.statColumns.some((c) => c.stat === 'kinetic' && c.populationPath === popPath && c.kin?.key === key && c.kin.timeslice === t)) w.statColumns.push({ id: newId('col'), populationPath: popPath, stat: 'kinetic', kin: { key, timeslice: t } });
+                  })}
+                  run={(st) => client.kinetics({
+                    ...base, channel: st.yAxis, timeChannel: timeCh, settings: st,
+                    scale: statScales(ws.channelTransforms, sample.flowjoLinearRanges, [st.yAxis])[st.yAxis] ?? { kind: 'linear', min: 0, max: channels.find((c) => c.name === st.yAxis)?.range ?? 1024 },
+                    durationSeconds: b !== undefined && e !== undefined && e - b > 0 ? e - b : undefined,
+                    timeRange: timeRange as [number, number] | undefined,
+                  })}
+                />
+              );
+            })()}
           />
         );
       })()}

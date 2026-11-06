@@ -308,6 +308,70 @@
       "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/application/workspace/actions/WSAutoQuadAction.class" }],
       "behavior": "BifurGate: per fluorescent parameter off the gating path, the parent's smoothed 4096-channel histogram; peaks found by half-width walks and regression slopes, small or low peaks dropped, the two largest kept; the split is the first lowest channel between their interpolated medians; '<label>-' / '<label>+' children, unimodal gives none.",
       "spec_section": "10.8"
+    },
+    {
+      "key": "kin-request",
+      "subject": "engine",
+      "symbols": ["KineticsRequest::FromXML", "KineticsStatistic::FromString", "SmoothingType::FromString", "KineticsResult::ToXML"],
+      "locations": [{ "kind": "address-range", "start": "0x3d2cc0", "end": "0x3d3280" }, { "kind": "address-range", "start": "0x3d3280", "end": "0x3d35b0" }, { "kind": "address-range", "start": "0x3d35b0", "end": "0x3d3700" }, { "kind": "address-range", "start": "0x266f40", "end": "0x2674d0" }],
+      "behavior": "Request attributes yAxis, statistic (nine names, unknown = Median), percentile, smoothing (None / Median = none, Gaussian, Moving Average), thresholdType 0 threshold / 1 thresholdStart, thresholdEnd, thresholdPercentile; reply Kinetics range = R with Plot1D values printed %6.5f, missing bins 0.",
+      "spec_section": "11.1"
+    },
+    {
+      "key": "kin-binning",
+      "subject": "engine",
+      "symbols": ["Kinetics::MakeTimeSeries", "Kinetics::InitKineticsData", "GTimeSeries::TimeToBin"],
+      "locations": [{ "kind": "address-range", "start": "0x19aa60", "end": "0x19ad90" }, { "kind": "address-range", "start": "0x19a580", "end": "0x19a600" }, { "kind": "address-range", "start": "0x197760", "end": "0x1977a0" }],
+      "behavior": "R = last event time - first (file order, last 0 -> 1); width max(1, trunc((R - 1)/4096 + 1)), bins trunc((R + width)/width) <= 4096; minimum events per bin by statistic, else k = max(10, N div minimum) bins of width trunc(R/k + 1); bin trunc(t / width) clamped, origin 0; smoothing width 3.",
+      "spec_section": "11.2"
+    },
+    {
+      "key": "kin-statistics",
+      "subject": "engine",
+      "symbols": ["GTimeSeries::ComputeAverage", "GTimeSeries::ComputeLogAverage", "GTimeSeries::ComputePercentile", "GTimeSeries::ComputeFraction"],
+      "locations": [{ "kind": "address-range", "start": "0x197d00", "end": "0x197f20" }, { "kind": "address-range", "start": "0x197f20", "end": "0x1981f0" }, { "kind": "address-range", "start": "0x1981f0", "end": "0x1984d0" }, { "kind": "address-range", "start": "0x1984d0", "end": "0x1986f0" }],
+      "behavior": "Per bin on scale values with y >= T (T = 0 without a threshold): single-precision mean; geometric mean from display channels; % over T over the gated events of the bin; percentiles streamed in file order into a 4096-channel histogram, the event opening a bin counted in the bin before, the file's last event always processed; empty bins missing.",
+      "spec_section": "11.2"
+    },
+    {
+      "key": "kin-smoothing",
+      "subject": "engine",
+      "symbols": ["GVector::Smooth"],
+      "locations": [{ "kind": "address-range", "start": "0x199c80", "end": "0x19a040" }],
+      "behavior": "Width 3: moving average weights 1; Gaussian weights exp(+k^2/w^2) (positive exponent); weighted mean over present bins within 3, edges renormalised; missing bins stay missing.",
+      "spec_section": "11.2"
+    },
+    {
+      "key": "kin-threshold",
+      "subject": "engine",
+      "symbols": ["Kinetics::ComputeThreshold", "GParameter::FindTimeSlice"],
+      "locations": [{ "kind": "address-range", "start": "0x19b020", "end": "0x19b0b0" }, { "kind": "address-range", "start": "0x1618f0", "end": "0x161a20" }],
+      "behavior": "Absolute threshold as given; percentile threshold: FindTimeSlice's result discarded, the timeslice start and end truncated used as an event-index range for a 4096-channel percentile (>= 100 maximum, <= 0 minimum).",
+      "spec_section": "11.3"
+    },
+    {
+      "key": "kin-timeslices",
+      "subject": "jar",
+      "symbols": ["com.treestar.flowjo.application.graphwindow.kinetics.KineticsController", "com.treestar.flowjo.application.graphwindow.kinetics.actions.KinToggleAutoSlice", "com.treestar.flowjo.application.graphwindow.kinetics.dialog.MultiTimesliceDlog", "com.treestar.flowjo.application.graphwindow.kinetics.dialog.KineticsThresholdDlog"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/application/graphwindow/kinetics/KineticsController.class" }, { "kind": "artifact-path", "path": "com/treestar/flowjo/application/graphwindow/kinetics/actions/KinToggleAutoSlice.class" }, { "kind": "artifact-path", "path": "com/treestar/flowjo/application/graphwindow/kinetics/dialog/MultiTimesliceDlog.class" }],
+      "behavior": "Timeslices: All Events [0, n x scale] unsaved; drag makes 'Range #k' with a name prompt, clashes -1, -2; multiple ranges back to back of total / number, prefix1.., y 50, 75, 55, 80; auto slices around the longest zero run and the first maximum ('Auto #'); threshold dialog absolute 0.1 or percentile 95 of a slice; time axis $ETIM - $BTIM seconds.",
+      "spec_section": "11.4"
+    },
+    {
+      "key": "kin-timeslice-stats",
+      "subject": "jar",
+      "symbols": ["com.treestar.flowjo.core.TimesliceStatistics", "com.treestar.flowjo.core.histogram.TimeSeries.filter"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/core/TimesliceStatistics.class" }],
+      "behavior": "Gap fill once; channels round(t x tmax / W) of the X parameter; dt = (end - start)/(channel span); points trunc(start/dt) to trunc(end/dt) exclusive, zeros next to zeros skipped; peak, peak t = (index + 1) dt, mean Y = sum/(m dt), AUC = mean Y x span, slope = LS slope / dt (m > 1).",
+      "spec_section": "11.5"
+    },
+    {
+      "key": "kin-node",
+      "subject": "jar",
+      "symbols": ["com.treestar.flowjo.application.graphwindow.kinetics.KineticsNode", "com.treestar.flowjo.application.graphwindow.kinetics.KineticsStatisticFormat", "StatKey kin* (plat.kin.*)"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/application/graphwindow/kinetics/KineticsNode.class" }, { "kind": "artifact-path", "path": "com/treestar/flowjo/application/graphwindow/kinetics/KineticsStatisticFormat.class" }],
+      "behavior": "KineticsNode in the population's Subpopulations with yAxis, statistic, percentile, smoothing, absoluteThreshold, threshold, thresholdPercentile (-999999 unset), thresholdTimesliceName, yAuto, yMin, yMax, colorIndex and Timeslice children (color #rrggbb); statistics plat.kin.startt .. plat.kin.dt with id = timeslice.",
+      "spec_section": "11.6"
     }
   ]
 }

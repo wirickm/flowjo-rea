@@ -223,7 +223,7 @@ statistics 39, platforms 29, transforms 19, export 15, compensation 9).
 | A35 | Keywords | Add, edit, find/replace, value series, paste to group | view only | Missing | `WSKeywordMgr`, `KeywordFindRelpaceDialog`, `KeywordValueSeriesDialog` | high |
 | A36 | Platforms | Cell cycle DJF / Watson; 2D cell cycle (EM) | DJF / Watson (own fitter); no 2D | Match (models) / Missing (2D) | `cellcycle.model.*`, `graphwindow.cellcycle.em.*` | high |
 | A37 | Platforms | Proliferation (peaks, indices) | same; older "proliferation index" definition differs (matrix) | Differs (definition) | `proliferation.*`, `StatKey.ProlIndex` | medium |
-| A38 | Platforms | Kinetics: smoothing (Gaussian, moving average), threshold, auto-slicing; stats peak, slope, AUC | equal-width bins, count/mean/median/% above | Differs | `KineticsSmoothing`, `StatKey kin*` | high |
+| A38 | Platforms | Kinetics: nine statistics (median, mean, geometric mean, percentile, % over T and the four above-T variants), smoothing (Gaussian, moving average), threshold (absolute or percentile of a timeslice), timeslices (drag, multiple, auto) with peak, peak t, mean Y, AUC, slope, dt; KineticsNode and plat.kin.* statistics | FlowJo's engine binning, statistics, smoothing (including its positive-exponent Gaussian) and threshold; the Kinetics window with timeslices, their table and statistics columns; .wsp KineticsNode (2026-11-06) | Match (specs 11); own rules: settings per population path, yAuto/yMin/yMax written as defaults | REA Ghidra `Kinetics::MakeTimeSeries`, `GTimeSeries::Compute*`, `GVector::Smooth`, `Kinetics::ComputeThreshold`; `TimesliceStatistics`, `KinToggleAutoSlice`, `MultiTimesliceDlog`, `KineticsNode` | high (geometric mean channels, Time scale medium) |
 | A39 | Platforms | Compare populations, 3D viewer, Q&B, sample quality, calibration, plate editor, FCS Scan, tSNE, scripting (Rhino), plugins | none | Missing (matrix backlog: plugins) | `PlatformNavCommand`, `com.flowjo.native_tsne`, `PluginManager` | high |
 | A40 | Graphs | Edge-event warning at axis bounds | none | Missing | `gw.gates.panel.warn1/2`, `prefs.graphs.threshold` | high |
 | A41 | Graphs | Dot, pseudocolor, contour, density, zebra, histogram, CDF | all but CDF | Match / Missing (CDF) | `DisplayType`, `fj.graph.*` | high |
@@ -372,7 +372,7 @@ rows above: High = every row Match or a documented own rule.
 | **Gate tools** | **High** | 2026-11-06 (specs 10; obligations gates.*) |
 | **Export** | **High** | 2026-11-06 (specs 9; obligations export.*) |
 | **Statistics list** | **High** | 2026-11-06 (specs 8; obligations stats.histogram-moments, stats.mode-mad-correlation, stats.wsp-names) |
-| Kinetics | Low | |
+| **Kinetics** | **High** | 2026-11-06 (specs 11; obligations kinetics.*) |
 | Derived parameters | Low | |
 | Layout and table editors | Low | |
 | Preferences, autosave, shortcuts | Low | |

@@ -1,5 +1,16 @@
 # Progress and handoff
 
+## State (2026-11-06, parity area 5: kinetics)
+
+Kinetics follows FlowJo 10.6.2 (specs section 11): the engine's time binning
+(range from the first and last events, width and minimum events per bin),
+its nine statistics (percentiles streamed in file order with FlowJo's
+quirks), smoothing (moving average; Gaussian with FlowJo's positive
+exponent), absolute or timeslice-percentile thresholds; the Kinetics window
+with timeslices (drag, edit, multiple ranges, auto slicing), the timeslice
+table and statistics columns (plat.kin.*), Copy Time Series, and the .wsp
+KineticsNode. REA ledger 31 of 31 verified. Next area: derived parameters.
+
 ## State (2026-11-06, parity area 4: gate tools)
 
 Gate tools follow FlowJo 10.6.2 (specs section 10): the 11 FlowJo tools in

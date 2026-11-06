@@ -16,6 +16,7 @@ import { connectorFromText, functionFromText, MAX_KEYWORD_CRITERIA, roleFromText
 import { defaultGrid } from './gateGrid';
 import { FLOWJO_STAT_NAMES, STAT_NEEDS_CHANNEL } from './stats';
 import { makeTransform, type TransformSpec } from './transforms';
+import { KIN_BY_NAME, kineticsFromAttrs } from './kinetics';
 import { attr, kid, kids, local, numAttr, parseXml, type El } from './xml';
 
 export interface WspImport {
@@ -366,6 +367,19 @@ export function parseWsp(xml: string): WspImport {
         const kind = local(p);
         if (kind === 'Statistic') {
           statNode(p, parentPath);
+          continue;
+        }
+        if (kind === 'KineticsNode') {
+          // FlowJo Kinetics node (specs 11): settings, timeslices and its
+          // plat.kin.* statistics; shared by population path across samples.
+          const slices = kids(p, 'Timeslice').map((t) => ({ name: attr(t, 'name') ?? '', startTime: Number(attr(t, 'startTime') ?? 0), endTime: Number(attr(t, 'endTime') ?? 0), y: Number(attr(t, 'y') ?? 50), color: attr(t, 'color') ?? '#ff0000' }));
+          ws.kinetics = ws.kinetics ?? {};
+          if (!ws.kinetics[parentPath]) ws.kinetics[parentPath] = kineticsFromAttrs((n) => attr(p, n), slices);
+          for (const st of kids(kid(p, 'Subpopulations') ?? p, 'Statistic')) {
+            const key = KIN_BY_NAME[attr(st, 'name') ?? ''];
+            const timeslice = attr(st, 'id') ?? '';
+            if (key && !ws.statColumns.some((c) => c.stat === 'kinetic' && c.populationPath === parentPath && c.kin?.key === key && c.kin.timeslice === timeslice)) ws.statColumns.push({ id: `col${ws.statColumns.length + 1}`, populationPath: parentPath, stat: 'kinetic', kin: { key, timeslice } });
+          }
           continue;
         }
         if (!['Population', 'AndNode', 'OrNode', 'NotNode'].includes(kind)) continue;

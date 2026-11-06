@@ -372,6 +372,38 @@
       "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/application/graphwindow/kinetics/KineticsNode.class" }, { "kind": "artifact-path", "path": "com/treestar/flowjo/application/graphwindow/kinetics/KineticsStatisticFormat.class" }],
       "behavior": "KineticsNode in the population's Subpopulations with yAxis, statistic, percentile, smoothing, absoluteThreshold, threshold, thresholdPercentile (-999999 unset), thresholdTimesliceName, yAuto, yMin, yMax, colorIndex and Timeslice children (color #rrggbb); statistics plat.kin.startt .. plat.kin.dt with id = timeslice.",
       "spec_section": "11.6"
+    },
+    {
+      "key": "dp-names-eval",
+      "subject": "engine",
+      "symbols": ["Sample::ComputeAlgebraic", "Sample::DP_ReplaceParameterNames", "Sample::ComputeAlgebraic(long, long)", "DerivedParameterTask::PerformTask", "FunctionInterpreter::AddVariable"],
+      "locations": [{ "kind": "address-range", "start": "0x172300", "end": "0x1725b0" }, { "kind": "address-range", "start": "0x178440", "end": "0x178770" }, { "kind": "address-range", "start": "0x178770", "end": "0x178cf0" }, { "kind": "address-range", "start": "0x4f2d80", "end": "0x4f2df0" }, { "kind": "address-range", "start": "0x4d0320", "end": "0x4d05c0" }],
+      "behavior": "Formula upper-cased; EVENT # then each parameter name (longest first, every occurrence) replaced by a variable; variables take compensated scale values, Event # the 0-based index; results stored as float32; at most 8 variables (a 9th overwrites slot 0).",
+      "spec_section": "12.2"
+    },
+    {
+      "key": "dp-parser",
+      "subject": "engine",
+      "symbols": ["Parser::Parse", "Parser::FindOperator", "Parser::OperatorUsageByContext", "Parser::Priority", "Parser::CreateNewFunction", "Parser::ConvertErrorToString"],
+      "locations": [{ "kind": "address-range", "start": "0x4cefa0", "end": "0x4cf1a0" }, { "kind": "address-range", "start": "0x4ce630", "end": "0x4cea60" }, { "kind": "address-range", "start": "0x4cea90", "end": "0x4cefa0" }, { "kind": "address-range", "start": "0x4cf2d0", "end": "0x4cf580" }, { "kind": "address-range", "start": "0x4cc4f0", "end": "0x4cd6a0" }, { "kind": "address-range", "start": "0x4d1050", "end": "0x4d1140" }],
+      "behavior": "Split at the rightmost lowest-priority operator (all left-associative, unary sign above ^); priorities & | < = <> < relational < + - < * / % < ^ < ! < unary; functions sin..norm with if(c,a,b), sd/cv over n-1; % truncates, ^ special cases; error messages 'Illegal math parameter.' etc.",
+      "spec_section": "12.3"
+    },
+    {
+      "key": "dp-spec",
+      "subject": "engine",
+      "symbols": ["DerivedType::FromXML", "AlgebraicParameterSpec::FromXML", "Sample::CreateAlgebraicDerivedParameter"],
+      "locations": [{ "kind": "address-range", "start": "0x2a050", "end": "0x2a590" }, { "kind": "address-range", "start": "0x3b5a20", "end": "0x3b5ee0" }, { "kind": "address-range", "start": "0x172130", "end": "0x172300" }],
+      "behavior": "Types importCsv, importClr, algebraic, analytic, eventNumber, synthetic, clusterFrequency, consensus; algebraic attributes name, id, type, formula, useNormalizedData and a Transform child; a formula of exactly 'Event #' makes the event-number parameter.",
+      "spec_section": "12.1"
+    },
+    {
+      "key": "dp-dialog-wsp",
+      "subject": "jar",
+      "symbols": ["com.treestar.flowjo.core.DerivedParameter", "com.treestar.flowjo.core.AlgebraicParameter", "com.treestar.flowjo.application.derivedparameters.DerivedParameterController", "com.treestar.flowjo.application.teditor.dialog.FormulaEditingPanel"],
+      "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/core/DerivedParameter.class" }, { "kind": "artifact-path", "path": "com/treestar/flowjo/core/AlgebraicParameter.class" }, { "kind": "artifact-path", "path": "com/treestar/flowjo/application/derivedparameters/DerivedParameterController.class" }],
+      "behavior": "Derive Parameters: name letters/digits/underscore and not a number ('Paramter with this name already exists'), default 'Derived', 'Derived-1'..; formula with Insert Reference / Function / Operator; scale linear 0..1000; .wsp DerivedParameter node wrapping DerivedParameter name type formula with Formula and Transform children.",
+      "spec_section": "12.4"
     }
   ]
 }

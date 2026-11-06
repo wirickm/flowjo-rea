@@ -644,6 +644,71 @@
         { "fixture_id": "kin.node.stats", "case_kind": "positive", "test_file": "tests/kinetics.test.ts", "test_name": "the service runs the series on the Time parameter" }
       ],
       "verifier": { "verifier_id": "kinetics.flowjo", "claim_id": "kinetics.timeslices.v1", "test_file": "tests/kinetics.test.ts", "command": "npx vitest run tests/kinetics.test.ts" }
+    },
+    {
+      "obligation_id": "derived.language",
+      "obligation_version": 1,
+      "title": "Formulas parse and evaluate as FlowJo 10's engine Parser does",
+      "family": "derived",
+      "target_location": "Parser::Parse; Parser::CreateNewFunction; Parser::ConvertErrorToString",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "dp-parser", "location": "left-associative split, priorities, functions" },
+        { "kind": "negative", "observation": "dp-parser", "location": "errors with FlowJo's messages" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/formula.ts", "symbol": "compileFormula", "files": ["src/core/formula.ts"] },
+      "fixtures": [
+        { "fixture_id": "dp.prec", "case_kind": "positive", "test_file": "tests/formula.test.ts", "test_name": "every operator is left-associative" },
+        { "fixture_id": "dp.logic", "case_kind": "positive", "test_file": "tests/formula.test.ts", "test_name": "comparisons and logic give 1 / 0" },
+        { "fixture_id": "dp.mod", "case_kind": "positive", "test_file": "tests/formula.test.ts", "test_name": "% truncates both sides" },
+        { "fixture_id": "dp.fn", "case_kind": "positive", "test_file": "tests/formula.test.ts", "test_name": "log is base 10" },
+        { "fixture_id": "dp.sd", "case_kind": "positive", "test_file": "tests/formula.test.ts", "test_name": "SD and CV divide" },
+        { "fixture_id": "dp.err", "case_kind": "negative", "test_file": "tests/formula.test.ts", "test_name": "math, syntax and argument errors" }
+      ],
+      "verifier": { "verifier_id": "derived.flowjo", "claim_id": "derived.language.v1", "test_file": "tests/formula.test.ts", "command": "npx vitest run tests/formula.test.ts" }
+    },
+    {
+      "obligation_id": "derived.evaluation",
+      "obligation_version": 1,
+      "title": "Derived parameters bind names and compute per event as FlowJo 10 does",
+      "family": "derived",
+      "target_location": "Sample::DP_ReplaceParameterNames; Sample::ComputeAlgebraic; AlgebraicParameterSpec",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "dp-names-eval", "location": "longest names first, compensated values, float32, Event #" },
+        { "kind": "negative", "observation": "dp-names-eval", "location": "a 9th variable overwrites slot 0; math errors stop the parameter" },
+        { "kind": "positive", "observation": "dp-spec", "location": "algebraic and eventNumber types" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/formula.ts", "symbol": "compileFormula", "files": ["src/core/formula.ts", "src/core/analysis.ts", "src/core/model.ts"] },
+      "fixtures": [
+        { "fixture_id": "dp.names", "case_kind": "positive", "test_file": "tests/formula.test.ts", "test_name": "names with \"-\" or \"/\" are replaced" },
+        { "fixture_id": "dp.vars", "case_kind": "negative", "test_file": "tests/formula.test.ts", "test_name": "at most 8 variables" },
+        { "fixture_id": "dp.event", "case_kind": "positive", "test_file": "tests/formula.test.ts", "test_name": "\"Event #\" is the event number" },
+        { "fixture_id": "dp.engine", "case_kind": "positive", "test_file": "tests/formula.test.ts", "test_name": "a formula parameter is computed per event" },
+        { "fixture_id": "dp.matherr", "case_kind": "negative", "test_file": "tests/formula.test.ts", "test_name": "a math error in the formula" }
+      ],
+      "verifier": { "verifier_id": "derived.flowjo", "claim_id": "derived.evaluation.v1", "test_file": "tests/formula.test.ts", "command": "npx vitest run tests/formula.test.ts" }
+    },
+    {
+      "obligation_id": "derived.dialog-wsp",
+      "obligation_version": 1,
+      "title": "The Derive Parameters dialog and .wsp nodes follow FlowJo 10",
+      "family": "derived",
+      "target_location": "DerivedParameter.isNameOK; uniqueChildName; DerivedParameter element",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "dp-dialog-wsp", "location": "names, defaults and the DerivedParameter node" },
+        { "kind": "negative", "observation": "dp-dialog-wsp", "location": "invalid and duplicate names refused" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/formula.ts", "symbol": "derivedNameError", "files": ["src/core/formula.ts", "src/ui/Dialogs.tsx", "src/core/wsp.ts", "src/core/wspWriter.ts"] },
+      "fixtures": [
+        { "fixture_id": "dp.namerule", "case_kind": "negative", "test_file": "tests/formula.test.ts", "test_name": "letters, digits and underscore only" },
+        { "fixture_id": "dp.wsp", "case_kind": "positive", "test_file": "tests/formula.test.ts", "test_name": "DerivedParameter nodes survive .wsp export and import" }
+      ],
+      "verifier": { "verifier_id": "derived.flowjo", "claim_id": "derived.dialog-wsp.v1", "test_file": "tests/formula.test.ts", "command": "npx vitest run tests/formula.test.ts" }
     }
   ]
 }

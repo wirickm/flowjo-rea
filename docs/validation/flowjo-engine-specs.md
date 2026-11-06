@@ -575,6 +575,190 @@ defaults) and headless Ghidra / javap on the Java side
   distribution"; file-naming patterns (this app downloads one file per
   output with a fixed pattern).
 
+## 10. Gate tools (FlowJo 10.6.2)
+
+Read with REA 6.8.0's Ghidra provider on the native engine (`QuadGate`,
+`FGate::MoveMagneticGate`, `GHistogram2D` contour code, 1-D histogram
+smoothing) and with headless Ghidra 12.1.4 / javap on the Java side (REA
+cannot open JVM classes): `GateWinToolBar`, `EditorKeys`, `CurlyQuadGate`,
+`SpiderPoint`, `QuadLayer`, `FigPoly`, `LayerAutoGate`, `ManualGateDP`,
+`Gate.convert`, `WSClipboard`, `TetheredRangeGate`, `WSAutoQuadAction`,
+`PeakFinder`, `RangeGateCreator`. Static reading only. Implemented in
+`src/core/gateTools.ts` (rules), `src/core/analysis.ts` (membership),
+`src/ui/Plot.tsx` and `src/ui/GateActions.tsx` (tools and actions).
+
+### 10.1 Toolbar, keys and names (matches)
+
+- Tools in toolbar order (full mode): Arrow, Rectangle, Range, Quad,
+  Bisector, Ellipse, Polygon, Pencil, Auto Gate, Curly Quad, Spider Quad.
+  This app shows the 2-D tools on 2-D plots and Arrow, Range, Bisector on
+  histograms, and keeps its own spline quadrant last. Timeslice is a
+  Kinetics-window object, not a gate tool (kinetics area).
+- Single keys on a focused plot: S Arrow, E Ellipse, F Pencil, A Auto Gate,
+  P Polygon, I Range, R Rectangle, Q Quad, X Spider Quad, C Curly Quad;
+  Bisector has none. In 10.6.2 some of these key bindings send command names
+  that `Tool.fromString` does not recognise; this app makes every key work
+  (own rule, medium confidence on FlowJo's actual effect).
+- "Manually Enter Gate..." is a menu command with the menu-shortcut key + G.
+- Gate labels use the parameter's stain when it has one (preference "use
+  stain for gate name", on by default), else the parameter name.
+- Quads: "Q<n>: <x label><s> , <y label><t>" (spaces round the comma), s / t
+  "+" on the right / upper side. Upper-left is Q b, upper-right Q b+1,
+  lower-right Q b+2, lower-left Q b+3, where b starts at 1 and moves past any
+  of the next four numbers a child name already starts with ("Q10" counts as
+  "Q1"). Created lower-left, lower-right, upper-left, upper-right.
+- Bisector (`RangeGateCreator.createBisectingChildren`): the split is the
+  clicked value; "<label>-" = range (open, split), "<label>+" = range
+  (split, open), created in that order; a taken name becomes
+  "<parameter>::<label>-/+". Dragging near the split moves both halves.
+
+### 10.2 Quad, offset quad and bisector membership (matches)
+
+- The engine gets sibling quads as one composite (`QuadRequest`): four
+  rectangles as `gating:QuadGate`, four polygons or curly quadrants as
+  `gating:PolyQuad`, two one-sided ranges as `gating:BisectorGate`.
+- Quad (native kind 7): centre from the upper-left child; per event, x < cx
+  is left and y < cy is lower, so a value on a line goes right or up; NaN
+  counts as below. Exact comparison on compensated scale values, no grid.
+  This app's quadrant gate uses the same [lo, hi) rule.
+- Offset quad: a quad whose upper-right child does not share the centre.
+  With equal x the two halves of the horizontal line differ (left of x1
+  splits at y1, right at y2); otherwise the vertical line steps (upper half
+  at x1, lower at x2). The user makes one by dragging one half of a divider
+  with the Arrow (within 15 px of it, kept 20 px inside the frame). Each
+  quadrant here keeps its own dividers, so the membership is identical.
+- Bisector (kind 8): below the split left, the split value and above right,
+  NaN left. Exact. Own rule: a bisector half here is a one-sided range, so a
+  NaN value falls in neither half (FCS list-mode data has no NaN; only a
+  derived parameter can produce one).
+- Curly quad: `CurlyQuadGate.writeQuery` sends polygons, so the engine never
+  sees a curly shape; it gates the four as a PolyQuad (10.3).
+
+### 10.3 Spider quad and curly quad (matches)
+
+- Spider (`gating:PolyQuad`, native kind 11): four polygons, each with four
+  vertices: (corner x, side y), the frame corner, (side x, corner y), the
+  shared centre. Side points: top and bottom give x, left and right give y.
+  Frame corners are one data unit outside the axis (x max on the axis).
+  A new spider puts the side points 10 frame pixels right of and below the
+  click and the centre at the click. Dragging the centre moves the shared
+  vertex; a side point moves along its side while more than 10 px from
+  either end. Alt+click with the Quad tool makes a spider.
+- Membership on the R x R gate lattice: each lattice point takes the first
+  polygon, in the order upper-left, upper-right, lower-left, lower-right,
+  that contains it (edges and vertices inside); a point in none counts as
+  upper-left. Events use the polygon gate's cell mapping (section 1).
+- Curly quad (`CurlyQuadGate`): built on a 256 x 256 pixel frame whose edges
+  are the axis display limits; k = 0.001 per pixel squared, fixed and not
+  saved (`multInflection` is never called). Horizontal arm: x = cx + 1,
+  then steps of max(1, (W - cx) div 40), y = cy - round(k dx^2), closed at
+  the frame edge. Vertical arm: y = cy down to 0 in steps of
+  max(1, cy div 40), x = round(cx + k dy^2), stopping after the first point
+  past the frame. Lower-left is a plain rectangle; the other three follow the
+  arms to the frame corners. The four are gated as a PolyQuad.
+- .wsp: spider polygons are `gating:PolygonGate` with `quadId` 0 lower-left,
+  1 lower-right, 2 upper-left, 3 upper-right; a curly quadrant is
+  `gating:CurlyQuad` with the centre as the closed bound per axis.
+
+### 10.4 Magnetic gates (matches; snapping own rule)
+
+- Toggled per gate ("The gate relocates to where the events are densest");
+  stored as `magnetic="1"`. In a synchronized group the flag goes to every
+  copy; otherwise the population leaves its group.
+- On every sample the gate starts where it was drawn. 2-D: a 256 x 256
+  histogram of the parent; repeatedly compare the mean of the cells inside
+  the gate with their count-weighted mean (counts truncated), and move one
+  cell: x by the sign of dx when |dy| <= 2.41 |dx|, y by the sign of dy when
+  |dx| <= 2.41 |dy| (sign of 0 is +1). Stop after 512 steps or on returning
+  to a visited position, keeping the previous position if its score
+  (dx^2 + dy^2) is lower. No data inside: the whole histogram against the
+  middle of the gate's box; no data at all: the offset is 0 and the gate
+  stays (read here as an early exit, medium confidence). 1-D: 256 bins; move toward the mean of the
+  range's events one bin at a time while the count in [a, b - 1] keeps
+  strictly increasing.
+- Each sample shows the gate where it moved. Own rule: vertices are not
+  snapped to whole channels after the move.
+
+### 10.5 Pencil and Auto Gate (matches)
+
+- Pencil (`FigPoly.processFreehandDrag`): a vertex is committed when the
+  mouse is more than 12 px from the last one and the path bends
+  ((d + a) / c > 1.04) or the run is long (d / bend > 12); release closes it;
+  fewer than 4 points abandons it. The Polygon tool closes within 6 px of the
+  first vertex (both axes) or on double-click.
+- Auto Gate (`LayerAutoGate` + native contour plot): contours of the plotted
+  population at 256 x 256, smoothing on, always the 2% level. Smoothing:
+  each bin of count n spreads n w(i) w(j) over (2s + 1)^2 bins,
+  s = ceil(13 n^-1/4), w(j) = exp(-0.5 j^2 sqrt(n) (2.4 / 13)^2), the
+  kernel summing to 1; mass past an edge is mirrored back. Levels: bins
+  above 0.005 in descending density; a level each time the running mass
+  passes another N / 50; closed iso-lines, regions touching the frame closed
+  along it. The contour with the vertex nearest the mouse (squared distance,
+  last vertex not counted, first wins) is shown and, on click, becomes a
+  polygon reduced to every (n div max(20, trunc(0.1 n)))-th vertex.
+- Medium confidence: the threshold interpolation inside a level, the order
+  of equal densities and the marching-cell tie rules (FlowJo's polygon order
+  can differ; the picked shape is the same family of contours).
+
+### 10.6 Manual entry, percent gates and anchored ranges (matches)
+
+- `ManualGateDP`: Lower / Upper per axis, units Intensity (scale values
+  pinned into the parameter range) or Percentile (0 to 100). Makes a
+  rectangle ("<x>, <y> subset") or a range ("<x> subset"); "Make Quad Gates"
+  / "Make Bisector Gates" makes them at the lower bounds instead.
+- Percentile bounds make a percent gate, recomputed on every sample from the
+  parent's smoothed histogram (4096 buckets for x, 256 for a rectangle's y,
+  a FlowJo quirk): sum buckets with the total cut to whole counts until
+  p x count; stored percents of 1 or more are divided by 100, below 1 read as
+  a fraction, 100 gives the top. The smoothed histogram holds whole counts,
+  so sparse data gives channel 0 (as FlowJo).
+- Anchored range (`TetheredRangeGate`, "Anchored Gating"): a 1-D range whose
+  bound is a statistic of a population of the same sample times a
+  multiplier, open on the other side. Made by arming a statistic and
+  clicking a histogram: multiplier = clicked value / statistic, 2 decimals
+  (1 when the statistic is 0); Shift snaps to a whole number within 0.05;
+  Alt makes the upper bound. It cannot be dragged.
+- Own rules: the "Control gate" checkbox is not offered (this app has no
+  control-sample concept); percent and anchored bounds are not written to
+  .wsp (FlowJo's attribute layout for them is not fully decoded): percent
+  gates are written with fixed bounds and anchored ranges are skipped, each
+  with a warning.
+
+### 10.7 Convert, copy and paste (matches)
+
+- Convert (`Gate.convert`): rectangle to polygon (xmin, ymin), (xmin, ymax),
+  (xmax, ymax), (xmax, ymin); polygon or ellipse to rectangle: the vertex
+  bounding box snapped outward to whole data units; ellipse to polygon: the
+  180-vertex outline in whole 256-frame pixels, repeats skipped, reduced to
+  20 vertices; rectangle to ellipse: the corners become the edge points, so
+  the axes are the diagonals: a circle in frame pixels through the corners;
+  polygon to ellipse goes through the rectangle. Children and flags stay.
+- Copy (`WSClipboard`): the selected populations with their subtrees;
+  copying one quad copies its sibling quads. Paste under each selected
+  population with coordinates and parameter names unchanged and group
+  ownership cleared; a target that already has a child of that name is
+  skipped, and a sample without a gate parameter is refused with a notice.
+
+### 10.8 BifurGate (matches)
+
+- `ws.autoquad` ("BifurGate"): for the selected population and every
+  fluorescent parameter not on its gating path (and not -H / -W when the -A
+  parameter exists), the parent's histogram on 4096 channels, smoothed as in
+  10.5 in one dimension (left margin mirrored, the first two padding bins
+  past the right edge lost, values rounded to whole counts).
+- `PeakFinder.findPeaks`: repeatedly take the highest bin, walk out on each
+  side (half width interpolated below half height, a regression slope over
+  a window of clamp(half width, n/32, n/8) bins detecting the rise past a
+  valley), count the events between the edges, place the peak at the
+  interpolated median, zero its extent; drop peaks with fewer than
+  min(100, N/100) events or under a tenth of the average accepted height,
+  ending when a rejection finds over 95% of events removed. Keep the two
+  largest; the split is the first lowest channel between their positions,
+  converted with the channel's nominal value. Fewer than two peaks: no gate
+  ("Unimodal").
+- Children "<label>-" (open below) and "<label>+" (open above) under the
+  selected population, named as the bisector.
+
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 
 Source: static analysis of `libNativeEngine.dylib` from the public FlowJo

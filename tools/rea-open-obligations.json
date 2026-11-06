@@ -105,40 +105,6 @@
       "comparison_status": "Missing: rejected with an explicit error."
     },
     {
-      "obligation_id": "gate.bisector",
-      "obligation_version": 1,
-      "title": "Bisector gates split a histogram into two open ranges at one point",
-      "application_layer": "application",
-      "family": "gating",
-      "target": {
-        "artifact_sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c",
-        "application_node_id": null,
-        "semantic_node_id": null,
-        "location": "QuadGate::ComputeBisectorGate (engine); gw.tool.bisector"
-      },
-      "required": true,
-      "required_case_kinds": [
-        "positive",
-        "negative"
-      ],
-      "required_original_authority": "static",
-      "required_fixture_authority": "integration",
-      "required_verifier_authority": "integration",
-      "requires_parser_type": false,
-      "dependency_obligation_ids": [],
-      "residual_unknown_ids": [],
-      "unavailable_authority": [
-        "runtime"
-      ],
-      "required_next_evidence": [
-        "Decide match or own rule (Missing.); then an owner in src/, fixtures for each case kind and a verifier test, and move the entry to tools/rea-obligations.json with an observation in tools/rea-originals.json."
-      ],
-      "disposition": "active",
-      "review_evidence_ids": [],
-      "spec_section": "6.8",
-      "comparison_status": "Missing."
-    },
-    {
       "obligation_id": "compensation.mtx-files",
       "obligation_version": 1,
       "title": "Compensation matrices load from and save to FlowJo .mtx (Gating-ML based) files",
@@ -172,40 +138,6 @@
       "review_evidence_ids": [],
       "spec_section": "6.4, 6.8",
       "comparison_status": "Differs: CSV only (own rule, specs 6.4)."
-    },
-    {
-      "obligation_id": "gate.copy-paste",
-      "obligation_version": 1,
-      "title": "Gates can be copied and pasted between populations and samples",
-      "application_layer": "application",
-      "family": "gating",
-      "target": {
-        "artifact_sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c",
-        "application_node_id": null,
-        "semantic_node_id": null,
-        "location": "GWCommand{COPYGATE,PASTEGATE}"
-      },
-      "required": true,
-      "required_case_kinds": [
-        "positive",
-        "negative"
-      ],
-      "required_original_authority": "static",
-      "required_fixture_authority": "integration",
-      "required_verifier_authority": "integration",
-      "requires_parser_type": false,
-      "dependency_obligation_ids": [],
-      "residual_unknown_ids": [],
-      "unavailable_authority": [
-        "runtime"
-      ],
-      "required_next_evidence": [
-        "Decide match or own rule (Missing.); then an owner in src/, fixtures for each case kind and a verifier test, and move the entry to tools/rea-obligations.json with an observation in tools/rea-originals.json."
-      ],
-      "disposition": "active",
-      "review_evidence_ids": [],
-      "spec_section": "6.8",
-      "comparison_status": "Missing."
     }
   ]
 }

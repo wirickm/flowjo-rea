@@ -27,7 +27,11 @@ export interface GateGrid {
 
 export type Gate =
   // Each bound may be null (open). Membership: min <= x < max (Gating-ML 2.0).
-  | { type: 'rect'; dims: Dimension[]; min: (number | null)[]; max: (number | null)[] }
+  // percent: FlowJo percent gate (manual entry in Percentile units, specs
+  // 10.6): bounds recomputed on each sample from the parent's smoothed
+  // histogram; min/max hold the percentiles (null = not a percent bound) and
+  // scales the FlowJo channel scale of each dimension.
+  | { type: 'rect'; dims: Dimension[]; min: (number | null)[]; max: (number | null)[]; percent?: { min: (number | null)[]; max: (number | null)[]; scales: import('./flowjoStats').ChannelScale[] } }
   // grid: evaluate on FlowJo 10's gate grid (src/core/gateGrid.ts); absent =
   // exact point-in-polygon (Gating-ML semantics).
   | { type: 'polygon'; dims: [Dimension, Dimension]; vertices: [number, number][]; grid?: GateGrid }
@@ -44,7 +48,33 @@ export type Gate =
   // gives y as a function of x (sorted by x). Outside the control points the
   // end value is held. side[0] = 0: x < divider, 1: x >= divider (same for y).
   | { type: 'splineQuadrant'; dims: [Dimension, Dimension]; xDivider: [number, number][]; yDivider: [number, number][]; side: [number, number] }
+  // FlowJo 10 curly quad (specs 10.2): one quadrant (0 upper-left, 1
+  // upper-right, 2 lower-left, 3 lower-right) of the parabola outline built on
+  // a 256-pixel frame spanning frame[0] (x) and frame[1] (y) in gate units;
+  // the four quadrants are gated together as a spider quad (gating:PolyQuad).
+  | { type: 'curlyQuad'; dims: [Dimension, Dimension]; center: [number, number]; quadrant: number; frame: [[number, number], [number, number]]; grid?: GateGrid }
+  // FlowJo 10 spider quad (gating:PolyQuad, specs 10.3): four abutting
+  // polygons (gate units) in slot order 0 upper-left, 1 upper-right, 2
+  // lower-left, 3 lower-right; this population is polygons[slot]. Each lattice
+  // point belongs to the first polygon containing it; points in none count as
+  // slot 0, as in FlowJo.
+  | { type: 'spider'; dims: [Dimension, Dimension]; polygons: [number, number][][]; slot: number; grid?: GateGrid }
+  // FlowJo anchored range (TetheredRangeGate, specs 10.6): a 1-D range whose
+  // bounds are a live statistic times a multiplier; a missing bound is open.
+  | { type: 'anchored'; dims: [Dimension]; min: AnchorBound | null; max: AnchorBound | null }
   | { type: 'boolean'; op: 'and' | 'or' | 'not'; operands: { ref: string; complement?: boolean }[] };
+
+// A statistic of a population of the same sample (populationPath '' = all
+// events) times a multiplier, in scale (data) units. scale: the FlowJo channel
+// scale the statistic is computed on (snapshotted when the gate is made).
+export interface AnchorBound {
+  populationPath: string;
+  stat: StatKind;
+  channel?: string;
+  percentile?: number;
+  multiplier: number;
+  scale?: import('./flowjoStats').ChannelScale;
+}
 
 export interface Population {
   id: string;
@@ -56,6 +86,9 @@ export interface Population {
   // Group that owns this population (FlowJo owningGroup): set by "Copy
   // analysis to group"; specs 7.2.
   owningGroup?: string;
+  // FlowJo magnetic gate (specs 10.4): on each sample the gate moves toward
+  // the densest events of the parent before gating.
+  magnetic?: boolean;
 }
 
 export interface SampleState {

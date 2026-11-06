@@ -48,7 +48,7 @@
     ],
     "scenarios": [
       {
-        "evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+        "evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
         "operation": "verify_reconstruction_obligations",
         "authority": "controlled-replay"
       }
@@ -84,6 +84,151 @@
             "malformed"
           ],
           "owner": "src/core/groupCriteria.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_0d3c43175adfaad29274c5b5c63c5b0e9f452bcbde58a50402a552b2ee76840f",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "libNativeEngine-3.6.2.jnilib",
+          "digest": {
+            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
+          "format": "mach-o",
+          "architecture": "x86_64"
+        },
+        "provider": {
+          "id": "llvm-objdump",
+          "name": "LLVM objdump (analyst reading of disassembly)",
+          "version": "18.1.3"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_native_functions",
+        "parameters": {
+          "symbols": [
+            "GHistogram::ProcessQuery",
+            "BasicHistogram::Smooth(short)",
+            "Smoothing::SmoothHistogram"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "1-D histogram request without a length: min(channel range, 4096) channels; smoothing spreads each bin of count n over ceil(13 n^-1/4) bins each side with the same Gaussian weights; left margin mirrored, the first two padding bins past the right edge lost; values printed with %9.0f (whole counts).",
+          "spec": "docs/validation/flowjo-engine-specs.md section 10.8"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "address-range",
+            "start": "0xe1f50",
+            "end": "0xe2a60"
+          },
+          {
+            "kind": "address-range",
+            "start": "0xe9400",
+            "end": "0xe96d0"
+          },
+          {
+            "kind": "address-range",
+            "start": "0x21b370",
+            "end": "0x21b9a0"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_0d62eb8deb5e89d3e7567432dffd832cead4d516a918a2b9a4147a6f6224f5a1",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "com.treestar.flowjo.application.graphwindow.gatewindow.view.GateWinToolBar.createToolActions",
+            "com.treestar.flowjo.core.gates.RangeGateCreator.createBisectingChildren",
+            "com.treestar.flowjo.application.graphwindow.GraphEditorQuads (findFirstQ, altquadOrder)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Tools: Arrow, Rectangle, Range, Quad, Bisector, Ellipse, Polygon, Pencil, Auto Gate, Curly Quad, Spider Quad; keys S E F A P I R Q X C; labels = stain else parameter; quads 'Q<n>: <x>+/- , <y>+/-' (UL Q b, UR b+1, LR b+2, LL b+3, b past used numbers); bisector '<label>-' / '<label>+', clash '<parameter>::<label>-/+'.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 10.1"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/application/graphwindow/gatewindow/view/GateWinToolBar.class"
+          },
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/core/gates/RangeGateCreator.class"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_0f99124e5c65efcb7f2ae9ace13e19f0ea907d749ddcdd44038a60de8d3e0a96",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_0d3c43175adfaad29274c5b5c63c5b0e9f452bcbde58a50402a552b2ee76840f",
+          "ev_b6ef36d7b78eeaba4330eff8d24428fb2da0eefb916990eb7c3b2dcc7029f163",
+          "ev_fa569ec81c8721b258a134a5485fe00f3a78c7d6192676a97d9640ff96ac04fa"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "gates.anchored-bifurgate",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Anchored ranges and BifurGate follow FlowJo 10",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/gateTools.ts"
         },
         "confidence": "derived",
         "authority": "analyst-inference",
@@ -137,6 +282,43 @@
             "path": "com/treestar/flowjo/core/nodes/ParentNode.class"
           }
         ]
+      },
+      {
+        "evidence_id": "ev_13ba001964ce928c60860c5c2c4e019e8818666efe0aacbcba36427d8d1d28f7",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_2dfad9718bf788138c74296780f2c99ae9691fca7f7fc9664174c0f8171b2063",
+          "ev_fecf1b59727f9910d357d9bc2a92098a54fd32f1835c833e7f143353864917de"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "gates.auto-gate",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "The auto gate picks a 2% contour polygon as FlowJo 10 does",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/gateTools.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
       },
       {
         "evidence_id": "ev_14776df91ffdf6dbf5662c1bb6b1ae13b62f9ed0c56cd6c40fc19d18087899fb",
@@ -353,6 +535,75 @@
         "locations": []
       },
       {
+        "evidence_id": "ev_2dfad9718bf788138c74296780f2c99ae9691fca7f7fc9664174c0f8171b2063",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "libNativeEngine-3.6.2.jnilib",
+          "digest": {
+            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
+          "format": "mach-o",
+          "architecture": "x86_64"
+        },
+        "provider": {
+          "id": "llvm-objdump",
+          "name": "LLVM objdump (analyst reading of disassembly)",
+          "version": "18.1.3"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_native_functions",
+        "parameters": {
+          "symbols": [
+            "GGraph::ContourPlot",
+            "GHistogram2D::MakeContourPlot",
+            "GHistogram2D::Smooth",
+            "GHistogram2D::BuildBinArray",
+            "GHistogram2D::BuildPolygonList"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Contour plot: adaptive smoothing (s = ceil(13 n^-1/4), w(j) = exp(-0.5 j^2 sqrt(n) (2.4/13)^2), kernel sums to 1, margins mirrored); bins above 0.005 sorted by density, a level each time the running mass passes N / levels; closed iso-lines, frame-touching regions closed along the frame.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 10.5"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "address-range",
+            "start": "0xbd300",
+            "end": "0xbd690"
+          },
+          {
+            "kind": "address-range",
+            "start": "0x29ab40",
+            "end": "0x29af40"
+          },
+          {
+            "kind": "address-range",
+            "start": "0x290c10",
+            "end": "0x290cc0"
+          },
+          {
+            "kind": "address-range",
+            "start": "0x29af80",
+            "end": "0x29b2b0"
+          },
+          {
+            "kind": "address-range",
+            "start": "0x29b2b0",
+            "end": "0x29b5d0"
+          }
+        ]
+      },
+      {
         "evidence_id": "ev_2e5402c92005353ffcdb3c35cfdd6bb1e1ba01bb8c2feff6326be90286bb1dec",
         "analysis_profile": null,
         "raw_result": null,
@@ -385,6 +636,898 @@
         "environment": null,
         "limitations": [
           "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_3383c69c07c3276aa1e9ddcaad76753608cc4eb314d6fea90b82bdc8c8699cea",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_58eda10a2760de64c1a1d7b12bb3894eb5e31a1d8b0c2527c8498bdc830d8c0f"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "gates.quad-bisector",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Quads, offset quads and bisectors gate as FlowJo 10's QuadGate composite",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/analysis.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.proof",
+          "name": "flowjo-rea proof producer",
+          "version": "2"
+        },
+        "predicate_type": "rea.reconstruction-proof",
+        "operation": "verify_reconstruction_obligations",
+        "parameters": {
+          "node": "v22.23.4"
+        },
+        "normalized_result": {
+          "bindings": [
+            {
+              "obligation_id": "wsp.polygon-counts",
+              "obligation_version": 2,
+              "owner_sha256": "e955b7c6a551fdd350e6a8825ab1052c607e1d113ccff96129645c0ed7a15220",
+              "fixtures": [
+                {
+                  "fixture_id": "wsp.polygon-counts.fixtures",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "wsp.polygon-counts.edges",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "wsp.polygon-counts.outside",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "wsp.flowjo-counts",
+                  "claim_id": "wsp.polygon-counts.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "wsp.logicle-ellipse",
+              "obligation_version": 2,
+              "owner_sha256": "e955b7c6a551fdd350e6a8825ab1052c607e1d113ccff96129645c0ed7a15220",
+              "fixtures": [
+                {
+                  "fixture_id": "wsp.logicle-ellipse.fixtures",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "wsp.logicle-ellipse.outline",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "wsp.flowjo-counts",
+                  "claim_id": "wsp.logicle-ellipse.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gate.rect-open-bounds",
+              "obligation_version": 2,
+              "owner_sha256": "1e3103b0cafb21ed2f7a7c3ab82b89fce051c2017f362473a54d4e19b728624e",
+              "fixtures": [
+                {
+                  "fixture_id": "gate.rect-open-bounds.time",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gate.rect-open-bounds.closed",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "wsp.flowjo-counts",
+                  "claim_id": "gate.rect-open-bounds.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "stats.flowjo-conventions",
+              "obligation_version": 2,
+              "owner_sha256": "4b7faa3e68ba5052bcc6710ac0180b517602327948171595d1d85a89976310b6",
+              "fixtures": [
+                {
+                  "fixture_id": "stats.median",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.clamp",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.small",
+                  "case_kind": "malformed",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "stats.flowjo-histogram",
+                  "claim_id": "stats.flowjo-conventions.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "names.unique-sibling",
+              "obligation_version": 1,
+              "owner_sha256": "2545966db8ca27475b266ff488d5eb1f678d1d9213b9922eef8928446d5fb736",
+              "fixtures": [
+                {
+                  "fixture_id": "names.unique-sibling.suffix",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "names.unique-sibling.kept",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "uat.step2",
+                  "claim_id": "names.unique-sibling.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gate.min-shape",
+              "obligation_version": 1,
+              "owner_sha256": "133d95d8670bcd95558445baf893cf7a9aec1d28518eb074d11277d75cd80b3e",
+              "fixtures": [
+                {
+                  "fixture_id": "gate.min-shape.discard",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gate.min-shape.keep",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "uat.step2",
+                  "claim_id": "gate.min-shape.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "sample.relink-keywords",
+              "obligation_version": 1,
+              "owner_sha256": "2cd93952d1c54d04b711840fc2f127a36058fa18bb3b6a5c9915fa0b3a026777",
+              "fixtures": [
+                {
+                  "fixture_id": "sample.relink.match",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "sample.relink.first",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "sample.relink.tot",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "uat.step2",
+                  "claim_id": "sample.relink-keywords.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gate.quad-sibling-delete",
+              "obligation_version": 1,
+              "owner_sha256": "2cd93952d1c54d04b711840fc2f127a36058fa18bb3b6a5c9915fa0b3a026777",
+              "fixtures": [
+                {
+                  "fixture_id": "gate.quad-delete.siblings",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gate.quad-delete.fixture",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gate.quad-delete.alone",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "gate.quad-delete",
+                  "claim_id": "gate.quad-sibling-delete.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "cellcycle.histogram-channels",
+              "obligation_version": 1,
+              "owner_sha256": "9b787277aeee88fad7a60fac947f84823e8f42ed2d657b64d483708d339ca62b",
+              "fixtures": [
+                {
+                  "fixture_id": "cellcycle.channels.cap",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "cellcycle.channels.range",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "cellcycle.fits",
+                  "claim_id": "cellcycle.histogram-channels.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "workspace.undo-limit",
+              "obligation_version": 1,
+              "owner_sha256": "301a114c4485e3f967d766c4dce1959d174e7492e9b6dbbc69616cb3582efa9e",
+              "fixtures": [
+                {
+                  "fixture_id": "undo.cap",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "undo.order",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "undo.branch",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "workspace.history",
+                  "claim_id": "workspace.undo-limit.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "groups.keyword-criteria",
+              "obligation_version": 1,
+              "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b",
+              "fixtures": [
+                {
+                  "fixture_id": "groups.criteria.numeric",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.criteria.connectors",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.criteria.missing",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.criteria.inactive",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.criteria.nonnumeric",
+                  "case_kind": "malformed",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "groups.criteria",
+                  "claim_id": "groups.keyword-criteria.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "groups.acceptance",
+              "obligation_version": 1,
+              "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b",
+              "fixtures": [
+                {
+                  "fixture_id": "groups.accept.stains",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.accept.ref",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.accept.none",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "groups.criteria",
+                  "claim_id": "groups.acceptance.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "groups.roles",
+              "obligation_version": 1,
+              "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b",
+              "fixtures": [
+                {
+                  "fixture_id": "groups.roles.read",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.roles.quirk",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "groups.criteria",
+                  "claim_id": "groups.roles.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "groups.owned-analysis",
+              "obligation_version": 1,
+              "owner_sha256": "2cd93952d1c54d04b711840fc2f127a36058fa18bb3b6a5c9915fa0b3a026777",
+              "fixtures": [
+                {
+                  "fixture_id": "groups.owned.copy",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.owned.alloc",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.owned.first",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.owned.delete",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.owned.sync",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "groups.owned",
+                  "claim_id": "groups.owned-analysis.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "stats.histogram-moments",
+              "obligation_version": 1,
+              "owner_sha256": "4b7faa3e68ba5052bcc6710ac0180b517602327948171595d1d85a89976310b6",
+              "fixtures": [
+                {
+                  "fixture_id": "stats.mean",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.geomean",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.cv-sign",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "stats.flowjo-moments",
+                  "claim_id": "stats.histogram-moments.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "stats.mode-mad-correlation",
+              "obligation_version": 1,
+              "owner_sha256": "4b7faa3e68ba5052bcc6710ac0180b517602327948171595d1d85a89976310b6",
+              "fixtures": [
+                {
+                  "fixture_id": "stats.mode",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.mad",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.correlation",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "stats.flowjo-moments",
+                  "claim_id": "stats.mode-mad-correlation.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "stats.wsp-names",
+              "obligation_version": 1,
+              "owner_sha256": "189996e63ad0873fcf63144d201764bd42819f8c5b263f638aa003e28d03f3fa",
+              "fixtures": [
+                {
+                  "fixture_id": "stats.names",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.freqof",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.own",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "stats.flowjo-moments",
+                  "claim_id": "stats.wsp-names.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "export.event-cap",
+              "obligation_version": 1,
+              "owner_sha256": "2b2d43647943d08c6065cb6363ca509001578629ccd7490b696c7399c185f117",
+              "fixtures": [
+                {
+                  "fixture_id": "export.cap.whole",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "export.cap.gated",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "export.cap.all",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "export.flowjo",
+                  "claim_id": "export.event-cap.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "export.csv-format",
+              "obligation_version": 1,
+              "owner_sha256": "2b2d43647943d08c6065cb6363ca509001578629ccd7490b696c7399c185f117",
+              "fixtures": [
+                {
+                  "fixture_id": "export.csv.g",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "export.csv.header",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "export.csv.channel",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "export.flowjo",
+                  "claim_id": "export.csv-format.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "export.concatenate",
+              "obligation_version": 1,
+              "owner_sha256": "2b2d43647943d08c6065cb6363ca509001578629ccd7490b696c7399c185f117",
+              "fixtures": [
+                {
+                  "fixture_id": "export.concat.everyn",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "export.concat.service",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "export.concat.cap",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "export.concat.empty",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "export.flowjo",
+                  "claim_id": "export.concatenate.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gates.quad-bisector",
+              "obligation_version": 1,
+              "owner_sha256": "82f077618f627a54ff3db43da17b160265faccf7e497d2ca813461b3ac7c372f",
+              "fixtures": [
+                {
+                  "fixture_id": "gates.quad.lines",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.bisector.split",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "gates.flowjo",
+                  "claim_id": "gates.quad-bisector.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gates.names-tools",
+              "obligation_version": 1,
+              "owner_sha256": "edd86cebaa3162b6edfdb8909eca37c9d94fe99e60c0e73d14fd2fa8ea796d37",
+              "fixtures": [
+                {
+                  "fixture_id": "gates.names.quad",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.names.bisector",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "gates.flowjo",
+                  "claim_id": "gates.names-tools.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gates.spider-curly",
+              "obligation_version": 1,
+              "owner_sha256": "ca38c59e1a24dbbc72e8145d857589d58b233ba03cafdee991dec7f2b67ef0d2",
+              "fixtures": [
+                {
+                  "fixture_id": "gates.curly.arm",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.curly.partition",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.spider.ties",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.wsp.roundtrip",
+                  "case_kind": "positive",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "gates.flowjo",
+                  "claim_id": "gates.spider-curly.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gates.magnetic",
+              "obligation_version": 1,
+              "owner_sha256": "8146400f5ff03769f7e474f9ac274d0c40f4d10f81a8e6951a4d5839ef2424db",
+              "fixtures": [
+                {
+                  "fixture_id": "gates.magnetic.2d",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.magnetic.1d",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.magnetic.none",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "gates.flowjo",
+                  "claim_id": "gates.magnetic.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gates.auto-gate",
+              "obligation_version": 1,
+              "owner_sha256": "edd86cebaa3162b6edfdb8909eca37c9d94fe99e60c0e73d14fd2fa8ea796d37",
+              "fixtures": [
+                {
+                  "fixture_id": "gates.auto.kernel",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.auto.blob",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.auto.frame",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.auto.reduce",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "gates.flowjo",
+                  "claim_id": "gates.auto-gate.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gates.pencil-convert",
+              "obligation_version": 1,
+              "owner_sha256": "80a093bb846046a171a8e70ac02d03dc6991a0bc1368b95ac46a48eaf3715280",
+              "fixtures": [
+                {
+                  "fixture_id": "gates.pencil.path",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.pencil.near",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.convert.rect",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.convert.ellipse",
+                  "case_kind": "positive",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "gates.flowjo",
+                  "claim_id": "gates.pencil-convert.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gates.clipboard-manual",
+              "obligation_version": 1,
+              "owner_sha256": "72f18e27924a6e06ea98847e515d24efe33e99296fd201db41221e414f64e4b1",
+              "fixtures": [
+                {
+                  "fixture_id": "gates.copy.quads",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.paste.clash",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.percent.samples",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.percent.cases",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "gates.flowjo",
+                  "claim_id": "gates.clipboard-manual.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gates.anchored-bifurgate",
+              "obligation_version": 1,
+              "owner_sha256": "f9875c3c4019ebb735dd5115a3be794b21f33b26537c2b0c4903b3b5cf79c25e",
+              "fixtures": [
+                {
+                  "fixture_id": "gates.anchored.bound",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.bifur.peaks",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.bifur.valley",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.bifur.margin",
+                  "case_kind": "positive",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "gates.flowjo",
+                  "claim_id": "gates.anchored-bifurgate.v1",
+                  "passed": true
+                }
+              ]
+            }
+          ]
+        },
+        "confidence": "observed",
+        "authority": "controlled-replay",
+        "environment": {
+          "id": "node-v22.23.4",
+          "platform": "linux",
+          "architecture": "x64",
+          "isolation": "process"
+        },
+        "limitations": [
+          "Verifiers are this repository’s vitest suites run in one local process; FlowJo reference counts come from FlowJo-saved .wsp files (FlowJo 10.6.2 to 10.10.0)."
         ],
         "locations": []
       },
@@ -593,6 +1736,95 @@
         ]
       },
       {
+        "evidence_id": "ev_48e0e5085d792dc9c0755c0d42308db68e17d8e5e549412d70119f93830ecbdf",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_9c80035b0dbfa6b96e0d945e57e81712cff7a4aef44bfd63385b25ff0f505c8c",
+          "ev_f3901b97ae1d7f91534b128742fe6b4f9feb0b556dc365732b3ed02230cca127"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "gates.spider-curly",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Spider and curly quads use FlowJo 10's outline and PolyQuad label grid",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/gateTools.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_49739341a98c0dee31087646ede91f9c6da595f93bd497e5cd49dfcbbaf1db66",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "com.treestar.flowjo.core.gates.Gate.convert",
+            "com.treestar.flowjo.core.gates.EllipseGate.updateFromRect",
+            "com.treestar.flowjo.application.workspace.manager.WSClipboard",
+            "com.treestar.flowjo.application.workspace.treetables.SampleTreeTable.addDroppedNode",
+            "com.treestar.flowjo.core.nodes.PopNode.preAdd"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Convert: rect corners to polygon; bounding boxes snapped outward to whole scale units; ellipse outline 180 frame pixels reduced to 20; rect to ellipse through the corners. Copy adds sibling quads; paste keeps coordinates, clears the group, skips a target with the same child name and refuses a sample missing a parameter.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 10.7"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/core/gates/Gate.class"
+          },
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/core/gates/EllipseGate.class"
+          }
+        ]
+      },
+      {
         "evidence_id": "ev_4bc3a190be4f40021296127fa5857fb1468dfb70d10fd4935b3637ef38462f97",
         "analysis_profile": null,
         "raw_result": null,
@@ -672,6 +1904,75 @@
           "AI-assisted review (Claude Code session); no human review is attested."
         ],
         "locations": []
+      },
+      {
+        "evidence_id": "ev_58eda10a2760de64c1a1d7b12bb3894eb5e31a1d8b0c2527c8498bdc830d8c0f",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "libNativeEngine-3.6.2.jnilib",
+          "digest": {
+            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
+          "format": "mach-o",
+          "architecture": "x86_64"
+        },
+        "provider": {
+          "id": "llvm-objdump",
+          "name": "LLVM objdump (analyst reading of disassembly)",
+          "version": "18.1.3"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_native_functions",
+        "parameters": {
+          "symbols": [
+            "QuadGate::QuadGate(GateSpec const*, Sample*, TaskMgr*)",
+            "QuadGate::ComputeQuadGate(TransformedParameter*, TransformedParameter*, long, long)",
+            "QuadGate::ComputeQuadOffsetGate(TransformedParameter*, TransformedParameter*, long, long)",
+            "QuadGate::ComputeBisectorGate(TransformedParameter*)",
+            "QuadGate::ComputeBisectorGate(TransformedParameter*, TransformedParameter*, long, long)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Sibling quads are one composite: quad (kind 7) centre from the upper-left child, x < cx left and y < cy lower (a value on a line goes right or up, NaN below), exact on scale values; offset quad when the upper-right child's corner differs (one divider steps); bisector (kind 8) below the split left, the split value and above right, NaN left.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 10.2"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "address-range",
+            "start": "0x4d1450",
+            "end": "0x4d1e10"
+          },
+          {
+            "kind": "address-range",
+            "start": "0x4d3690",
+            "end": "0x4d38f0"
+          },
+          {
+            "kind": "address-range",
+            "start": "0x4d3b20",
+            "end": "0x4d3ef0"
+          },
+          {
+            "kind": "address-range",
+            "start": "0x4d3ef0",
+            "end": "0x4d5560"
+          },
+          {
+            "kind": "address-range",
+            "start": "0x4d5560",
+            "end": "0x4d5660"
+          }
+        ]
       },
       {
         "evidence_id": "ev_5b7d2064c12471cfcd96cbb242921faf69562c31feefed38f261b56e4a4e37ae",
@@ -925,6 +2226,42 @@
             "negative"
           ],
           "owner": "src/core/wsp.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_71254e30b21639a9396ae22ab0b64fa8af03956651381003376aeb7f584ca7c7",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_a0f493e0da7135e55e3bf82754dc1ab4dad3b593d6fc3f02dd2975abaa181098"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "gates.magnetic",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Magnetic gates move toward the densest events as FlowJo 10 does",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/gateTools.ts"
         },
         "confidence": "derived",
         "authority": "analyst-inference",
@@ -1331,6 +2668,62 @@
         "locations": []
       },
       {
+        "evidence_id": "ev_9c80035b0dbfa6b96e0d945e57e81712cff7a4aef44bfd63385b25ff0f505c8c",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "com.treestar.flowjo.core.gates.CurlyQuadGate.getHorizontalCurlyFunction",
+            "com.treestar.flowjo.core.gates.CurlyQuadGate.getVerticalCurlyFunction",
+            "com.treestar.flowjo.core.gates.CurlyQuadGate.writeQuery",
+            "com.treestar.flowjo.application.graphwindow.SpiderPoint",
+            "com.treestar.flowjo.core.gates.PolyGate (spider constructor, quadId)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Curly quad on a 256-pixel frame, k = 0.001 fixed and not saved, arms sampled about 1/40 of the remaining span, sent as polygons; spider polygons (corner x, side y), corner, (side x, corner y), centre, side points 10 px from the click, corners one unit outside the axis; .wsp: gating:CurlyQuad, spider PolygonGate quadId 0..3.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 10.3"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/core/gates/CurlyQuadGate.class"
+          },
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/application/graphwindow/SpiderPoint.class"
+          },
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/core/gates/PolyGate.class"
+          }
+        ]
+      },
+      {
         "evidence_id": "ev_a013155b82a39c0d3594d65480c08cb06d085c568f07ae8652d007b56640391c",
         "analysis_profile": null,
         "raw_result": null,
@@ -1377,6 +2770,115 @@
           {
             "kind": "artifact-path",
             "path": "com/treestar/layout/presentation/FigGatingEllipse.class"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_a0f493e0da7135e55e3bf82754dc1ab4dad3b593d6fc3f02dd2975abaa181098",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "libNativeEngine-3.6.2.jnilib",
+          "digest": {
+            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
+          "format": "mach-o",
+          "architecture": "x86_64"
+        },
+        "provider": {
+          "id": "llvm-objdump",
+          "name": "LLVM objdump (analyst reading of disassembly)",
+          "version": "18.1.3"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_native_functions",
+        "parameters": {
+          "symbols": [
+            "FGate::MoveMagneticGate(TaskMgr*)",
+            "FGate::CentroidOffset",
+            "FGate::MoveHistogramGate",
+            "FGate::AdjustGateAndRecompute"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Magnetic gate: from the drawn position, walk one cell at a time over a 256 x 256 parent histogram toward the count-weighted centre of the covered cells (x when |dy| <= 2.41 |dx|, y when |dx| <= 2.41 |dy|, sign of 0 is +1), stopping after 512 steps or on a revisit (the lower-scoring of the last two); 1-D: shift by bins while the count keeps increasing.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 10.4"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "address-range",
+            "start": "0x7de10",
+            "end": "0x7e6b0"
+          },
+          {
+            "kind": "address-range",
+            "start": "0x832f0",
+            "end": "0x839a0"
+          },
+          {
+            "kind": "address-range",
+            "start": "0x82ec0",
+            "end": "0x832f0"
+          },
+          {
+            "kind": "address-range",
+            "start": "0x82b00",
+            "end": "0x82ec0"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_b6ef36d7b78eeaba4330eff8d24428fb2da0eefb916990eb7c3b2dcc7029f163",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "com.treestar.flowjo.application.workspace.actions.WSAutoQuadAction",
+            "com.treestar.flowjo.core.histogram.PeakFinder.findPeaks",
+            "com.treestar.flowjo.core.histogram.PeakList.makeBimodal"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "BifurGate: per fluorescent parameter off the gating path, the parent's smoothed 4096-channel histogram; peaks found by half-width walks and regression slopes, small or low peaks dropped, the two largest kept; the split is the first lowest channel between their interpolated medians; '<label>-' / '<label>+' children, unimodal gives none.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 10.8"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/application/workspace/actions/WSAutoQuadAction.class"
           }
         ]
       },
@@ -1674,6 +3176,42 @@
         "locations": []
       },
       {
+        "evidence_id": "ev_d0912820e06602da4c5374c05f0232b5bfbf220a781bd3af7b9f28b4671531a3",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_0d62eb8deb5e89d3e7567432dffd832cead4d516a918a2b9a4147a6f6224f5a1"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "gates.names-tools",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Gate tools, keys and new-gate names follow FlowJo 10",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/gateTools.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
         "evidence_id": "ev_d447a073cbc879bc8e811e7d49489db3b034c4337263dec047bbd1adc0d09f76",
         "analysis_profile": null,
         "raw_result": null,
@@ -1736,6 +3274,43 @@
             "negative"
           ],
           "owner": "src/core/exportRules.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_d7444981fd3b05c7055848c479c592aab8cbfa03fd581b4477f876125733626e",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_49739341a98c0dee31087646ede91f9c6da595f93bd497e5cd49dfcbbaf1db66",
+          "ev_fa569ec81c8721b258a134a5485fe00f3a78c7d6192676a97d9640ff96ac04fa"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "gates.clipboard-manual",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Copy, paste, manual entry and percent gates follow FlowJo 10",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/project.ts"
         },
         "confidence": "derived",
         "authority": "analyst-inference",
@@ -1833,6 +3408,43 @@
         "locations": []
       },
       {
+        "evidence_id": "ev_eb37391e54b07d53855557ed2c07a24913a7f75180a67536afad64613a7c5dbc",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_49739341a98c0dee31087646ede91f9c6da595f93bd497e5cd49dfcbbaf1db66",
+          "ev_fecf1b59727f9910d357d9bc2a92098a54fd32f1835c833e7f143353864917de"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "gates.pencil-convert",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Pencil vertices and gate conversion follow FlowJo 10",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/gateTools.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
         "evidence_id": "ev_ee45bc030a39b19a3aa3afeced3427ed8c44b64c560eb099da5bfd52a877858c",
         "analysis_profile": null,
         "raw_result": null,
@@ -1878,6 +3490,57 @@
         ]
       },
       {
+        "evidence_id": "ev_f3901b97ae1d7f91534b128742fe6b4f9feb0b556dc365732b3ed02230cca127",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "libNativeEngine-3.6.2.jnilib",
+          "digest": {
+            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
+          "format": "mach-o",
+          "architecture": "x86_64"
+        },
+        "provider": {
+          "id": "llvm-objdump",
+          "name": "LLVM objdump (analyst reading of disassembly)",
+          "version": "18.1.3"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_native_functions",
+        "parameters": {
+          "symbols": [
+            "QuadGate::ComputeSpiderGate(TransformedParameter*, TransformedParameter*, long, long)",
+            "QuadGate::ComputeSpiderGate lambda $_4"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "PolyQuad (kind 11): four polygons ordered by the bounding-box corner each has; an R x R label grid gives each lattice point the first polygon (upper-left, upper-right, lower-left, lower-right) containing it, points in none count as upper-left; events take the label of their cell (polygon cell mapping).",
+          "spec": "docs/validation/flowjo-engine-specs.md section 10.3"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "address-range",
+            "start": "0x4d38f0",
+            "end": "0x4d3b20"
+          },
+          {
+            "kind": "address-range",
+            "start": "0x4e8040",
+            "end": "0x4eabc0"
+          }
+        ]
+      },
+      {
         "evidence_id": "ev_f54893712fad5b36fd1984b42e5d0b2c3d846a8ddcfceeec1682a7a98f799e7f",
         "analysis_profile": null,
         "raw_result": null,
@@ -1913,6 +3576,57 @@
           "AI-assisted review (Claude Code session); no human review is attested."
         ],
         "locations": []
+      },
+      {
+        "evidence_id": "ev_fa569ec81c8721b258a134a5485fe00f3a78c7d6192676a97d9640ff96ac04fa",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "com.treestar.flowjo.application.graphwindow.dialog.ManualGateDP",
+            "com.treestar.flowjo.core.Transform.percentileToScale",
+            "com.treestar.flowjo.core.histogram.SmoothedFunction.channelPercentile",
+            "com.treestar.flowjo.core.gates.TetheredRangeGate"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Manual entry: Lower / Upper in Intensity or Percentile; percent gates recomputed per sample from the parent's smoothed histogram (4096 buckets x, 256 y), whole-count running sum to p x count; anchored range bound = statistic x multiplier (clicked value / statistic, 2 decimals, Shift snaps, Alt upper), not draggable.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 10.6"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/application/graphwindow/dialog/ManualGateDP.class"
+          },
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/core/gates/TetheredRangeGate.class"
+          }
+        ]
       },
       {
         "evidence_id": "ev_fdf1fa0555246ec4926c646448ba0d02f604477b0fa0f086438b2ba3c60ac4e2",
@@ -1966,613 +3680,54 @@
         ]
       },
       {
-        "evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+        "evidence_id": "ev_fecf1b59727f9910d357d9bc2a92098a54fd32f1835c833e7f143353864917de",
         "analysis_profile": null,
         "raw_result": null,
         "relationship_coverage": null,
         "evidence_links": [],
-        "subject": null,
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
         "provider": {
-          "id": "flowjo-rea.proof",
-          "name": "flowjo-rea proof producer",
-          "version": "2"
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
         },
-        "predicate_type": "rea.reconstruction-proof",
-        "operation": "verify_reconstruction_obligations",
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
         "parameters": {
-          "node": "v22.23.4"
-        },
-        "normalized_result": {
-          "bindings": [
-            {
-              "obligation_id": "wsp.polygon-counts",
-              "obligation_version": 2,
-              "owner_sha256": "a07e209ac1da9915d6101deb4c6a6cd4420e131ab3078a85865166057ac7add3",
-              "fixtures": [
-                {
-                  "fixture_id": "wsp.polygon-counts.fixtures",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "wsp.polygon-counts.edges",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "wsp.polygon-counts.outside",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "wsp.flowjo-counts",
-                  "claim_id": "wsp.polygon-counts.v2",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "wsp.logicle-ellipse",
-              "obligation_version": 2,
-              "owner_sha256": "a07e209ac1da9915d6101deb4c6a6cd4420e131ab3078a85865166057ac7add3",
-              "fixtures": [
-                {
-                  "fixture_id": "wsp.logicle-ellipse.fixtures",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "wsp.logicle-ellipse.outline",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "wsp.flowjo-counts",
-                  "claim_id": "wsp.logicle-ellipse.v2",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "gate.rect-open-bounds",
-              "obligation_version": 2,
-              "owner_sha256": "eadf4143ad5b70c190926bda4d37e71547923ebc0fd3d533d5808f57fb6d903f",
-              "fixtures": [
-                {
-                  "fixture_id": "gate.rect-open-bounds.time",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gate.rect-open-bounds.closed",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "wsp.flowjo-counts",
-                  "claim_id": "gate.rect-open-bounds.v2",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "stats.flowjo-conventions",
-              "obligation_version": 2,
-              "owner_sha256": "e5ab4a358014b8247dd0a70d2c23729b9230d076c11ecc49a7dc2311d8d13225",
-              "fixtures": [
-                {
-                  "fixture_id": "stats.median",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.clamp",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.small",
-                  "case_kind": "malformed",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "stats.flowjo-histogram",
-                  "claim_id": "stats.flowjo-conventions.v2",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "names.unique-sibling",
-              "obligation_version": 1,
-              "owner_sha256": "2884f94dd8d0457a0c0d6ab387ee023f1ed463952b143847f66feeecd6d16061",
-              "fixtures": [
-                {
-                  "fixture_id": "names.unique-sibling.suffix",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "names.unique-sibling.kept",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "uat.step2",
-                  "claim_id": "names.unique-sibling.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "gate.min-shape",
-              "obligation_version": 1,
-              "owner_sha256": "005407fbf5d62312d24627a8d31686115b3c4c1881509138a0e91f4ddedbc4a0",
-              "fixtures": [
-                {
-                  "fixture_id": "gate.min-shape.discard",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gate.min-shape.keep",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "uat.step2",
-                  "claim_id": "gate.min-shape.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "sample.relink-keywords",
-              "obligation_version": 1,
-              "owner_sha256": "85016992a14b156aff4879d2f0cbee6f722185856fe134366ad3f9032ceb4c73",
-              "fixtures": [
-                {
-                  "fixture_id": "sample.relink.match",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "sample.relink.first",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "sample.relink.tot",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "uat.step2",
-                  "claim_id": "sample.relink-keywords.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "gate.quad-sibling-delete",
-              "obligation_version": 1,
-              "owner_sha256": "85016992a14b156aff4879d2f0cbee6f722185856fe134366ad3f9032ceb4c73",
-              "fixtures": [
-                {
-                  "fixture_id": "gate.quad-delete.siblings",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gate.quad-delete.fixture",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gate.quad-delete.alone",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "gate.quad-delete",
-                  "claim_id": "gate.quad-sibling-delete.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "cellcycle.histogram-channels",
-              "obligation_version": 1,
-              "owner_sha256": "4b3688c4f79dac3817f5748199c706fc99932ff5d8d9b30db45530ab07a3ed5a",
-              "fixtures": [
-                {
-                  "fixture_id": "cellcycle.channels.cap",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "cellcycle.channels.range",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "cellcycle.fits",
-                  "claim_id": "cellcycle.histogram-channels.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "workspace.undo-limit",
-              "obligation_version": 1,
-              "owner_sha256": "301a114c4485e3f967d766c4dce1959d174e7492e9b6dbbc69616cb3582efa9e",
-              "fixtures": [
-                {
-                  "fixture_id": "undo.cap",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "undo.order",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "undo.branch",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "workspace.history",
-                  "claim_id": "workspace.undo-limit.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "groups.keyword-criteria",
-              "obligation_version": 1,
-              "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b",
-              "fixtures": [
-                {
-                  "fixture_id": "groups.criteria.numeric",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.criteria.connectors",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.criteria.missing",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.criteria.inactive",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.criteria.nonnumeric",
-                  "case_kind": "malformed",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "groups.criteria",
-                  "claim_id": "groups.keyword-criteria.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "groups.acceptance",
-              "obligation_version": 1,
-              "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b",
-              "fixtures": [
-                {
-                  "fixture_id": "groups.accept.stains",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.accept.ref",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.accept.none",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "groups.criteria",
-                  "claim_id": "groups.acceptance.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "groups.roles",
-              "obligation_version": 1,
-              "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b",
-              "fixtures": [
-                {
-                  "fixture_id": "groups.roles.read",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.roles.quirk",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "groups.criteria",
-                  "claim_id": "groups.roles.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "groups.owned-analysis",
-              "obligation_version": 1,
-              "owner_sha256": "85016992a14b156aff4879d2f0cbee6f722185856fe134366ad3f9032ceb4c73",
-              "fixtures": [
-                {
-                  "fixture_id": "groups.owned.copy",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.owned.alloc",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.owned.first",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.owned.delete",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.owned.sync",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "groups.owned",
-                  "claim_id": "groups.owned-analysis.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "stats.histogram-moments",
-              "obligation_version": 1,
-              "owner_sha256": "e5ab4a358014b8247dd0a70d2c23729b9230d076c11ecc49a7dc2311d8d13225",
-              "fixtures": [
-                {
-                  "fixture_id": "stats.mean",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.geomean",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.cv-sign",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "stats.flowjo-moments",
-                  "claim_id": "stats.histogram-moments.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "stats.mode-mad-correlation",
-              "obligation_version": 1,
-              "owner_sha256": "e5ab4a358014b8247dd0a70d2c23729b9230d076c11ecc49a7dc2311d8d13225",
-              "fixtures": [
-                {
-                  "fixture_id": "stats.mode",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.mad",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.correlation",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "stats.flowjo-moments",
-                  "claim_id": "stats.mode-mad-correlation.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "stats.wsp-names",
-              "obligation_version": 1,
-              "owner_sha256": "451b046d16b826c38946ec6732e6ad3ee7b34ff72543016a8177fe2a39b20196",
-              "fixtures": [
-                {
-                  "fixture_id": "stats.names",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.freqof",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.own",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "stats.flowjo-moments",
-                  "claim_id": "stats.wsp-names.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "export.event-cap",
-              "obligation_version": 1,
-              "owner_sha256": "321d1aca2a614cfe372acd78bd072ec1a764e36c6c5f8d7f39fced4475905ac0",
-              "fixtures": [
-                {
-                  "fixture_id": "export.cap.whole",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "export.cap.gated",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "export.cap.all",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "export.flowjo",
-                  "claim_id": "export.event-cap.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "export.csv-format",
-              "obligation_version": 1,
-              "owner_sha256": "321d1aca2a614cfe372acd78bd072ec1a764e36c6c5f8d7f39fced4475905ac0",
-              "fixtures": [
-                {
-                  "fixture_id": "export.csv.g",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "export.csv.header",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "export.csv.channel",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "export.flowjo",
-                  "claim_id": "export.csv-format.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "export.concatenate",
-              "obligation_version": 1,
-              "owner_sha256": "321d1aca2a614cfe372acd78bd072ec1a764e36c6c5f8d7f39fced4475905ac0",
-              "fixtures": [
-                {
-                  "fixture_id": "export.concat.everyn",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "export.concat.service",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "export.concat.cap",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "export.concat.empty",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "export.flowjo",
-                  "claim_id": "export.concatenate.v1",
-                  "passed": true
-                }
-              ]
-            }
+          "symbols": [
+            "com.treestar.layout.presentation.FigPoly.processFreehandDrag",
+            "com.treestar.layout.presentation.FigPoly.reduce",
+            "com.treestar.layout.editor.layers.LayerAutoGate.getClosestPoly"
           ]
         },
-        "confidence": "observed",
-        "authority": "controlled-replay",
-        "environment": {
-          "id": "node-v22.23.4",
-          "platform": "linux",
-          "architecture": "x64",
-          "isolation": "process"
+        "normalized_result": {
+          "behavior": "Pencil commits a vertex beyond 12 px when (d + a) / c > 1.04 or d / bend > 12, fewer than 4 points abandons; Auto Gate always at the 2% contour level, 256 resolution, picks the polygon with the nearest vertex (last vertex skipped, first wins) and keeps every (n div max(20, trunc(0.1 n)))-th vertex.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 10.5"
         },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
         "limitations": [
-          "Verifiers are this repository’s vitest suites run in one local process; FlowJo reference counts come from FlowJo-saved .wsp files (FlowJo 10.6.2 to 10.10.0)."
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
         ],
-        "locations": []
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/layout/presentation/FigPoly.class"
+          },
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/layout/editor/layers/LayerAutoGate.class"
+          }
+        ]
       },
       {
         "evidence_id": "ev_ffcff8a57a326d5f42f524928fb439eb5e95b0db6a1af811be806af790c7a42c",
@@ -3214,6 +4369,246 @@
       "review_evidence_ids": [
         "ev_2d71ce2c0510752e881767c00e52e9ee38e09bccac3c1e1a5658fdc4235bc2ed"
       ]
+    },
+    {
+      "obligation_id": "gates.quad-bisector",
+      "obligation_version": 1,
+      "title": "Quads, offset quads and bisectors gate as FlowJo 10's QuadGate composite",
+      "application_layer": "application",
+      "family": "gates",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "QuadGate::ComputeQuadGate / ComputeQuadOffsetGate / ComputeBisectorGate"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_3383c69c07c3276aa1e9ddcaad76753608cc4eb314d6fea90b82bdc8c8699cea"
+      ]
+    },
+    {
+      "obligation_id": "gates.names-tools",
+      "obligation_version": 1,
+      "title": "Gate tools, keys and new-gate names follow FlowJo 10",
+      "application_layer": "application",
+      "family": "gates",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "GateWinToolBar.createToolActions; RangeGateCreator.createBisectingChildren; findFirstQ"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_d0912820e06602da4c5374c05f0232b5bfbf220a781bd3af7b9f28b4671531a3"
+      ]
+    },
+    {
+      "obligation_id": "gates.spider-curly",
+      "obligation_version": 1,
+      "title": "Spider and curly quads use FlowJo 10's outline and PolyQuad label grid",
+      "application_layer": "application",
+      "family": "gates",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "QuadGate::ComputeSpiderGate; CurlyQuadGate"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_48e0e5085d792dc9c0755c0d42308db68e17d8e5e549412d70119f93830ecbdf"
+      ]
+    },
+    {
+      "obligation_id": "gates.magnetic",
+      "obligation_version": 1,
+      "title": "Magnetic gates move toward the densest events as FlowJo 10 does",
+      "application_layer": "application",
+      "family": "gates",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "FGate::MoveMagneticGate; FGate::MoveHistogramGate"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_71254e30b21639a9396ae22ab0b64fa8af03956651381003376aeb7f584ca7c7"
+      ]
+    },
+    {
+      "obligation_id": "gates.auto-gate",
+      "obligation_version": 1,
+      "title": "The auto gate picks a 2% contour polygon as FlowJo 10 does",
+      "application_layer": "application",
+      "family": "gates",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "GHistogram2D::MakeContourPlot; LayerAutoGate.getClosestPoly; FigPoly.reduce"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_13ba001964ce928c60860c5c2c4e019e8818666efe0aacbcba36427d8d1d28f7"
+      ]
+    },
+    {
+      "obligation_id": "gates.pencil-convert",
+      "obligation_version": 1,
+      "title": "Pencil vertices and gate conversion follow FlowJo 10",
+      "application_layer": "application",
+      "family": "gates",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "FigPoly.processFreehandDrag; Gate.convert"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_eb37391e54b07d53855557ed2c07a24913a7f75180a67536afad64613a7c5dbc"
+      ]
+    },
+    {
+      "obligation_id": "gates.clipboard-manual",
+      "obligation_version": 1,
+      "title": "Copy, paste, manual entry and percent gates follow FlowJo 10",
+      "application_layer": "application",
+      "family": "gates",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "WSClipboard; SampleTreeTable.addDroppedNode; ManualGateDP; SmoothedFunction.channelPercentile"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_d7444981fd3b05c7055848c479c592aab8cbfa03fd581b4477f876125733626e"
+      ]
+    },
+    {
+      "obligation_id": "gates.anchored-bifurgate",
+      "obligation_version": 1,
+      "title": "Anchored ranges and BifurGate follow FlowJo 10",
+      "application_layer": "application",
+      "family": "gates",
+      "target": {
+        "artifact_sha256": null,
+        "application_node_id": null,
+        "semantic_node_id": null,
+        "location": "TetheredRangeGate; WSAutoQuadAction; PeakFinder.findPeaks; Smoothing::SmoothHistogram"
+      },
+      "required": true,
+      "required_case_kinds": [
+        "positive",
+        "negative"
+      ],
+      "required_original_authority": "static",
+      "required_fixture_authority": "integration",
+      "required_verifier_authority": "integration",
+      "requires_parser_type": false,
+      "dependency_obligation_ids": [],
+      "residual_unknown_ids": [],
+      "unavailable_authority": [],
+      "required_next_evidence": [],
+      "disposition": "active",
+      "review_evidence_ids": [
+        "ev_0f99124e5c65efcb7f2ae9ace13e19f0ea907d749ddcdd44038a60de8d3e0a96"
+      ]
     }
   ],
   "manifest": {
@@ -3223,7 +4618,7 @@
         "owner": {
           "module_path": "src/core/gateGrid.ts",
           "symbol": "polygonGridMask",
-          "owner_sha256": "a07e209ac1da9915d6101deb4c6a6cd4420e131ab3078a85865166057ac7add3"
+          "owner_sha256": "e955b7c6a551fdd350e6a8825ab1052c607e1d113ccff96129645c0ed7a15220"
         },
         "parser_type": null,
         "original_cases": [
@@ -3244,7 +4639,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3252,7 +4647,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3260,7 +4655,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           }
         ],
@@ -3270,7 +4665,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
           "enumerated_obligation_ids": [
             "wsp.polygon-counts"
           ],
@@ -3285,7 +4680,7 @@
         "owner": {
           "module_path": "src/core/gateGrid.ts",
           "symbol": "ellipseLatticePolygon",
-          "owner_sha256": "a07e209ac1da9915d6101deb4c6a6cd4420e131ab3078a85865166057ac7add3"
+          "owner_sha256": "e955b7c6a551fdd350e6a8825ab1052c607e1d113ccff96129645c0ed7a15220"
         },
         "parser_type": null,
         "original_cases": [
@@ -3306,7 +4701,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3314,7 +4709,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           }
         ],
@@ -3324,7 +4719,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
           "enumerated_obligation_ids": [
             "wsp.logicle-ellipse"
           ],
@@ -3339,7 +4734,7 @@
         "owner": {
           "module_path": "src/core/wsp.ts",
           "symbol": "parseWsp",
-          "owner_sha256": "eadf4143ad5b70c190926bda4d37e71547923ebc0fd3d533d5808f57fb6d903f"
+          "owner_sha256": "1e3103b0cafb21ed2f7a7c3ab82b89fce051c2017f362473a54d4e19b728624e"
         },
         "parser_type": null,
         "original_cases": [
@@ -3360,7 +4755,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3368,7 +4763,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           }
         ],
@@ -3378,7 +4773,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
           "enumerated_obligation_ids": [
             "gate.rect-open-bounds"
           ],
@@ -3393,7 +4788,7 @@
         "owner": {
           "module_path": "src/core/flowjoStats.ts",
           "symbol": "flowjoPercentile",
-          "owner_sha256": "e5ab4a358014b8247dd0a70d2c23729b9230d076c11ecc49a7dc2311d8d13225"
+          "owner_sha256": "4b7faa3e68ba5052bcc6710ac0180b517602327948171595d1d85a89976310b6"
         },
         "parser_type": null,
         "original_cases": [
@@ -3419,7 +4814,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3427,7 +4822,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3435,7 +4830,7 @@
             "case_kind": "malformed",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           }
         ],
@@ -3445,7 +4840,7 @@
           "command": "npx vitest run tests/flowjo-stats.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
           "enumerated_obligation_ids": [
             "stats.flowjo-conventions"
           ],
@@ -3460,7 +4855,7 @@
         "owner": {
           "module_path": "src/core/model.ts",
           "symbol": "uniqueName",
-          "owner_sha256": "2884f94dd8d0457a0c0d6ab387ee023f1ed463952b143847f66feeecd6d16061"
+          "owner_sha256": "2545966db8ca27475b266ff488d5eb1f678d1d9213b9922eef8928446d5fb736"
         },
         "parser_type": null,
         "original_cases": [
@@ -3481,7 +4876,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3489,7 +4884,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           }
         ],
@@ -3499,7 +4894,7 @@
           "command": "npx vitest run tests/uat-step2.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
           "enumerated_obligation_ids": [
             "names.unique-sibling"
           ],
@@ -3514,7 +4909,7 @@
         "owner": {
           "module_path": "src/ui/gateGeometry.ts",
           "symbol": "tooSmall",
-          "owner_sha256": "005407fbf5d62312d24627a8d31686115b3c4c1881509138a0e91f4ddedbc4a0"
+          "owner_sha256": "133d95d8670bcd95558445baf893cf7a9aec1d28518eb074d11277d75cd80b3e"
         },
         "parser_type": null,
         "original_cases": [
@@ -3535,7 +4930,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3543,7 +4938,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           }
         ],
@@ -3553,7 +4948,7 @@
           "command": "npx vitest run tests/uat-step2.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
           "enumerated_obligation_ids": [
             "gate.min-shape"
           ],
@@ -3568,7 +4963,7 @@
         "owner": {
           "module_path": "src/core/project.ts",
           "symbol": "relinkMatches",
-          "owner_sha256": "85016992a14b156aff4879d2f0cbee6f722185856fe134366ad3f9032ceb4c73"
+          "owner_sha256": "2cd93952d1c54d04b711840fc2f127a36058fa18bb3b6a5c9915fa0b3a026777"
         },
         "parser_type": null,
         "original_cases": [
@@ -3589,7 +4984,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3597,7 +4992,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3605,7 +5000,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           }
         ],
@@ -3615,7 +5010,7 @@
           "command": "npx vitest run tests/uat-step2.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
           "enumerated_obligation_ids": [
             "sample.relink-keywords"
           ],
@@ -3630,7 +5025,7 @@
         "owner": {
           "module_path": "src/core/project.ts",
           "symbol": "deletionRoots",
-          "owner_sha256": "85016992a14b156aff4879d2f0cbee6f722185856fe134366ad3f9032ceb4c73"
+          "owner_sha256": "2cd93952d1c54d04b711840fc2f127a36058fa18bb3b6a5c9915fa0b3a026777"
         },
         "parser_type": null,
         "original_cases": [
@@ -3651,7 +5046,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3659,7 +5054,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3667,7 +5062,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           }
         ],
@@ -3677,7 +5072,7 @@
           "command": "npx vitest run tests/quad-delete.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
           "enumerated_obligation_ids": [
             "gate.quad-sibling-delete"
           ],
@@ -3692,7 +5087,7 @@
         "owner": {
           "module_path": "src/core/service.ts",
           "symbol": "cellCycleChannels",
-          "owner_sha256": "4b3688c4f79dac3817f5748199c706fc99932ff5d8d9b30db45530ab07a3ed5a"
+          "owner_sha256": "9b787277aeee88fad7a60fac947f84823e8f42ed2d657b64d483708d339ca62b"
         },
         "parser_type": null,
         "original_cases": [
@@ -3713,7 +5108,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3721,7 +5116,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           }
         ],
@@ -3731,7 +5126,7 @@
           "command": "npx vitest run tests/cellcycle.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
           "enumerated_obligation_ids": [
             "cellcycle.histogram-channels"
           ],
@@ -3767,7 +5162,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3775,7 +5170,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3783,7 +5178,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           }
         ],
@@ -3793,7 +5188,7 @@
           "command": "npx vitest run tests/history.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
           "enumerated_obligation_ids": [
             "workspace.undo-limit"
           ],
@@ -3834,7 +5229,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3842,7 +5237,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3850,7 +5245,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3858,7 +5253,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3866,7 +5261,7 @@
             "case_kind": "malformed",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           }
         ],
@@ -3876,7 +5271,7 @@
           "command": "npx vitest run tests/group-criteria.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
           "enumerated_obligation_ids": [
             "groups.keyword-criteria"
           ],
@@ -3912,7 +5307,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3920,7 +5315,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3928,7 +5323,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           }
         ],
@@ -3938,7 +5333,7 @@
           "command": "npx vitest run tests/group-criteria.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
           "enumerated_obligation_ids": [
             "groups.acceptance"
           ],
@@ -3974,7 +5369,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -3982,7 +5377,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           }
         ],
@@ -3992,7 +5387,7 @@
           "command": "npx vitest run tests/group-criteria.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
           "enumerated_obligation_ids": [
             "groups.roles"
           ],
@@ -4007,7 +5402,7 @@
         "owner": {
           "module_path": "src/core/project.ts",
           "symbol": "copyAnalysisToGroup",
-          "owner_sha256": "85016992a14b156aff4879d2f0cbee6f722185856fe134366ad3f9032ceb4c73"
+          "owner_sha256": "2cd93952d1c54d04b711840fc2f127a36058fa18bb3b6a5c9915fa0b3a026777"
         },
         "parser_type": null,
         "original_cases": [
@@ -4028,7 +5423,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -4036,7 +5431,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -4044,7 +5439,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -4052,7 +5447,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -4060,7 +5455,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           }
         ],
@@ -4070,7 +5465,7 @@
           "command": "npx vitest run tests/group-analysis.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
           "enumerated_obligation_ids": [
             "groups.owned-analysis"
           ],
@@ -4085,7 +5480,7 @@
         "owner": {
           "module_path": "src/core/flowjoStats.ts",
           "symbol": "flowjoMean",
-          "owner_sha256": "e5ab4a358014b8247dd0a70d2c23729b9230d076c11ecc49a7dc2311d8d13225"
+          "owner_sha256": "4b7faa3e68ba5052bcc6710ac0180b517602327948171595d1d85a89976310b6"
         },
         "parser_type": null,
         "original_cases": [
@@ -4106,7 +5501,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -4114,7 +5509,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -4122,7 +5517,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           }
         ],
@@ -4132,7 +5527,7 @@
           "command": "npx vitest run tests/flowjo-stats-moments.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
           "enumerated_obligation_ids": [
             "stats.histogram-moments"
           ],
@@ -4147,7 +5542,7 @@
         "owner": {
           "module_path": "src/core/flowjoStats.ts",
           "symbol": "flowjoMode",
-          "owner_sha256": "e5ab4a358014b8247dd0a70d2c23729b9230d076c11ecc49a7dc2311d8d13225"
+          "owner_sha256": "4b7faa3e68ba5052bcc6710ac0180b517602327948171595d1d85a89976310b6"
         },
         "parser_type": null,
         "original_cases": [
@@ -4173,7 +5568,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -4181,7 +5576,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -4189,7 +5584,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           }
         ],
@@ -4199,7 +5594,7 @@
           "command": "npx vitest run tests/flowjo-stats-moments.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
           "enumerated_obligation_ids": [
             "stats.mode-mad-correlation"
           ],
@@ -4214,7 +5609,7 @@
         "owner": {
           "module_path": "src/core/stats.ts",
           "symbol": "FLOWJO_STAT_NAMES",
-          "owner_sha256": "451b046d16b826c38946ec6732e6ad3ee7b34ff72543016a8177fe2a39b20196"
+          "owner_sha256": "189996e63ad0873fcf63144d201764bd42819f8c5b263f638aa003e28d03f3fa"
         },
         "parser_type": null,
         "original_cases": [
@@ -4235,7 +5630,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -4243,7 +5638,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -4251,7 +5646,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           }
         ],
@@ -4261,7 +5656,7 @@
           "command": "npx vitest run tests/flowjo-stats-moments.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
           "enumerated_obligation_ids": [
             "stats.wsp-names"
           ],
@@ -4276,7 +5671,7 @@
         "owner": {
           "module_path": "src/core/exportRules.ts",
           "symbol": "capPositions",
-          "owner_sha256": "321d1aca2a614cfe372acd78bd072ec1a764e36c6c5f8d7f39fced4475905ac0"
+          "owner_sha256": "2b2d43647943d08c6065cb6363ca509001578629ccd7490b696c7399c185f117"
         },
         "parser_type": null,
         "original_cases": [
@@ -4297,7 +5692,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -4305,7 +5700,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -4313,7 +5708,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           }
         ],
@@ -4323,7 +5718,7 @@
           "command": "npx vitest run tests/export-rules.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
           "enumerated_obligation_ids": [
             "export.event-cap"
           ],
@@ -4338,7 +5733,7 @@
         "owner": {
           "module_path": "src/core/exportRules.ts",
           "symbol": "csvScaleValue",
-          "owner_sha256": "321d1aca2a614cfe372acd78bd072ec1a764e36c6c5f8d7f39fced4475905ac0"
+          "owner_sha256": "2b2d43647943d08c6065cb6363ca509001578629ccd7490b696c7399c185f117"
         },
         "parser_type": null,
         "original_cases": [
@@ -4359,7 +5754,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -4367,7 +5762,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -4375,7 +5770,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           }
         ],
@@ -4385,7 +5780,7 @@
           "command": "npx vitest run tests/export-rules.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
           "enumerated_obligation_ids": [
             "export.csv-format"
           ],
@@ -4400,7 +5795,7 @@
         "owner": {
           "module_path": "src/core/exportRules.ts",
           "symbol": "concatGroups",
-          "owner_sha256": "321d1aca2a614cfe372acd78bd072ec1a764e36c6c5f8d7f39fced4475905ac0"
+          "owner_sha256": "2b2d43647943d08c6065cb6363ca509001578629ccd7490b696c7399c185f117"
         },
         "parser_type": null,
         "original_cases": [
@@ -4421,7 +5816,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -4429,7 +5824,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -4437,7 +5832,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           },
           {
@@ -4445,7 +5840,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa"
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
             ]
           }
         ],
@@ -4455,9 +5850,559 @@
           "command": "npx vitest run tests/export-rules.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ffa17daf613409dd04b553f46352eb2444d5e449033c86a52f980f9a3ee9cffa",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
           "enumerated_obligation_ids": [
             "export.concatenate"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "gates.quad-bisector",
+        "owner": {
+          "module_path": "src/core/analysis.ts",
+          "symbol": "SampleEngine.gateMask",
+          "owner_sha256": "82f077618f627a54ff3db43da17b160265faccf7e497d2ca813461b3ac7c372f"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_58eda10a2760de64c1a1d7b12bb3894eb5e31a1d8b0c2527c8498bdc830d8c0f",
+            "location": "x < cx left, y < cy lower; offset halves split separately"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_58eda10a2760de64c1a1d7b12bb3894eb5e31a1d8b0c2527c8498bdc830d8c0f",
+            "location": "a value on a divider is not left or lower"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "gates.quad.lines",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          },
+          {
+            "fixture_id": "gates.bisector.split",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "gates.flowjo",
+          "claim_id": "gates.quad-bisector.v1",
+          "command": "npx vitest run tests/gate-tools.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
+          "enumerated_obligation_ids": [
+            "gates.quad-bisector"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "gates.names-tools",
+        "owner": {
+          "module_path": "src/core/gateTools.ts",
+          "symbol": "quadNames",
+          "owner_sha256": "edd86cebaa3162b6edfdb8909eca37c9d94fe99e60c0e73d14fd2fa8ea796d37"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_0d62eb8deb5e89d3e7567432dffd832cead4d516a918a2b9a4147a6f6224f5a1",
+            "location": "Q<n>: <x>+/- , <y>+/- with b past used numbers"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_0d62eb8deb5e89d3e7567432dffd832cead4d516a918a2b9a4147a6f6224f5a1",
+            "location": "a taken bisector name becomes <parameter>::<label>+/-"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "gates.names.quad",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          },
+          {
+            "fixture_id": "gates.names.bisector",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "gates.flowjo",
+          "claim_id": "gates.names-tools.v1",
+          "command": "npx vitest run tests/gate-tools.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
+          "enumerated_obligation_ids": [
+            "gates.names-tools"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "gates.spider-curly",
+        "owner": {
+          "module_path": "src/core/gateTools.ts",
+          "symbol": "spiderLabelGrid",
+          "owner_sha256": "ca38c59e1a24dbbc72e8145d857589d58b233ba03cafdee991dec7f2b67ef0d2"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_f3901b97ae1d7f91534b128742fe6b4f9feb0b556dc365732b3ed02230cca127",
+            "location": "first containing polygon in slot order"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_f3901b97ae1d7f91534b128742fe6b4f9feb0b556dc365732b3ed02230cca127",
+            "location": "a lattice point in no polygon counts as upper-left"
+          },
+          {
+            "kind": "positive",
+            "evidence_id": "ev_9c80035b0dbfa6b96e0d945e57e81712cff7a4aef44bfd63385b25ff0f505c8c",
+            "location": "parabola arms on a 256-pixel frame, k = 0.001"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "gates.curly.arm",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          },
+          {
+            "fixture_id": "gates.curly.partition",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          },
+          {
+            "fixture_id": "gates.spider.ties",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          },
+          {
+            "fixture_id": "gates.wsp.roundtrip",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "gates.flowjo",
+          "claim_id": "gates.spider-curly.v1",
+          "command": "npx vitest run tests/gate-tools.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
+          "enumerated_obligation_ids": [
+            "gates.spider-curly"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "gates.magnetic",
+        "owner": {
+          "module_path": "src/core/gateTools.ts",
+          "symbol": "magneticOffset2D",
+          "owner_sha256": "8146400f5ff03769f7e474f9ac274d0c40f4d10f81a8e6951a4d5839ef2424db"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_a0f493e0da7135e55e3bf82754dc1ab4dad3b593d6fc3f02dd2975abaa181098",
+            "location": "one-cell walk to the count-weighted centre, stop on a revisit"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_a0f493e0da7135e55e3bf82754dc1ab4dad3b593d6fc3f02dd2975abaa181098",
+            "location": "no data: the gate is not moved"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "gates.magnetic.2d",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          },
+          {
+            "fixture_id": "gates.magnetic.1d",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          },
+          {
+            "fixture_id": "gates.magnetic.none",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "gates.flowjo",
+          "claim_id": "gates.magnetic.v1",
+          "command": "npx vitest run tests/gate-tools.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
+          "enumerated_obligation_ids": [
+            "gates.magnetic"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "gates.auto-gate",
+        "owner": {
+          "module_path": "src/core/gateTools.ts",
+          "symbol": "autoGateContours",
+          "owner_sha256": "edd86cebaa3162b6edfdb8909eca37c9d94fe99e60c0e73d14fd2fa8ea796d37"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_2dfad9718bf788138c74296780f2c99ae9691fca7f7fc9664174c0f8171b2063",
+            "location": "smoothed contours, a level per N / 50"
+          },
+          {
+            "kind": "positive",
+            "evidence_id": "ev_fecf1b59727f9910d357d9bc2a92098a54fd32f1835c833e7f143353864917de",
+            "location": "nearest-vertex polygon, reduced to about 10%"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_fecf1b59727f9910d357d9bc2a92098a54fd32f1835c833e7f143353864917de",
+            "location": "fewer vertices than the target are kept as they are"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "gates.auto.kernel",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          },
+          {
+            "fixture_id": "gates.auto.blob",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          },
+          {
+            "fixture_id": "gates.auto.frame",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          },
+          {
+            "fixture_id": "gates.auto.reduce",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "gates.flowjo",
+          "claim_id": "gates.auto-gate.v1",
+          "command": "npx vitest run tests/gate-tools.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
+          "enumerated_obligation_ids": [
+            "gates.auto-gate"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "gates.pencil-convert",
+        "owner": {
+          "module_path": "src/core/gateTools.ts",
+          "symbol": "convertGate",
+          "owner_sha256": "80a093bb846046a171a8e70ac02d03dc6991a0bc1368b95ac46a48eaf3715280"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_fecf1b59727f9910d357d9bc2a92098a54fd32f1835c833e7f143353864917de",
+            "location": "commit beyond 12 px on a bend or long run"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_fecf1b59727f9910d357d9bc2a92098a54fd32f1835c833e7f143353864917de",
+            "location": "no vertex within 12 px"
+          },
+          {
+            "kind": "positive",
+            "evidence_id": "ev_49739341a98c0dee31087646ede91f9c6da595f93bd497e5cd49dfcbbaf1db66",
+            "location": "snapped bounding box, ellipse through the corners"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "gates.pencil.path",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          },
+          {
+            "fixture_id": "gates.pencil.near",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          },
+          {
+            "fixture_id": "gates.convert.rect",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          },
+          {
+            "fixture_id": "gates.convert.ellipse",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "gates.flowjo",
+          "claim_id": "gates.pencil-convert.v1",
+          "command": "npx vitest run tests/gate-tools.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
+          "enumerated_obligation_ids": [
+            "gates.pencil-convert"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "gates.clipboard-manual",
+        "owner": {
+          "module_path": "src/core/project.ts",
+          "symbol": "pastePopulations",
+          "owner_sha256": "72f18e27924a6e06ea98847e515d24efe33e99296fd201db41221e414f64e4b1"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_49739341a98c0dee31087646ede91f9c6da595f93bd497e5cd49dfcbbaf1db66",
+            "location": "copy adds sibling quads; paste keeps coordinates"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_49739341a98c0dee31087646ede91f9c6da595f93bd497e5cd49dfcbbaf1db66",
+            "location": "a same-named child skips the target"
+          },
+          {
+            "kind": "positive",
+            "evidence_id": "ev_fa569ec81c8721b258a134a5485fe00f3a78c7d6192676a97d9640ff96ac04fa",
+            "location": "percent bounds recomputed per sample"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "gates.copy.quads",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          },
+          {
+            "fixture_id": "gates.paste.clash",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          },
+          {
+            "fixture_id": "gates.percent.samples",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          },
+          {
+            "fixture_id": "gates.percent.cases",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "gates.flowjo",
+          "claim_id": "gates.clipboard-manual.v1",
+          "command": "npx vitest run tests/gate-tools.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
+          "enumerated_obligation_ids": [
+            "gates.clipboard-manual"
+          ],
+          "nondeterminism": {
+            "mode": "total-order",
+            "specification": "Deterministic: fixed fixture files and a fixed algorithm give one result."
+          }
+        }
+      },
+      {
+        "obligation_id": "gates.anchored-bifurgate",
+        "owner": {
+          "module_path": "src/core/gateTools.ts",
+          "symbol": "bifurValley",
+          "owner_sha256": "f9875c3c4019ebb735dd5115a3be794b21f33b26537c2b0c4903b3b5cf79c25e"
+        },
+        "parser_type": null,
+        "original_cases": [
+          {
+            "kind": "positive",
+            "evidence_id": "ev_fa569ec81c8721b258a134a5485fe00f3a78c7d6192676a97d9640ff96ac04fa",
+            "location": "bound = statistic x multiplier on the same sample"
+          },
+          {
+            "kind": "positive",
+            "evidence_id": "ev_b6ef36d7b78eeaba4330eff8d24428fb2da0eefb916990eb7c3b2dcc7029f163",
+            "location": "split at the first lowest channel between the two largest peaks"
+          },
+          {
+            "kind": "negative",
+            "evidence_id": "ev_b6ef36d7b78eeaba4330eff8d24428fb2da0eefb916990eb7c3b2dcc7029f163",
+            "location": "unimodal: no gate"
+          },
+          {
+            "kind": "positive",
+            "evidence_id": "ev_0d3c43175adfaad29274c5b5c63c5b0e9f452bcbde58a50402a552b2ee76840f",
+            "location": "smoothed whole-count histogram, right margin quirk"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixture_id": "gates.anchored.bound",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          },
+          {
+            "fixture_id": "gates.bifur.peaks",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          },
+          {
+            "fixture_id": "gates.bifur.valley",
+            "case_kind": "negative",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          },
+          {
+            "fixture_id": "gates.bifur.margin",
+            "case_kind": "positive",
+            "authority": "integration",
+            "evidence_ids": [
+              "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5"
+            ]
+          }
+        ],
+        "verifier": {
+          "verifier_id": "gates.flowjo",
+          "claim_id": "gates.anchored-bifurgate.v1",
+          "command": "npx vitest run tests/gate-tools.test.ts",
+          "authority": "integration",
+          "status": "pass",
+          "result_evidence_id": "ev_361639825182134a8a6f16a7e9920d3d00f288954d76634ad23b07d2149d77f5",
+          "enumerated_obligation_ids": [
+            "gates.anchored-bifurgate"
           ],
           "nondeterminism": {
             "mode": "total-order",

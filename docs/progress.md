@@ -1,5 +1,17 @@
 # Progress and handoff
 
+## State (2026-11-06, parity area 4: gate tools)
+
+Gate tools follow FlowJo 10.6.2 (specs section 10): the 11 FlowJo tools in
+toolbar order with their single keys; quad / bisector names from stains and
+FlowJo's Q numbering; offset quads; curly and spider quads gated as FlowJo's
+PolyQuad label grid; pencil vertex rule; auto gate on FlowJo's smoothed 2%
+contours; magnetic gates; manual entry with percent gates; anchored ranges;
+convert; copy / paste; BifurGate (FlowJo's peak finder on the smoothed
+4096-channel histogram). Decoded with REA's Ghidra provider (native) and
+headless Ghidra / javap (Java). REA ledger 28 of 28 verified. Timeslice moved
+to the kinetics area (it is a Kinetics-window object). Next area: kinetics.
+
 ## State (2026-11-06, parity area 3: export)
 
 Event export follows FlowJo 10.6.2 (specs section 9): CSV scale values (%g)

@@ -11,13 +11,13 @@ export type ChannelScale =
 
 const N = 4096;
 
-function channelOf(s: ChannelScale, v: number): number {
+export function channelOf(s: ChannelScale, v: number): number {
   if (s.kind === 'logicle') return tableIndex(logicleTable(s.T, s.W, s.M, s.A), v);
   const c = Math.floor(((Math.fround(v) - s.min) * N) / (s.max - s.min) + 0.5);
   return c < 0 ? 0 : c > N - 1 ? N - 1 : c;
 }
 
-function valueOf(s: ChannelScale, c: number): number {
+export function valueOf(s: ChannelScale, c: number): number {
   if (s.kind === 'logicle') {
     const t = logicleTable(s.T, s.W, s.M, s.A);
     return t[Math.min(c, t.length - 1)];

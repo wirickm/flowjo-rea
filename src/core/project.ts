@@ -98,7 +98,7 @@ export function applySubtree(ws: Workspace, fromSampleId: string, popId: string,
         const missing = gate.dims.flatMap((d) => (d.kind === 'channel' ? [d.channel] : [d.num, d.den])).filter((c) => t.channelNames.length && !t.channelNames.includes(c));
         if (missing.length) warnings.push(`${t.fileName}: "${p.name}" uses channels not in this sample: ${missing.join(', ')}`);
       }
-      t.populations.push({ id: idMap.get(p.id)!, name: p.name, parentId: p.id === root.id ? parentId : idMap.get(p.parentId!)!, gate, ...(p.exclude ? { exclude: true } : {}) });
+      t.populations.push({ id: idMap.get(p.id)!, name: p.name, parentId: p.id === root.id ? parentId : idMap.get(p.parentId!)!, gate, ...(p.exclude ? { exclude: true } : {}), ...(p.magnetic ? { magnetic: true } : {}) });
     }
   }
   return warnings;
@@ -405,7 +405,7 @@ export function removeSample(ws: Workspace, sampleId: string): void {
 // (RangeGate.isQuad), and a curly quad (always). A quadrant gate here is the
 // rectangle (or range) of its interval, open where the interval is an end one.
 export function isQuadGate(g: Gate): boolean {
-  if (g.type === 'splineQuadrant') return true;
+  if (g.type === 'splineQuadrant' || g.type === 'curlyQuad' || g.type === 'spider') return true;
   if (g.type === 'rect') {
     const open = g.min.map((lo, k) => (lo === null) !== (g.max[k] === null));
     if (g.dims.length === 1) return g.min[0] === null || g.max[0] === null;
@@ -442,4 +442,43 @@ export function subtreeIds(pops: Population[], roots: string[]): Set<string> {
     for (const p of pops) if (p.parentId && out.has(p.parentId) && !out.has(p.id)) { out.add(p.id); grew = true; }
   }
   return out;
+}
+
+// --- gate clipboard (FlowJo WSClipboard, specs 10.7) ---------------------------
+
+// Copy: the selected populations with their subtrees; copying one quad copies
+// its sibling quads (NodeList.addSiblingQuads).
+export function copyPopulations(pops: Population[], ids: string[]): Population[] {
+  const roots = [...new Set(ids.flatMap((id) => deletionRoots(pops, id)))];
+  const keep = subtreeIds(pops, roots);
+  return structuredClone(pops.filter((p) => keep.has(p.id)));
+}
+// Paste (SampleTreeTable.addDroppedNode, PopNode.preAdd): the copied
+// populations under each target (null = the sample root), coordinates and
+// parameter names unchanged, group ownership cleared. A target that already
+// has a child of the same name is skipped, as is a sample that lacks one of
+// the gate parameters (FlowJo shows a notice). Returns the notices.
+export function pastePopulations(s: SampleState, clip: Population[], targets: (string | null)[]): string[] {
+  const inClip = new Set(clip.map((p) => p.id));
+  const roots = clip.filter((p) => !p.parentId || !inClip.has(p.parentId));
+  const notes: string[] = [];
+  const params = clip.flatMap((p) => (p.gate.type === 'boolean' ? [] : p.gate.dims.flatMap((d) => (d.kind === 'channel' ? [d.channel] : [d.num, d.den]))));
+  const missing = [...new Set(params)].filter((c) => s.channelNames.length && !s.channelNames.includes(c));
+  if (missing.length) return [`${s.fileName}: the copied gates use parameters this sample lacks (${missing.join(', ')}); not pasted`];
+  for (const target of targets) {
+    const taken = new Set(s.populations.filter((q) => q.parentId === target).map((q) => q.name));
+    const clash = roots.find((r) => taken.has(r.name));
+    if (clash) {
+      notes.push(`"${clash.name}" already exists there; not pasted`);
+      continue;
+    }
+    const idMap = new Map(clip.map((p) => [p.id, newId('pop')]));
+    for (const p of clip) {
+      const gate = structuredClone(p.gate);
+      if (gate.type === 'boolean') gate.operands = gate.operands.map((o) => ({ ...o, ref: idMap.get(o.ref) ?? o.ref }));
+      const { owningGroup: _owner, ...rest } = p;
+      s.populations.push({ ...rest, id: idMap.get(p.id)!, parentId: roots.includes(p) ? target : idMap.get(p.parentId!)!, gate });
+    }
+  }
+  return notes;
 }

@@ -3,9 +3,11 @@
 import { compensate, invert, isSpectral, spilloverFromFcs, unmix, type SpilloverMatrix } from './compensation';
 import { AppError, fail } from './errors';
 import type { FcsFile } from './fcs';
-import type { DerivedParameter, Dimension, Gate, Population, SampleState, Workspace } from './model';
+import { populationPath, type AnchorBound, type DerivedParameter, type Dimension, type Gate, type Population, type SampleState, type Workspace } from './model';
 import { axesFromGate } from './ellipse';
-import { ellipseLatticePolygon, eventCell, gridCoord, latticeMask, polygonGridMask, vertexCoord } from './gateGrid';
+import { defaultGrid, ellipseLatticePolygon, eventCell, gridCoord, latticeMask, polygonGridMask, vertexCoord } from './gateGrid';
+import { BIFUR_BINS, curlyQuadPolygon, magneticOffset1D, magneticOffset2D, MAGNETIC_BINS, percentBound, spiderLabelGrid } from './gateTools';
+import { computeStat, gather } from './stats';
 import { splineDividers } from './spline';
 import { makeTransform } from './transforms';
 
@@ -16,6 +18,8 @@ export interface PopulationResult {
   count: number;
   parentCount: number;
   error?: string;
+  // A magnetic gate as moved on this sample (specs 10.4).
+  moved?: Gate;
 }
 
 export class SampleEngine {
@@ -142,8 +146,17 @@ export class SampleEngine {
       }
       let mask: Uint8Array;
       let error: string | undefined;
+      let moved: Gate | undefined;
       try {
-        mask = this.gateMask(p.gate, (ref) => {
+        const g0 = p.gate.type === 'anchored' ? this.anchoredGate(p.gate, (path) => {
+          const q = pops.find((x) => populationPath(pops, x.id) === path);
+          if (!q) fail('GATE_INVALID', `Anchored gate statistic population "${path}" not found`);
+          return { mask: evalPop(q), result: this.results.get(q.id)!, parentResult: q.parentId ? this.results.get(q.parentId) : undefined };
+        }) : p.gate;
+        const g1 = g0.type === 'rect' && g0.percent ? this.percentGate(g0, parentMask) : g0;
+        const gate = p.magnetic ? this.magneticGate(g1, parentMask) : g1;
+        if (gate !== p.gate) moved = gate; // magnetic: moved; anchored: resolved bounds
+        mask = this.gateMask(gate, (ref) => {
           const r = byId.get(ref);
           if (!r) fail('GATE_INVALID', `Boolean gate references missing population ${ref}`);
           return evalPop(r);
@@ -163,11 +176,91 @@ export class SampleEngine {
         count += mask[i];
         parentCount += parentMask[i];
       }
-      this.results.set(p.id, { id: p.id, name: p.name, parentId: p.parentId, count, parentCount, error });
+      this.results.set(p.id, { id: p.id, name: p.name, parentId: p.parentId, count, parentCount, error, ...(moved ? { moved } : {}) });
       return mask;
     };
     for (const p of pops) evalPop(p);
     return this;
+  }
+
+  // FlowJo anchored range (TetheredRangeGate, specs 10.6): each bound is the
+  // statistic of its population on this sample times the multiplier, as a
+  // plain range (lower bound inclusive, upper exclusive, as rectangles).
+  anchoredGate(g: Extract<Gate, { type: 'anchored' }>, pop: (path: string) => { mask: Uint8Array; result: PopulationResult; parentResult?: PopulationResult }): Gate {
+    const total = this.root.length;
+    const t = makeTransform(g.dims[0].transform);
+    const bound = (b: AnchorBound | null): number | null => {
+      if (!b) return null;
+      const r = b.populationPath === '' ? null : pop(b.populationPath);
+      const mask = r ? r.mask : this.root;
+      let values: Float64Array | null = null;
+      if (b.channel) {
+        const col = this.column(b.channel);
+        const v: number[] = [];
+        for (let i = 0; i < mask.length; i++) if (mask[i]) v.push(col[i]);
+        values = Float64Array.from(v);
+      }
+      const count = r ? r.result.count : total, parent = r ? r.result.parentCount : total;
+      const stat = computeStat(b.stat, values, { count, parent, grandparent: r?.parentResult?.parentCount ?? total, total }, b.percentile, b.scale);
+      if (typeof stat !== 'number' || !Number.isFinite(stat)) fail('GATE_INVALID', `Anchored gate statistic ${b.stat} is not a number on this sample`);
+      return t.apply(stat * b.multiplier);
+    };
+    return { type: 'rect', dims: g.dims, min: [bound(g.min)], max: [bound(g.max)] };
+  }
+
+  // FlowJo percent gate (evaluatePercentGate, specs 10.6): percent bounds
+  // become scale bounds from the parent's smoothed histogram on this sample.
+  percentGate(g: Extract<Gate, { type: 'rect' }>, parentMask: Uint8Array): Gate {
+    const pc = g.percent!;
+    const bound = (k: number, p: number | null, fixed: number | null) => {
+      if (p === null) return fixed;
+      const v = gather(this.column((g.dims[k] as Extract<Dimension, { kind: 'channel' }>).channel, g.dims[k].compensation), parentMask);
+      return makeTransform(g.dims[k].transform).apply(percentBound(v, pc.scales[k], p, k === 1 ? 256 : BIFUR_BINS));
+    };
+    return { type: 'rect', dims: g.dims, min: g.dims.map((_, k) => bound(k, pc.min[k] ?? null, g.min[k])), max: g.dims.map((_, k) => bound(k, pc.max[k] ?? null, g.max[k])) };
+  }
+
+  // FlowJo magnetic gate (FGate::MoveMagneticGate, specs 10.4): the gate as
+  // drawn, moved over a 256-cell histogram of the parent population. Polygon
+  // and rectangle gates move; other gates are used as drawn.
+  magneticGate(g: Gate, parentMask: Uint8Array): Gate {
+    const B = MAGNETIC_BINS;
+    if (g.type === 'rect' && g.dims.length === 1 && g.min[0] !== null && g.max[0] !== null) {
+      const grid = defaultGrid([g.dims[0], g.dims[0]], B);
+      if (!grid) return g;
+      const ax = grid.axes[0];
+      const xs = this.dimension(g.dims[0]);
+      const hist = new Float64Array(B);
+      for (let i = 0; i < xs.length; i++) if (parentMask[i] && !Number.isNaN(xs[i])) hist[eventCell(ax, B, xs[i])]++;
+      const shift = magneticOffset1D(hist, vertexCoord(ax, B, g.min[0]), vertexCoord(ax, B, g.max[0]));
+      const d = (shift * (ax.max - ax.min)) / B;
+      return { ...g, min: [g.min[0] + d], max: [g.max[0] + d] };
+    }
+    let verts: [number, number][];
+    if (g.type === 'polygon') verts = g.vertices;
+    else if (g.type === 'rect' && g.dims.length === 2 && g.min.every((v) => v !== null) && g.max.every((v) => v !== null)) {
+      const [x0, y0] = g.min as number[], [x1, y1] = g.max as number[];
+      verts = [[x0, y0], [x0, y1], [x1, y1], [x1, y0]];
+    } else return g;
+    const dims = g.dims as [Dimension, Dimension];
+    const grid = defaultGrid(dims, B);
+    if (!grid) return g;
+    const [ax, ay] = grid.axes;
+    // Cells with y counting down, as the engine flips y (256 - byte).
+    const xs = this.dimension(dims[0]);
+    const ys = this.dimension(dims[1]);
+    const hist = new Float64Array(B * B);
+    for (let i = 0; i < xs.length; i++) {
+      if (!parentMask[i] || Number.isNaN(xs[i]) || Number.isNaN(ys[i])) continue;
+      const fy = B - 1 - eventCell(ay, B, ys[i]);
+      hist[eventCell(ax, B, xs[i]) * B + fy]++;
+    }
+    const poly = verts.map((v): [number, number] => [vertexCoord(ax, B, v[0]), B - 1 - vertexCoord(ay, B, v[1])]);
+    const [dx, dy] = magneticOffset2D(hist, poly);
+    const ox = (dx * (ax.max - ax.min)) / B, oy = (-dy * (ay.max - ay.min)) / B;
+    if (g.type === 'polygon') return { ...g, vertices: g.vertices.map(([a, b]) => [a + ox, b + oy]) };
+    const r = g as Extract<Gate, { type: 'rect' }>;
+    return { ...r, min: [r.min[0]! + ox, r.min[1]! + oy], max: [r.max[0]! + ox, r.max[1]! + oy] };
   }
 
   gateMask(g: Gate, ref: (id: string) => Uint8Array): Uint8Array {
@@ -280,7 +373,8 @@ export class SampleEngine {
           const side = g.side[k];
           const lo = side === 0 ? -Infinity : div[side - 1];
           const hi = side >= div.length ? Infinity : div[side];
-          for (let i = 0; i < n; i++) if (!(c[i] >= lo && c[i] < hi)) out[i] = 0;
+          // NaN counts as below the divider (native QuadGate).
+          for (let i = 0; i < n; i++) if (Number.isNaN(c[i]) ? side !== 0 : !(c[i] >= lo && c[i] < hi)) out[i] = 0;
         });
         return out;
       }
@@ -299,6 +393,33 @@ export class SampleEngine {
         }
         return out;
       }
+      case 'curlyQuad': {
+        // FlowJo sends the four curly quadrants to the engine as one
+        // gating:PolyQuad (specs 10.2), so they are gated as a spider quad.
+        const [[x0, x1], [y0, y1]] = g.frame;
+        if (!(x1 > x0 && y1 > y0) || !(g.quadrant >= 0 && g.quadrant <= 3)) fail('GATE_INVALID', 'Curly quad frame or quadrant is invalid');
+        const polygons = [0, 1, 2, 3].map((q) => curlyQuadPolygon(g.center, q, [x0, x1], [y0, y1]));
+        return this.gateMask({ type: 'spider', dims: g.dims, polygons, slot: g.quadrant, grid: g.grid }, ref);
+      }
+      case 'spider': {
+        if (g.polygons.length !== 4 || g.polygons.some((q) => q.length < 3)) fail('GATE_INVALID', 'Spider quad needs four polygons');
+        const grid = g.grid ?? defaultGrid(g.dims);
+        if (!grid) fail('GATE_INVALID', 'Spider quad needs a finite display range on both axes');
+        const R = grid.resolution;
+        const [ax, ay] = grid.axes;
+        const lattice = g.polygons.map((q) => q.map((v): [number, number] => [vertexCoord(ax, R, v[0]), vertexCoord(ay, R, v[1])]));
+        const labels = spiderLabelGrid(R, lattice);
+        const xs = this.dimension(g.dims[0]);
+        const ys = this.dimension(g.dims[1]);
+        for (let i = 0; i < n; i++) {
+          if (Number.isNaN(xs[i]) || Number.isNaN(ys[i])) continue;
+          out[i] = labels[eventCell(ax, R, xs[i]) * R + eventCell(ay, R, ys[i])] === g.slot ? 1 : 0;
+        }
+        return out;
+      }
+      case 'anchored':
+        // Bounds depend on statistics of other populations: resolved in run().
+        return this.gateMask(this.anchoredGate(g, () => fail('GATE_INVALID', 'Anchored gate needs its statistic population')), ref);
       case 'boolean': {
         const ms = g.operands.map((o) => {
           const m = ref(o.ref);

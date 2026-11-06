@@ -4,7 +4,7 @@ import { contourLevels, marchingSquares, probabilityBands, probabilityThresholds
 import type { Gate } from '../core/model';
 import type { PlotResult } from '../core/service';
 import { ticks } from './axes';
-import type { Axis, Drawable } from './gateGeometry';
+import { spiderHandles, type Axis, type Drawable } from './gateGeometry';
 
 export const PLOT = { w: 460, h: 420, ml: 64, mr: 14, mt: 14, mb: 48 };
 export const pw = PLOT.w - PLOT.ml - PLOT.mr;
@@ -273,7 +273,7 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
         const yy = PLOT.mt + 30;
         ctx.moveTo(sx(g.x0), yy - 8); ctx.lineTo(sx(g.x0), yy + 8); ctx.moveTo(sx(g.x0), yy); ctx.lineTo(sx(g.x1), yy); ctx.moveTo(sx(g.x1), yy - 8); ctx.lineTo(sx(g.x1), yy + 8);
         lx = sx(g.x0) + 3; ly = yy - 10;
-      } else if (g.kind === 'polygon' || g.kind === 'ellipse') {
+      } else if (g.kind === 'polygon' || g.kind === 'ellipse' || g.kind === 'curly' || g.kind === 'spider') {
         g.pts.forEach(([a, b], i) => (i ? ctx.lineTo(sx(a), sy(b)) : ctx.moveTo(sx(a), sy(b))));
         ctx.closePath();
         lx = Math.min(...g.pts.map((q) => sx(q[0]))); ly = Math.min(...g.pts.map((q) => sy(q[1]))) - 3;
@@ -284,14 +284,23 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
         lx = gate.side[0] ? PLOT.ml + pw - 110 : PLOT.ml + 4;
         ly = gate.side[1] ? PLOT.mt + 14 : PLOT.mt + ph - 6;
       } else if (g.kind === 'quadrant') {
-        ctx.moveTo(sx(g.x), PLOT.mt); ctx.lineTo(sx(g.x), PLOT.mt + ph); ctx.moveTo(PLOT.ml, sy(g.y)); ctx.lineTo(PLOT.ml + pw, sy(g.y));
+        // The two half-lines bounding this quadrant: the four together draw
+        // the cross, or a stepped cross for an offset quad.
         const gate = g.pop.gate as Extract<Gate, { type: 'quadrant' }>;
+        ctx.moveTo(sx(g.x), sy(g.y)); ctx.lineTo(sx(g.x), gate.side[1] ? PLOT.mt : PLOT.mt + ph);
+        ctx.moveTo(sx(g.x), sy(g.y)); ctx.lineTo(gate.side[0] ? PLOT.ml + pw : PLOT.ml, sy(g.y));
         lx = gate.side[0] ? PLOT.ml + pw - 110 : PLOT.ml + 4;
         ly = gate.side[1] ? PLOT.mt + 14 : PLOT.mt + ph - 6;
       }
       ctx.stroke();
       if (g.kind === 'polygon' && sel) for (const [a, b] of g.pts) ctx.strokeRect(sx(a) - 3, sy(b) - 3, 6, 6);
       if (g.kind === 'ellipse' && sel && g.editable) for (const [a, b] of g.handles) ctx.strokeRect(sx(a) - 3, sy(b) - 3, 6, 6);
+      if (g.kind === 'curly' && sel) ctx.strokeRect(sx(g.center[0]) - 3, sy(g.center[1]) - 3, 6, 6);
+      if (g.kind === 'spider' && sel) {
+        // Side points sit on the frame edges; keep their handles on the plot.
+        const cl = (v: number, lo: number, hi: number) => Math.min(hi - 3, Math.max(lo + 3, v));
+        for (const [a, b] of spiderHandles(g.shape)) ctx.strokeRect(cl(sx(a), PLOT.ml, PLOT.ml + pw) - 3, cl(sy(b), PLOT.mt, PLOT.mt + ph) - 3, 6, 6);
+      }
       if (g.kind === 'spline' && sel && g.editable) for (const [a, b] of [...g.xPts, ...g.yPts]) ctx.strokeRect(sx(a) - 3, sy(b) - 3, 6, 6);
       ctx.fillStyle = sel ? '#d0021b' : '#111';
       const text = `${g.pop.name} ${pct}`;

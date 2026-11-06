@@ -401,6 +401,175 @@
         { "fixture_id": "export.concat.empty", "case_kind": "negative", "test_file": "tests/export-rules.test.ts", "test_name": "equal keyword values: groups by value" }
       ],
       "verifier": { "verifier_id": "export.flowjo", "claim_id": "export.concatenate.v1", "test_file": "tests/export-rules.test.ts", "command": "npx vitest run tests/export-rules.test.ts" }
+    },
+    {
+      "obligation_id": "gates.quad-bisector",
+      "obligation_version": 1,
+      "title": "Quads, offset quads and bisectors gate as FlowJo 10's QuadGate composite",
+      "family": "gates",
+      "target_location": "QuadGate::ComputeQuadGate / ComputeQuadOffsetGate / ComputeBisectorGate",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "gate-quad-bisector", "location": "x < cx left, y < cy lower; offset halves split separately" },
+        { "kind": "negative", "observation": "gate-quad-bisector", "location": "a value on a divider is not left or lower" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/analysis.ts", "symbol": "SampleEngine.gateMask", "files": ["src/core/analysis.ts"] },
+      "fixtures": [
+        { "fixture_id": "gates.quad.lines", "case_kind": "positive", "test_file": "tests/gate-tools.test.ts", "test_name": "quad: a value on a divider goes right / up" },
+        { "fixture_id": "gates.bisector.split", "case_kind": "negative", "test_file": "tests/gate-tools.test.ts", "test_name": "bisector: below the split left, the split value itself right" }
+      ],
+      "verifier": { "verifier_id": "gates.flowjo", "claim_id": "gates.quad-bisector.v1", "test_file": "tests/gate-tools.test.ts", "command": "npx vitest run tests/gate-tools.test.ts" }
+    },
+    {
+      "obligation_id": "gates.names-tools",
+      "obligation_version": 1,
+      "title": "Gate tools, keys and new-gate names follow FlowJo 10",
+      "family": "gates",
+      "target_location": "GateWinToolBar.createToolActions; RangeGateCreator.createBisectingChildren; findFirstQ",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "gate-toolbar-names", "location": "Q<n>: <x>+/- , <y>+/- with b past used numbers" },
+        { "kind": "negative", "observation": "gate-toolbar-names", "location": "a taken bisector name becomes <parameter>::<label>+/-" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/gateTools.ts", "symbol": "quadNames", "files": ["src/core/gateTools.ts", "src/ui/Plot.tsx"] },
+      "fixtures": [
+        { "fixture_id": "gates.names.quad", "case_kind": "positive", "test_file": "tests/gate-tools.test.ts", "test_name": "quads: \"Q<n>: <x>+/- , <y>+/-\"" },
+        { "fixture_id": "gates.names.bisector", "case_kind": "negative", "test_file": "tests/gate-tools.test.ts", "test_name": "labels use the stain when present" }
+      ],
+      "verifier": { "verifier_id": "gates.flowjo", "claim_id": "gates.names-tools.v1", "test_file": "tests/gate-tools.test.ts", "command": "npx vitest run tests/gate-tools.test.ts" }
+    },
+    {
+      "obligation_id": "gates.spider-curly",
+      "obligation_version": 1,
+      "title": "Spider and curly quads use FlowJo 10's outline and PolyQuad label grid",
+      "family": "gates",
+      "target_location": "QuadGate::ComputeSpiderGate; CurlyQuadGate",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "gate-spider", "location": "first containing polygon in slot order" },
+        { "kind": "negative", "observation": "gate-spider", "location": "a lattice point in no polygon counts as upper-left" },
+        { "kind": "positive", "observation": "gate-curly-spider-geometry", "location": "parabola arms on a 256-pixel frame, k = 0.001" }
+      ],
+      "supporting_observations": ["gate-curly-spider-geometry"],
+      "owner": { "module_path": "src/core/gateTools.ts", "symbol": "spiderLabelGrid", "files": ["src/core/gateTools.ts", "src/core/analysis.ts", "src/core/wsp.ts", "src/core/wspWriter.ts"] },
+      "fixtures": [
+        { "fixture_id": "gates.curly.arm", "case_kind": "positive", "test_file": "tests/gate-tools.test.ts", "test_name": "horizontal arm: x = cx + 1" },
+        { "fixture_id": "gates.curly.partition", "case_kind": "positive", "test_file": "tests/gate-tools.test.ts", "test_name": "curly quadrants partition the events" },
+        { "fixture_id": "gates.spider.ties", "case_kind": "negative", "test_file": "tests/gate-tools.test.ts", "test_name": "shared edges go to the lowest slot; uncovered points to slot 0" },
+        { "fixture_id": "gates.wsp.roundtrip", "case_kind": "positive", "test_file": "tests/gate-tools.test.ts", "test_name": "curly quad, spider and magnetic survive .wsp export and import" }
+      ],
+      "verifier": { "verifier_id": "gates.flowjo", "claim_id": "gates.spider-curly.v1", "test_file": "tests/gate-tools.test.ts", "command": "npx vitest run tests/gate-tools.test.ts" }
+    },
+    {
+      "obligation_id": "gates.magnetic",
+      "obligation_version": 1,
+      "title": "Magnetic gates move toward the densest events as FlowJo 10 does",
+      "family": "gates",
+      "target_location": "FGate::MoveMagneticGate; FGate::MoveHistogramGate",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "gate-magnetic", "location": "one-cell walk to the count-weighted centre, stop on a revisit" },
+        { "kind": "negative", "observation": "gate-magnetic", "location": "no data: the gate is not moved" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/gateTools.ts", "symbol": "magneticOffset2D", "files": ["src/core/gateTools.ts", "src/core/analysis.ts"] },
+      "fixtures": [
+        { "fixture_id": "gates.magnetic.2d", "case_kind": "positive", "test_file": "tests/gate-tools.test.ts", "test_name": "2-D: the gate walks one cell at a time" },
+        { "fixture_id": "gates.magnetic.1d", "case_kind": "positive", "test_file": "tests/gate-tools.test.ts", "test_name": "1-D: shifts toward the mean" },
+        { "fixture_id": "gates.magnetic.none", "case_kind": "negative", "test_file": "tests/gate-tools.test.ts", "test_name": "no data: the gate stays where it was drawn" }
+      ],
+      "verifier": { "verifier_id": "gates.flowjo", "claim_id": "gates.magnetic.v1", "test_file": "tests/gate-tools.test.ts", "command": "npx vitest run tests/gate-tools.test.ts" }
+    },
+    {
+      "obligation_id": "gates.auto-gate",
+      "obligation_version": 1,
+      "title": "The auto gate picks a 2% contour polygon as FlowJo 10 does",
+      "family": "gates",
+      "target_location": "GHistogram2D::MakeContourPlot; LayerAutoGate.getClosestPoly; FigPoly.reduce",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "gate-autogate-contour", "location": "smoothed contours, a level per N / 50" },
+        { "kind": "positive", "observation": "gate-pencil-autopick", "location": "nearest-vertex polygon, reduced to about 10%" },
+        { "kind": "negative", "observation": "gate-pencil-autopick", "location": "fewer vertices than the target are kept as they are" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/gateTools.ts", "symbol": "autoGateContours", "files": ["src/core/gateTools.ts", "src/ui/Plot.tsx"] },
+      "fixtures": [
+        { "fixture_id": "gates.auto.kernel", "case_kind": "positive", "test_file": "tests/gate-tools.test.ts", "test_name": "smoothing kernel: s = ceil(13 n^-1/4)" },
+        { "fixture_id": "gates.auto.blob", "case_kind": "positive", "test_file": "tests/gate-tools.test.ts", "test_name": "a dense blob gives nested closed polygons" },
+        { "fixture_id": "gates.auto.frame", "case_kind": "positive", "test_file": "tests/gate-tools.test.ts", "test_name": "a region touching the frame is closed" },
+        { "fixture_id": "gates.auto.reduce", "case_kind": "negative", "test_file": "tests/gate-tools.test.ts", "test_name": "FigPoly.reduce keeps every" }
+      ],
+      "verifier": { "verifier_id": "gates.flowjo", "claim_id": "gates.auto-gate.v1", "test_file": "tests/gate-tools.test.ts", "command": "npx vitest run tests/gate-tools.test.ts" }
+    },
+    {
+      "obligation_id": "gates.pencil-convert",
+      "obligation_version": 1,
+      "title": "Pencil vertices and gate conversion follow FlowJo 10",
+      "family": "gates",
+      "target_location": "FigPoly.processFreehandDrag; Gate.convert",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "gate-pencil-autopick", "location": "commit beyond 12 px on a bend or long run" },
+        { "kind": "negative", "observation": "gate-pencil-autopick", "location": "no vertex within 12 px" },
+        { "kind": "positive", "observation": "gate-convert-clipboard", "location": "snapped bounding box, ellipse through the corners" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/gateTools.ts", "symbol": "convertGate", "files": ["src/core/gateTools.ts", "src/ui/GateActions.tsx"] },
+      "fixtures": [
+        { "fixture_id": "gates.pencil.path", "case_kind": "positive", "test_file": "tests/gate-tools.test.ts", "test_name": "a path through closely spaced points" },
+        { "fixture_id": "gates.pencil.near", "case_kind": "negative", "test_file": "tests/gate-tools.test.ts", "test_name": "commits only beyond 12 px" },
+        { "fixture_id": "gates.convert.rect", "case_kind": "positive", "test_file": "tests/gate-tools.test.ts", "test_name": "polygon to rect snaps the bounding box" },
+        { "fixture_id": "gates.convert.ellipse", "case_kind": "positive", "test_file": "tests/gate-tools.test.ts", "test_name": "rect to ellipse: a circle in frame pixels" }
+      ],
+      "verifier": { "verifier_id": "gates.flowjo", "claim_id": "gates.pencil-convert.v1", "test_file": "tests/gate-tools.test.ts", "command": "npx vitest run tests/gate-tools.test.ts" }
+    },
+    {
+      "obligation_id": "gates.clipboard-manual",
+      "obligation_version": 1,
+      "title": "Copy, paste, manual entry and percent gates follow FlowJo 10",
+      "family": "gates",
+      "target_location": "WSClipboard; SampleTreeTable.addDroppedNode; ManualGateDP; SmoothedFunction.channelPercentile",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "gate-convert-clipboard", "location": "copy adds sibling quads; paste keeps coordinates" },
+        { "kind": "negative", "observation": "gate-convert-clipboard", "location": "a same-named child skips the target" },
+        { "kind": "positive", "observation": "gate-manual-anchored", "location": "percent bounds recomputed per sample" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/project.ts", "symbol": "pastePopulations", "files": ["src/core/project.ts", "src/core/gateTools.ts", "src/core/analysis.ts", "src/ui/GateActions.tsx"] },
+      "fixtures": [
+        { "fixture_id": "gates.copy.quads", "case_kind": "positive", "test_file": "tests/gate-tools.test.ts", "test_name": "copying one quad copies its siblings" },
+        { "fixture_id": "gates.paste.clash", "case_kind": "negative", "test_file": "tests/gate-tools.test.ts", "test_name": "a name clash skips the target" },
+        { "fixture_id": "gates.percent.samples", "case_kind": "positive", "test_file": "tests/gate-tools.test.ts", "test_name": "a percent range is recomputed from each sample" },
+        { "fixture_id": "gates.percent.cases", "case_kind": "negative", "test_file": "tests/gate-tools.test.ts", "test_name": "channelPercentile: special cases" }
+      ],
+      "verifier": { "verifier_id": "gates.flowjo", "claim_id": "gates.clipboard-manual.v1", "test_file": "tests/gate-tools.test.ts", "command": "npx vitest run tests/gate-tools.test.ts" }
+    },
+    {
+      "obligation_id": "gates.anchored-bifurgate",
+      "obligation_version": 1,
+      "title": "Anchored ranges and BifurGate follow FlowJo 10",
+      "family": "gates",
+      "target_location": "TetheredRangeGate; WSAutoQuadAction; PeakFinder.findPeaks; Smoothing::SmoothHistogram",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "gate-manual-anchored", "location": "bound = statistic x multiplier on the same sample" },
+        { "kind": "positive", "observation": "gate-bifurgate", "location": "split at the first lowest channel between the two largest peaks" },
+        { "kind": "negative", "observation": "gate-bifurgate", "location": "unimodal: no gate" },
+        { "kind": "positive", "observation": "gate-bifur-histogram", "location": "smoothed whole-count histogram, right margin quirk" }
+      ],
+      "supporting_observations": ["gate-bifur-histogram"],
+      "owner": { "module_path": "src/core/gateTools.ts", "symbol": "bifurValley", "files": ["src/core/gateTools.ts", "src/core/analysis.ts", "src/core/service.ts"] },
+      "fixtures": [
+        { "fixture_id": "gates.anchored.bound", "case_kind": "positive", "test_file": "tests/gate-tools.test.ts", "test_name": "bound = statistic of the named population" },
+        { "fixture_id": "gates.bifur.peaks", "case_kind": "positive", "test_file": "tests/gate-tools.test.ts", "test_name": "finds both peaks of a bimodal histogram" },
+        { "fixture_id": "gates.bifur.valley", "case_kind": "negative", "test_file": "tests/gate-tools.test.ts", "test_name": "unimodal gives -1" },
+        { "fixture_id": "gates.bifur.margin", "case_kind": "positive", "test_file": "tests/gate-tools.test.ts", "test_name": "right margin: the first two padding bins are lost" }
+      ],
+      "verifier": { "verifier_id": "gates.flowjo", "claim_id": "gates.anchored-bifurgate.v1", "test_file": "tests/gate-tools.test.ts", "command": "npx vitest run tests/gate-tools.test.ts" }
     }
   ]
 }

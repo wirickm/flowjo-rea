@@ -1,5 +1,14 @@
 # Progress and handoff
 
+## State (2026-11-06, parity area 6: derived parameters)
+
+Derived parameters follow FlowJo 10.6.2 (specs section 12): the engine's
+formula parser (left-associative operators, unary minus above ^, FlowJo's
+functions and error messages), longest-first name substitution, the
+8-variable limit, Event #, float32 results; the Derive Parameters dialog
+with FlowJo's name rule and insertion lists; .wsp DerivedParameter nodes.
+REA ledger 34 of 34 verified. Next area: FCS reading.
+
 ## State (2026-11-06, parity area 5: kinetics)
 
 Kinetics follows FlowJo 10.6.2 (specs section 11): the engine's time binning

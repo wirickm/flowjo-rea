@@ -219,7 +219,7 @@ statistics 39, platforms 29, transforms 19, export 15, compensation 9).
 | A31 | Transforms | Linear, log, biex, logicle, arcsinh, hyperlog | same (ISAC exact, FJ-LUT) | Match | `Transform$TransformType` | high |
 | A32 | Transforms | Miltenyi, robust log, manual table; auto width basis; per-cytometer defaults (about 30 families) | none; own defaults (logicle for fluorescence) | Missing / Differs | `TransformType`, `Cytometer$CytometerType`, `TransformedParameter::DetermineTransformationAutoWidth` | high |
 | A33 | Transforms | Apply a transform to one sample, group or all samples | per channel, global | Differs | `ParmTransformCommand{APPLYTOGROUP,APPLYALLSAMPLES}` | high |
-| A34 | Derived params | Formula language (arithmetic, log/exp, trig, if-then, string functions), event number, imported CSV/CLR | ratio A*(num-B)/(den-C) only | Differs (matrix backlog) | `AlgebraicParameter`, engine `Parser`, `formula.func.*` | high |
+| A34 | Derived params | Formula language (arithmetic, comparisons, logic, if, log/exp, trig, statistics functions), event number, imported CSV/CLR | FlowJo's engine parser: precedence (left-associative, unary over ^), functions, error messages, longest-name substitution, 8-variable limit, Event #, float32 results; .wsp DerivedParameter nodes (2026-11-06) | Match (specs 12); own rules: no CSV/CLR import or cluster/consensus parameters, string functions refused, earlier ratio parameters kept | REA Ghidra `Parser::Parse`, `Parser::CreateNewFunction`, `Sample::DP_ReplaceParameterNames`, `Sample::ComputeAlgebraic`; `DerivedParameter`, `AlgebraicParameter` | high |
 | A35 | Keywords | Add, edit, find/replace, value series, paste to group | view only | Missing | `WSKeywordMgr`, `KeywordFindRelpaceDialog`, `KeywordValueSeriesDialog` | high |
 | A36 | Platforms | Cell cycle DJF / Watson; 2D cell cycle (EM) | DJF / Watson (own fitter); no 2D | Match (models) / Missing (2D) | `cellcycle.model.*`, `graphwindow.cellcycle.em.*` | high |
 | A37 | Platforms | Proliferation (peaks, indices) | same; older "proliferation index" definition differs (matrix) | Differs (definition) | `proliferation.*`, `StatKey.ProlIndex` | medium |
@@ -290,7 +290,7 @@ step 3, `docs/validation/uat-2026-11-02.md` section 5).
 | C8 | Layout editor | Own ribbon window (tabs File, Edit, Arrange, Object, Settings, Layout Editor), free drawing tools, graph definition dialog, iteration by sample / keyword / panel, batch to PDF / PowerPoint / web (`le.*`) | modal with an ordered two-column list, per-sample batch | Differs (A42) | Defer; the S4 layout items in UAT step 3 stay own choices | high |
 | C9 | Table editor | Own window (tabs Table Editor, Edit, Visualize, Plot): formula and keyword columns, formatting, outputs to file / clipboard / layout (`te.*`) | statistics panel with named templates | Differs (A43) | Defer | high |
 | C10 | Compensation | Compensation window: control group, positive/negative gates per parameter, status badges, Calculate, matrix editor, SSM (`compeditor.*`, `plat.comp.*`) | compensation dialog with wizard and editable grid | Differs (A22 to A24) | Keep; step 3 matrix input checks stay an own rule (FlowJo accepts bad files silently, specs 6.7) | high |
-| C11 | Derived parameters | Formula editor with reference insertion, scale range, preview, apply to group (`plat.derived.*`, `dlog.dp.*`) | ratio builder | Differs (A34) | Defer | high |
+| C11 | Derived parameters | Formula editor with reference / function / operator insertion, live validation, scale (`plat.derived.*`, `dlog.dp.*`) | Derive Parameters dialog with the same insertion lists, FlowJo name rule and default names, live validation with FlowJo's messages, linear 0..1000 scale (2026-11-06) | Match (specs 12.4) | `DerivedParameterController`, `FormulaEditingPanel` | high |
 | C12 | Keywords | Inspect window (keywords, parameters, prev/next sample) plus Add Keyword, Find & Replace, Value Series (`PropertiesDialog`, `ws.find.*`) | Keywords modal, view and filter only | Match (view) / Missing (edit) | Add prev/next sample in the Keywords modal (small) | high |
 | C13 | Export | "Export or Concatenate" dialog: format (FCS3, CSV scale, CSV channel), parameters, event cap, naming pattern, concatenation, file count and overwrite warnings (`export.*`) | Export or Concatenate dialog: format, parameter set, event cap, header, concatenation modes (2026-11-06) | Match (naming patterns: own fixed names) | Match: add event cap and concatenation options with A17 | high |
 | C14 | Platforms | One window per platform; errors in the window; warning before opening many windows (`plat.factory.*`) | Platforms modal; errors in the window (specs 6.7) | Match | Keep | high |
@@ -373,7 +373,7 @@ rows above: High = every row Match or a documented own rule.
 | **Export** | **High** | 2026-11-06 (specs 9; obligations export.*) |
 | **Statistics list** | **High** | 2026-11-06 (specs 8; obligations stats.histogram-moments, stats.mode-mad-correlation, stats.wsp-names) |
 | **Kinetics** | **High** | 2026-11-06 (specs 11; obligations kinetics.*) |
-| Derived parameters | Low | |
+| **Derived parameters** | **High** | 2026-11-06 (specs 12; obligations derived.*) |
 | Layout and table editors | Low | |
 | Preferences, autosave, shortcuts | Low | |
 

@@ -1,7 +1,7 @@
 // Native workspace persistence (.frea.json) and cross-sample operations.
 import { fail } from './errors';
 import { acceptCriteria, connectorText, functionText } from './groupCriteria';
-import { dimLabel, newId, populationPath, uniqueName, type Gate, type Population, type SampleState, type Workspace } from './model';
+import { derivedFormula, dimLabel, newId, populationPath, uniqueName, type Gate, type Population, type SampleState, type Workspace } from './model';
 
 export function serializeWorkspace(ws: Workspace): string {
   return JSON.stringify(ws, null, 1);
@@ -281,7 +281,8 @@ export function derivedParameterUsers(ws: Workspace, name: string): string[] {
   }
   const out = [...gates].map((g) => `gate "${g}"`);
   for (const c of ws.statColumns) if (c.channel === name) out.push(`statistic "${c.stat} (${name})" on "${c.populationPath || 'All events'}"`);
-  for (const d of ws.derivedParameters ?? []) if (d.name !== name && (d.num === name || d.den === name)) out.push(`derived parameter "${d.name}"`);
+  // FlowJo replaces every occurrence of a parameter name in a formula.
+  for (const d of ws.derivedParameters ?? []) if (d.name !== name && derivedFormula(d).toUpperCase().includes(name.toUpperCase())) out.push(`derived parameter "${d.name}"`);
   return out;
 }
 

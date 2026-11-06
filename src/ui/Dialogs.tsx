@@ -4,7 +4,8 @@ import { describeTransform, makeTransform, type TransformSpec } from '../core/tr
 import type { SampleMeta } from '../core/service';
 import type { WizardResult } from '../core/compWizard';
 import { withAutofluorescence } from '../core/autofluorescence';
-import type { DerivedParameter } from '../core/model';
+import { derivedFormula, type DerivedParameter } from '../core/model';
+import { compileFormula, defaultDerivedName, derivedNameError, EVENT_NUMBER, FORMULA_FUNCTIONS } from '../core/formula';
 import { specForKind } from './axes';
 
 export function Modal(p: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
@@ -320,7 +321,12 @@ export function DerivedDialog(p: {
   onClose: () => void;
   onChange: (params: DerivedParameter[]) => void;
 }) {
-  const [name, setName] = useState('');
+  // FlowJo 10 "Derive Parameters" (specs 12): a name (letters, digits,
+  // underscore; default "Derived"), a formula with references and functions
+  // inserted from lists, validated as it is typed.
+  const takenNames = [...p.channels, ...p.params.map((x) => x.name)];
+  const [name, setName] = useState(defaultDerivedName(takenNames));
+  const [formula, setFormula] = useState('');
   // Deleting a parameter that gates or statistics use asks first (UAT a3-03).
   const [pending, setPending] = useState<{ name: string; users: string[] } | null>(null);
   const remove = (n: string) => p.onChange(p.params.filter((x) => x.name !== n));
@@ -329,24 +335,28 @@ export function DerivedDialog(p: {
     if (users.length === 0) remove(n);
     else setPending({ name: n, users });
   };
-  const [num, setNum] = useState(p.channels[0] ?? '');
-  const [den, setDen] = useState(p.channels[1] ?? p.channels[0] ?? '');
-  const [a, setA] = useState(1);
-  const [b, setB] = useState(0);
-  const [c, setC] = useState(0);
-  const [err, setErr] = useState('');
-  const taken = new Set([...p.channels, ...p.params.map((x) => x.name)]);
+  const nameErr = derivedNameError(name.trim(), takenNames);
+  let formulaErr: string | null = null;
+  if (!formula.trim()) formulaErr = 'Empty expression.';
+  else if (formula.trim().toUpperCase() !== EVENT_NUMBER.toUpperCase()) {
+    try {
+      const f = compileFormula(formula, [...p.channels, ...p.params.map((x) => x.name)]);
+      if (f.variables.some((v) => v === null)) formulaErr = 'Unknown parameter name in the formula';
+    } catch (e) {
+      formulaErr = (e as Error).message;
+    }
+  }
+  const insert = (t: string) => setFormula((f) => f + t);
   const add = () => {
+    if (nameErr || formulaErr) return;
     const n = name.trim();
-    if (!n) return setErr('Name is required');
-    if (taken.has(n)) return setErr(`"${n}" is already a channel or parameter`);
-    p.onChange([...p.params, { name: n, num, den, A: a, B: b, C: c }]);
-    setName('');
-    setErr('');
+    p.onChange([...p.params, { name: n, formula: formula.trim() }]);
+    setFormula('');
+    setName(defaultDerivedName([...takenNames, n]));
   };
   return (
-    <Modal title="Derived parameters" onClose={p.onClose} wide>
-      <p className="muted">A derived parameter is computed per event as A x (numerator - B) / (denominator - C) on the sample's compensated values. It appears in channel lists for plots, gates and statistics.</p>
+    <Modal title="Derive Parameters" onClose={p.onClose} wide>
+      <p className="muted">A derived parameter is computed per event from a formula on the sample's compensated values, as FlowJo 10 evaluates it. It appears in channel lists for plots, gates and statistics.</p>
       {p.params.length > 0 && (
         <table className="grid" data-testid="derived-list">
           <thead><tr><th>Name</th><th>Formula</th><th /></tr></thead>
@@ -354,7 +364,7 @@ export function DerivedDialog(p: {
             {p.params.map((d) => (
               <tr key={d.name}>
                 <td>{d.name}</td>
-                <td>{d.A} x ({d.num} - {d.B}) / ({d.den} - {d.C})</td>
+                <td>{derivedFormula(d)}</td>
                 <td><button className="x" aria-label={`remove ${d.name}`} onClick={() => askRemove(d.name)}>x</button></td>
               </tr>
             ))}
@@ -370,16 +380,26 @@ export function DerivedDialog(p: {
         </div>
       )}
       <div className="row">
-        <input placeholder="name" value={name} onChange={(e) => setName(e.target.value)} data-testid="derived-name" style={{ width: 120 }} />
-        =
-        <input type="number" step="any" value={a} onChange={(e) => setA(Number(e.target.value))} style={{ width: 54 }} aria-label="A" /> x (
-        <select value={num} onChange={(e) => setNum(e.target.value)} data-testid="derived-num">{p.channels.map((ch) => <option key={ch} value={ch}>{ch}</option>)}</select>
-        - <input type="number" step="any" value={b} onChange={(e) => setB(Number(e.target.value))} style={{ width: 54 }} aria-label="B" /> ) / (
-        <select value={den} onChange={(e) => setDen(e.target.value)} data-testid="derived-den">{p.channels.map((ch) => <option key={ch} value={ch}>{ch}</option>)}</select>
-        - <input type="number" step="any" value={c} onChange={(e) => setC(Number(e.target.value))} style={{ width: 54 }} aria-label="C" /> )
-        <button onClick={add} data-testid="derived-add">Add</button>
+        Name <input value={name} onChange={(e) => setName(e.target.value)} data-testid="derived-name" style={{ width: 140 }} />
+        <select value="" data-testid="derived-insert-ref" onChange={(e) => e.target.value && insert(e.target.value)}>
+          <option value="">Insert Reference</option>
+          {[...p.channels, EVENT_NUMBER].map((ch) => <option key={ch} value={ch}>{ch}</option>)}
+        </select>
+        <select value="" data-testid="derived-insert-fn" onChange={(e) => e.target.value && insert(e.target.value)}>
+          <option value="">Insert Function</option>
+          {FORMULA_FUNCTIONS.map((f) => <option key={f} value={f.replace(/\(.*\)/, '(')}>{f}</option>)}
+        </select>
+        <select value="" data-testid="derived-insert-op" onChange={(e) => e.target.value && insert(e.target.value)}>
+          <option value="">Insert Operator</option>
+          {['+', '-', '*', '/', '%', '^', '=', '<>', '<', '>', '<=', '>=', '&', '|', '!'].map((o) => <option key={o} value={` ${o} `}>{o}</option>)}
+        </select>
       </div>
-      {err && <p className="error" data-testid="derived-error">{err}</p>}
+      <textarea value={formula} onChange={(e) => setFormula(e.target.value)} data-testid="derived-formula" rows={3} style={{ width: '100%' }} placeholder="e.g. FL1-A / FL2-A" />
+      {nameErr && name.trim() && <p className="error" data-testid="derived-name-error">{nameErr}</p>}
+      {formula.trim() && formulaErr && <p className="error" data-testid="derived-error">Cannot parse the current equation: {formulaErr}</p>}
+      <div className="row">
+        <button onClick={add} disabled={!!nameErr || !!formulaErr} data-testid="derived-add">OK</button>
+      </div>
     </Modal>
   );
 }

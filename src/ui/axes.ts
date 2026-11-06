@@ -124,6 +124,8 @@ export function sampleChannels(meta: { channels: FcsChannel[] }, compensation: s
     out.push(...m.outputNames.map((name, i) => ({ index: meta.channels.length + i + 1, name, label: 'unmixed', bits: 32, range, logDecades: 0, logOffset: 0, gain: 1 })));
   }
   // Derived ratio parameters typically span ~0..a few; use a modest range.
-  out.push(...derived.map((d, i) => ({ index: out.length + i + 1, name: d.name, label: 'derived', bits: 32, range: 16, logDecades: 0, logOffset: 0, gain: 1 })));
+  // FlowJo's default scale for a formula parameter is linear 0..1000; this
+  // app's older ratio parameters keep 0..16.
+  out.push(...derived.map((d, i) => ({ index: out.length + i + 1, name: d.name, label: 'derived', bits: 32, range: d.formula !== undefined ? 1000 : 16, logDecades: 0, logOffset: 0, gain: 1 })));
   return out;
 }

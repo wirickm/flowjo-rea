@@ -8,6 +8,7 @@ import { axesFromGate } from './ellipse';
 import { defaultGrid, ellipseLatticePolygon, eventCell, gridCoord, latticeMask, polygonGridMask, vertexCoord } from './gateGrid';
 import { BIFUR_BINS, curlyQuadPolygon, magneticOffset1D, magneticOffset2D, MAGNETIC_BINS, percentBound, spiderLabelGrid } from './gateTools';
 import { computeStat, gather } from './stats';
+import { compileFormula, EVENT_NUMBER, FormulaError } from './formula';
 import { splineDividers } from './spline';
 import { makeTransform } from './transforms';
 
@@ -88,16 +89,47 @@ export class SampleEngine {
     return this.compensated(ref)[i];
   }
 
-  // A*(num-B)/(den-C) over the two source columns, computed once per matrix.
+  // A derived parameter, computed once per matrix: a FlowJo formula
+  // (src/core/formula.ts; values stored as 32-bit floats, Event # = 0-based
+  // event index) or this app's earlier ratio A*(num-B)/(den-C).
   private derivedColumn(dp: DerivedParameter, ref: string): Float64Array {
     const key = `${dp.name}|${ref}`;
     const hit = this.derivedCache.get(key);
     if (hit) return hit;
-    if (dp.num === dp.name || dp.den === dp.name) fail('CHANNEL_MISSING', `Derived parameter "${dp.name}" refers to itself`);
-    const x = this.column(dp.num, ref);
-    const y = this.column(dp.den, ref);
-    const out = new Float64Array(x.length);
-    for (let i = 0; i < x.length; i++) out[i] = (dp.A * (x[i] - dp.B)) / (y[i] - dp.C);
+    let out: Float64Array;
+    if (dp.formula !== undefined) {
+      const n = this.root.length;
+      out = new Float64Array(n);
+      if (dp.formula.trim().toUpperCase() === EVENT_NUMBER.toUpperCase()) {
+        for (let i = 0; i < n; i++) out[i] = i;
+      } else {
+        const params = [...this.channelNames, ...this.derived.filter((d) => d.name !== dp.name).map((d) => d.name)];
+        let f;
+        try {
+          f = compileFormula(dp.formula, params);
+        } catch (e) {
+          if (e instanceof FormulaError) fail('GATE_INVALID', `Derived parameter "${dp.name}": ${e.message}`);
+          throw e;
+        }
+        const cols = f.variables.map((v) => (v === null ? null : v === EVENT_NUMBER ? 'event' : this.column(v, ref)));
+        const vars = new Float64Array(cols.length);
+        try {
+          for (let i = 0; i < n; i++) {
+            for (let k = 0; k < cols.length; k++) { const c = cols[k]; vars[k] = c === null ? NaN : c === 'event' ? i : c[i]; }
+            out[i] = Math.fround(f.evaluate(vars));
+          }
+        } catch (e) {
+          if (e instanceof FormulaError) fail('GATE_INVALID', `Derived parameter "${dp.name}": ${e.message}`);
+          throw e;
+        }
+      }
+    } else {
+      if (dp.num === dp.name || dp.den === dp.name) fail('CHANNEL_MISSING', `Derived parameter "${dp.name}" refers to itself`);
+      const x = this.column(dp.num, ref);
+      const y = this.column(dp.den, ref);
+      out = new Float64Array(x.length);
+      for (let i = 0; i < x.length; i++) out[i] = (dp.A * (x[i] - dp.B)) / (y[i] - dp.C);
+    }
     this.derivedCache.set(key, out);
     return out;
   }

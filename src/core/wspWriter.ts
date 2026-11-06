@@ -9,6 +9,7 @@ import type { Dimension, Gate, Group, GroupCriteria, Population, Workspace } fro
 import { connectorText, functionText, MAX_KEYWORD_CRITERIA, roleText } from './groupCriteria';
 import { makeTransform, type TransformSpec } from './transforms';
 import { kineticsNodeXml } from './kinetics';
+import { derivedFormula } from './model';
 import { FLOWJO_STAT_NAMES } from './stats';
 import { esc } from './xml';
 
@@ -202,6 +203,16 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
           return `<Statistic ${attrs.join(' ')} />`;
         })
         .join('');
+    // Derived parameters as FlowJo DerivedParameter nodes in the sample's
+    // Subpopulations (specs 12): type algebraic (eventNumber for "Event #"),
+    // formula, the raw text in <Formula> and the scale in <Transform>.
+    const dpXml = (ws.derivedParameters ?? []).map((d) => {
+      const f = derivedFormula(d);
+      const type = f.trim().toUpperCase() === 'EVENT #' ? 'eventNumber' : 'algebraic';
+      const t = fjTransform(ws.channelTransforms[d.name] ?? { kind: 'linear', T: d.formula !== undefined ? 1000 : 16, A: 0 }, warn, d.name, 0);
+      const inner = `<DerivedParameter name="${esc(d.name)}" type="${type}" formula="${esc(f)}"><Formula>${esc(f)}</Formula><Transform>${t.xml(d.name)}</Transform></DerivedParameter>`;
+      return `<DerivedParameter name="${esc(d.name)}">${inner}</DerivedParameter>`;
+    }).join('');
     // The population's Kinetics node with its timeslice statistics (specs 11).
     const kinXml = (popPath: string) => {
       const k = ws.kinetics?.[popPath];
@@ -210,7 +221,7 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
     };
     const node = (parentId: string | null): string => {
       const kids = s.populations.filter((p) => p.parentId === parentId);
-      const st = statsXml(parentId ? path(byId.get(parentId)!) : '') + kinXml(parentId ? path(byId.get(parentId)!) : '');
+      const st = (parentId ? '' : dpXml) + statsXml(parentId ? path(byId.get(parentId)!) : '') + kinXml(parentId ? path(byId.get(parentId)!) : '');
       if (!kids.length) return st ? `<Subpopulations>${st}</Subpopulations>` : '';
       return `<Subpopulations>${st}${kids
         .map((p) => {

@@ -480,12 +480,11 @@ await page.getByTestId('platform-run').click();
 await page.getByTestId('prolif-result').waitFor({ timeout: 60000 });
 const divided = parseFloat(await page.getByTestId('prolif-divided').textContent());
 check('proliferation recovers % divided (truth 80%) within 3 pp', Math.abs(divided - 80) < 3, `${divided}%`);
+// Kinetics (FlowJo 10.6.2 window, specs 11; detailed checks in e2e/kinetics.mjs).
 await page.getByTestId('platform-kind').selectOption('kinetics');
-await page.getByTestId('platform-run').click();
-await page.getByTestId('kin-result').waitFor({ timeout: 30000 });
-const kinRows = await page.locator('[data-testid=kin-table] tbody tr').count();
-const kinSum = (await page.locator('[data-testid=kin-table] tbody tr td:nth-child(3)').allTextContents()).reduce((a, t) => a + Number(t), 0);
-check('kinetics: 50 time bins whose event counts sum to the population', kinRows === 50 && kinSum === 40000, `${kinRows} bins, ${kinSum} events`);
+await page.getByTestId('kin-row-All Events').waitFor({ timeout: 30000 });
+const kinPoints = Number(await page.getByTestId('kin-chart').getAttribute('data-points'));
+check('kinetics: FlowJo series drawn with an All Events timeslice', kinPoints > 0, `${kinPoints} points`);
 await page.getByRole('dialog').getByLabel('Close').click();
 // spline quadrant on FSC-A / SSC-A
 await page.getByTestId('pop-root').click(); await idle(); await remeasure();

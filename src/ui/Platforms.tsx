@@ -3,11 +3,9 @@
 // over time). Numerics run in the worker; validated synthetically only.
 import { useState } from 'react';
 import type { CellCycleFit } from '../core/cellcycle';
-import type { KineticsResult } from '../core/kinetics';
 import { MAX_PEAKS, type ProliferationFit } from '../core/proliferation';
 
 type Platform = 'cellcycle' | 'proliferation' | 'kinetics';
-type KStat = 'count' | 'mean' | 'median' | 'pctPositive';
 export type CellCycleResult = CellCycleFit & { binWidth: number; histogram: Float64Array };
 
 interface Props {
@@ -17,7 +15,8 @@ interface Props {
   onClose: () => void;
   runCellCycle: (channel: string, model: 'dean-jett-fox' | 'watson') => Promise<CellCycleResult | undefined>;
   runProliferation: (channel: string, maxGenerations: number) => Promise<ProliferationFit | undefined>;
-  runKinetics: (channel: string, stat: KStat, bins: number, threshold: number) => Promise<KineticsResult | undefined>;
+  // The FlowJo Kinetics window for this population (src/ui/Kinetics.tsx).
+  kinetics: React.ReactNode;
 }
 
 // Undefined results (e.g. indices with no divided cells) show "-", never NaN.
@@ -57,12 +56,8 @@ export function PlatformsDialog(p: Props) {
   const [channel, setChannel] = useState(p.channels[0] ?? '');
   const [model, setModel] = useState<'dean-jett-fox' | 'watson'>('dean-jett-fox');
   const [gens, setGens] = useState(4); // FlowJo 10 "Number of Peaks" default
-  const [kstat, setKstat] = useState<KStat>('count');
-  const [kbins, setKbins] = useState(50);
-  const [threshold, setThreshold] = useState(1000);
   const [cc, setCc] = useState<CellCycleResult | null>(null);
   const [pr, setPr] = useState<ProliferationFit | null>(null);
-  const [kn, setKn] = useState<KineticsResult | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,13 +68,11 @@ export function PlatformsDialog(p: Props) {
     try {
       if (platform === 'cellcycle') setCc((await p.runCellCycle(channel, model)) ?? null);
       if (platform === 'proliferation') setPr((await p.runProliferation(channel, gens)) ?? null);
-      if (platform === 'kinetics') setKn((await p.runKinetics(channel, kstat, kbins, threshold)) ?? null);
     } catch (e) {
       // Shown in this window, as in FlowJo 10 (specs 6.7); also in the Log.
       setError((e as Error).message);
       if (platform === 'cellcycle') setCc(null);
       if (platform === 'proliferation') setPr(null);
-      if (platform === 'kinetics') setKn(null);
     } finally {
       setRunning(false);
     }
@@ -96,9 +89,9 @@ export function PlatformsDialog(p: Props) {
               <option value="proliferation">Proliferation</option>
               <option value="kinetics">Kinetics</option>
             </select>
-            <select value={channel} onChange={(e) => setChannel(e.target.value)} data-testid="platform-channel">
+            {platform !== 'kinetics' && <select value={channel} onChange={(e) => setChannel(e.target.value)} data-testid="platform-channel">
               {p.channels.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+            </select>}
             {platform === 'cellcycle' && (
               <>
                 <select value={model} onChange={(e) => setModel(e.target.value as typeof model)} data-testid="cc-model">
@@ -109,21 +102,9 @@ export function PlatformsDialog(p: Props) {
               </>
             )}
             {platform === 'proliferation' && <>Number of Peaks <input type="number" min={0} max={MAX_PEAKS} step={1} value={Number.isNaN(gens) ? '' : gens} onChange={(e) => setGens(e.target.value === '' ? NaN : Number(e.target.value))} style={{ width: 50 }} data-testid="prolif-peaks" title={`Integer from 0 to ${MAX_PEAKS}`} /></>}
-            {platform === 'kinetics' && (
-              <>
-                <select value={kstat} onChange={(e) => setKstat(e.target.value as KStat)} data-testid="kin-stat">
-                  <option value="count">Events per bin</option>
-                  <option value="mean">Mean</option>
-                  <option value="median">Median</option>
-                  <option value="pctPositive">% above threshold</option>
-                </select>
-                bins <input type="number" min={2} max={1000} value={kbins} onChange={(e) => setKbins(Number(e.target.value))} style={{ width: 56 }} />
-                {kstat === 'pctPositive' && <>threshold <input type="number" value={threshold} onChange={(e) => setThreshold(Number(e.target.value))} style={{ width: 80 }} /></>}
-              </>
-            )}
-            <button onClick={go} disabled={running || !channel || (platform === 'kinetics' && !p.timeChannel) || (platform === 'proliferation' && !peaksOk)} data-testid="platform-run">{running ? 'Fitting...' : 'Run'}</button>
+            {platform !== 'kinetics' && <button onClick={go} disabled={running || !channel || (platform === 'proliferation' && !peaksOk)} data-testid="platform-run">{running ? 'Fitting...' : 'Run'}</button>}
           </div>
-          {platform === 'kinetics' && !p.timeChannel && <p className="error">No Time parameter in this sample.</p>}
+          {platform === 'kinetics' && !p.timeChannel && <p className="muted">No Time parameter: the event number is the time, as in FlowJo.</p>}
           {platform === 'proliferation' && !peaksOk && <p className="error" data-testid="prolif-peaks-error">Number of Peaks must be an integer from 0 to {MAX_PEAKS}.</p>}
           {error && <p className="error" data-testid="platform-error">{error}</p>}
           <p className="muted">Validated on synthetic data only; not compared with FlowJo, ModFit or other reference output.</p>
@@ -162,19 +143,7 @@ export function PlatformsDialog(p: Props) {
             </div>
           )}
 
-          {platform === 'kinetics' && kn && (
-            <div data-testid="kin-result">
-              <Chart observed={kstat === 'count' ? kn.value : []} testId="kin-chart" xLabel={`${p.timeChannel} (${kn.binStart.length} bins)`} lines={kstat === 'count' ? [] : [{ values: kn.value, color: '#2a7de1' }]} />
-              <div className="table-wrap" style={{ maxHeight: 160 }}>
-                <table className="grid" data-testid="kin-table">
-                  <thead><tr><th>Time from</th><th>Time to</th><th>Events</th><th>{kstat}</th></tr></thead>
-                  <tbody>
-                    {Array.from(kn.value, (v, i) => <tr key={i}><td>{kn.binStart[i].toFixed(2)}</td><td>{kn.binEnd[i].toFixed(2)}</td><td>{kn.n[i]}</td><td>{Number.isFinite(v) ? v.toFixed(2) : '-'}</td></tr>)}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+          {platform === 'kinetics' && p.kinetics}
         </div>
       </div>
     </div>

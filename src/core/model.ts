@@ -161,6 +161,8 @@ export interface Workspace {
   provenance: { importedFrom?: string; warnings: string[] };
   // Plot layout per population path ('' = ungated), shared across samples.
   plots?: Record<string, PlotSettings>;
+  // FlowJo Kinetics node settings and timeslices per population path (specs 11).
+  kinetics?: Record<string, import('./kinetics').KineticsSettings>;
   layout?: LayoutItem[];
   statTemplates?: { id: string; name: string; columns: StatColumn[] }[];
   derivedParameters?: DerivedParameter[];
@@ -217,7 +219,9 @@ export type StatKind =
   | 'percentile'
   | 'mode'
   | 'correlation'
-  | 'freqOf';
+  | 'freqOf'
+  // A timeslice statistic of the population's Kinetics node (specs 11).
+  | 'kinetic';
 
 export interface StatColumn {
   id: string;
@@ -229,6 +233,8 @@ export interface StatColumn {
   ancestor?: string;
   // Correlation: the second parameter (FlowJo "correlate" attribute).
   correlate?: string;
+  // Kinetic: which timeslice statistic (FlowJo plat.kin.* with id = slice).
+  kin?: { key: import('./kinetics').KinKey; timeslice: string };
 }
 
 export function emptyWorkspace(name = 'Untitled'): Workspace {

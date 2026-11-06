@@ -8,6 +8,7 @@ import { fail } from './errors';
 import type { Dimension, Gate, Group, GroupCriteria, Population, Workspace } from './model';
 import { connectorText, functionText, MAX_KEYWORD_CRITERIA, roleText } from './groupCriteria';
 import { makeTransform, type TransformSpec } from './transforms';
+import { kineticsNodeXml } from './kinetics';
 import { FLOWJO_STAT_NAMES } from './stats';
 import { esc } from './xml';
 
@@ -186,7 +187,7 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
     const chName = (ch: string) => nameOf({ kind: 'channel', channel: ch, transform: { kind: 'none' } });
     const statsXml = (popPath: string) =>
       ws.statColumns
-        .filter((c) => c.populationPath === popPath)
+        .filter((c) => c.populationPath === popPath && c.stat !== 'kinetic')
         .map((c) => {
           const name = FLOWJO_STAT_NAMES[c.stat];
           if (!name) {
@@ -201,9 +202,15 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
           return `<Statistic ${attrs.join(' ')} />`;
         })
         .join('');
+    // The population's Kinetics node with its timeslice statistics (specs 11).
+    const kinXml = (popPath: string) => {
+      const k = ws.kinetics?.[popPath];
+      if (!k) return '';
+      return kineticsNodeXml(k, ws.statColumns.filter((c) => c.stat === 'kinetic' && c.populationPath === popPath && c.kin).map((c) => c.kin!));
+    };
     const node = (parentId: string | null): string => {
       const kids = s.populations.filter((p) => p.parentId === parentId);
-      const st = statsXml(parentId ? path(byId.get(parentId)!) : '');
+      const st = statsXml(parentId ? path(byId.get(parentId)!) : '') + kinXml(parentId ? path(byId.get(parentId)!) : '');
       if (!kids.length) return st ? `<Subpopulations>${st}</Subpopulations>` : '';
       return `<Subpopulations>${st}${kids
         .map((p) => {

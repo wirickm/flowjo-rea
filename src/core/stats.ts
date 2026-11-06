@@ -52,6 +52,9 @@ export function computeStat(
     case 'correlation':
       void values2;
       return NaN;
+    // Computed from the Kinetics node by the service (specs 11).
+    case 'kinetic':
+      return NaN;
   }
   if (!values || values.length === 0) return NaN;
   if (scale) {
@@ -152,9 +155,10 @@ export const STAT_LABELS: Record<StatKind, string> = {
   mode: 'Mode',
   correlation: 'Correlation',
   freqOf: 'Freq. of (%)',
+  kinetic: 'Kinetics',
 };
 
-export const STAT_NEEDS_CHANNEL = (k: StatKind) => !['count', 'freqParent', 'freqGrandparent', 'freqTotal', 'freqOf'].includes(k);
+export const STAT_NEEDS_CHANNEL = (k: StatKind) => !['count', 'freqParent', 'freqGrandparent', 'freqTotal', 'freqOf', 'kinetic'].includes(k);
 
 // FlowJo's statistic names in .wsp files (StatKey: the enum's string field,
 // written as is; specs 8.1). Min and Max are this app's own (no FlowJo key).

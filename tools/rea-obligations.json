@@ -778,6 +778,44 @@
         { "fixture_id": "comp.service", "case_kind": "positive", "test_file": "tests/comp-flowjo.test.ts", "test_name": "uses each control" }
       ],
       "verifier": { "verifier_id": "comp.flowjo", "claim_id": "compensation.wizard-ssm.v1", "test_file": "tests/comp-flowjo.test.ts", "command": "npx vitest run tests/comp-flowjo.test.ts" }
+    },
+    {
+      "obligation_id": "platforms.cellcycle-models",
+      "obligation_version": 1,
+      "title": "Cell cycle models and outputs follow FlowJo 10's engine",
+      "family": "platforms",
+      "target_location": "CCFoxSynch; CCWatsonPragmatic; CCModel::ComputeRMS",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "cc-models", "location": "Dean-Jett-Fox and Watson phases" },
+        { "kind": "negative", "observation": "cc-models", "location": "RMSD over every channel, no chi-square" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/cellcycle.ts", "symbol": "fitCellCycle", "files": ["src/core/cellcycle.ts", "src/ui/Platforms.tsx"] },
+      "fixtures": [
+        { "fixture_id": "cc.watson", "case_kind": "positive", "test_file": "tests/cellcycle.test.ts", "test_name": "Watson pragmatic: G1 + G2 + erfc S plateau" },
+        { "fixture_id": "cc.rmsd", "case_kind": "negative", "test_file": "tests/cellcycle.test.ts", "test_name": "RMSD is over every histogram channel" }
+      ],
+      "verifier": { "verifier_id": "platforms.flowjo", "claim_id": "platforms.cellcycle-models.v1", "test_file": "tests/cellcycle.test.ts", "command": "npx vitest run tests/cellcycle.test.ts" }
+    },
+    {
+      "obligation_id": "platforms.proliferation-indices",
+      "obligation_version": 1,
+      "title": "Proliferation indices follow FlowJo 10's definitions",
+      "family": "platforms",
+      "target_location": "CCProlif::GetStatsElement",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "prolif-indices", "location": "division, proliferation, expansion, replication, % divided" },
+        { "kind": "negative", "observation": "prolif-indices", "location": "no precursor frequency; % divided counts precursors" }
+      ],
+      "supporting_observations": [],
+      "owner": { "module_path": "src/core/proliferation.ts", "symbol": "fitProliferation", "files": ["src/core/proliferation.ts", "src/ui/Platforms.tsx"] },
+      "fixtures": [
+        { "fixture_id": "prolif.indices", "case_kind": "positive", "test_file": "tests/proliferation.test.ts", "test_name": "recovers per-generation percentages and the standard indices" },
+        { "fixture_id": "prolif.divided", "case_kind": "negative", "test_file": "tests/proliferation.test.ts", "test_name": "recovers per-generation percentages and the standard indices" }
+      ],
+      "verifier": { "verifier_id": "platforms.flowjo", "claim_id": "platforms.proliferation-indices.v1", "test_file": "tests/proliferation.test.ts", "command": "npx vitest run tests/proliferation.test.ts" }
     }
   ]
 }

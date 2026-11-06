@@ -1040,6 +1040,44 @@ Implemented in `src/core/compFlowjo.ts` and the Compensation dialog.
   matrices, least squares for spectral), as this app already did
   (specs 6.3); compensated parameters are named "Comp-" + name.
 
+## 15. Cell cycle and proliferation (FlowJo 10.6.2)
+
+Read with REA 6.8.0's Ghidra provider on the native engine (`CCModel`,
+`CCFoxSynch`, `CCWatsonPragmatic`, `CCProlif`, `CellCycleRequest`,
+`ProliferationRequest`); all fitting is native. Implemented in
+`src/core/cellcycle.ts`, `src/core/proliferation.ts`.
+
+### 15.1 Cell cycle (matches models and outputs; optimizer own)
+
+- Dean-Jett-Fox: G1 and G2 Gaussians plus S(x) = a + b x + c x^2 between the
+  peak means, broadened by the peak Gaussians. Watson pragmatic: G1 and G2
+  plus amp [erfc(-((x - m1)/s1 + kG1)) - erfc(-((x - m2)/s2 - kG2))] / 2
+  with fitted kG1, kG2.
+- Peak constraints start empty (G2 position and CVs free); G2 is searched
+  between 1.75 and 2.25 x the G1 mean. Histogram min(range, 1024) channels
+  (6.1). RMSD = sqrt(sum over every channel of (model - data)^2 / channels).
+  Outputs: % G1, % S, % G2 (component areas), G1 / G2 mean and CV, RMSD; no
+  chi-square is reported (this app no longer shows one).
+- Own rule: positions and widths by Nelder-Mead with exact nonnegative
+  areas; FlowJo uses Levenberg-Marquardt on the same least squares (stop when
+  chi-square improves by less than 0.1). Not decoded: FlowJo's initial-guess
+  heuristics and the sub-G1 / super-G2 bounds.
+- 2D cell cycle (EM; Java `EMModel`): a Gaussian mixture after k-means with
+  exactly one EM step (loop quirk); not implemented here (own rule).
+
+### 15.2 Proliferation (matches indices; model own)
+
+- With N_g the fitted cells in generation g: Division Index = sum g N_g/2^g /
+  sum N_g/2^g; Proliferation Index = the same over g >= 1; Expansion Index =
+  sum N_g / sum N_g/2^g; Replication Index = sum_{g>=1} N_g / sum_{g>=1}
+  N_g/2^g; % Divided = 100 sum_{g>=1} N_g/2^g / (N_0 + sum_{g>=1} N_g/2^g)
+  (precursor cells that divided). Default number of peaks 4. FlowJo 10.6.2
+  has no Precursor Frequency statistic (removed here).
+- Model: FlowJo places generation i at r^i mu0 - (1 - r^i) offset on linear
+  axes with a common width, ratio 0.5 unless estimated in [0.42, 0.54].
+  Own rule: this app fits halving generations on a log10 axis (ratio 0.5,
+  no offset), which coincides when FlowJo's offset is 0 and its ratio 0.5.
+
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 
 Source: static analysis of `libNativeEngine.dylib` from the public FlowJo

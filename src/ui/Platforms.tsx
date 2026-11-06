@@ -115,7 +115,7 @@ export function PlatformsDialog(p: Props) {
                 <tbody>
                   <tr><th>G1</th><td data-testid="cc-g1">{pct(cc.g1Pct)}</td><th>S</th><td data-testid="cc-s">{pct(cc.sPct)}</td><th>G2/M</th><td data-testid="cc-g2">{pct(cc.g2Pct)}</td></tr>
                   <tr><th>G1 mean</th><td>{((cc.g1.mean + 0.5) * cc.binWidth).toFixed(1)}</td><th>G2 mean</th><td>{((cc.g2.mean + 0.5) * cc.binWidth).toFixed(1)}</td><th>G2/G1</th><td>{((cc.g2.mean + 0.5) / (cc.g1.mean + 0.5)).toFixed(3)}</td></tr>
-                  <tr><th>G1 CV</th><td>{pct((100 * cc.g1.sd) / (cc.g1.mean + 0.5))}</td><th>RMSD</th><td>{cc.rmsd.toFixed(2)}</td><th>Reduced chi-sq</th><td>{cc.chiSquare.toFixed(3)}</td></tr>
+                  <tr><th>G1 CV</th><td>{pct((100 * cc.g1.sd) / (cc.g1.mean + 0.5))}</td><th>RMSD</th><td>{cc.rmsd.toFixed(2)}</td><th>G2 CV</th><td>{pct((100 * cc.g2.sd) / (cc.g2.mean + 0.5))}</td></tr>
                 </tbody>
               </table>
               <Chart observed={cc.histogram} testId="cc-chart" xLabel={`${channel} (linear)`} lines={[{ values: cc.fitted, color: '#111' }, { values: cc.components.g1, color: '#2a7de1' }, { values: cc.components.s, color: '#e1a42a' }, { values: cc.components.g2, color: '#d0021b' }]} />
@@ -135,7 +135,7 @@ export function PlatformsDialog(p: Props) {
                 <tbody>
                   <tr><th>% divided</th><td data-testid="prolif-divided">{pct(100 * pr.pctDivided)}</td><th>Division index</th><td data-testid="prolif-di">{num(pr.divisionIndex, 3)}</td></tr>
                   <tr><th>Proliferation index</th><td>{num(pr.proliferationIndex, 3)}</td><th>Expansion index</th><td>{num(pr.expansionIndex, 3)}</td></tr>
-                  <tr><th>Precursor frequency</th><td>{pct(100 * pr.precursorFrequency)}</td><th>RMSD</th><td>{num(pr.rmsd, 2)}</td></tr>
+                  <tr><th>Replication index</th><td>{num(pr.replicationIndex, 3)}</td><th>RMSD</th><td>{num(pr.rmsd, 2)}</td></tr>
                 </tbody>
               </table>
               <Chart observed={pr.histogram.observed} testId="prolif-chart" xLabel={`log10 ${channel}`} lines={[{ values: pr.histogram.fitted, color: '#d0021b' }]} />

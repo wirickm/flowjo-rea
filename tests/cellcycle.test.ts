@@ -103,3 +103,33 @@ describe('cell cycle histogram resolution (FlowJo 10 rule)', () => {
   });
 });
 
+
+describe('FlowJo 10.6.2 cell cycle models (specs 15.1)', () => {
+  it('Watson pragmatic: G1 + G2 + erfc S plateau recovers the phases', async () => {
+    const { fitCellCycle, erfc } = await import('../src/core/cellcycle');
+    expect(erfc(0)).toBeCloseTo(1, 6);
+    expect(erfc(3)).toBeLessThan(1e-4);
+    const n = 512, h = new Float64Array(n);
+    const g = (x: number, m: number, s: number) => Math.exp(-0.5 * ((x - m) / s) ** 2) / (s * Math.sqrt(2 * Math.PI));
+    for (let i = 0; i < n; i++) {
+      h[i] = 55000 * g(i, 100, 4) + 15000 * g(i, 200, 8);
+      if (i > 100 && i < 200) h[i] += 30000 / 100;
+    }
+    const f = fitCellCycle(h, { model: 'watson' });
+    // The erfc plateau runs under the peaks' flanks, so it takes a few
+    // percent from the peaks of an unbroadened rectangular S phase.
+    expect(Math.abs(f.g1Pct - 55)).toBeLessThan(6);
+    expect(Math.abs(f.g2Pct - 15)).toBeLessThan(6);
+    expect(f.sPct).toBeGreaterThan(25);
+    expect(Math.abs(f.g2.mean / f.g1.mean - 2)).toBeLessThan(0.05);
+  });
+  it('RMSD is over every histogram channel', async () => {
+    const { fitCellCycle } = await import('../src/core/cellcycle');
+    const n = 256, h = new Float64Array(n);
+    for (let i = 0; i < n; i++) h[i] = 1000 * Math.exp(-0.5 * ((i - 60) / 3) ** 2) + 300 * Math.exp(-0.5 * ((i - 120) / 6) ** 2);
+    const f = fitCellCycle(h, { model: 'dean-jett-fox' });
+    let ss = 0;
+    for (let i = 0; i < n; i++) ss += (h[i] - f.fitted[i]) ** 2;
+    expect(f.rmsd).toBeCloseTo(Math.sqrt(ss / n), 9);
+  });
+});

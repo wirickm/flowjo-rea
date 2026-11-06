@@ -85,7 +85,16 @@
       { "address": "0x1f3740", "symbol": "WeightOptimizer::CalculateSSMCoefficient" },
       { "address": "0x1f5520", "symbol": "Compensator::Compensate" },
       { "address": "0x1f6550", "symbol": "Compensator::PreCompensate" },
-      { "address": "0x1f5bc0", "symbol": "Compensator::PrepareCompensatedParameters" }
+      { "address": "0x1f5bc0", "symbol": "Compensator::PrepareCompensatedParameters" },
+      { "address": "0x82d070", "symbol": "CCModel::Compute" },
+      { "address": "0x82d200", "symbol": "CCModel::ComputeRMS" },
+      { "address": "0x82f5d0", "symbol": "CCWatsonPragmatic::ComputeModel" },
+      { "address": "0x830dc0", "symbol": "CCWatsonPragmatic::SValue" },
+      { "address": "0x832830", "symbol": "CCFoxSynch::ComputeModel" },
+      { "address": "0x834380", "symbol": "CCFoxSynch::AllSValues" },
+      { "address": "0x834e80", "symbol": "CCProlif::GetStatsElement" },
+      { "address": "0x8365a0", "symbol": "CCProlif::ComputeModel" },
+      { "address": "0x837a80", "symbol": "CCProlif::GetProlifPeakPosition" }
     ]
   },
   "jar": {
@@ -134,6 +143,8 @@
     "fcs-layout": ["0x50060",  "0x4d6d0",  "0x58ef10",  "0x592ef0",  "0x51d10",  "0x58cd90"],
     "comp-ssm": ["0x1eec70",  "0x1f3740"],
     "comp-apply": ["0x1f5520",  "0x1f6550",  "0x1f5bc0"],
-    "comp-files-wizard": ["jar"]
+    "comp-files-wizard": ["jar"],
+    "cc-models": ["0x82d070",  "0x82d200",  "0x82f5d0",  "0x830dc0",  "0x832830",  "0x834380"],
+    "prolif-indices": ["0x834e80",  "0x8365a0",  "0x837a80"]
   }
 }

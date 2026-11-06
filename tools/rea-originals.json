@@ -444,6 +444,22 @@
       "locations": [{ "kind": "artifact-path", "path": "com/treestar/flowjo/application/compeditor/MatrixController.class" }, { "kind": "artifact-path", "path": "com/treestar/flowjo/application/compeditor/model/CompensationMatrix.class" }, { "kind": "artifact-path", "path": "com/treestar/flowjo/application/compeditor/model/WizardMatrix.class" }],
       "behavior": ".mtx = Gating-ML root with transforms:spilloverMatrix (parameters, spillover rows of positional coefficients); CSV corner-cell layout; wizard spillover = (medP_j - medN_j)/(medP_i - medN_i) with 0 -> 1, populations need 100 events and 2% of parent, FlowJo badge texts.",
       "spec_section": "14.1"
+    },
+    {
+      "key": "cc-models",
+      "subject": "engine",
+      "symbols": ["CCModel::Compute", "CCModel::ComputeRMS", "CCWatsonPragmatic::ComputeModel", "CCWatsonPragmatic::SValue", "CCFoxSynch::ComputeModel", "CCFoxSynch::AllSValues"],
+      "locations": [{ "kind": "address-range", "start": "0x82d070", "end": "0x82d200" }, { "kind": "address-range", "start": "0x82d200", "end": "0x82d320" }, { "kind": "address-range", "start": "0x82f5d0", "end": "0x830b40" }, { "kind": "address-range", "start": "0x830dc0", "end": "0x830e50" }, { "kind": "address-range", "start": "0x832830", "end": "0x833ee0" }, { "kind": "address-range", "start": "0x834380", "end": "0x834410" }],
+      "behavior": "Dean-Jett-Fox: Gaussians plus a broadened quadratic S between the means; Watson: Gaussians plus an erfc plateau with fitted kG1/kG2; G2 searched in 1.75-2.25 x G1, unconstrained by default; RMSD over every channel; no chi-square output.",
+      "spec_section": "15.1"
+    },
+    {
+      "key": "prolif-indices",
+      "subject": "engine",
+      "symbols": ["CCProlif::GetStatsElement", "CCProlif::ComputeModel", "CCProlif::GetProlifPeakPosition"],
+      "locations": [{ "kind": "address-range", "start": "0x834e80", "end": "0x8361a0" }, { "kind": "address-range", "start": "0x8365a0", "end": "0x837740" }, { "kind": "address-range", "start": "0x837a80", "end": "0x837b70" }],
+      "behavior": "Division, Proliferation, Expansion, Replication indices and % Divided = sum_{g>=1} N_g/2^g / (N_0 + sum_{g>=1} N_g/2^g); generation means r^i mu0 - (1 - r^i) offset, ratio 0.5 or estimated in [0.42, 0.54]; default 4 peaks.",
+      "spec_section": "15.2"
     }
   ]
 }

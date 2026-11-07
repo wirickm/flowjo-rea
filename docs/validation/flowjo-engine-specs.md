@@ -1529,6 +1529,33 @@ keys) moves it; statistics, group tools, the sample list with annotations and
 the log are in a side panel with tabs; populations are renamed from the
 right-click menu.
 
+## 24. Colour axis, Event # parameter, layout ancestry and adjunct histograms (FlowJo 10.6.2)
+
+Rules from `docs/validation/flowjo-display-tree-model.md` (C1-C2, D10) and
+`docs/validation/flowjo-layout-model.md` (N3-N5). Implemented in
+`src/core/service.ts` (`plot` colour mean), `src/core/analysis.ts` (Event #
+column), `src/ui/renderPlot.ts` (`colorBy`), `src/ui/App.tsx` and
+`src/ui/Layout.tsx` (`graphCanvasSize`). Tests: `tests/color-axis.test.ts`;
+E2E `e2e/coloraxis.mjs` (8 checks).
+
+| Rule | Behavior | Proven by |
+|---|---|---|
+| C1 | Colour axis: a third parameter colours the events; on / off, a parameter chooser, colour map blue, green, yellow, red | `ColorMapAxisPanel`, `ColorMapParameterComboBox` |
+| C2 | Next / Previous Color (Ctrl/Cmd+] / [) step the colour parameter through the axis list without wrapping | `GWNavAction.doAction` (PREV_COLOR / NEXT_COLOR) |
+| D10 | Show Event # Parameter adds an "Event #" parameter at the end of the axis lists | `ParameterList.getParameterIDs` (`StringDefs.EventNum`) |
+| N3 | Show Ancestry: a row of charts beside the graph, one per ancestor level, 140 pt each, starting 8 pt to the right; enabled below the root only | `FigChartRow.adaptToChart/getDepth`, `AnnotationPanel.adjust` |
+| N4 | with Backgating: the ancestry charts overlay the graph's population; only with ancestry on | `FigChartRow.isBackgating`, `AnnotationPanel.adjust` |
+| N5 | Show Adjunct Histograms: 1-D distributions of X and Y along the edges of a 2-D plot | `FigChartAdjunctHistogram`, `LEChart.showAdjunctHistograms` |
+
+Own rules: each pseudocolor cell takes the colour of the bin's mean of the
+colour parameter over that parameter's display range (FlowJo's native
+colouring rule was not read); the colour axis is a per-population graph
+setting and applies to pseudocolor plots; Show Event # Parameter is
+workspace-wide; ancestry charts use each ancestor's saved plot axes (else the
+graph's) and show only the gate leading to the next level; adjunct strips are
+40 px; Show Uncompensated Parameters is not offered (the app compensates in
+place; raw twins would need a per-axis compensation choice on every gate).
+
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 
 Source: static analysis of `libNativeEngine.dylib` from the public FlowJo

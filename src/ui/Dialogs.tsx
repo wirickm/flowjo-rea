@@ -791,6 +791,7 @@ export function FindDialog(p: { samples: SampleState[]; keywords: string[]; onRe
         <label><input type="checkbox" checked={wholeWord} onChange={(e) => setWholeWord(e.target.checked)} data-testid="find-whole" /> Match whole word</label>
         <label><input type="checkbox" checked={partial} onChange={(e) => setPartial(e.target.checked)} /> Replace partial</label>
         <button disabled={!hits.length} onClick={next} data-testid="find-next">Find Next</button>
+        <button disabled={at < 0 || !hits[at]?.editable} title="Replace: substitute text for the selected result's keyword value (KeywordFindRelpaceDialog.replaceSelectedRows)" onClick={() => p.onReplace([hits[at]], what, withText, { matchCase, partial })} data-testid="find-replace-one">Replace</button>
         <button disabled={!hits.some((h) => h.editable)} title="File keywords are read-only; annotation keywords are replaced" onClick={() => p.onReplace(hits, what, withText, { matchCase, partial })} data-testid="find-replace-all">Replace All</button>
         <span className="muted" data-testid="find-count">{what ? `${hits.length} match${hits.length === 1 ? '' : 'es'}` : ''}</span>
       </div>

@@ -231,3 +231,10 @@ export function colorTable(rows: ColorRow[]): [number, number, number][] {
   }
   return out;
 }
+
+// Calculate Width Basis on an arcsinh axis (ParameterController.autoWidth ->
+// ArcsinhTransform.autoM): not data driven; M goes back to automatic, which
+// getM reads as log10 of the top of scale, so the width basis is -T.
+export function arcsinhAutoM(T: number): number {
+  return Math.log10(T);
+}

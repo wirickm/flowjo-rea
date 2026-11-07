@@ -267,3 +267,23 @@ the editor (`table-window`) with live values. **Done** (e2e "Create Table
   asks every time.
 - The Statistics columns' NaN for samples whose data are not loaded is this
   app's convention (FlowJo always has its samples' data).
+
+
+### TECommand.RIBBONCONFIG "Customize Ribbon", TECommand.RIBBONSETDEFAULT "Apply defaults" (follow-up f2)
+- `TEActionManager` creates `TERibbonConfigAction(RIBBONCONFIG)` and
+  `TERibbonSetDefaultAction(RIBBONSETDEFAULT)` (confirm
+  `te.ribbon.setdefaults.confirm`, new `TERibbonStructure`, save preferences,
+  reload the ribbon). `TERibbonAddBandAction` / `TERibbonRemoveBandAction`
+  change the structure and save it to the `TERibbon` preference;
+  `TERibbonCommitToPrefsAction` exists but no TECommand constant wires it.
+  Defaults (`TERibbonStructure`): Table Editor: Tables, Iteration, Output;
+  Edit: Columns; Visualize: Formatting, Plots. Add / remove / drop rules as
+  the workspace ribbon (docs/validation/ui-gaps/workspace.md section F2.3).
+- flowjo-rea: "Customize Ribbon" (`te-ribbon-config`) in the table editor;
+  the Formatting, Iteration, Output and Plots bands can be removed, added
+  back and reordered; Apply defaults. **Done** with own rules: one strip (one
+  task) of the app's fieldsets; the table list and the column list are the
+  editor body and stay fixed; no Commit to Preferences. Tests: e2e
+  `e2e/followup-f2.mjs` "table editor: removing the Plots band hides it",
+  "table editor: bands reorder", "table editor: Apply defaults restores the
+  bands".

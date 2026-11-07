@@ -18,6 +18,7 @@ import { FLOWJO_STAT_NAMES, STAT_NEEDS_CHANNEL } from './stats';
 import { makeTransform, type TransformSpec } from './transforms';
 import { KIN_BY_NAME, kineticsFromAttrs } from './kinetics';
 import { attr, descendants, kid, kids, local, numAttr, parseXml, type El } from './xml';
+import { parseFigList } from './wspLayout';
 
 export interface WspImport {
   workspace: Workspace;
@@ -118,6 +119,7 @@ export function parseWsp(xml: string): WspImport {
   const sampleList = kid(root, 'SampleList');
   if (!sampleList) fail('WORKSPACE_INVALID', 'Workspace has no SampleList');
   const sampleIdMap = new Map<string, string>();
+  const resolvers = new Map<string, (name: string) => string>(); // FlowJo sampleID -> parameter resolver (layout figures)
   const owners = new Map<Population, string>(); // population -> owning group name
   // Plot settings per population path, from the first sample that has them.
   const plots: NonNullable<Workspace['plots']> = {};
@@ -142,6 +144,7 @@ export function parseWsp(xml: string): WspImport {
     for (const k of kids(kid(s, 'Keywords') ?? s, 'Keyword')) keywords[(attr(k, 'name') ?? '').toUpperCase()] = attr(k, 'value') ?? '';
     const scales = parseTransforms(kid(s, 'Transformations'), sw, parseFloat(keywords['$TIMESTEP'] ?? '') || 0);
 
+    resolvers.set(wspSampleId, (n) => resolveDim(n).channel);
     const resolveDim = (name: string): { channel: string; comp: string } => {
       if (matrix) {
         const { prefix, suffix } = matrix;
@@ -556,8 +559,14 @@ export function parseWsp(xml: string): WspImport {
       else if (type === 'PANEL') ws.layoutIteration = { type: 'PANEL', size: Number(attr(it!, 'panelSize')) || 1 };
       else if (type === 'OFF') ws.layoutIteration = { type: 'OFF' };
     }
-    const withFigs = layouts.filter((l) => { const fl = kids(l, 'FigList')[0]; return fl && kids(fl).length > 0; });
-    if (withFigs.length) warnings.push(`Layout editor: ${withFigs.length} layout(s) with figures; page and iteration settings imported, figures not imported`);
+    // Figures of the current layout (specs 25.4): charts, text, groups, grids.
+    const fl = cur ? kids(cur, 'FigList')[0] : undefined;
+    if (fl && kids(fl).length) {
+      const r = parseFigList(fl, (sid) => sampleIdMap.get(sid), (sid, name) => (resolvers.get(sid) ?? ((n: string) => n))(name));
+      ws.layout = r.items;
+      if (r.grids.length) ws.layoutGrids = r.grids;
+      warnings.push(...r.warnings.map((w) => `Layout editor: ${w}`));
+    }
     if (layouts.length > 1) warnings.push(`Layout editor: ${layouts.length} layouts; the settings of "${attr(cur ?? layouts[0], 'name') ?? 'Layout'}" are used`);
   }
   const flowjoVersion = attr(root, 'flowJoVersion') ?? 'unknown';

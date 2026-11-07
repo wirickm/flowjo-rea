@@ -1,5 +1,15 @@
 # Progress and handoff
 
+## State (2026-11-07, separate graph windows, grid editing, .wsp layout figures)
+
+Graph windows are real separate windows (browser child windows, Electron
+child BrowserWindows; in-page fallback). Grid figures are objects with insert /
+delete rows and columns, dimensions, padding, make even, autofit, clear,
+extract. .wsp import and export carry layout figures (ChartData, StyledText,
+groups, GridLayout) from the FigList format decoded from FlowJo's writers
+(`docs/validation/flowjo-figlist-format.md`; no fixture has figures, so the
+format is unverified against FlowJo-saved files). Specs 23, 25.2, 25.4 updated.
+
 ## State (2026-11-07, remaining UI gaps)
 
 Specs 25: Show Uncompensated Parameters (raw twins), grid figures with bare

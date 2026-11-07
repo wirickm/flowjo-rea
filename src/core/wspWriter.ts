@@ -1,6 +1,7 @@
 // FlowJo-style .wsp writer. Mirrors the structure observed in FlowJo-saved
 // workspaces (see wsp.ts). NOT validated by opening in FlowJo: only
 // round-trip tested through this project's reader.
+import { writeFigList } from './wspLayout';
 import { invert } from './compensation';
 import type { SpilloverMatrix } from './compensation';
 import { axesFromGate } from './ellipse';
@@ -284,10 +285,23 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
     })
     .join('');
   if (!ws.samples.length) fail('WORKSPACE_INVALID', 'Workspace has no samples to export');
+  // The layout (specs 25.4): page, iteration and figures in FlowJo's LayoutEditor element.
+  const layoutXml = () => {
+    if (!ws.layout?.length && !ws.layoutPage && !ws.layoutIteration) return '';
+    const page = ws.layoutPage ?? { paper: 'letter', orientation: 'portrait' };
+    const [pw, ph] = page.paper === 'a4' ? [595.3, 841.9] : [612, 792];
+    const it = ws.layoutIteration ?? { type: 'OFF' as const };
+    const iter = `<Iteration iterationType="${it.type}"  iterationValue=""  iterationKeyword="${it.type === 'KEYWORD' ? esc(it.keyword) : ''}"  discriminator="${it.type === 'KEYWORD' && it.discriminator ? esc(it.discriminator) : ''}"  panelSize="${it.type === 'PANEL' ? it.size : 1}"  groupName="workspaceSelection" />`;
+    const sid = (appId: string | undefined) => String(Math.max(0, ws.samples.findIndex((x) => x.id === appId)) + 1);
+    const param = (appId: string | undefined, ch: string) => (appId && input.sampleMatrix(appId)?.channels.includes(ch) ? `${PREFIX}${ch}` : ch);
+    const figs = writeFigList(ws.layout ?? [], ws.layoutGrids ?? [], sid, param);
+    return `<LayoutEditor current="Layout"  showGrid="0"  showPageBreaks="1"  showGuides="0" ><Layout name="Layout"  isBatch="0"  showGrid="0"  showRulers="1"  showGuides="0"  showPageBreaks="1"  scale="1" ><PrintLayout rows="1"  columns="1"  padding="36"  scalingMode="fj.print.scale.none"  scaling="1"  orientation="${page.orientation === 'landscape' ? 0 : 1}"  width="${pw}"  height="${ph}" />${iter}${figs}</Layout></LayoutEditor>`;
+  };
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <Workspace version="20.0" flowJoVersion="flowjo-rea export (unvalidated)" xmlns:gating="http://www.isac-net.org/std/Gating-ML/v2.0/gating" xmlns:transforms="http://www.isac-net.org/std/Gating-ML/v2.0/transformations" xmlns:data-type="http://www.isac-net.org/std/Gating-ML/v2.0/datatypes">
 <Groups>${groups}</Groups>
 <SampleList>${sampleXml.join('\n')}</SampleList>
+${layoutXml()}
 </Workspace>
 `;
   return { xml, warnings };

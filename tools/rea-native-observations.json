@@ -150,6 +150,7 @@
     "edge-warning": ["jar"],
     "table-layout-editors": ["jar"],
     "graph-window-stains": ["jar"],
-    "layout-editor-logic": ["jar"]
+    "layout-editor-logic": ["jar"],
+    "layout-figlist": ["jar"]
   }
 }

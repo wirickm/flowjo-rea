@@ -89,6 +89,8 @@ export interface Population {
   // FlowJo magnetic gate (specs 10.4): on each sample the gate moves toward
   // the densest events of the parent before gating.
   magnetic?: boolean;
+  // Tree expansion (FlowJo expanded="0|1"; specs 22.4); undefined = expanded.
+  collapsed?: boolean;
 }
 
 export interface SampleState {
@@ -166,6 +168,7 @@ export interface Workspace {
   plots?: Record<string, PlotSettings>;
   layoutPage?: import('./layoutArrange').PageSetup;
   layoutIteration?: import('./layoutArrange').LayoutIteration;
+  layoutGuides?: import('./layoutArrange').Guides;
   // FlowJo Kinetics node settings and timeslices per population path (specs 11).
   kinetics?: Record<string, import('./kinetics').KineticsSettings>;
   layout?: LayoutItem[];
@@ -194,6 +197,12 @@ export interface PlotSettings {
   showOutliers?: boolean;
   normalize?: boolean; // histogram "Normalized To Mode" (default raw counts)
   overlays?: string[]; // population paths drawn on top (backgating)
+  // Graph window Display menu, saved per population (specs 22.1).
+  grid?: boolean;
+  largeDots?: boolean;
+  medians?: boolean;
+  hideGateFreq?: boolean;
+  hideGateNames?: boolean;
 }
 
 // A layout cell: a plot rendered for whichever sample is chosen, or a text block.
@@ -214,6 +223,9 @@ export interface LayoutPlot extends PlotSettings, LayoutPlace {
   sampleId?: string; // the sample the graph came from (iteration binding, specs 21.3)
   showGates?: boolean; // Show Gates (default on)
   showAnnotation?: boolean; // Show Annotation: the title line (default off)
+  gateFreq?: boolean; // with Frequencies (default on; needs Show Gates)
+  gateNames?: boolean; // with Names (default on; needs Show Gates)
+  axes?: string; // FlowJo axes string: t n l (x), T N L (y); default 'tnlTNL'
   text?: undefined;
 }
 export interface LayoutText extends LayoutPlace {

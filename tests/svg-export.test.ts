@@ -37,7 +37,9 @@ describe('SVG plot export', () => {
     const texts = Array.from(doc.getElementsByTagName('text')).map((t) => t.textContent);
     expect(texts).toContain('CD3');
     expect(texts).toContain('CD4');
-    expect(texts).toContain('Gate A 25.00%');
+    // FlowJo 10 gate label: name, then the frequency (3 significant figures, no %; specs 22.1).
+    expect(texts).toContain('Gate A');
+    expect(texts).toContain('25.0');
     expect(doc.getElementsByTagName('path').length).toBeGreaterThan(3);
     expect(doc.getElementsByTagName('clipPath').length).toBeGreaterThan(0);
   });

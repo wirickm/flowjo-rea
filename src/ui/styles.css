@@ -74,3 +74,10 @@ table.matrix input { width: 72px; }
 .layout-page .page-break.v { top: 0; border-left: 1px dashed #d33; }
 .layout-page .page-break.h { left: 0; border-top: 1px dashed #d33; }
 .layout-selrow { min-height: 44px; }
+.layout-page .layout-guide { position: absolute; z-index: 9999; }
+.layout-page .layout-guide.v { top: 0; width: 7px; cursor: ew-resize; background: linear-gradient(90deg, transparent 3px, #18a0c8 3px, #18a0c8 4px, transparent 4px); }
+.layout-page .layout-guide.h { left: 0; height: 7px; cursor: ns-resize; background: linear-gradient(180deg, transparent 3px, #18a0c8 3px, #18a0c8 4px, transparent 4px); }
+.display-menu { margin: 2px 0; } .display-menu summary { cursor: pointer; } .display-menu label { margin-right: 10px; }
+.twisty { display: inline-block; width: 12px; color: #667; cursor: pointer; font-family: monospace; } .grid tr.sel td { background: #e8eefc; }
+.toolbar .band { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; border-left: 1px solid rgba(255, 255, 255, 0.25); position: relative; }
+.toolbar .band-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.7; margin-right: 2px; }

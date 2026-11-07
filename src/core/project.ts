@@ -536,3 +536,54 @@ export function pasteAnnotations(samples: SampleState[], startIndex: number, tex
   });
   return n;
 }
+
+// Add Keyword (specs 22.4, WSKeywordMgr.addKeyword): the name is trimmed; "Off",
+// "Sample" and "Panel" get "_" appended; the keyword is added to every sample
+// with an empty value (an existing one is kept). Returns the stored name.
+export function addKeywordToAll(samples: SampleState[], raw: string): string | null {
+  let name = raw.trim();
+  if (!name) return null;
+  if (['Off', 'Sample', 'Panel'].includes(name)) name += '_';
+  for (const s of samples) if (!(name in (s.annotations ?? {}))) s.annotations = { ...(s.annotations ?? {}), [name]: '' };
+  return name;
+}
+
+// Find (specs 22.4, ws.find.*): keyword values only; literal substring, case
+// insensitive unless matchCase; wholeWord matches only whole words.
+export interface FindHit { sampleId: string; fileName: string; keyword: string; value: string; editable: boolean }
+export function findKeywords(samples: SampleState[], what: string, opts: { keyword?: string; matchCase?: boolean; wholeWord?: boolean }): FindHit[] {
+  if (!what) return [];
+  const esc = what.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(opts.wholeWord ? `(^|\\W)${esc}($|\\W)` : esc, opts.matchCase ? '' : 'i');
+  const hits: FindHit[] = [];
+  for (const s of samples) {
+    const entries: [string, string, boolean][] = [...Object.entries(s.keywordsSnapshot).map(([k, v]) => [k, v, false] as [string, string, boolean]), ...Object.entries(s.annotations ?? {}).map(([k, v]) => [k, v, true] as [string, string, boolean])];
+    for (const [k, v, editable] of entries) if ((!opts.keyword || k === opts.keyword) && re.test(v)) hits.push({ sampleId: s.id, fileName: s.fileName, keyword: k, value: v, editable });
+  }
+  return hits;
+}
+// Replace in the editable (annotation) values of the hits; partial replaces the
+// matched text, otherwise the whole value. Returns the number changed.
+export function replaceKeywords(samples: SampleState[], hits: FindHit[], what: string, withText: string, opts: { matchCase?: boolean; partial?: boolean }): number {
+  let n = 0;
+  const esc = what.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  for (const h of hits) {
+    if (!h.editable) continue;
+    const s = samples.find((x) => x.id === h.sampleId);
+    if (!s?.annotations || !(h.keyword in s.annotations)) continue;
+    s.annotations = { ...s.annotations, [h.keyword]: opts.partial ? s.annotations[h.keyword].replace(new RegExp(esc, opts.matchCase ? 'g' : 'gi'), withText) : withText };
+    n++;
+  }
+  return n;
+}
+
+// Duplicate (specs 22.4): a deep copy as a sibling under the same parent, its
+// name made unique by the usual rule ("CD4" -> "CD4-1").
+export function duplicatePopulation(s: SampleState, id: string): string[] {
+  const src = s.populations.find((p) => p.id === id);
+  if (!src) return [];
+  const clip = copyPopulations(s.populations, [id]).filter((p) => subtreeIds(s.populations, [id]).has(p.id));
+  const root = clip.find((p) => p.id === id)!;
+  root.name = uniqueName(src.name, s.populations.filter((p) => p.parentId === src.parentId).map((p) => p.name));
+  return pastePopulations(s, clip, [src.parentId]);
+}

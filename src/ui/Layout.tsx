@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   align, alignToGrid, avoidPageBreaks, bindSample, bringToFront, DEFAULT_PAGE, DUPLICATE_OFFSET, FRAME_PT, GRID_PT, gridPositions, iterationValues, MARGIN, nudge, nudgeStep,
-  pageGrid, PAPERS, sendToBack, spacing, stepOrder, tilePitch, unionBox, usablePage, type AlignMode, type Box, type LayoutIteration, type PageSetup,
+  pageGrid, PAPERS, sendToBack, spacing, stepOrder, tilePitch, unionBox, usablePage, DEFAULT_GUIDES, MAX_GUIDES, snapToGuides, type AlignMode, type Box, type Guides, type LayoutIteration, type PageSetup,
 } from '../core/layoutArrange';
 import { populationPath, type LayoutItem, type SampleState, type Workspace } from '../core/model';
 import type { PlotResult, SampleMeta } from '../core/service';
@@ -93,7 +93,7 @@ export async function renderLayout(client: Client, ws: Workspace, meta: Record<s
       if (op) overlays.push({ label: path, data: await req(op.id, 5000) });
     }
     const title = (ch: string) => { const c = chans.find((q) => q.name === ch); return c ? channelDisplayName(c) : ch; };
-    const options: RenderOptions = { kind: item.kind, x, y, data, gates: item.showGates === false ? [] : drawableGates(s.populations, pop?.id ?? null, x, y), counts: counts.get(s.id)!, contourLevel: item.contourLevel, showOutliers: item.showOutliers, overlays, normalize: item.normalize, xTitle: title(x.channel), yTitle: y ? title(y.channel) : undefined };
+    const options: RenderOptions = { kind: item.kind, x, y, data, gates: item.showGates === false ? [] : drawableGates(s.populations, pop?.id ?? null, x, y), counts: counts.get(s.id)!, contourLevel: item.contourLevel, showOutliers: item.showOutliers, overlays, normalize: item.normalize, xTitle: title(x.channel), yTitle: y ? title(y.channel) : undefined, gateNames: item.gateNames !== false && !item.hideGateNames, gateFreq: item.gateFreq !== false && !item.hideGateFreq, axes: item.axes, grid: item.grid, largeDots: item.largeDots, medians: item.medians };
     const cv = document.createElement('canvas');
     cv.width = PLOT.w;
     cv.height = PLOT.h;
@@ -180,7 +180,7 @@ export function LayoutView(p: {
   samples: SampleState[];
   client: Client;
   onChange: (items: LayoutItem[]) => void;
-  onSettings: (patch: { layoutPage?: PageSetup; layoutIteration?: LayoutIteration }) => void;
+  onSettings: (patch: { layoutPage?: PageSetup; layoutIteration?: LayoutIteration; layoutGuides?: Guides }) => void;
   onDownload: (name: string, blob: Blob) => void;
   onClose: () => void;
 }) {
@@ -196,6 +196,10 @@ export function LayoutView(p: {
   const [sel, setSel] = useState<string[]>([]);
   const [zoom, setZoom] = useState(1);
   const [showGrid, setShowGrid] = useState(false);
+  // P7: guides off by default; S5: one vertical and one horizontal guide at 250 pt.
+  const [showGuides, setShowGuides] = useState(false);
+  const guides = p.ws.layoutGuides ?? DEFAULT_GUIDES;
+  const [guideDrag, setGuideDrag] = useState<{ axis: 'v' | 'h'; i: number; at: number } | null>(null);
   const [rendered, setRendered] = useState<Rendered[]>([]);
   const [busy, setBusy] = useState(false);
   const [batchFormat, setBatchFormat] = useState<'png' | 'svg' | 'pdf'>('pdf');
@@ -299,8 +303,24 @@ export function LayoutView(p: {
     const pt = ptAt(e);
     setDrag({ x0: pt.x, y0: pt.y, dx: 0, dy: 0, ids: next.filter((x) => !boxes.find((b) => b.id === x)?.locked) });
   };
-  const onMove = (e: React.MouseEvent) => { if (!drag) return; const pt = ptAt(e); setDrag({ ...drag, dx: Math.round(pt.x - drag.x0), dy: Math.round(pt.y - drag.y0) }); };
+  const onMove = (e: React.MouseEvent) => {
+    const pt = ptAt(e);
+    if (guideDrag) return setGuideDrag({ ...guideDrag, at: Math.round(guideDrag.axis === 'v' ? pt.x : pt.y) });
+    if (!drag) return;
+    let dx = Math.round(pt.x - drag.x0), dy = Math.round(pt.y - drag.y0);
+    const moving = boxes.filter((b) => drag.ids.includes(b.id));
+    if (showGuides && moving.length) ({ dx, dy } = snapToGuides(unionBox(moving), dx, dy, guides)); // S4
+    setDrag({ ...drag, dx, dy });
+  };
   const onUp = () => {
+    if (guideDrag) {
+      // A guide dragged off the page is removed.
+      const list = [...guides[guideDrag.axis]];
+      if (guideDrag.at < 0) list.splice(guideDrag.i, 1); else list[guideDrag.i] = guideDrag.at;
+      p.onSettings({ layoutGuides: { ...guides, [guideDrag.axis]: list } });
+      setGuideDrag(null);
+      return;
+    }
     if (drag && (drag.dx || drag.dy)) commit(boxes.filter((b) => drag.ids.includes(b.id)).map((b) => ({ ...b, x: Math.max(0, b.x + drag.dx), y: Math.max(0, b.y + drag.dy) })));
     setDrag(null);
   };
@@ -348,6 +368,12 @@ export function LayoutView(p: {
             </select>
             Zoom <select value={zoom} onChange={(e) => setZoom(Number(e.target.value))} data-testid="layout-zoom">{[0.5, 0.75, 1, 1.5].map((z) => <option key={z} value={z}>{z * 100}%</option>)}</select>
             <label><input type="checkbox" checked={showGrid} onChange={(e) => setShowGrid(e.target.checked)} data-testid="layout-show-grid" /> Grid</label>
+            <label title="Moved items snap to a guide within 30 pt"><input type="checkbox" checked={showGuides} onChange={(e) => setShowGuides(e.target.checked)} data-testid="layout-show-guides" /> Guides</label>
+            {showGuides && <>
+              <button disabled={guides.v.length + guides.h.length >= MAX_GUIDES} onClick={() => p.onSettings({ layoutGuides: { ...guides, v: [...guides.v, 250] } })} data-testid="layout-add-vguide">+ vertical guide</button>
+              <button disabled={guides.v.length + guides.h.length >= MAX_GUIDES} onClick={() => p.onSettings({ layoutGuides: { ...guides, h: [...guides.h, 250] } })} data-testid="layout-add-hguide">+ horizontal guide</button>
+              <span className="muted">drag a guide off the page to remove it</span>
+            </>}
           </div>
           <div className="row" role="toolbar" aria-label="Arrange">
             Align {ALIGN.map((a) => <button key={a.mode} disabled={!enabled(2)} onClick={() => arrange((u) => align(u, a.mode))} data-testid={`layout-align-${a.mode}`} title={a.key ? `Ctrl/Cmd+${a.key.toUpperCase()}` : undefined}>{a.label}</button>)}
@@ -376,7 +402,15 @@ export function LayoutView(p: {
               ) : (
                 <>
                   <label><input type="checkbox" checked={selected.showGates !== false} onChange={(e) => setItem(selected.id, { showGates: e.target.checked ? undefined : false })} data-testid="layout-show-gates" /> Show Gates</label>
+                  <label title="Only while Show Gates is on (AnnotationPanel.adjust)"><input type="checkbox" disabled={selected.showGates === false} checked={selected.gateFreq !== false} onChange={(e) => setItem(selected.id, { gateFreq: e.target.checked ? undefined : false })} data-testid="layout-gate-freq" /> with Frequencies</label>
+                  <label><input type="checkbox" disabled={selected.showGates === false} checked={selected.gateNames !== false} onChange={(e) => setItem(selected.id, { gateNames: e.target.checked ? undefined : false })} data-testid="layout-gate-names" /> with Names</label>
                   <label><input type="checkbox" checked={!!selected.showAnnotation} onChange={(e) => setItem(selected.id, { showAnnotation: e.target.checked || undefined })} data-testid="layout-show-annotation" /> Show Annotation</label>
+                  {(['x', 'y'] as const).map((axis) => (['ticks', 'numbers', 'label'] as const).map((part) => {
+                    const ch = { ticks: 't', numbers: 'n', label: 'l' }[part];
+                    const letter = axis === 'x' ? ch : ch.toUpperCase();
+                    const cur = selected.axes ?? 'tnlTNL';
+                    return <label key={axis + part}><input type="checkbox" checked={!cur.includes(letter)} onChange={(e) => setItem(selected.id, { axes: e.target.checked ? cur.replace(letter, '') : cur + letter })} data-testid={`layout-hide-${axis}-${part}`} /> hide {axis.toUpperCase()} {part}</label>;
+                  }))}
                 </>
               )}
               <span className="muted">{sel.length} selected; arrows nudge 1 pt (Alt x2, Ctrl x2, Shift x3)</span>
@@ -433,6 +467,12 @@ export function LayoutView(p: {
             >
               {Array.from({ length: grid.cols - 1 }, (_, i) => <div key={`v${i}`} className="page-break v" style={{ left: (i + 1) * page.w * zoom, height: H * zoom }} />)}
               {Array.from({ length: grid.rows - 1 }, (_, i) => <div key={`h${i}`} className="page-break h" style={{ top: (i + 1) * page.h * zoom, width: W * zoom }} />)}
+              {showGuides && (['v', 'h'] as const).flatMap((axis) => guides[axis].map((g, i) => {
+                const at = guideDrag && guideDrag.axis === axis && guideDrag.i === i ? guideDrag.at : g;
+                return <div key={`g${axis}${i}`} className={`layout-guide ${axis}`} data-testid={`layout-guide-${axis}`} data-at={at}
+                  style={axis === 'v' ? { left: at * zoom - 3, height: H * zoom } : { top: at * zoom - 3, width: W * zoom }}
+                  onMouseDown={(e) => { e.stopPropagation(); setGuideDrag({ axis, i, at: g }); }} />;
+              }))}
               {items.map((it, i) => {
                 const b = view(boxes[i]);
                 const r = rendered.find((x) => x.item.id === it.id);

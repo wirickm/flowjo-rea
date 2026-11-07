@@ -83,6 +83,37 @@ export interface RenderOptions {
   // specs 18.1). Default: the parameter name.
   xTitle?: string;
   yTitle?: string;
+  // Gate annotations (FlowJo showGateNameOnPlots / showFreqOnPlots; default on).
+  gateNames?: boolean;
+  gateFreq?: boolean;
+  // FlowJo's axes string (AnnotationPanel.getShowAxes): x letters t n l (ticks,
+  // numbers, label), y letters T N L; a letter shown when present. Default all.
+  axes?: string;
+  // Graph window Display menu (GWActionManager.getDisplayActions; specs 22.1):
+  // grid at the labelled ticks, large dots, medians. Defaults off.
+  grid?: boolean;
+  largeDots?: boolean;
+  medians?: boolean;
+}
+
+// Gate frequency text (specs 22.1): 3 significant figures, trailing zeros kept,
+// at most 2 decimals, no % sign; between 0 and 0.01 scientific ("4.00E-3").
+export function formatFreq(v: number): string {
+  if (!Number.isFinite(v)) return '';
+  if (v > 0 && v < 0.01) return v.toExponential(2).replace('e', 'E').replace('E+', 'E');
+  const p = v.toPrecision(3);
+  const dec = p.includes('.') ? p.split('.')[1].length : 0;
+  return dec > 2 ? v.toFixed(2) : p.includes('e') ? String(Math.round(v)) : p;
+}
+
+// Median of a binned marginal (bin index, fractional), or null when empty.
+function medianBin(m: ArrayLike<number>): number | null {
+  let tot = 0;
+  for (let i = 0; i < m.length; i++) tot += m[i];
+  if (!tot) return null;
+  let acc = 0;
+  for (let i = 0; i < m.length; i++) { acc += m[i]; if (acc >= tot / 2) return i + 0.5; }
+  return m.length - 0.5;
 }
 
 const maxOf = (a: ArrayLike<number>) => {
@@ -159,7 +190,7 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
         for (let i = 0; i < d.points.length; i += 2) {
           const X = sx(Math.min(Math.max(d.points[i], o.x.range[0]), o.x.range[1]));
           const Y = sy(Math.min(Math.max(d.points[i + 1], yAxis.range[0]), yAxis.range[1]));
-          ctx.fillRect(X, Y - 1, 1.5, 1.5);
+          if (o.largeDots) ctx.fillRect(X - 1, Y - 2, 3, 3); else ctx.fillRect(X, Y - 1, 1.5, 1.5);
         }
       } else {
         const B = d.bins;
@@ -227,22 +258,23 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
     ctx.fillStyle = '#222';
     ctx.font = '10px sans-serif';
     ctx.textAlign = 'center';
+    const ax = o.axes ?? 'tnlTNL';
     for (const t of ticks(o.x.t)) {
       const X = sx(t.pos);
-      ctx.beginPath(); ctx.moveTo(X, PLOT.mt + ph); ctx.lineTo(X, PLOT.mt + ph + (t.major ? 5 : 2)); ctx.stroke();
-      if (t.label) drawLabel(ctx, t.label, X, PLOT.mt + ph + 16, 'center');
+      if (ax.includes('t')) { ctx.beginPath(); ctx.moveTo(X, PLOT.mt + ph); ctx.lineTo(X, PLOT.mt + ph + (t.major ? 5 : 2)); ctx.stroke(); }
+      if (t.label && ax.includes('n')) drawLabel(ctx, t.label, X, PLOT.mt + ph + 16, 'center');
     }
     ctx.font = '11px sans-serif';
-    ctx.fillText(o.xTitle ?? o.x.channel, PLOT.ml + pw / 2, PLOT.h - 8);
+    if (ax.includes('l')) ctx.fillText(o.xTitle ?? o.x.channel, PLOT.ml + pw / 2, PLOT.h - 8);
     ctx.textAlign = 'right';
     ctx.font = '10px sans-serif';
     if (o.y) {
       for (const t of ticks(o.y.t)) {
         const Y = sy(t.pos);
-        ctx.beginPath(); ctx.moveTo(PLOT.ml, Y); ctx.lineTo(PLOT.ml - (t.major ? 5 : 2), Y); ctx.stroke();
-        if (t.label) drawLabel(ctx, t.label, PLOT.ml - 7, Y + 3, 'right');
+        if (ax.includes('T')) { ctx.beginPath(); ctx.moveTo(PLOT.ml, Y); ctx.lineTo(PLOT.ml - (t.major ? 5 : 2), Y); ctx.stroke(); }
+        if (t.label && ax.includes('N')) drawLabel(ctx, t.label, PLOT.ml - 7, Y + 3, 'right');
       }
-    } else {
+    } else if (ax.includes('N')) {
       for (let k = 0; k <= 4; k++) {
         const c = (histMax * 1.05 * k) / 4;
         ctx.fillText(String(Math.round(c)), PLOT.ml - 7, hy(c) + 3);
@@ -253,8 +285,39 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
     ctx.rotate(-Math.PI / 2);
     ctx.textAlign = 'center';
     ctx.font = '11px sans-serif';
-    ctx.fillText(o.y ? o.yTitle ?? o.y.channel : hs.label, 0, 0);
+    if (ax.includes('L')) ctx.fillText(o.y ? o.yTitle ?? o.y.channel : hs.label, 0, 0);
     ctx.restore();
+    // Show Grid: light grey lines at the labelled ticks, over the data, under the gates.
+    if (o.grid) {
+      ctx.save();
+      ctx.strokeStyle = '#d4d4d4';
+      ctx.lineWidth = 1;
+      for (const t of ticks(o.x.t)) if (t.major) { const X = Math.round(sx(t.pos)) + 0.5; ctx.beginPath(); ctx.moveTo(X, PLOT.mt); ctx.lineTo(X, PLOT.mt + ph); ctx.stroke(); }
+      if (o.y) for (const t of ticks(o.y.t)) if (t.major) { const Y = Math.round(sy(t.pos)) + 0.5; ctx.beginPath(); ctx.moveTo(PLOT.ml, Y); ctx.lineTo(PLOT.ml + pw, Y); ctx.stroke(); }
+      ctx.restore();
+    }
+    // Show Medians: a 20 px "+" at the medians when the population has more than
+    // 10 events; on a histogram a dotted vertical line (own: from the display bins).
+    if (o.medians && d && d.count > 10) {
+      const B = d.bins;
+      ctx.save();
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1.2;
+      const toX = (b: number) => sx(o.x.range[0] + (b / B) * (o.x.range[1] - o.x.range[0]));
+      if (o.y && d.density.length === B * B) {
+        const mx = new Float64Array(B), my = new Float64Array(B);
+        for (let y = 0; y < B; y++) for (let x = 0; x < B; x++) { const c = d.density[y * B + x]; mx[x] += c; my[y] += c; }
+        const bx = medianBin(mx), by = medianBin(my);
+        if (bx !== null && by !== null) {
+          const X = toX(bx), Y = sy(yAxis.range[0] + (by / B) * (yAxis.range[1] - yAxis.range[0]));
+          ctx.beginPath(); ctx.moveTo(X - 10, Y); ctx.lineTo(X + 10, Y); ctx.moveTo(X, Y - 10); ctx.lineTo(X, Y + 10); ctx.stroke();
+        }
+      } else if (!o.y) {
+        const bx = medianBin(d.density);
+        if (bx !== null) { ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(toX(bx), PLOT.mt); ctx.lineTo(toX(bx), PLOT.mt + ph); ctx.stroke(); }
+      }
+      ctx.restore();
+    }
     // Gates
     ctx.save();
     ctx.beginPath();
@@ -268,12 +331,13 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
       ctx.strokeStyle = sel ? '#d0021b' : '#111';
       ctx.lineWidth = sel ? 2 : 1.3;
       const c = o.counts[g.pop.id];
-      const pct = c && c.parentCount > 0 ? `${((100 * c.count) / c.parentCount).toFixed(2)}%` : '';
-      let lx = 0, ly = 0;
+      const pct = c && c.parentCount > 0 ? formatFreq((100 * c.count) / c.parentCount) : '';
+      let lx = 0, ly = 0, centred = false;
       ctx.beginPath();
       if (g.kind === 'rect') {
         ctx.rect(sx(g.x0), sy(g.y1), sx(g.x1) - sx(g.x0), sy(g.y0) - sy(g.y1));
-        lx = sx(g.x0) + 3; ly = sy(g.y1) + 12;
+        lx = (sx(g.x0) + sx(g.x1)) / 2; ly = (sy(g.y0) + sy(g.y1)) / 2;
+        centred = true;
       } else if (g.kind === 'range') {
         const yy = PLOT.mt + 30;
         ctx.moveTo(sx(g.x0), yy - 8); ctx.lineTo(sx(g.x0), yy + 8); ctx.moveTo(sx(g.x0), yy); ctx.lineTo(sx(g.x1), yy); ctx.moveTo(sx(g.x1), yy - 8); ctx.lineTo(sx(g.x1), yy + 8);
@@ -281,7 +345,9 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
       } else if (g.kind === 'polygon' || g.kind === 'ellipse' || g.kind === 'curly' || g.kind === 'spider') {
         g.pts.forEach(([a, b], i) => (i ? ctx.lineTo(sx(a), sy(b)) : ctx.moveTo(sx(a), sy(b))));
         ctx.closePath();
-        lx = Math.min(...g.pts.map((q) => sx(q[0]))); ly = Math.min(...g.pts.map((q) => sy(q[1]))) - 3;
+        // "inside": centred on the gate's bounding box (specs 22.1).
+        lx = (Math.min(...g.pts.map((q) => sx(q[0]))) + Math.max(...g.pts.map((q) => sx(q[0])))) / 2; ly = (Math.min(...g.pts.map((q) => sy(q[1]))) + Math.max(...g.pts.map((q) => sy(q[1])))) / 2;
+        centred = true;
       } else if (g.kind === 'spline') {
         g.xCurve.forEach(([a, b], i) => (i ? ctx.lineTo(sx(a), sy(b)) : ctx.moveTo(sx(a), sy(b))));
         g.yCurve.forEach(([a, b], i) => (i ? ctx.lineTo(sx(a), sy(b)) : ctx.moveTo(sx(a), sy(b))));
@@ -308,9 +374,16 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
       }
       if (g.kind === 'spline' && sel && g.editable) for (const [a, b] of [...g.xPts, ...g.yPts]) ctx.strokeRect(sx(a) - 3, sy(b) - 3, 6, 6);
       ctx.fillStyle = sel ? '#d0021b' : '#111';
-      const text = `${g.pop.name} ${pct}`;
-      const p = placeLabel(placed, ctx.measureText(text).width, lx, ly, { x0: PLOT.ml + 2, y0: PLOT.mt + 11, x1: PLOT.ml + pw - 2, y1: PLOT.mt + ph - 2 });
-      ctx.fillText(text, p.x, p.y);
+      // Name on the first line, frequency on the second; quadrant names up to the colon.
+      const name = o.gateNames === false ? '' : g.kind === 'quadrant' || g.kind === 'spline' ? g.pop.name.split(':')[0] : g.pop.name;
+      const lines = [name, o.gateFreq === false ? '' : pct].filter(Boolean);
+      if (!lines.length) continue;
+      const wMax = Math.max(...lines.map((t) => ctx.measureText(t).width));
+      const x0 = centred ? lx - wMax / 2 : lx;
+      const y0 = centred ? ly - ((lines.length - 1) * 12) / 2 + 4 : ly;
+      const p = placeLabel(placed, wMax, x0, y0, { x0: PLOT.ml + 2, y0: PLOT.mt + 11, x1: PLOT.ml + pw - 2, y1: PLOT.mt + ph - 2 - (lines.length - 1) * 12 });
+      lines.forEach((t, k) => ctx.fillText(t, p.x + (centred ? (wMax - ctx.measureText(t).width) / 2 : 0), p.y + k * 12));
+      if (lines.length > 1) placed.push({ x: p.x, y: p.y + 12, w: wMax });
     }
   ctx.restore();
   return contourSegments;

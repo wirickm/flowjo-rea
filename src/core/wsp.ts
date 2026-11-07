@@ -412,12 +412,14 @@ export function parseWsp(xml: string): WspImport {
           const magnetic = ['1', 'true'].includes(attr(kids(gEl!)[0], 'magnetic') ?? '');
           const pop: Population = { id, name, parentId, gate, ...(exclude ? { exclude: true } : {}), ...(magnetic ? { magnetic: true } : {}) };
           if (attr(p, 'owningGroup')) owners.set(pop, attr(p, 'owningGroup')!);
+          if (attr(p, 'expanded') === '0') pop.collapsed = true;
           pops.push(pop);
         } else {
           const deps = kids(kid(p, 'Dependents') ?? p, 'Dependent').map((d) => attr(d, 'name') ?? '');
           const op = kind === 'AndNode' ? 'and' : kind === 'OrNode' ? 'or' : 'not';
           const pop: Population = { id, name, parentId, gate: { type: 'boolean', op, operands: [] } };
           if (attr(p, 'owningGroup')) owners.set(pop, attr(p, 'owningGroup')!);
+          if (attr(p, 'expanded') === '0') pop.collapsed = true;
           pops.push(pop);
           pending.push({ pop, deps });
         }

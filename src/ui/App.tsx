@@ -38,6 +38,8 @@ import { createAnalysisClient } from './workerClient';
 import { autoSaveMessage, CONFIRM, edgeWarning, loadPrefs, rememberDontAsk, savePrefs, shouldAutoSave, skipConfirm, type Prefs } from '../core/prefs';
 import { PrefsDialog, TablesDialog } from './Editors';
 import { AddStatDialog, BooleanExprDialog, EditColumnsDialog, NamingDialog, ValueSeriesDialog } from './WorkspaceTools';
+import { ScriptEditorDialog } from './ScriptEditor';
+import type { ScriptOp, ScriptSnapshot } from '../core/scriptApi';
 import { compileBoolExpr, exprOfGate, makeAndOr, makeCombination, makeIdentities, makeNots, MAX_COMBINATION, parseBoolExpr, BoolExprError } from '../core/booleanExpr';
 import { columnLabel, excelRows, isKeywordColumn, keywordEditable, keywordName, NAME, NCELLS, populationCell, sampleCell, setKeyword, sortSamples, STATISTIC, tableColumns, type TableRow } from '../core/workspaceTable';
 import { applyGroupTemplates, buildArchive, makeTemplate, readArchive } from '../core/template';
@@ -49,7 +51,7 @@ import { autoWidthBasis, canShowOutliers, canSetForeground, clusterRanges, color
 const client = createAnalysisClient();
 
 type Analysis = { results: PopulationResult[]; total: number; compError?: string };
-type Dialog = null | { kind: 'addKeyword' } | { kind: 'find' } | { kind: 'group'; id: string | null } | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export'; mode?: 'group' } | { kind: 'layout' } | { kind: 'derived' } | { kind: 'platforms' } | { kind: 'manual' } | { kind: 'prefs' } | { kind: 'tables' } | { kind: 'tool'; tool: PlatformTool } | { kind: 'boolExpr'; editId?: string } | { kind: 'naming'; op: 'and' | 'or' | 'combo'; ids: string[] } | { kind: 'columns' } | { kind: 'addStat' } | { kind: 'series' } | { kind: 'addKeywordGroup' };
+type Dialog = null | { kind: 'addKeyword' } | { kind: 'find' } | { kind: 'group'; id: string | null } | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export'; mode?: 'group' } | { kind: 'layout' } | { kind: 'derived' } | { kind: 'platforms' } | { kind: 'manual' } | { kind: 'prefs' } | { kind: 'tables' } | { kind: 'tool'; tool: PlatformTool } | { kind: 'boolExpr'; editId?: string } | { kind: 'naming'; op: 'and' | 'or' | 'combo'; ids: string[] } | { kind: 'columns' } | { kind: 'addStat' } | { kind: 'series' } | { kind: 'addKeywordGroup' } | { kind: 'scripts' };
 
 function download(name: string, data: BlobPart, type = 'application/octet-stream') {
   const url = URL.createObjectURL(new Blob([data], { type }));
@@ -752,6 +754,44 @@ export function App() {
     setTool('select');
     note('info', `Created ${names.join(', ')}`);
   };
+
+  // Script Editor (docs/validation/ui-gaps/workspace.md, SCRIPTEDITOR): the
+  // workspace as the scripting API sees it, and the changes a script made.
+  const scriptSnapshot = (): ScriptSnapshot => ({
+    name: ws.name,
+    groups: ws.groups.map((g) => ({ name: g.name, sampleIds: g.id === 'all' ? ws.samples.map((s) => s.id) : [...g.sampleIds] })),
+    samples: ws.samples.map((s) => {
+      const a = analysis[s.id];
+      const chans = meta[s.id]?.channels ?? s.channelNames.map((n, i) => ({ name: n, label: '', index: i + 1 }));
+      return {
+        id: s.id, name: s.fileName, keywords: { ...s.keywordsSnapshot, ...(s.annotations ?? {}) }, total: a ? a.total : null,
+        params: chans.map((c) => ({ name: c.name, stain: s.stains?.[c.name] ?? c.label, longName: c.label, index: c.index })),
+        pops: s.populations.map((q) => ({ id: q.id, name: q.name, parentId: q.parentId, count: a?.results.find((r) => r.id === q.id)?.count ?? null })),
+      };
+    }),
+  });
+  const applyScriptOps = (ops: ScriptOp[]) => updateWs((w) => {
+    const ids = new Map<string, string>();
+    for (const o of ops) {
+      const s = 'sampleId' in o ? w.samples.find((x) => x.id === o.sampleId) : undefined;
+      if (o.op === 'rename') { const q = s?.populations.find((x) => x.id === o.popId); if (q) q.name = o.name; }
+      else if (o.op === 'keyword' && s) { if (o.value === null) { if (s.annotations) delete s.annotations[o.key]; } else setKeyword([s], o.key, o.value); }
+      else if (o.op === 'groupCreate') { if (!w.groups.some((g) => g.name === o.name)) w.groups.push({ id: newId('grp'), name: o.name, sampleIds: [] }); }
+      else if (o.op === 'groupRemove') w.groups = w.groups.filter((g) => g.id === 'all' || g.name !== o.name);
+      else if (o.op === 'groupAdd') { const g = w.groups.find((x) => x.name === o.name); if (g && g.id !== 'all' && !g.sampleIds.includes(o.sampleId)) g.sampleIds.push(o.sampleId); }
+      else if (o.op === 'groupRemoveSample') { const g = w.groups.find((x) => x.name === o.name); if (g && g.id !== 'all') g.sampleIds = g.sampleIds.filter((x) => x !== o.sampleId); }
+      else if (o.op === 'gate' && s) {
+        const parentId = o.parentId ? ids.get(o.parentId) ?? o.parentId : null;
+        const m = meta[s.id];
+        const dims = o.params.map((ch) => ({ kind: 'channel' as const, channel: ch, transform: (m ? makeAxis(m.channels, m.keywords, w.channelTransforms, ch)?.spec : undefined) ?? w.channelTransforms[ch] ?? { kind: 'none' as const } }));
+        const tf = dims.map((d) => makeTransform(d.transform));
+        const id = newId('pop');
+        ids.set(o.id, id);
+        const name = uniqueName(o.name, s.populations.filter((x) => x.parentId === parentId).map((x) => x.name));
+        s.populations.push({ id, name, parentId, gate: { type: 'rect', dims, min: o.min.map((v, i) => tf[i].apply(v)), max: o.max.map((v, i) => tf[i].apply(v)) } });
+      }
+    }
+  });
 
   // FlowJo 10's rename dialog refuses a name a sibling already has (specs 6.7).
   const renamePop = (id: string, name: string) => {
@@ -2236,6 +2276,7 @@ export function App() {
           <button disabled={!sample} onClick={() => setDialog({ kind: 'comp' })} data-testid="open-comp">Compensation</button>
           <button data-testid="open-tables" onClick={() => setDialog({ kind: 'tables' })} title="Table Editor (Ctrl/Cmd+T)">Tables ({ws.tables?.length ?? 0})</button>
           <button onClick={() => setDialog({ kind: 'layout' })} data-testid="open-layout" title="Layout Editor (Ctrl/Cmd+L)">Layout ({ws.layout?.length ?? 0})</button>
+          <button onClick={() => setDialog({ kind: 'scripts' })} data-testid="open-scripts" title="Edit and manage FlowJo Scripts and query this workspace with the FlowJo Scripting Console">Scripts</button>
         </span>
         <span className="band" aria-label="Document"><span className="band-label">Document</span>
           <label className="file-btn">Open workspace / FlowJo .wsp<input type="file" accept=".json,.wsp,.frea,.wspt,.zip,.acs" data-testid="open-ws" onChange={(e) => { const f = e.target.files?.[0]; if (f) openWorkspace(f); e.target.value = ''; }} /></label>
@@ -2301,6 +2342,7 @@ export function App() {
         <button disabled={!sample} onClick={() => setDialog({ kind: 'comp' })} data-testid="open-comp">Compensation</button>
         <button data-testid="open-tables" onClick={() => setDialog({ kind: 'tables' })} title="Table Editor (Ctrl/Cmd+T)">Table Editor ({ws.tables?.length ?? 0})</button>
         <button onClick={() => setDialog({ kind: 'layout' })} data-testid="open-layout" title="Layout Editor (Ctrl/Cmd+L)">Layout Editor ({ws.layout?.length ?? 0})</button>
+        <button onClick={() => setDialog({ kind: 'scripts' })} data-testid="open-scripts" title="Edit and manage FlowJo Scripts and query this workspace with the FlowJo Scripting Console">Script Editor</button>
         <span className="sep" />
         <span className="status" data-testid="busy">{busy > 0 ? 'Working...' : 'Ready'}</span>
       </header>
@@ -2729,6 +2771,8 @@ export function App() {
           onClose={() => setDialog(null)}
         />
       )}
+      {dialog?.kind === 'scripts' && <ScriptEditorDialog ws={ws} updateWs={updateWs} snapshot={scriptSnapshot} applyOps={applyScriptOps} download={download} onClose={() => setDialog(null)}
+        statsOf={(sid, cols) => { const s = ws.samples.find((x) => x.id === sid); return s && meta[sid] ? client.stats({ sampleId: s.id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters, columns: cols, kinetics: ws.kinetics, scales: statScales(ws.channelTransforms, s.flowjoLinearRanges, cols.map((c) => c.channel)) }) : Promise.resolve(undefined); }} />}
       {dialog?.kind === 'prefs' && <PrefsDialog prefs={prefs} onChange={setPrefs} onClose={() => setDialog(null)} />}
       {colorTableOpen && <ColorTableDialog value={prefs.colorTable} onApply={(v) => setPrefs({ ...prefsRef.current, colorTable: v })} onClose={() => setColorTableOpen(false)} />}
       {rangeDlg && <RangeDialog channel={rangeDlg.channel} min={rangeDlg.min} max={rangeDlg.max} onApply={(a, b) => applyRange(rangeDlg.channel, a, b)} onClose={() => setRangeDlg(null)} />}

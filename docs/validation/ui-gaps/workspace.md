@@ -389,16 +389,174 @@ Tests: `tests/workspace-gaps.test.ts` (18 tests), `e2e/workspace-gaps.mjs`
 | IMPORT_CSV_CLR "Import Parameters from CSV/CLR..." | `WSDialogAction.importCsvClr` | **Deferred**: no CSV / CLR parameter file sample to define the format against (compatibility matrix own rule kept) |
 | CONSENSUS_DP "Consensus Gate", CLUSTER_FREQ_DP "Cluster Frequency" | `WorkspaceAction` -> `FlowCAPUtil.createClusterComparisonParameter`: derived parameters of per-event inclusion probability across populations (FlowCAP tooling) | **Deferred**: FlowCAP comparison tooling, outside the analysis workflow; formula not decoded |
 | MIFlowCyt "Annotate Experiment..." / MIFLOW | `WSAction` delegating to `WSController` (MIFlowCyt metadata dialog, bundle key `test.debug.miflowcyt`) | **Deferred**: the MIFlowCyt field list was not decoded; free annotations and keywords remain |
-| REPORTEDITOR "Report Editor" | `FJNavAction` to the report editor window | **Deferred**: a separate editor (report layout and export) |
-| SCRIPTEDITOR "Script Editor" | `WSScriptAction`: FlowJo scripting console | **Deferred**: needs FlowJo's scripting language |
+| REPORTEDITOR "Report Editor" | `FJNavAction` built and discarded; its `doAction` has no REPORTEDITOR branch and no report editor class exists (see O1) | **Not a gap: no-op in FlowJo 10.6.2** |
+| SCRIPTEDITOR "Script Editor" | `WSScriptAction` -> `Workspace.getScriptEditor().setVisible(true)`: JavaScript (Rhino) script list, editor and console (see O2) | **Done** (core API; rest recorded in O2): taskbar "Script Editor"; tests `tests/scriptEditor.test.ts`, e2e `e2e/followup-editors.mjs` |
 | EXPORT_DIVA / IMPORT_DIVA | `WSExportDivaAction` / `WSImportDivaAction`: gates and compensation to / from a FACSDiva experiment | **Deferred**: vendor format, no sample experiment file |
 | RIBBONCONFIG "Customize Ribbon", RIBBONSETDEFAULT "Apply defaults", RIBBONCOMMITTOPREFS "Commit to Preferences" | `WSRibbonConfigDialog`, `WSRibbonSetDefaultAction`, `WSRibbonCommitToPrefsAction` | **Deferred**: cosmetic; the ribbon is fixed |
 
+### O1. REPORTEDITOR "Report Editor" ("Open the Report Editor")
+
+- `WSCommand.REPORTEDITOR` (dictionary `ws.nav.reporteditor`, mnemonic R).
+  `WSActionManager` constructs `new FJNavAction(WSCommand.REPORTEDITOR,
+  workspace)` and drops the result (it is not stored in a field).
+  `FJNavAction.doAction` only handles LAYOUTEDITOR (`LEditor.select`),
+  TABLEEDITOR (`TEditor.select`), OPENGRAPH (`WSController.openGraphWindows`)
+  and WSTOFRONT (`SViewMgr.bringToFront`); any other command returns without
+  doing anything. No class in the 10.6.2 jars or fjlib is a report editor
+  (searched for Report / REditor: only `TestGatingMLReporter`, a cell cycle
+  test helper), and nothing else references REPORTEDITOR or
+  `ws.nav.reporteditor`.
+- Rule: choosing Report Editor in FlowJo 10.6.2 does nothing.
+- This app: **Not a gap: no-op in FlowJo 10.6.2**. Nothing is built; reports
+  are made with the Layout Editor and Table Editor, as in FlowJo 10.6.2.
+
+### O2. SCRIPTEDITOR "Script Editor" ("Edit and manage FlowJo Scripts and query this workspace with the FlowJo Scripting Console")
+
+Evidence: `WSScriptAction.doAction`, `Workspace.getScriptEditor` /
+`getScriptEvaluator`, `com.treestar.flowjo.application.scripting`
+(`ScriptEditorController`, `ScriptEditorController$ScriptConsoleThread`,
+`ScriptEvaluator`, `WSScriptEvaluator`, `ConsoleWriter`, `FJScript`,
+`ScriptAPIFactory`), `scripting.ui` (`ScriptEditorPerspective`,
+`ScriptView`, `ScriptView$Handler`, `ScriptView$ScriptOutputHandler`,
+`actions.ScriptEditorCommand`, `ScriptListAction`, `ScriptViewAction`),
+fjlib `com.treestar.lib.scripting.FJScriptContext` and the API classes in
+`fj-scripting-api-2.0.0.jar` (`com.treestar.flowjo.api.*`).
+
+Language and safety.
+- Scripts are JavaScript. `FJScript.lang` is always `text/javascript`;
+  `ScriptEvaluator.run` refuses anything else ("Unsupported scripting
+  language: ..."), enters a Mozilla Rhino 1.7R4 `Context`, creates fresh
+  standard objects per run and evaluates the text. `FJScriptContextFactory`
+  only lets scripts see Java classes in `com.treestar.flowjo.api`,
+  `MathUtil`, `ConsoleWriter`, `String`, `HashMap` and `ArrayList`.
+- This app runs scripts in a dedicated Web Worker
+  (`src/worker/script.worker.ts`), never on the page: the worker gets a JSON
+  snapshot of the workspace and returns console output plus a list of
+  changes, which the app applies with `updateWs` as one undoable step. The
+  script's scope also hides `self`, `fetch`, `postMessage`, `importScripts`
+  and similar names. **Own rule**: FlowJo runs Run on the UI thread; here a
+  run never blocks the page.
+
+Scope (`ScriptEvaluator.prepareScope`, `WSScriptEvaluator.prepareScope`).
+- `console` (`ConsoleWriter`: `log(obj)`, `log(obj, color)`, `error(obj)` in
+  red), `stats` (`StatAPICreator`), `math` (`MathUtil`), `movie`
+  (`MovieAPICreator`), `workspace` (`WorkspaceAPI`). The standard `Math`
+  object is deleted from the scope. **Own rule**: `Math` stays available
+  (harmless superset).
+- Rhino exposes each `getX()` also as the property `x`, and
+  `ScriptIndexed` / `ScriptStringIndexed` types as `list[0]` /
+  `list["name"]`; both forms work here. `BaseAPI.toString` prints
+  `Type(name)`, e.g. `PopulationList(3 nodes)`; Java lists print as
+  `[a, b]`.
+
+Documented core API (implemented, `src/core/scriptApi.ts`).
+- `workspace`: `name`, `samples` (population list of samples, from the All
+  Samples group), `groups` (group manager), `chart()`.
+- Population list (`PopulationListAPI`, docs `fj.apidocs.poplist.*`):
+  `length`, `get(i)` / `[i]`, `get(name)` / `["name"]` (name or full path),
+  `slice(start, end[, step])` (negative indices from the end), `paths`,
+  `names`, `counts`, `stats(stat)`, `populations(pattern)`, `filter(fn)`
+  (fn called with each node; truthy keeps it), `indices`.
+- Node (`AppNodeAPI`, `PopulationAPI`, `SampleAPI`): `name`, `identifier`,
+  `path` (below the sample), `fullPath` (with the sample name), `parent`,
+  `children`, `sample`, `workspace`, `findAll(pattern)` and
+  `populations(pattern)`: the pattern is split on "/", `*` matches any child,
+  `**` any descendant, other parts match the child's name; `count`,
+  `stat(stat)`, `stats([stat...])`, `setName(name)`, `gating`.
+- Sample: `keywords` (`get(k)` / `["k"]`, `set(k, v)` / `["k"] = v`,
+  `remove(k)`, `indices`), `parameters` (`names`, `longNames`, `get(name or
+  index)`, `withStain(s)`; a parameter has `name`, `stain`, `longName`,
+  `index`), `stains`.
+- `stats`: `count()`, `freqOfTotal()`, `freqOfParent()`, `median(p)`,
+  `mean(p)`, `mode(p)`, `geometricMean(p)`, `robustCV(p)`, `cv(p)`,
+  `stddev(p)`, `robustSD(p)`, `percentile(p, n)`, `correlation(p, q)`.
+  Values come from the app's statistics (`AnalysisService.stats`). A value
+  not yet computed reads NaN during the run; the app computes the requested
+  statistics and runs the script again (at most 6 rounds), showing only the
+  last round's output. An unloaded sample gives NaN.
+- Groups (`GroupMgrAPI`, `GroupAPI`): `names`, `get(name)` / `["name"]`,
+  `create(name)` (empty name gives nothing; an existing name returns that
+  group), `remove(name)`; a group has `name`, `samples`, `add(sample or
+  list)`, `remove(sample or list)`.
+- Gating (`GateAPICreator`): `rectangle(name, x, y[, xmin, xmax, ymin,
+  ymax])`, `range(name, p[, min, max])` add a child gate (bounds in data
+  units, default 0 because `RectGate(PopNode, x, y)` / `RangeGate` leave the
+  Java fields at 0; the name gets a sibling "-N" suffix when taken); the
+  returned node has `minX`/`maxX`/`minY`/`maxY` or `min`/`max`/`parameter`
+  setters. Applied as rectangle gates on the channel's display transform.
+- `math`: `abs`, `acos`, `asin`, `atan`, `atan2`, `ceil`, `cos`, `exp`,
+  `floor`, `log`, `log10`, `log2`, `pow`, `random`, `round`, `sin`, `sqrt`,
+  `tan`, `sqr`, `max`, `min`, `sum`, `mean`, `median`, `stddev`, `pin`,
+  `inRange`.
+
+Not implemented (calls print an error): `workspace.chart()` (`ChartAPI`,
+`ChartWindowAPI`, `ChartLayerSettingsAPI`: build and export graphs),
+`movie.create()` (`MovieAPI`: HTML movies of charts), node `display()`
+(opens graph windows), node `add` / `remove` of analysis nodes,
+`fileMask(name, file)` gates, node `annotation`, `GatedPopulationAPI`
+`not` / `magnetic` flags, the remaining `MathUtil` geometry helpers
+(`getLineAngle`, `slopeIntercept`, `computeLocalAngleDegrees` and similar).
+
+Editor commands (`ScriptEditorCommand`, 11 constants).
+- NEW_SCRIPT "New Script": adds a script named `NameUtil.uniqueName("New
+  Script")` (exact-name check, "-N" suffix) and selects it. Done.
+- LOAD_SCRIPT "Open Script": file chooser for `.fjs` (several files); each
+  becomes a script named after the file without its extension. Done.
+- DUP_SCRIPT "Duplicate Script": copy of the selected script, same name
+  (`FJScript(FJScript)` copies name and text). Done.
+- DELETE_SCRIPT "Delete Script": removes the selected script, no question.
+  Done.
+- SAVE_OPTIONS "Save Options": popup with SAVE "Save Selected Script" and
+  SAVE_ALL_TO_DIR "Save All". Files are `name.fjs` (`/` and `\` become `_`,
+  `.fjs` added when missing). Done; **Own rule**: Save All downloads one
+  `.fjs` per script instead of asking for a folder.
+- RUN "Run": runs the selected script if it is not empty; `console.log`
+  output, then the script's result (if not undefined) in blue, errors in red
+  as "message (line L, column C)". Each run has a fresh scope. Done.
+- CLEAR_CONSOLE "Clear": empties the output console. Done.
+- STOP and CLEAR_CONSOLE_SCOPE: declared in the enum but no button, menu or
+  action handles them (`ScriptViewAction` handles RUN and CLEAR_CONSOLE,
+  `ScriptListAction` the list commands). **Not a gap: no-op in FlowJo
+  10.6.2**; stopping is Ctrl+C in the prompt (below).
+
+Window and console.
+- Frame "FlowJo Script Editor": list "FlowJo Scripts" (each row "name (N
+  lines)", `FJScript.getPresentationString`), "Script Editor" text (monospace
+  11), "Output Console" (monospace, last 2000 outputs) and the ">>>" prompt.
+  The console starts with "Welcome to the FlowJo core". Output from a new
+  writer (a script name or "FlowJo Scripting Console") starts with a
+  "--- name ---" line.
+- The prompt (`ScriptConsoleThread`) keeps one scope for the session:
+  variables persist between commands and `_` holds the last result. It
+  echoes ">>> command" and "      = result" (blue) unless the result is
+  undefined. Enter runs; Up / Down walk the history (150 commands, empty
+  commands and a repeat of the last one are not added). Ctrl+C
+  (`ScriptView$Handler.handleKey`, key 67) interrupts: "User interrupt" in red.
+  **Own rule**: here Ctrl+C stops the worker, so console variables are lost
+  after an interrupt (FlowJo keeps them); it also stops a long Run. A
+  console command that needs statistics not yet computed is run again once
+  they are (see stats above), so JavaScript side effects before the first
+  missing statistic in that command can happen twice.
+- Workspace: `<Scripts><Script lang="text/javascript" name="...">text
+  </Script></Scripts>` under `<Workspace>` (`ScriptEditorController.
+  getElement` / `setElement`); FlowJo always holds at least the initial New
+  Script. Read and written (`src/core/wsp.ts`, `src/core/wspWriter.ts`);
+  names are kept verbatim (FlowJo's default name carries trailing blanks).
+  **Own rule**: an untouched workspace shows one New Script but writes no
+  `<Scripts>` until a script is edited.
+- `TemplateFunction.applyScripts` runs every non-empty script when a
+  template is applied. Not done here (templates are applied without running
+  scripts).
+- Tests: `tests/scriptEditor.test.ts` (list rules, file names, `.wsp`
+  read/write, history, API, statistics rounds, operations, console scope);
+  e2e `e2e/followup-editors.mjs` (24 checks).
+
 ## Counts
 
-Of the 51 gap rows: Done 25, Own rule 12 (CLOSE, REVERT, EXCEL, ACS,
-BROWSESAMPLES, ADDKEYTOGROUP, BOOLEANCREATE, BOOLEANEDIT, SORT1-3,
-TREEREMOVECOLUMN), Deferred 14 (REPORTEDITOR, SCRIPTEDITOR, AUTOCC,
+Of the 51 gap rows: Done 26 (SCRIPTEDITOR added in the follow-up round),
+Own rule 12 (CLOSE, REVERT, EXCEL, ACS, BROWSESAMPLES, ADDKEYTOGROUP,
+BOOLEANCREATE, BOOLEANEDIT, SORT1-3, TREEREMOVECOLUMN), Not a gap 1
+(REPORTEDITOR: no-op in FlowJo 10.6.2), Deferred 12 (AUTOCC,
 CHECKSAMPLEQUALITY, IMPORT_CSV_CLR, CONSENSUS_DP, CLUSTER_FREQ_DP, MIFlowCyt,
 MIFLOW, EXPORT_DIVA, IMPORT_DIVA, RIBBONCONFIG, RIBBONSETDEFAULT,
 RIBBONCOMMITTOPREFS). Some Done rows carry small own-rule notes, stated above.

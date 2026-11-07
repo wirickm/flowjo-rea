@@ -101,6 +101,9 @@ export interface SampleState {
   populations: Population[];
   keywordsSnapshot: Record<string, string>;
   annotations?: Record<string, string>; // user-entered sample metadata
+  // Edited parameter stains ($PnS) by parameter name; they replace the file's
+  // stain in axis labels, gate names and the Keywords window (specs 18.1).
+  stains?: Record<string, string>;
   channelNames: string[];
   eventCount: number;
   // FlowJo linear axis ranges of an imported .wsp sample, per FlowJo parameter

@@ -1,5 +1,28 @@
 # Progress and handoff
 
+## State (2026-11-07, interaction model)
+
+FlowJo 10.6.2 interaction model decoded with javap
+(`docs/validation/flowjo-interaction-model.md`: 62 rules with citations, 168
+accelerators). Implemented (specs 19): focus-aware workspace / graph shortcuts,
+gate nudge and delete keys, polygon Backspace / Space, Space / PageDown sample
+stepping, multi-population copy, Cut, paste into checked samples and to the
+group, Copy Image and Copy table to the system clipboard, E6 / E10 enable
+rules, Disable Undo read per workspace. `e2e/interaction.mjs` 21/21; all other
+e2e scripts pass. Next: keyword text paste (C10), drag and drop, context menus.
+
+## State (2026-11-07, graph window interaction parity)
+
+Decoded with javap on FlowJo 10.6.2 (specs 18): stain editing and
+"name :: stain" axis titles, Subpopulation Identification after drawing,
+double-click to open a gate, child plots inherit the parent's axes, gating
+path and PageDown / PageUp sample navigation. All implemented. `npm test`
+377 pass; `e2e/uiparity.mjs` 16/16, `npm run e2e` 46/46, `e2e/step2.mjs`
+19/19, groups, gatetools, prefs 0 failures (e2e helpers accept the gate
+namer's default). REA ledger regenerated: new obligation
+`graph.stain-axis-title`, 45 of 45 verified. Next: the interaction-model REA pass
+(layout, shortcuts, command dispatch, undo/redo, clipboard).
+
 ## State (2026-11-07, Mac app)
 
 Electron shell (`electron/main.cjs`) around the single-file build; packages

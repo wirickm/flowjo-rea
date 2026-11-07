@@ -66,7 +66,7 @@ await page.getByTestId('pop-root').click();
 await page.getByTestId('stat-kind').selectOption('count');
 await page.getByTestId('add-stat').click();
 await idle(); await page.waitForTimeout(400); await idle();
-check('16.1 Disable Undo: an edit leaves nothing to undo', await page.getByTestId('undo').isDisabled());
+check('16.1 / 19.3 Disable Undo applies to the next workspace: the open history is kept', !(await page.getByTestId('undo').isDisabled()));
 
 await page.keyboard.press(`${mod}+t`);
 check('16.4 Ctrl/Cmd+T opens the table editor', await page.getByTestId('tables-dialog').isVisible());

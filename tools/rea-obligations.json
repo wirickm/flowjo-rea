@@ -1001,6 +1001,44 @@
         "test_file": "tests/prefs-tables.test.ts",
         "command": "npx vitest run tests/prefs-tables.test.ts"
       }
+    },
+    {
+      "obligation_id": "graph.stain-axis-title",
+      "obligation_version": 1,
+      "title": "Edited $PnS stains rename parameters as 'name :: stain' like FlowJo 10",
+      "family": "graph",
+      "target_location": "SampleKeywordProxy.install; ParameterID.getLongName",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "graph-window-stains", "location": "$PnS edit sets the stain shown after ' :: '" },
+        { "kind": "negative", "observation": "graph-window-stains", "location": "no stain: the axis title is the name alone" }
+      ],
+      "supporting_observations": [],
+      "owner": {
+        "module_path": "src/ui/axes.ts",
+        "symbol": "withStains",
+        "files": ["src/ui/axes.ts", "src/core/fcs.ts", "src/ui/Dialogs.tsx", "src/ui/App.tsx"]
+      },
+      "fixtures": [
+        {
+          "fixture_id": "graph.stain-axis-title.pos",
+          "case_kind": "positive",
+          "test_file": "tests/stains.test.ts",
+          "test_name": "replaces the label and the $PnS keyword of the edited parameter only"
+        },
+        {
+          "fixture_id": "graph.stain-axis-title.neg",
+          "case_kind": "negative",
+          "test_file": "tests/stains.test.ts",
+          "test_name": "an empty stain clears it: the axis shows the name alone"
+        }
+      ],
+      "verifier": {
+        "verifier_id": "graph.flowjo",
+        "claim_id": "graph.stain-axis-title.v1",
+        "test_file": "tests/stains.test.ts",
+        "command": "npx vitest run tests/stains.test.ts"
+      }
     }
   ]
 }

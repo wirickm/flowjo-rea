@@ -16,6 +16,8 @@ interface Props {
   onConvert: (gate: Gate) => void;
   onCopy: () => void;
   onPaste: () => void;
+  onCut?: () => void;
+  onPasteGroup?: () => void;
   onBifurcate: () => void;
 }
 
@@ -37,8 +39,10 @@ export function GateActions(p: Props) {
         <option value="rect" disabled={!convertible('rect')}>to Rect</option>
         <option value="ellipse" disabled={!convertible('ellipse')}>to Ellipse</option>
       </select>
-      <button data-testid="gate-copy" disabled={!p.pop} onClick={p.onCopy} title="Copy the population, its children and sibling quads">Copy</button>
-      <button data-testid="gate-paste" disabled={!p.canPaste} onClick={p.onPaste} title="Paste under the selected population (coordinates unchanged)">Paste</button>
+      <button data-testid="gate-copy" disabled={!p.pop} onClick={p.onCopy} title="Copy (Ctrl/Cmd+C) the selected population(s), their children and sibling quads">Copy</button>
+      {p.onCut && <button data-testid="gate-cut" disabled={!p.pop} onClick={p.onCut} title="Cut (Ctrl/Cmd+X): copy, then delete">Cut</button>}
+      <button data-testid="gate-paste" disabled={!p.canPaste} onClick={p.onPaste} title="Paste (Ctrl/Cmd+V) under the selected population(s) of this sample and of every checked sample (coordinates unchanged)">Paste</button>
+      {p.onPasteGroup && <button data-testid="gate-paste-group" disabled={!p.canPaste} onClick={p.onPasteGroup} title="Paste under the same population in every sample of the current group">Paste to group</button>}
       <button data-testid="bifurgate" onClick={p.onBifurcate} title="BifurGate: bisector gates at the valley between bimodal distributions of the ungated fluorescent parameters">BifurGate</button>
     </div>
   );

@@ -496,6 +496,18 @@
       ],
       "behavior": "Table columns are statistic, keyword or formula (formula over same-row columns); iteration by sample, keyword value or panel of N tubes; CSV with ' (%)' after Freq. headers, ',' cells quoted and quotes doubled, TAB first header 'Sample:', HTML; summary Mean and Std. Deviation; heat map blue to yellow; batch tiles across in a fixed number of columns or one per page; delete texts 'Are you sure you want to delete this table? ' / layout.",
       "spec_section": "17.1"
+    },
+    {
+      "key": "graph-window-stains",
+      "subject": "jar",
+      "symbols": ["application.workspace.treetables.SampleKeywordProxy", "core.GParameter", "fjml.types.FJPrefsFJML$Graph"],
+      "locations": [
+        { "kind": "artifact-path", "path": "com/treestar/flowjo/application/workspace/treetables/SampleKeywordProxy.class" },
+        { "kind": "artifact-path", "path": "com/treestar/flowjo/core/GParameter.class" },
+        { "kind": "artifact-path", "path": "com/treestar/flowjo/fjml/types/FJPrefsFJML$Graph.class" }
+      ],
+      "behavior": "Editing a sample's $PnS keyword sets the parameter stain (SampleKeywordProxy.install -> GParameter.setStain); acquisition keywords are not editable (isEditable); the Graph Window axis title is name + ' :: ' + stain when a stain exists, else the name (ParameterID.getLongName), under showStain (default true).",
+      "spec_section": "18.1"
     }
   ]
 }

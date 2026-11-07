@@ -30,8 +30,12 @@ export function Modal(p: { title: string; onClose: () => void; children: React.R
   );
 }
 
-export function KeywordsDialog(p: { meta: SampleMeta; onClose: () => void }) {
+// onStain: edit a parameter's stain ($PnS), the name shown with the parameter
+// on axes and in gate names (FlowJo edits it as a keyword; specs 18.1).
+// allSamples: apply to every sample that has the parameter.
+export function KeywordsDialog(p: { meta: SampleMeta; onClose: () => void; onStain?: (channel: string, stain: string, allSamples: boolean) => void }) {
   const [filter, setFilter] = useState('');
+  const [allSamples, setAllSamples] = useState(true);
   const kws = Object.entries(p.meta.keywords).filter(([k, v]) => !filter || k.includes(filter.toUpperCase()) || v.toLowerCase().includes(filter.toLowerCase()));
   return (
     <Modal title={`Sample: ${p.meta.fileName}`} onClose={p.onClose} wide>
@@ -46,11 +50,26 @@ export function KeywordsDialog(p: { meta: SampleMeta; onClose: () => void }) {
         </div>
       )}
       <h4>Parameters</h4>
+      {p.onStain && (
+        <p className="muted">
+          Edit a $PnS stain to rename the parameter on axes ("name :: stain") and in new gate names.{' '}
+          <label><input type="checkbox" checked={allSamples} onChange={(e) => setAllSamples(e.target.checked)} data-testid="stain-all" /> apply to all samples with this parameter</label>
+        </p>
+      )}
       <table className="grid">
         <thead><tr><th>#</th><th>$PnN</th><th>$PnS</th><th>Bits</th><th>Range</th><th>$PnE</th><th>$PnG</th></tr></thead>
         <tbody>
           {p.meta.channels.map((c) => (
-            <tr key={c.index}><td>{c.index}</td><td>{c.name}</td><td>{c.label}</td><td>{c.bits}</td><td>{c.range}</td><td>{c.logDecades},{c.logOffset}</td><td>{c.gain}</td></tr>
+            <tr key={c.index}><td>{c.index}</td><td>{c.name}</td><td>{p.onStain ? (
+              <input
+                key={c.label}
+                defaultValue={c.label}
+                aria-label={`Stain of ${c.name}`}
+                data-testid={`stain-${c.name}`}
+                onBlur={(e) => { const v = e.target.value.trim(); if (v !== c.label) p.onStain!(c.name, v, allSamples); }}
+                onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+              />
+            ) : c.label}</td><td>{c.bits}</td><td>{c.range}</td><td>{c.logDecades},{c.logOffset}</td><td>{c.gain}</td></tr>
           ))}
         </tbody>
       </table>
@@ -492,6 +511,49 @@ export function DerivedDialog(p: {
       {formula.trim() && formulaErr && <p className="error" data-testid="derived-error">Cannot parse the current equation: {formulaErr}</p>}
       <div className="row">
         <button onClick={add} disabled={!!nameErr || !!formulaErr} data-testid="derived-add">OK</button>
+      </div>
+    </Modal>
+  );
+}
+
+// FlowJo 10 "Subpopulation Identification" (GateNamerDialog; specs 18.2):
+// shown after a gate is drawn. The name must be unique among the siblings;
+// Favorites are the common gate names, + adds and - removes the shown name.
+// Cancel discards the new gate.
+export function GateNamerDialog(p: { initial: string; siblings: string[]; favorites: string[]; onFavorites: (names: string[]) => void; onOk: (name: string) => void; onCancel: () => void }) {
+  const [name, setName] = useState(p.initial);
+  const [error, setError] = useState('');
+  const ok = () => {
+    const n = name.trim();
+    if (!n) return;
+    if (p.siblings.includes(n)) return setError('Name must be unique.');
+    p.onOk(n);
+  };
+  return (
+    <Modal title="Subpopulation Identification" onClose={p.onCancel}>
+      <label title="Give a biologically meaningful name to this set of events">
+        Enter the name of this subpopulation:{' '}
+        <input
+          autoFocus
+          value={name}
+          data-testid="gate-namer-name"
+          onFocus={(e) => e.target.select()}
+          onChange={(e) => { setName(e.target.value); setError(''); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') ok(); if (e.key === 'Escape') p.onCancel(); }}
+        />
+      </label>
+      <div className="row">
+        <select value="" onChange={(e) => { if (e.target.value) { setName(e.target.value); setError(''); } }} data-testid="gate-namer-favorites" title="Shows a list of favorite population names">
+          <option value="">Favorites</option>
+          {p.favorites.map((f) => <option key={f} value={f}>{f}</option>)}
+        </select>
+        <button title="Adds the displayed subpopulation name to the saved list of favorites." disabled={!name.trim() || p.favorites.includes(name.trim())} onClick={() => p.onFavorites([...p.favorites, name.trim()])} data-testid="gate-namer-memorize">+</button>
+        <button title="Removes the displayed subpopulation name from the saved list of favorites." disabled={!p.favorites.includes(name.trim())} onClick={() => p.onFavorites(p.favorites.filter((f) => f !== name.trim()))} data-testid="gate-namer-forget">-</button>
+      </div>
+      {error && <p className="error" data-testid="gate-namer-error">{error}</p>}
+      <div className="row">
+        <button onClick={ok} disabled={!name.trim()} data-testid="gate-namer-ok">OK</button>
+        <button onClick={p.onCancel} data-testid="gate-namer-cancel">Cancel</button>
       </div>
     </Modal>
   );

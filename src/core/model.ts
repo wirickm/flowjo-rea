@@ -165,6 +165,8 @@ export interface Workspace {
   kinetics?: Record<string, import('./kinetics').KineticsSettings>;
   layout?: LayoutItem[];
   statTemplates?: { id: string; name: string; columns: StatColumn[] }[];
+  // FlowJo table editor templates (specs 17).
+  tables?: import('./tableEditor').TableTemplate[];
   derivedParameters?: DerivedParameter[];
 }
 

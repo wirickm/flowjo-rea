@@ -8,7 +8,7 @@ import { STAT_LABELS, STAT_NEEDS_CHANNEL, validPercentile } from '../core/stats'
 import {
   acquisitionTime, boxStats, cellStyle, duplicateTable, findRows, headerFromTemplate, headerText, iterate, NAME_TOKENS, OUTPUT_FORMATS, PLOT_SAME_VALUE, plotBlocked, regression,
   statKey, summaryRows, tableCsv, tableHtml, tableOutput, tableRows, tableTab, tableText,
-  type ColumnFormat, type OutputFormat, type StatSpec, type TableColumn, type TableDestination, type TableTemplate,
+  type ColumnFormat, type FlowJoXmlContext, type OutputFormat, type StatSpec, type TableColumn, type TableDestination, type TableTemplate,
 } from '../core/tableEditor';
 
 type Row = { sample: string; sampleId: string; cells: (number | string)[] };
@@ -114,6 +114,8 @@ export function TablesDialog(p: TablesDialogProps) {
   const selRange = sel.length ? t?.columns[sel[0]]?.format?.expectedRange : undefined;
 
   const outFormat: OutputFormat = t?.outputFormat ?? 'CSV';
+  // FlowJo XML output: workspace title, renamed-header test and stains.
+  const xmlCtx: FlowJoXmlContext = { workspaceTitle: ws.name, autoHeader: (c) => { const s = specOf(c); return s ? autoHeader(s) : c.header; }, stainOf: (_s, ch) => stainOf(ch) };
   const dest: TableDestination = t?.destination ?? 'DISPLAY';
   const copyTable = (rows: Row[], html = false) => {
     if (!t) return;
@@ -144,7 +146,7 @@ export function TablesDialog(p: TablesDialogProps) {
     if (!t) return;
     if (dest === 'DISPLAY') setWin(true);
     else if (dest === 'CLIPBOARD') copyTable(preview);
-    else if (dest === 'FILE') download(`${t.name}.${OUTPUT_FORMATS[outFormat].ext}`, tableOutput(t, preview, outFormat, data.length), OUTPUT_FORMATS[outFormat].type);
+    else if (dest === 'FILE') download(`${t.name}.${OUTPUT_FORMATS[outFormat].ext}`, tableOutput(t, preview, outFormat, data.length, xmlCtx), OUTPUT_FORMATS[outFormat].type);
     else if (dest === 'LAYOUT') toLayout(preview);
     else printTable(preview);
   };
@@ -245,7 +247,7 @@ export function TablesDialog(p: TablesDialogProps) {
         </fieldset>
         <TableGrid t={t} rows={preview} nData={data.length} testid="table-preview" />
         {plot && <TablePlot t={t} rows={data} ws={ws} plot={plot} setPlot={setPlot} download={download} />}
-        {win && <TableWindow t={t} data={data} withSummary={withSummary} onClose={() => setWin(false)} copyTable={copyTable} printTable={printTable} toLayout={toLayout}
+        {win && <TableWindow t={t} xmlCtx={xmlCtx} data={data} withSummary={withSummary} onClose={() => setWin(false)} copyTable={copyTable} printTable={printTable} toLayout={toLayout}
           download={download} ask={ask} toggleSummary={() => edit((x) => { x.summary = !x.summary; })}
           makeGroup={(name, ids) => { updateWs((w) => { w.groups.push({ id: newId('grp'), name: uniqueName(name, w.groups.map((g) => g.name)), sampleIds: ids }); }); p.note?.('info', `Created group ${name}`); }}
           openSamples={(ids) => p.openSamples?.(ids, specs.find((s) => s)?.populationPath ?? '')} />}
@@ -299,8 +301,8 @@ function TableGrid({ t, rows, nData, testid, selected, onRow }: { t: TableTempla
 
 // The generated table window (CalculatedTable / FJTableActionManager): live
 // values, row selection, Find, Delete Selected Rows, groups, samples, copy.
-function TableWindow({ t, data, withSummary, onClose, copyTable, printTable, toLayout, download, ask, toggleSummary, makeGroup, openSamples }: {
-  t: TableTemplate; data: Row[]; withSummary: (r: Row[]) => Row[]; onClose: () => void;
+function TableWindow({ t, xmlCtx, data, withSummary, onClose, copyTable, printTable, toLayout, download, ask, toggleSummary, makeGroup, openSamples }: {
+  t: TableTemplate; xmlCtx: FlowJoXmlContext; data: Row[]; withSummary: (r: Row[]) => Row[]; onClose: () => void;
   copyTable: (rows: Row[], html?: boolean) => void; printTable: (rows: Row[]) => void; toLayout: (rows: Row[]) => void;
   download: (name: string, data: BlobPart, type?: string) => void; ask: (text: string, choices: string[], key?: string) => Promise<string | null>;
   toggleSummary: () => void; makeGroup: (name: string, sampleIds: string[]) => void; openSamples: (sampleIds: string[]) => void;
@@ -336,7 +338,7 @@ function TableWindow({ t, data, withSummary, onClose, copyTable, printTable, toL
         <button data-testid="tw-open" disabled={!selIds.length} onClick={() => openSamples(selIds)}>Open Selected Samples</button>
         <button data-testid="tw-summary" className={t.summary ? 'active' : ''} title="Select to show summary statistics appended to the end of this table" onClick={toggleSummary}>Show Summary Stats</button>
         <button data-testid="tw-layout" title="Copy this table into the current layout in the layout editor." onClick={() => toLayout(shown)}>Add to Layout</button>
-        <button data-testid="tw-save" onClick={() => download(`${t.name}.${OUTPUT_FORMATS[t.outputFormat ?? 'CSV'].ext}`, tableOutput(t, shown, t.outputFormat ?? 'CSV', rows.length), OUTPUT_FORMATS[t.outputFormat ?? 'CSV'].type)}>Save As...</button>
+        <button data-testid="tw-save" onClick={() => download(`${t.name}.${OUTPUT_FORMATS[t.outputFormat ?? 'CSV'].ext}`, tableOutput(t, shown, t.outputFormat ?? 'CSV', rows.length, xmlCtx), OUTPUT_FORMATS[t.outputFormat ?? 'CSV'].type)}>Save As...</button>
         <button data-testid="tw-print" title="Prepare a hard copy output of this generated table." onClick={() => printTable(shown)}>Print...</button>
         <button data-testid="tw-close" title="Close this generated table." onClick={onClose}>Close</button>
       </div>

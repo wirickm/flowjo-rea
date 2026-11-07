@@ -180,7 +180,7 @@ export class AnalysisService {
     const key = JSON.stringify([r.compensation, r.populations, r.matrices, r.derived]);
     const hit = this.engines.get(r.sampleId);
     if (hit && hit.key === key) return hit.engine;
-    const engine = new SampleEngine(f, { compensation: r.compensation, populations: r.populations }, r.matrices, r.derived ?? []).run();
+    const engine = new SampleEngine(f, { compensation: r.compensation, populations: r.populations }, r.matrices, r.derived ?? [], r.sampleId).run();
     this.engines.set(r.sampleId, { key, engine });
     return engine;
   }

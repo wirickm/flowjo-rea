@@ -1,5 +1,14 @@
 # Progress and handoff
 
+## State (2026-11-07, remaining UI gaps)
+
+Specs 25: Show Uncompensated Parameters (raw twins), grid figures with bare
+charts and border axes, Show Multigraph (histograms, N x N), .wsp layout page
+and iteration import. `npm test` 413 pass; `e2e/remaining.mjs` 7/7; every
+other e2e script passes. Remaining differences are listed as own rules in
+specs 18-25 (e.g. graph windows inside the page, layout figures from .wsp,
+grid row / column commands).
+
 ## State (2026-11-07, colour axis and layout annotations)
 
 Specs 24: colour axis (mean of a third parameter per bin, Ctrl/Cmd+] / [),

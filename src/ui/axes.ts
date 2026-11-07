@@ -1,3 +1,4 @@
+import { UNCOMP_SUFFIX } from '../core/model';
 import { isSpectral, type SpilloverMatrix } from '../core/compensation';
 import type { DerivedParameter } from '../core/model';
 import type { FcsChannel } from '../core/fcs';
@@ -142,4 +143,10 @@ export function sampleChannels(meta: { channels: FcsChannel[] }, compensation: s
   // app's older ratio parameters keep 0..16.
   out.push(...derived.map((d, i) => ({ index: out.length + i + 1, name: d.name, label: 'derived', bits: 32, range: d.formula !== undefined ? 1000 : 16, logDecades: 0, logOffset: 0, gain: 1 })));
   return out;
+}
+
+// Raw twins of the compensated parameters (specs 25.1), appended after them.
+export function withUncompTwins(channels: FcsChannel[], compensated: string[]): FcsChannel[] {
+  const twins = channels.filter((c) => compensated.includes(c.name)).map((c, i) => ({ ...c, index: channels.length + i + 1, name: c.name + UNCOMP_SUFFIX }));
+  return twins.length ? [...channels, ...twins] : channels;
 }

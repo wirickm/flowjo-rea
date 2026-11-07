@@ -3,7 +3,7 @@
 import { compensate, invert, isSpectral, spilloverFromFcs, unmix, type SpilloverMatrix } from './compensation';
 import { AppError, fail } from './errors';
 import type { FcsFile } from './fcs';
-import { populationPath, type AnchorBound, type DerivedParameter, type Dimension, type Gate, type Population, type SampleState, type Workspace } from './model';
+import { populationPath, UNCOMP_SUFFIX, type AnchorBound, type DerivedParameter, type Dimension, type Gate, type Population, type SampleState, type Workspace } from './model';
 import { axesFromGate } from './ellipse';
 import { defaultGrid, ellipseLatticePolygon, eventCell, gridCoord, latticeMask, polygonGridMask, vertexCoord } from './gateGrid';
 import { BIFUR_BINS, curlyQuadPolygon, magneticOffset1D, magneticOffset2D, MAGNETIC_BINS, percentBound, spiderLabelGrid } from './gateTools';
@@ -74,6 +74,7 @@ export class SampleEngine {
   column(channel: string, compRef?: string): Float64Array {
     const ref = compRef ?? this.sample.compensation;
     let i = this.channelNames.indexOf(channel);
+    if (i < 0 && channel.endsWith(UNCOMP_SUFFIX)) return this.column(channel.slice(0, -UNCOMP_SUFFIX.length), 'none');
     if (i < 0 && channel === EVENT_NUMBER) {
       // "Show Event # Parameter" (ParameterList.getParameterIDs; specs 24.2): the event index.
       const n = this.root.length, out = new Float64Array(n);

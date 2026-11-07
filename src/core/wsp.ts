@@ -17,7 +17,7 @@ import { defaultGrid } from './gateGrid';
 import { FLOWJO_STAT_NAMES, STAT_NEEDS_CHANNEL } from './stats';
 import { makeTransform, type TransformSpec } from './transforms';
 import { KIN_BY_NAME, kineticsFromAttrs } from './kinetics';
-import { attr, kid, kids, local, numAttr, parseXml, type El } from './xml';
+import { attr, descendants, kid, kids, local, numAttr, parseXml, type El } from './xml';
 
 export interface WspImport {
   workspace: Workspace;
@@ -534,6 +534,32 @@ export function parseWsp(xml: string): WspImport {
   syncLiveGroups(ws);
   for (const g of groups) if (g.criteria && saved.get(g.id) !== g.sampleIds.join()) warnings.push(`Group "${g.name}": keyword criteria select ${g.sampleIds.length} samples, unlike the membership saved by FlowJo`);
   ws.plots = plots;
+  // Layout editor settings (specs 25.4): the current layout's page and
+  // iteration; figures are not imported (no FlowJo-saved example of FigList
+  // contents in the fixtures).
+  const le = descendants(root, 'LayoutEditor')[0];
+  if (le) {
+    const layouts = kids(le, 'Layout');
+    const cur = layouts.find((l) => attr(l, 'name') === attr(le, 'current')) ?? layouts[0];
+    if (cur) {
+      const pl = kids(cur, 'PrintLayout')[0];
+      if (pl) {
+        const w = Number(attr(pl, 'width')), h = Number(attr(pl, 'height'));
+        // Java PageFormat: orientation 1 = portrait, 0 = landscape.
+        const paper = Math.abs(Math.min(w, h) - 595.3) < 3 && Math.abs(Math.max(w, h) - 841.9) < 3 ? 'a4' : 'letter';
+        ws.layoutPage = { paper, orientation: attr(pl, 'orientation') === '0' ? 'landscape' : 'portrait' };
+      }
+      const it = kids(cur, 'Iteration')[0];
+      const type = it ? attr(it, 'iterationType') : undefined;
+      if (type === 'SAMPLE') ws.layoutIteration = { type: 'SAMPLE' };
+      else if (type === 'KEYWORD' && attr(it!, 'iterationKeyword')) ws.layoutIteration = { type: 'KEYWORD', keyword: attr(it!, 'iterationKeyword')!, ...(attr(it!, 'discriminator') ? { discriminator: attr(it!, 'discriminator') } : {}) };
+      else if (type === 'PANEL') ws.layoutIteration = { type: 'PANEL', size: Number(attr(it!, 'panelSize')) || 1 };
+      else if (type === 'OFF') ws.layoutIteration = { type: 'OFF' };
+    }
+    const withFigs = layouts.filter((l) => { const fl = kids(l, 'FigList')[0]; return fl && kids(fl).length > 0; });
+    if (withFigs.length) warnings.push(`Layout editor: ${withFigs.length} layout(s) with figures; page and iteration settings imported, figures not imported`);
+    if (layouts.length > 1) warnings.push(`Layout editor: ${layouts.length} layouts; the settings of "${attr(cur ?? layouts[0], 'name') ?? 'Layout'}" are used`);
+  }
   const flowjoVersion = attr(root, 'flowJoVersion') ?? 'unknown';
   ws.provenance = { importedFrom: `FlowJo workspace (FlowJo ${flowjoVersion}, wsp version ${attr(root, 'version') ?? '?'})`, warnings };
   return { workspace: ws, flowjoCounts, flowjoVersion, warnings };

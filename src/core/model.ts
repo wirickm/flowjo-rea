@@ -170,6 +170,7 @@ export interface Workspace {
   layoutIteration?: import('./layoutArrange').LayoutIteration;
   layoutGuides?: import('./layoutArrange').Guides;
   showEventNumber?: boolean; // Display > Show Event # Parameter (specs 24.2)
+  showUncompensated?: boolean; // Display > Show Uncompensated Parameters (specs 25.1)
   // FlowJo Kinetics node settings and timeslices per population path (specs 11).
   kinetics?: Record<string, import('./kinetics').KineticsSettings>;
   layout?: LayoutItem[];
@@ -231,6 +232,8 @@ export interface LayoutPlot extends PlotSettings, LayoutPlace {
   adjunct?: boolean; // Show Adjunct Histograms (N5)
   ancestry?: boolean; // Show Ancestry (N3)
   backgating?: boolean; // with Backgating (N4; needs ancestry)
+  multigraph?: 'histograms' | 'nxn'; // Show Multigraph (N6)
+  multiParams?: string[]; // its parameters (at most 10)
   text?: undefined;
 }
 export interface LayoutText extends LayoutPlace {
@@ -327,3 +330,7 @@ export function gateDims(g: Gate): Dimension[] {
 export function dimLabel(d: Dimension): string {
   return d.kind === 'channel' ? d.channel : `${d.num}/${d.den}`;
 }
+
+// "Show Uncompensated Parameters" (ParameterList.getParameterIDs; specs 25.1):
+// the raw twin of a compensated parameter is named "<name> (uncompensated)".
+export const UNCOMP_SUFFIX = ' (uncompensated)';

@@ -1556,6 +1556,57 @@ graph's) and show only the gate leading to the next level; adjunct strips are
 40 px; Show Uncompensated Parameters is not offered (the app compensates in
 place; raw twins would need a per-axis compensation choice on every gate).
 
+## 25. Uncompensated parameters, grid figures, multigraph, .wsp layout settings (FlowJo 10.6.2)
+
+Rules from `docs/validation/flowjo-display-tree-model.md` (D9) and
+`docs/validation/flowjo-layout-model.md` (G1-G9, N6), plus the `LayoutEditor`
+element observed in the fixture .wsp files. Implemented in
+`src/core/analysis.ts` (raw twins), `src/ui/axes.ts` (`withUncompTwins`),
+`src/ui/Layout.tsx` (`makeGrid`, `multigraphCells`) and `src/core/wsp.ts`.
+Tests: `tests/uncomp.test.ts`, `tests/wsp-layout.test.ts`; E2E
+`e2e/remaining.mjs` (7 checks).
+
+### 25.1 Show Uncompensated Parameters (matches; naming own)
+
+- When on, the raw twin of each compensated parameter is added to the axis
+  lists (`ParameterList.getParameterIDs(uncomped, ...)`). Own rules: FlowJo
+  names compensated parameters "Comp-<name>" and raw ones "<name>"; this app
+  compensates in place, so the raw twin is "<name> (uncompensated)" and reads
+  the parameter with no compensation; gates on a twin work like any other
+  parameter but carry that name into exports; workspace-wide setting.
+
+### 25.2 Grid figures (matches the visible result; model own)
+
+| Rule | Behavior | Proven by |
+|---|---|---|
+| G1-G3 | 3 rows x 4 columns by default, 4 pt cell padding, filled row by row; items that do not fit are left out | `FigGridLayout.<init>`, `FJLayoutGrid.getNextCell` |
+| G5 | Cells hold bare charts (no axes) by default | `FigGridLayout.makeChartFig`, pref `minimalChartInGrids` (true) |
+| G6/G7 | Axes are shown on the grid border: X under the bottom row, Y at the left column | `FigGridLayout.addChartAxesToBorder`, `clearBorderLabels` |
+| G9 | Extract Cells leaves each figure where it is | `FigBaseGrid.stripGridFromFigs` |
+
+Own model: the grid is a group of positioned graphs: bottom-row cells keep the
+X axis, left-column cells the Y axis, other cells none (per-graph axes
+string); Ungroup extracts the cells. Not implemented: insert / delete rows,
+make rows even, cell padding and autofit commands, drops onto filled cells.
+
+### 25.3 Show Multigraph (matches the types offered)
+
+- A grid of other parameter combinations for the same population beside the
+  graph; at most 10 parameters (`FigChartGrid`, `ChartCommand` `le.chart.multigraph*`,
+  `le.chart.nxn`, `FJPrefsFJML$Layouts.multiGraphLimit`). This app offers
+  Histograms (one per parameter) and N x N (pseudocolor pairs, histograms on
+  the diagonal); not offered: all-by, half N x N, slinky, dot / contour cell
+  types.
+
+### 25.4 .wsp layout settings (observed)
+
+- The current layout's PrintLayout (width, height, orientation: 1 portrait,
+  0 landscape) sets the paper and orientation; its Iteration
+  (iterationType OFF / SAMPLE / KEYWORD / PANEL, iterationKeyword,
+  discriminator, panelSize) sets the layout iteration. Every fixture layout has
+  an empty FigList, so figures are not imported; a layout with figures is
+  reported. Not written back to .wsp.
+
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 
 Source: static analysis of `libNativeEngine.dylib` from the public FlowJo

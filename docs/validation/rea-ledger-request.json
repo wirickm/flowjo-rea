@@ -48,7 +48,7 @@
     ],
     "scenarios": [
       {
-        "evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+        "evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
         "operation": "verify_reconstruction_obligations",
         "authority": "controlled-replay"
       }
@@ -622,1429 +622,6 @@
             "path": "com/treestar/flowjo/application/fcsscan/FCSFinder$SampleKeywordMatcher.class"
           }
         ]
-      },
-      {
-        "evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [],
-        "subject": null,
-        "provider": {
-          "id": "flowjo-rea.proof",
-          "name": "flowjo-rea proof producer",
-          "version": "2"
-        },
-        "predicate_type": "rea.reconstruction-proof",
-        "operation": "verify_reconstruction_obligations",
-        "parameters": {
-          "node": "v22.23.4"
-        },
-        "normalized_result": {
-          "bindings": [
-            {
-              "obligation_id": "wsp.polygon-counts",
-              "obligation_version": 2,
-              "owner_sha256": "74407452a39a5d3848ccc78937375f5ede8318c90c0f73354f75eea46fdea56f",
-              "fixtures": [
-                {
-                  "fixture_id": "wsp.polygon-counts.fixtures",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "wsp.polygon-counts.edges",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "wsp.polygon-counts.outside",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "wsp.flowjo-counts",
-                  "claim_id": "wsp.polygon-counts.v2",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "wsp.logicle-ellipse",
-              "obligation_version": 2,
-              "owner_sha256": "74407452a39a5d3848ccc78937375f5ede8318c90c0f73354f75eea46fdea56f",
-              "fixtures": [
-                {
-                  "fixture_id": "wsp.logicle-ellipse.fixtures",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "wsp.logicle-ellipse.outline",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "wsp.flowjo-counts",
-                  "claim_id": "wsp.logicle-ellipse.v2",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "gate.rect-open-bounds",
-              "obligation_version": 2,
-              "owner_sha256": "d7a7e2ea47408f09a5e82838c76c983e32b6712f9536a75a15031eed55aa64fc",
-              "fixtures": [
-                {
-                  "fixture_id": "gate.rect-open-bounds.time",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gate.rect-open-bounds.closed",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "wsp.flowjo-counts",
-                  "claim_id": "gate.rect-open-bounds.v2",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "stats.flowjo-conventions",
-              "obligation_version": 2,
-              "owner_sha256": "3e518056fe3ed3bee9ab81621346a72a8908b7a051cb6e2605bde9d94441f857",
-              "fixtures": [
-                {
-                  "fixture_id": "stats.median",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.clamp",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.small",
-                  "case_kind": "malformed",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "stats.flowjo-histogram",
-                  "claim_id": "stats.flowjo-conventions.v2",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "names.unique-sibling",
-              "obligation_version": 1,
-              "owner_sha256": "8d254d1dc3d016dbb3188e8cd43f9d90a84d32df01e12627844fa8da1ff6f6bd",
-              "fixtures": [
-                {
-                  "fixture_id": "names.unique-sibling.suffix",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "names.unique-sibling.kept",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "uat.step2",
-                  "claim_id": "names.unique-sibling.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "gate.min-shape",
-              "obligation_version": 1,
-              "owner_sha256": "133d95d8670bcd95558445baf893cf7a9aec1d28518eb074d11277d75cd80b3e",
-              "fixtures": [
-                {
-                  "fixture_id": "gate.min-shape.discard",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gate.min-shape.keep",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "uat.step2",
-                  "claim_id": "gate.min-shape.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "sample.relink-keywords",
-              "obligation_version": 1,
-              "owner_sha256": "ccf93e67461ba91bbe7c79b18005a1c463e492fd1bdf6b6e241947427bd1236c",
-              "fixtures": [
-                {
-                  "fixture_id": "sample.relink.match",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "sample.relink.first",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "sample.relink.tot",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "uat.step2",
-                  "claim_id": "sample.relink-keywords.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "gate.quad-sibling-delete",
-              "obligation_version": 1,
-              "owner_sha256": "ccf93e67461ba91bbe7c79b18005a1c463e492fd1bdf6b6e241947427bd1236c",
-              "fixtures": [
-                {
-                  "fixture_id": "gate.quad-delete.siblings",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gate.quad-delete.fixture",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gate.quad-delete.alone",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "gate.quad-delete",
-                  "claim_id": "gate.quad-sibling-delete.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "cellcycle.histogram-channels",
-              "obligation_version": 1,
-              "owner_sha256": "77c1a7e84fd2d9295aebf9b9e0a1079255ce21226a92ca6cc7c6eec53e255517",
-              "fixtures": [
-                {
-                  "fixture_id": "cellcycle.channels.cap",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "cellcycle.channels.range",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "cellcycle.fits",
-                  "claim_id": "cellcycle.histogram-channels.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "workspace.undo-limit",
-              "obligation_version": 1,
-              "owner_sha256": "301a114c4485e3f967d766c4dce1959d174e7492e9b6dbbc69616cb3582efa9e",
-              "fixtures": [
-                {
-                  "fixture_id": "undo.cap",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "undo.order",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "undo.branch",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "workspace.history",
-                  "claim_id": "workspace.undo-limit.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "groups.keyword-criteria",
-              "obligation_version": 1,
-              "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b",
-              "fixtures": [
-                {
-                  "fixture_id": "groups.criteria.numeric",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.criteria.connectors",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.criteria.missing",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.criteria.inactive",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.criteria.nonnumeric",
-                  "case_kind": "malformed",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "groups.criteria",
-                  "claim_id": "groups.keyword-criteria.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "groups.acceptance",
-              "obligation_version": 1,
-              "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b",
-              "fixtures": [
-                {
-                  "fixture_id": "groups.accept.stains",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.accept.ref",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.accept.none",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "groups.criteria",
-                  "claim_id": "groups.acceptance.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "groups.roles",
-              "obligation_version": 1,
-              "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b",
-              "fixtures": [
-                {
-                  "fixture_id": "groups.roles.read",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.roles.quirk",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "groups.criteria",
-                  "claim_id": "groups.roles.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "groups.owned-analysis",
-              "obligation_version": 1,
-              "owner_sha256": "ccf93e67461ba91bbe7c79b18005a1c463e492fd1bdf6b6e241947427bd1236c",
-              "fixtures": [
-                {
-                  "fixture_id": "groups.owned.copy",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.owned.alloc",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.owned.first",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.owned.delete",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "groups.owned.sync",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "groups.owned",
-                  "claim_id": "groups.owned-analysis.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "stats.histogram-moments",
-              "obligation_version": 1,
-              "owner_sha256": "3e518056fe3ed3bee9ab81621346a72a8908b7a051cb6e2605bde9d94441f857",
-              "fixtures": [
-                {
-                  "fixture_id": "stats.mean",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.geomean",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.cv-sign",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "stats.flowjo-moments",
-                  "claim_id": "stats.histogram-moments.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "stats.mode-mad-correlation",
-              "obligation_version": 1,
-              "owner_sha256": "3e518056fe3ed3bee9ab81621346a72a8908b7a051cb6e2605bde9d94441f857",
-              "fixtures": [
-                {
-                  "fixture_id": "stats.mode",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.mad",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.correlation",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "stats.flowjo-moments",
-                  "claim_id": "stats.mode-mad-correlation.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "stats.wsp-names",
-              "obligation_version": 1,
-              "owner_sha256": "98357afb59e9220bbaea97e23e5d788e128e4339321fe38278cd6a2c0dbf819e",
-              "fixtures": [
-                {
-                  "fixture_id": "stats.names",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.freqof",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "stats.own",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "stats.flowjo-moments",
-                  "claim_id": "stats.wsp-names.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "export.event-cap",
-              "obligation_version": 1,
-              "owner_sha256": "ca05ea97287b8937dccb59d7b585e452e629f41e7cadcdf64b8db4ee22708478",
-              "fixtures": [
-                {
-                  "fixture_id": "export.cap.whole",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "export.cap.gated",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "export.cap.all",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "export.flowjo",
-                  "claim_id": "export.event-cap.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "export.csv-format",
-              "obligation_version": 1,
-              "owner_sha256": "ca05ea97287b8937dccb59d7b585e452e629f41e7cadcdf64b8db4ee22708478",
-              "fixtures": [
-                {
-                  "fixture_id": "export.csv.g",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "export.csv.header",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "export.csv.channel",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "export.flowjo",
-                  "claim_id": "export.csv-format.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "export.concatenate",
-              "obligation_version": 1,
-              "owner_sha256": "ca05ea97287b8937dccb59d7b585e452e629f41e7cadcdf64b8db4ee22708478",
-              "fixtures": [
-                {
-                  "fixture_id": "export.concat.everyn",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "export.concat.service",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "export.concat.cap",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "export.concat.empty",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "export.flowjo",
-                  "claim_id": "export.concatenate.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "gates.quad-bisector",
-              "obligation_version": 1,
-              "owner_sha256": "9fe0330ddd1e373f12182ef788687dc8ab7351c1f5a9d7644c3df38ece002f1f",
-              "fixtures": [
-                {
-                  "fixture_id": "gates.quad.lines",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gates.bisector.split",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "gates.flowjo",
-                  "claim_id": "gates.quad-bisector.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "gates.names-tools",
-              "obligation_version": 1,
-              "owner_sha256": "a9d2d72bb62f34e186b2919f114a364ed0a71321b407f6ddd430dd319c63b92e",
-              "fixtures": [
-                {
-                  "fixture_id": "gates.names.quad",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gates.names.bisector",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "gates.flowjo",
-                  "claim_id": "gates.names-tools.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "gates.spider-curly",
-              "obligation_version": 1,
-              "owner_sha256": "7abf1cf1bab1a79fdbfbded95616a9e7650edebff10cb10a0ce1b0e2d2c44cee",
-              "fixtures": [
-                {
-                  "fixture_id": "gates.curly.arm",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gates.curly.partition",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gates.spider.ties",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gates.wsp.roundtrip",
-                  "case_kind": "positive",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "gates.flowjo",
-                  "claim_id": "gates.spider-curly.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "gates.magnetic",
-              "obligation_version": 1,
-              "owner_sha256": "3c59968d717abbcdcdf706f5b53e9ff35633c8952dd3a630683ad7339a290595",
-              "fixtures": [
-                {
-                  "fixture_id": "gates.magnetic.2d",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gates.magnetic.1d",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gates.magnetic.none",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "gates.flowjo",
-                  "claim_id": "gates.magnetic.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "gates.auto-gate",
-              "obligation_version": 1,
-              "owner_sha256": "a9d2d72bb62f34e186b2919f114a364ed0a71321b407f6ddd430dd319c63b92e",
-              "fixtures": [
-                {
-                  "fixture_id": "gates.auto.kernel",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gates.auto.blob",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gates.auto.frame",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gates.auto.reduce",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "gates.flowjo",
-                  "claim_id": "gates.auto-gate.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "gates.pencil-convert",
-              "obligation_version": 1,
-              "owner_sha256": "dab29892173cccd0c197493a056d7423e46c9bac1897ffc7d000240a9e9086a1",
-              "fixtures": [
-                {
-                  "fixture_id": "gates.pencil.path",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gates.pencil.near",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gates.convert.rect",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gates.convert.ellipse",
-                  "case_kind": "positive",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "gates.flowjo",
-                  "claim_id": "gates.pencil-convert.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "gates.clipboard-manual",
-              "obligation_version": 1,
-              "owner_sha256": "4065ce8811d96896661f79abfb860ebdcb61fde3123567c8b4cb1f395fdc2dd2",
-              "fixtures": [
-                {
-                  "fixture_id": "gates.copy.quads",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gates.paste.clash",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gates.percent.samples",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gates.percent.cases",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "gates.flowjo",
-                  "claim_id": "gates.clipboard-manual.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "gates.anchored-bifurgate",
-              "obligation_version": 1,
-              "owner_sha256": "4dc35e758ddc6d4dafc8c817b4751784ad366651c3b9acfba3a7cb3746b2283d",
-              "fixtures": [
-                {
-                  "fixture_id": "gates.anchored.bound",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gates.bifur.peaks",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gates.bifur.valley",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "gates.bifur.margin",
-                  "case_kind": "positive",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "gates.flowjo",
-                  "claim_id": "gates.anchored-bifurgate.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "kinetics.series",
-              "obligation_version": 1,
-              "owner_sha256": "8c3eb7233a27aa95ac704ae6e8d615f9e0dd7870b8a179de820e58d7f0d917ec",
-              "fixtures": [
-                {
-                  "fixture_id": "kin.bins.range",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "kin.bins.sparse",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "kin.stats.negative",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "kin.stats.fraction",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "kin.stats.stream",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "kin.stats.empty",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "kinetics.flowjo",
-                  "claim_id": "kinetics.series.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "kinetics.smoothing-threshold",
-              "obligation_version": 1,
-              "owner_sha256": "8c3eb7233a27aa95ac704ae6e8d615f9e0dd7870b8a179de820e58d7f0d917ec",
-              "fixtures": [
-                {
-                  "fixture_id": "kin.smooth.ma",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "kin.smooth.gauss",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "kin.smooth.missing",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "kin.threshold.pct",
-                  "case_kind": "positive",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "kinetics.flowjo",
-                  "claim_id": "kinetics.smoothing-threshold.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "kinetics.timeslices",
-              "obligation_version": 1,
-              "owner_sha256": "6c9544f6bafa47585f08d0a6879667bbc41ffa09a71931a06b060528020c26ae",
-              "fixtures": [
-                {
-                  "fixture_id": "kin.slice.stats",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "kin.slice.empty",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "kin.slice.gaps",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "kin.slice.multi",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "kin.slice.auto",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "kin.slice.names",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "kin.node.wsp",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "kin.node.stats",
-                  "case_kind": "positive",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "kinetics.flowjo",
-                  "claim_id": "kinetics.timeslices.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "derived.language",
-              "obligation_version": 1,
-              "owner_sha256": "de066471bc2176dfb3efbc3fe9c36ff0833e3470a972a2a8453e1cf420b7266c",
-              "fixtures": [
-                {
-                  "fixture_id": "dp.prec",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "dp.logic",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "dp.mod",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "dp.fn",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "dp.sd",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "dp.err",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "derived.flowjo",
-                  "claim_id": "derived.language.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "derived.evaluation",
-              "obligation_version": 1,
-              "owner_sha256": "26f30b1e314da261cf70d57f3a9f9383b20b5380c095e7200a5ce23bb8bd1990",
-              "fixtures": [
-                {
-                  "fixture_id": "dp.names",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "dp.vars",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "dp.event",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "dp.engine",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "dp.matherr",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "derived.flowjo",
-                  "claim_id": "derived.evaluation.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "derived.dialog-wsp",
-              "obligation_version": 1,
-              "owner_sha256": "2fbdfe5cdbb73c7c7dc4f0131fc4e88d3c8973450d4c1fc7ca30f9602b755625",
-              "fixtures": [
-                {
-                  "fixture_id": "dp.namerule",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "dp.wsp",
-                  "case_kind": "positive",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "derived.flowjo",
-                  "claim_id": "derived.dialog-wsp.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "fcs.read",
-              "obligation_version": 1,
-              "owner_sha256": "c7b12fff4d0669ebe31a64f93c78a863cab45104354648e245c1e4b11180eceb",
-              "fixtures": [
-                {
-                  "fixture_id": "fcs.v32",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "fcs.packed",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "fcs.24bit",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "fcs.mixed",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "fcs.width",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "fcs.encrypt",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "fcs.flowjo",
-                  "claim_id": "fcs.read.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "compensation.files",
-              "obligation_version": 1,
-              "owner_sha256": "15e382b41bacf8a698558b28748a5a63bc25b537661fe5e6a270f7971ae83522",
-              "fixtures": [
-                {
-                  "fixture_id": "comp.mtx",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "comp.legacy",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "comp.csv",
-                  "case_kind": "positive",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "comp.flowjo",
-                  "claim_id": "compensation.files.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "compensation.wizard-ssm",
-              "obligation_version": 1,
-              "owner_sha256": "26d741d7ecea9089a9be3afad049217e08b68525b1000d16c5a49c61e6b24a94",
-              "fixtures": [
-                {
-                  "fixture_id": "comp.wiz",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "comp.wiz.err",
-                  "case_kind": "negative",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "comp.ssm",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "comp.ssm.matrix",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "comp.service",
-                  "case_kind": "positive",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "comp.flowjo",
-                  "claim_id": "compensation.wizard-ssm.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "platforms.cellcycle-models",
-              "obligation_version": 1,
-              "owner_sha256": "8b8ea624e1f0c430b39d055fea5fb4161a3840b2f88e09489ffe8f43e71100a2",
-              "fixtures": [
-                {
-                  "fixture_id": "cc.watson",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "cc.rmsd",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "platforms.flowjo",
-                  "claim_id": "platforms.cellcycle-models.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "platforms.proliferation-indices",
-              "obligation_version": 1,
-              "owner_sha256": "a775ca7055f008c48e546d0dd49c7cde3ee7bd1735be864c9c017795b33915f4",
-              "fixtures": [
-                {
-                  "fixture_id": "prolif.indices",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "prolif.divided",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "platforms.flowjo",
-                  "claim_id": "platforms.proliferation-indices.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "workspace.dont-ask-again",
-              "obligation_version": 1,
-              "owner_sha256": "45807ac48e03f271eae88bb91e9c8123fa21e90257fb00a3962eda40d82c8297",
-              "fixtures": [
-                {
-                  "fixture_id": "workspace.dont-ask-again.pos",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "workspace.dont-ask-again.neg",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "workspace.flowjo",
-                  "claim_id": "workspace.dont-ask-again.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "workspace.autosave",
-              "obligation_version": 1,
-              "owner_sha256": "21a67b0d06b8a7e3416d7b7036212553aa29e44a4127274f717bedd92621eb1f",
-              "fixtures": [
-                {
-                  "fixture_id": "workspace.autosave.pos",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "workspace.autosave.neg",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "workspace.flowjo",
-                  "claim_id": "workspace.autosave.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "graphs.edge-warning",
-              "obligation_version": 1,
-              "owner_sha256": "21a67b0d06b8a7e3416d7b7036212553aa29e44a4127274f717bedd92621eb1f",
-              "fixtures": [
-                {
-                  "fixture_id": "graphs.edge-warning.pos",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "graphs.edge-warning.neg",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "graphs.flowjo",
-                  "claim_id": "graphs.edge-warning.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "tables.editor",
-              "obligation_version": 1,
-              "owner_sha256": "e66f6d77e6cde7d315860dc0b210677192006bb6545eed426eead8f6bef3bbf9",
-              "fixtures": [
-                {
-                  "fixture_id": "tables.editor.pos",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "tables.editor.neg",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "tables.flowjo",
-                  "claim_id": "tables.editor.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "tables.iteration-batch",
-              "obligation_version": 1,
-              "owner_sha256": "9537c92cc23dd8e19b8f8d4242060027b0fb15b1f2172aec70adb6acd7e76966",
-              "fixtures": [
-                {
-                  "fixture_id": "tables.iteration-batch.pos",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "tables.iteration-batch.neg",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "tables.flowjo",
-                  "claim_id": "tables.iteration-batch.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "graph.stain-axis-title",
-              "obligation_version": 1,
-              "owner_sha256": "cc83de5817eeb9e71790ddcfd4809a159b5a4bd9e9a07d9d9f91fcd4500c0883",
-              "fixtures": [
-                {
-                  "fixture_id": "graph.stain-axis-title.pos",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "graph.stain-axis-title.neg",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "graph.flowjo",
-                  "claim_id": "graph.stain-axis-title.v1",
-                  "passed": true
-                }
-              ]
-            },
-            {
-              "obligation_id": "layout.arrange-iteration",
-              "obligation_version": 1,
-              "owner_sha256": "39dd272c2f1085eec95be4667bf8431de43fa37b30c23975045256747d98d32f",
-              "fixtures": [
-                {
-                  "fixture_id": "layout.arrange-iteration.pos",
-                  "case_kind": "positive",
-                  "passed": true
-                },
-                {
-                  "fixture_id": "layout.arrange-iteration.neg",
-                  "case_kind": "negative",
-                  "passed": true
-                }
-              ],
-              "verifiers": [
-                {
-                  "verifier_id": "layout.flowjo",
-                  "claim_id": "layout.arrange-iteration.v1",
-                  "passed": true
-                }
-              ]
-            }
-          ]
-        },
-        "confidence": "observed",
-        "authority": "controlled-replay",
-        "environment": {
-          "id": "node-v22.23.4",
-          "platform": "linux",
-          "architecture": "x64",
-          "isolation": "process"
-        },
-        "limitations": [
-          "Verifiers are this repository’s vitest suites run in one local process; FlowJo reference counts come from FlowJo-saved .wsp files (FlowJo 10.6.2 to 10.10.0)."
-        ],
-        "locations": []
       },
       {
         "evidence_id": "ev_27565fd9f5e9e72571db8afdd7e629cb243f1aee11b48b86a591b1b72cea58cc",
@@ -3945,6 +2522,1429 @@
             "path": "com/treestar/flowjo/core/ParameterList.class"
           }
         ]
+      },
+      {
+        "evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.proof",
+          "name": "flowjo-rea proof producer",
+          "version": "2"
+        },
+        "predicate_type": "rea.reconstruction-proof",
+        "operation": "verify_reconstruction_obligations",
+        "parameters": {
+          "node": "v22.23.4"
+        },
+        "normalized_result": {
+          "bindings": [
+            {
+              "obligation_id": "wsp.polygon-counts",
+              "obligation_version": 2,
+              "owner_sha256": "c9e69bddea574bdd1525af7ebbdda1e45894606337a410da2dee0e0c039c833b",
+              "fixtures": [
+                {
+                  "fixture_id": "wsp.polygon-counts.fixtures",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "wsp.polygon-counts.edges",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "wsp.polygon-counts.outside",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "wsp.flowjo-counts",
+                  "claim_id": "wsp.polygon-counts.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "wsp.logicle-ellipse",
+              "obligation_version": 2,
+              "owner_sha256": "c9e69bddea574bdd1525af7ebbdda1e45894606337a410da2dee0e0c039c833b",
+              "fixtures": [
+                {
+                  "fixture_id": "wsp.logicle-ellipse.fixtures",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "wsp.logicle-ellipse.outline",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "wsp.flowjo-counts",
+                  "claim_id": "wsp.logicle-ellipse.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gate.rect-open-bounds",
+              "obligation_version": 2,
+              "owner_sha256": "6c52fc6091e6cc8818f72cb897e26cab7c1ada7a40fcdfe663b392e7a253fbeb",
+              "fixtures": [
+                {
+                  "fixture_id": "gate.rect-open-bounds.time",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gate.rect-open-bounds.closed",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "wsp.flowjo-counts",
+                  "claim_id": "gate.rect-open-bounds.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "stats.flowjo-conventions",
+              "obligation_version": 2,
+              "owner_sha256": "3e518056fe3ed3bee9ab81621346a72a8908b7a051cb6e2605bde9d94441f857",
+              "fixtures": [
+                {
+                  "fixture_id": "stats.median",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.clamp",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.small",
+                  "case_kind": "malformed",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "stats.flowjo-histogram",
+                  "claim_id": "stats.flowjo-conventions.v2",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "names.unique-sibling",
+              "obligation_version": 1,
+              "owner_sha256": "d8c50aa8b0a0f421ee85e214a4cedf883bfa068f89bce6d27a928d730e7c594a",
+              "fixtures": [
+                {
+                  "fixture_id": "names.unique-sibling.suffix",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "names.unique-sibling.kept",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "uat.step2",
+                  "claim_id": "names.unique-sibling.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gate.min-shape",
+              "obligation_version": 1,
+              "owner_sha256": "133d95d8670bcd95558445baf893cf7a9aec1d28518eb074d11277d75cd80b3e",
+              "fixtures": [
+                {
+                  "fixture_id": "gate.min-shape.discard",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gate.min-shape.keep",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "uat.step2",
+                  "claim_id": "gate.min-shape.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "sample.relink-keywords",
+              "obligation_version": 1,
+              "owner_sha256": "ccf93e67461ba91bbe7c79b18005a1c463e492fd1bdf6b6e241947427bd1236c",
+              "fixtures": [
+                {
+                  "fixture_id": "sample.relink.match",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "sample.relink.first",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "sample.relink.tot",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "uat.step2",
+                  "claim_id": "sample.relink-keywords.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gate.quad-sibling-delete",
+              "obligation_version": 1,
+              "owner_sha256": "ccf93e67461ba91bbe7c79b18005a1c463e492fd1bdf6b6e241947427bd1236c",
+              "fixtures": [
+                {
+                  "fixture_id": "gate.quad-delete.siblings",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gate.quad-delete.fixture",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gate.quad-delete.alone",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "gate.quad-delete",
+                  "claim_id": "gate.quad-sibling-delete.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "cellcycle.histogram-channels",
+              "obligation_version": 1,
+              "owner_sha256": "77c1a7e84fd2d9295aebf9b9e0a1079255ce21226a92ca6cc7c6eec53e255517",
+              "fixtures": [
+                {
+                  "fixture_id": "cellcycle.channels.cap",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "cellcycle.channels.range",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "cellcycle.fits",
+                  "claim_id": "cellcycle.histogram-channels.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "workspace.undo-limit",
+              "obligation_version": 1,
+              "owner_sha256": "301a114c4485e3f967d766c4dce1959d174e7492e9b6dbbc69616cb3582efa9e",
+              "fixtures": [
+                {
+                  "fixture_id": "undo.cap",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "undo.order",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "undo.branch",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "workspace.history",
+                  "claim_id": "workspace.undo-limit.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "groups.keyword-criteria",
+              "obligation_version": 1,
+              "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b",
+              "fixtures": [
+                {
+                  "fixture_id": "groups.criteria.numeric",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.criteria.connectors",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.criteria.missing",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.criteria.inactive",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.criteria.nonnumeric",
+                  "case_kind": "malformed",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "groups.criteria",
+                  "claim_id": "groups.keyword-criteria.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "groups.acceptance",
+              "obligation_version": 1,
+              "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b",
+              "fixtures": [
+                {
+                  "fixture_id": "groups.accept.stains",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.accept.ref",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.accept.none",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "groups.criteria",
+                  "claim_id": "groups.acceptance.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "groups.roles",
+              "obligation_version": 1,
+              "owner_sha256": "13941ff7a99fbdb2545b96e8f6fd9d8395f1fa1a6bcf6fa34f7d57a6e6133b5b",
+              "fixtures": [
+                {
+                  "fixture_id": "groups.roles.read",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.roles.quirk",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "groups.criteria",
+                  "claim_id": "groups.roles.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "groups.owned-analysis",
+              "obligation_version": 1,
+              "owner_sha256": "ccf93e67461ba91bbe7c79b18005a1c463e492fd1bdf6b6e241947427bd1236c",
+              "fixtures": [
+                {
+                  "fixture_id": "groups.owned.copy",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.owned.alloc",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.owned.first",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.owned.delete",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "groups.owned.sync",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "groups.owned",
+                  "claim_id": "groups.owned-analysis.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "stats.histogram-moments",
+              "obligation_version": 1,
+              "owner_sha256": "3e518056fe3ed3bee9ab81621346a72a8908b7a051cb6e2605bde9d94441f857",
+              "fixtures": [
+                {
+                  "fixture_id": "stats.mean",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.geomean",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.cv-sign",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "stats.flowjo-moments",
+                  "claim_id": "stats.histogram-moments.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "stats.mode-mad-correlation",
+              "obligation_version": 1,
+              "owner_sha256": "3e518056fe3ed3bee9ab81621346a72a8908b7a051cb6e2605bde9d94441f857",
+              "fixtures": [
+                {
+                  "fixture_id": "stats.mode",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.mad",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.correlation",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "stats.flowjo-moments",
+                  "claim_id": "stats.mode-mad-correlation.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "stats.wsp-names",
+              "obligation_version": 1,
+              "owner_sha256": "ff9d1b392e4ca62457f8c08f17ad83bcdfac02b11bcbb0afc68af7012d07cb09",
+              "fixtures": [
+                {
+                  "fixture_id": "stats.names",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.freqof",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "stats.own",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "stats.flowjo-moments",
+                  "claim_id": "stats.wsp-names.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "export.event-cap",
+              "obligation_version": 1,
+              "owner_sha256": "ca05ea97287b8937dccb59d7b585e452e629f41e7cadcdf64b8db4ee22708478",
+              "fixtures": [
+                {
+                  "fixture_id": "export.cap.whole",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "export.cap.gated",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "export.cap.all",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "export.flowjo",
+                  "claim_id": "export.event-cap.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "export.csv-format",
+              "obligation_version": 1,
+              "owner_sha256": "ca05ea97287b8937dccb59d7b585e452e629f41e7cadcdf64b8db4ee22708478",
+              "fixtures": [
+                {
+                  "fixture_id": "export.csv.g",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "export.csv.header",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "export.csv.channel",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "export.flowjo",
+                  "claim_id": "export.csv-format.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "export.concatenate",
+              "obligation_version": 1,
+              "owner_sha256": "ca05ea97287b8937dccb59d7b585e452e629f41e7cadcdf64b8db4ee22708478",
+              "fixtures": [
+                {
+                  "fixture_id": "export.concat.everyn",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "export.concat.service",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "export.concat.cap",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "export.concat.empty",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "export.flowjo",
+                  "claim_id": "export.concatenate.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gates.quad-bisector",
+              "obligation_version": 1,
+              "owner_sha256": "60c90bd88f0789782ea16a7fb839495835427bde0c90b42763e63b08fa969e07",
+              "fixtures": [
+                {
+                  "fixture_id": "gates.quad.lines",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.bisector.split",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "gates.flowjo",
+                  "claim_id": "gates.quad-bisector.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gates.names-tools",
+              "obligation_version": 1,
+              "owner_sha256": "a9d2d72bb62f34e186b2919f114a364ed0a71321b407f6ddd430dd319c63b92e",
+              "fixtures": [
+                {
+                  "fixture_id": "gates.names.quad",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.names.bisector",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "gates.flowjo",
+                  "claim_id": "gates.names-tools.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gates.spider-curly",
+              "obligation_version": 1,
+              "owner_sha256": "986e7bb910c977b3a5b6c068887c829344bfdf0940d4ff35ac1f1689dd287c59",
+              "fixtures": [
+                {
+                  "fixture_id": "gates.curly.arm",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.curly.partition",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.spider.ties",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.wsp.roundtrip",
+                  "case_kind": "positive",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "gates.flowjo",
+                  "claim_id": "gates.spider-curly.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gates.magnetic",
+              "obligation_version": 1,
+              "owner_sha256": "8b76aad9bd36ff79e01c4c279584051790d7aac2108639060c833ef80f10cc35",
+              "fixtures": [
+                {
+                  "fixture_id": "gates.magnetic.2d",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.magnetic.1d",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.magnetic.none",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "gates.flowjo",
+                  "claim_id": "gates.magnetic.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gates.auto-gate",
+              "obligation_version": 1,
+              "owner_sha256": "a9d2d72bb62f34e186b2919f114a364ed0a71321b407f6ddd430dd319c63b92e",
+              "fixtures": [
+                {
+                  "fixture_id": "gates.auto.kernel",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.auto.blob",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.auto.frame",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.auto.reduce",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "gates.flowjo",
+                  "claim_id": "gates.auto-gate.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gates.pencil-convert",
+              "obligation_version": 1,
+              "owner_sha256": "dab29892173cccd0c197493a056d7423e46c9bac1897ffc7d000240a9e9086a1",
+              "fixtures": [
+                {
+                  "fixture_id": "gates.pencil.path",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.pencil.near",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.convert.rect",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.convert.ellipse",
+                  "case_kind": "positive",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "gates.flowjo",
+                  "claim_id": "gates.pencil-convert.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gates.clipboard-manual",
+              "obligation_version": 1,
+              "owner_sha256": "6a859da0aac1979b263b3bf9bb7796dabce95bb72c4a4ce88e4b23639bfa2055",
+              "fixtures": [
+                {
+                  "fixture_id": "gates.copy.quads",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.paste.clash",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.percent.samples",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.percent.cases",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "gates.flowjo",
+                  "claim_id": "gates.clipboard-manual.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "gates.anchored-bifurgate",
+              "obligation_version": 1,
+              "owner_sha256": "2f191547c2a65890f4edee2646a40299cb2d463732ff82c035510331a8d2909c",
+              "fixtures": [
+                {
+                  "fixture_id": "gates.anchored.bound",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.bifur.peaks",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.bifur.valley",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "gates.bifur.margin",
+                  "case_kind": "positive",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "gates.flowjo",
+                  "claim_id": "gates.anchored-bifurgate.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "kinetics.series",
+              "obligation_version": 1,
+              "owner_sha256": "8c3eb7233a27aa95ac704ae6e8d615f9e0dd7870b8a179de820e58d7f0d917ec",
+              "fixtures": [
+                {
+                  "fixture_id": "kin.bins.range",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "kin.bins.sparse",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "kin.stats.negative",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "kin.stats.fraction",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "kin.stats.stream",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "kin.stats.empty",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "kinetics.flowjo",
+                  "claim_id": "kinetics.series.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "kinetics.smoothing-threshold",
+              "obligation_version": 1,
+              "owner_sha256": "8c3eb7233a27aa95ac704ae6e8d615f9e0dd7870b8a179de820e58d7f0d917ec",
+              "fixtures": [
+                {
+                  "fixture_id": "kin.smooth.ma",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "kin.smooth.gauss",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "kin.smooth.missing",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "kin.threshold.pct",
+                  "case_kind": "positive",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "kinetics.flowjo",
+                  "claim_id": "kinetics.smoothing-threshold.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "kinetics.timeslices",
+              "obligation_version": 1,
+              "owner_sha256": "f73f3ca60b22c2f87c54e870de801da430eca708dab004193710be24ead921d2",
+              "fixtures": [
+                {
+                  "fixture_id": "kin.slice.stats",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "kin.slice.empty",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "kin.slice.gaps",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "kin.slice.multi",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "kin.slice.auto",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "kin.slice.names",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "kin.node.wsp",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "kin.node.stats",
+                  "case_kind": "positive",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "kinetics.flowjo",
+                  "claim_id": "kinetics.timeslices.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "derived.language",
+              "obligation_version": 1,
+              "owner_sha256": "de066471bc2176dfb3efbc3fe9c36ff0833e3470a972a2a8453e1cf420b7266c",
+              "fixtures": [
+                {
+                  "fixture_id": "dp.prec",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "dp.logic",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "dp.mod",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "dp.fn",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "dp.sd",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "dp.err",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "derived.flowjo",
+                  "claim_id": "derived.language.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "derived.evaluation",
+              "obligation_version": 1,
+              "owner_sha256": "0cecaf813b724e1c58142a997970a229d3978e2f88cce4b4926d26b2955f2de7",
+              "fixtures": [
+                {
+                  "fixture_id": "dp.names",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "dp.vars",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "dp.event",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "dp.engine",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "dp.matherr",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "derived.flowjo",
+                  "claim_id": "derived.evaluation.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "derived.dialog-wsp",
+              "obligation_version": 1,
+              "owner_sha256": "f0120a7c1eb84bfbfba5d3dbc0fe5c3b5aa1088066d4864b29438480bb70cab9",
+              "fixtures": [
+                {
+                  "fixture_id": "dp.namerule",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "dp.wsp",
+                  "case_kind": "positive",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "derived.flowjo",
+                  "claim_id": "derived.dialog-wsp.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "fcs.read",
+              "obligation_version": 1,
+              "owner_sha256": "c7b12fff4d0669ebe31a64f93c78a863cab45104354648e245c1e4b11180eceb",
+              "fixtures": [
+                {
+                  "fixture_id": "fcs.v32",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "fcs.packed",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "fcs.24bit",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "fcs.mixed",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "fcs.width",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "fcs.encrypt",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "fcs.flowjo",
+                  "claim_id": "fcs.read.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "compensation.files",
+              "obligation_version": 1,
+              "owner_sha256": "15e382b41bacf8a698558b28748a5a63bc25b537661fe5e6a270f7971ae83522",
+              "fixtures": [
+                {
+                  "fixture_id": "comp.mtx",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "comp.legacy",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "comp.csv",
+                  "case_kind": "positive",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "comp.flowjo",
+                  "claim_id": "compensation.files.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "compensation.wizard-ssm",
+              "obligation_version": 1,
+              "owner_sha256": "26d741d7ecea9089a9be3afad049217e08b68525b1000d16c5a49c61e6b24a94",
+              "fixtures": [
+                {
+                  "fixture_id": "comp.wiz",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "comp.wiz.err",
+                  "case_kind": "negative",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "comp.ssm",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "comp.ssm.matrix",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "comp.service",
+                  "case_kind": "positive",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "comp.flowjo",
+                  "claim_id": "compensation.wizard-ssm.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "platforms.cellcycle-models",
+              "obligation_version": 1,
+              "owner_sha256": "8b8ea624e1f0c430b39d055fea5fb4161a3840b2f88e09489ffe8f43e71100a2",
+              "fixtures": [
+                {
+                  "fixture_id": "cc.watson",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "cc.rmsd",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "platforms.flowjo",
+                  "claim_id": "platforms.cellcycle-models.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "platforms.proliferation-indices",
+              "obligation_version": 1,
+              "owner_sha256": "a775ca7055f008c48e546d0dd49c7cde3ee7bd1735be864c9c017795b33915f4",
+              "fixtures": [
+                {
+                  "fixture_id": "prolif.indices",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "prolif.divided",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "platforms.flowjo",
+                  "claim_id": "platforms.proliferation-indices.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "workspace.dont-ask-again",
+              "obligation_version": 1,
+              "owner_sha256": "519abd85a7239e5d2942ee01fe757838f985536602e6f45d032086cedbf0221b",
+              "fixtures": [
+                {
+                  "fixture_id": "workspace.dont-ask-again.pos",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "workspace.dont-ask-again.neg",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "workspace.flowjo",
+                  "claim_id": "workspace.dont-ask-again.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "workspace.autosave",
+              "obligation_version": 1,
+              "owner_sha256": "f43f0c576762f26f05854b21a9fb08c2a75044063b022e91e695d9bf1b1a8d64",
+              "fixtures": [
+                {
+                  "fixture_id": "workspace.autosave.pos",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "workspace.autosave.neg",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "workspace.flowjo",
+                  "claim_id": "workspace.autosave.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "graphs.edge-warning",
+              "obligation_version": 1,
+              "owner_sha256": "f43f0c576762f26f05854b21a9fb08c2a75044063b022e91e695d9bf1b1a8d64",
+              "fixtures": [
+                {
+                  "fixture_id": "graphs.edge-warning.pos",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "graphs.edge-warning.neg",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "graphs.flowjo",
+                  "claim_id": "graphs.edge-warning.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "tables.editor",
+              "obligation_version": 1,
+              "owner_sha256": "e66f6d77e6cde7d315860dc0b210677192006bb6545eed426eead8f6bef3bbf9",
+              "fixtures": [
+                {
+                  "fixture_id": "tables.editor.pos",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "tables.editor.neg",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "tables.flowjo",
+                  "claim_id": "tables.editor.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "tables.iteration-batch",
+              "obligation_version": 1,
+              "owner_sha256": "84ea673da789ee098248166a0ad9f78d5e65963df8092ce46d8a958d08dde969",
+              "fixtures": [
+                {
+                  "fixture_id": "tables.iteration-batch.pos",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "tables.iteration-batch.neg",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "tables.flowjo",
+                  "claim_id": "tables.iteration-batch.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "graph.stain-axis-title",
+              "obligation_version": 1,
+              "owner_sha256": "a22fae5caca3fbaada611cb52996d68307aa3afaf9362af09150e44b5b49b2fc",
+              "fixtures": [
+                {
+                  "fixture_id": "graph.stain-axis-title.pos",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "graph.stain-axis-title.neg",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "graph.flowjo",
+                  "claim_id": "graph.stain-axis-title.v1",
+                  "passed": true
+                }
+              ]
+            },
+            {
+              "obligation_id": "layout.arrange-iteration",
+              "obligation_version": 1,
+              "owner_sha256": "9b63474c6d346bf4b6a380486ab4dfcde1592a16803012f8b93c745f1e80ac96",
+              "fixtures": [
+                {
+                  "fixture_id": "layout.arrange-iteration.pos",
+                  "case_kind": "positive",
+                  "passed": true
+                },
+                {
+                  "fixture_id": "layout.arrange-iteration.neg",
+                  "case_kind": "negative",
+                  "passed": true
+                }
+              ],
+              "verifiers": [
+                {
+                  "verifier_id": "layout.flowjo",
+                  "claim_id": "layout.arrange-iteration.v1",
+                  "passed": true
+                }
+              ]
+            }
+          ]
+        },
+        "confidence": "observed",
+        "authority": "controlled-replay",
+        "environment": {
+          "id": "node-v22.23.4",
+          "platform": "linux",
+          "architecture": "x64",
+          "isolation": "process"
+        },
+        "limitations": [
+          "Verifiers are this repository’s vitest suites run in one local process; FlowJo reference counts come from FlowJo-saved .wsp files (FlowJo 10.6.2 to 10.10.0)."
+        ],
+        "locations": []
       },
       {
         "evidence_id": "ev_7cb8479303c58b361674da5eb9e4a72d284859ad99f9cbe45e895ac4bc352f0e",
@@ -7760,7 +7760,7 @@
         "owner": {
           "module_path": "src/core/gateGrid.ts",
           "symbol": "polygonGridMask",
-          "owner_sha256": "74407452a39a5d3848ccc78937375f5ede8318c90c0f73354f75eea46fdea56f"
+          "owner_sha256": "c9e69bddea574bdd1525af7ebbdda1e45894606337a410da2dee0e0c039c833b"
         },
         "parser_type": null,
         "original_cases": [
@@ -7781,7 +7781,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -7789,7 +7789,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -7797,7 +7797,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -7807,7 +7807,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "wsp.polygon-counts"
           ],
@@ -7822,7 +7822,7 @@
         "owner": {
           "module_path": "src/core/gateGrid.ts",
           "symbol": "ellipseLatticePolygon",
-          "owner_sha256": "74407452a39a5d3848ccc78937375f5ede8318c90c0f73354f75eea46fdea56f"
+          "owner_sha256": "c9e69bddea574bdd1525af7ebbdda1e45894606337a410da2dee0e0c039c833b"
         },
         "parser_type": null,
         "original_cases": [
@@ -7843,7 +7843,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -7851,7 +7851,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -7861,7 +7861,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "wsp.logicle-ellipse"
           ],
@@ -7876,7 +7876,7 @@
         "owner": {
           "module_path": "src/core/wsp.ts",
           "symbol": "parseWsp",
-          "owner_sha256": "d7a7e2ea47408f09a5e82838c76c983e32b6712f9536a75a15031eed55aa64fc"
+          "owner_sha256": "6c52fc6091e6cc8818f72cb897e26cab7c1ada7a40fcdfe663b392e7a253fbeb"
         },
         "parser_type": null,
         "original_cases": [
@@ -7897,7 +7897,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -7905,7 +7905,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -7915,7 +7915,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "gate.rect-open-bounds"
           ],
@@ -7956,7 +7956,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -7964,7 +7964,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -7972,7 +7972,7 @@
             "case_kind": "malformed",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -7982,7 +7982,7 @@
           "command": "npx vitest run tests/flowjo-stats.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "stats.flowjo-conventions"
           ],
@@ -7997,7 +7997,7 @@
         "owner": {
           "module_path": "src/core/model.ts",
           "symbol": "uniqueName",
-          "owner_sha256": "8d254d1dc3d016dbb3188e8cd43f9d90a84d32df01e12627844fa8da1ff6f6bd"
+          "owner_sha256": "d8c50aa8b0a0f421ee85e214a4cedf883bfa068f89bce6d27a928d730e7c594a"
         },
         "parser_type": null,
         "original_cases": [
@@ -8018,7 +8018,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8026,7 +8026,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -8036,7 +8036,7 @@
           "command": "npx vitest run tests/uat-step2.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "names.unique-sibling"
           ],
@@ -8072,7 +8072,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8080,7 +8080,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -8090,7 +8090,7 @@
           "command": "npx vitest run tests/uat-step2.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "gate.min-shape"
           ],
@@ -8126,7 +8126,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8134,7 +8134,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8142,7 +8142,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -8152,7 +8152,7 @@
           "command": "npx vitest run tests/uat-step2.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "sample.relink-keywords"
           ],
@@ -8188,7 +8188,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8196,7 +8196,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8204,7 +8204,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -8214,7 +8214,7 @@
           "command": "npx vitest run tests/quad-delete.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "gate.quad-sibling-delete"
           ],
@@ -8250,7 +8250,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8258,7 +8258,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -8268,7 +8268,7 @@
           "command": "npx vitest run tests/cellcycle.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "cellcycle.histogram-channels"
           ],
@@ -8304,7 +8304,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8312,7 +8312,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8320,7 +8320,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -8330,7 +8330,7 @@
           "command": "npx vitest run tests/history.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "workspace.undo-limit"
           ],
@@ -8371,7 +8371,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8379,7 +8379,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8387,7 +8387,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8395,7 +8395,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8403,7 +8403,7 @@
             "case_kind": "malformed",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -8413,7 +8413,7 @@
           "command": "npx vitest run tests/group-criteria.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "groups.keyword-criteria"
           ],
@@ -8449,7 +8449,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8457,7 +8457,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8465,7 +8465,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -8475,7 +8475,7 @@
           "command": "npx vitest run tests/group-criteria.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "groups.acceptance"
           ],
@@ -8511,7 +8511,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8519,7 +8519,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -8529,7 +8529,7 @@
           "command": "npx vitest run tests/group-criteria.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "groups.roles"
           ],
@@ -8565,7 +8565,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8573,7 +8573,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8581,7 +8581,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8589,7 +8589,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8597,7 +8597,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -8607,7 +8607,7 @@
           "command": "npx vitest run tests/group-analysis.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "groups.owned-analysis"
           ],
@@ -8643,7 +8643,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8651,7 +8651,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8659,7 +8659,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -8669,7 +8669,7 @@
           "command": "npx vitest run tests/flowjo-stats-moments.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "stats.histogram-moments"
           ],
@@ -8710,7 +8710,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8718,7 +8718,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8726,7 +8726,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -8736,7 +8736,7 @@
           "command": "npx vitest run tests/flowjo-stats-moments.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "stats.mode-mad-correlation"
           ],
@@ -8751,7 +8751,7 @@
         "owner": {
           "module_path": "src/core/stats.ts",
           "symbol": "FLOWJO_STAT_NAMES",
-          "owner_sha256": "98357afb59e9220bbaea97e23e5d788e128e4339321fe38278cd6a2c0dbf819e"
+          "owner_sha256": "ff9d1b392e4ca62457f8c08f17ad83bcdfac02b11bcbb0afc68af7012d07cb09"
         },
         "parser_type": null,
         "original_cases": [
@@ -8772,7 +8772,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8780,7 +8780,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8788,7 +8788,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -8798,7 +8798,7 @@
           "command": "npx vitest run tests/flowjo-stats-moments.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "stats.wsp-names"
           ],
@@ -8834,7 +8834,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8842,7 +8842,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8850,7 +8850,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -8860,7 +8860,7 @@
           "command": "npx vitest run tests/export-rules.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "export.event-cap"
           ],
@@ -8896,7 +8896,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8904,7 +8904,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8912,7 +8912,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -8922,7 +8922,7 @@
           "command": "npx vitest run tests/export-rules.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "export.csv-format"
           ],
@@ -8958,7 +8958,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8966,7 +8966,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8974,7 +8974,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -8982,7 +8982,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -8992,7 +8992,7 @@
           "command": "npx vitest run tests/export-rules.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "export.concatenate"
           ],
@@ -9007,7 +9007,7 @@
         "owner": {
           "module_path": "src/core/analysis.ts",
           "symbol": "SampleEngine.gateMask",
-          "owner_sha256": "9fe0330ddd1e373f12182ef788687dc8ab7351c1f5a9d7644c3df38ece002f1f"
+          "owner_sha256": "60c90bd88f0789782ea16a7fb839495835427bde0c90b42763e63b08fa969e07"
         },
         "parser_type": null,
         "original_cases": [
@@ -9028,7 +9028,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9036,7 +9036,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -9046,7 +9046,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "gates.quad-bisector"
           ],
@@ -9082,7 +9082,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9090,7 +9090,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -9100,7 +9100,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "gates.names-tools"
           ],
@@ -9115,7 +9115,7 @@
         "owner": {
           "module_path": "src/core/gateTools.ts",
           "symbol": "spiderLabelGrid",
-          "owner_sha256": "7abf1cf1bab1a79fdbfbded95616a9e7650edebff10cb10a0ce1b0e2d2c44cee"
+          "owner_sha256": "986e7bb910c977b3a5b6c068887c829344bfdf0940d4ff35ac1f1689dd287c59"
         },
         "parser_type": null,
         "original_cases": [
@@ -9141,7 +9141,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9149,7 +9149,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9157,7 +9157,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9165,7 +9165,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -9175,7 +9175,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "gates.spider-curly"
           ],
@@ -9190,7 +9190,7 @@
         "owner": {
           "module_path": "src/core/gateTools.ts",
           "symbol": "magneticOffset2D",
-          "owner_sha256": "3c59968d717abbcdcdf706f5b53e9ff35633c8952dd3a630683ad7339a290595"
+          "owner_sha256": "8b76aad9bd36ff79e01c4c279584051790d7aac2108639060c833ef80f10cc35"
         },
         "parser_type": null,
         "original_cases": [
@@ -9211,7 +9211,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9219,7 +9219,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9227,7 +9227,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -9237,7 +9237,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "gates.magnetic"
           ],
@@ -9278,7 +9278,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9286,7 +9286,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9294,7 +9294,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9302,7 +9302,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -9312,7 +9312,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "gates.auto-gate"
           ],
@@ -9353,7 +9353,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9361,7 +9361,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9369,7 +9369,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9377,7 +9377,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -9387,7 +9387,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "gates.pencil-convert"
           ],
@@ -9402,7 +9402,7 @@
         "owner": {
           "module_path": "src/core/project.ts",
           "symbol": "pastePopulations",
-          "owner_sha256": "4065ce8811d96896661f79abfb860ebdcb61fde3123567c8b4cb1f395fdc2dd2"
+          "owner_sha256": "6a859da0aac1979b263b3bf9bb7796dabce95bb72c4a4ce88e4b23639bfa2055"
         },
         "parser_type": null,
         "original_cases": [
@@ -9428,7 +9428,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9436,7 +9436,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9444,7 +9444,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9452,7 +9452,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -9462,7 +9462,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "gates.clipboard-manual"
           ],
@@ -9477,7 +9477,7 @@
         "owner": {
           "module_path": "src/core/gateTools.ts",
           "symbol": "bifurValley",
-          "owner_sha256": "4dc35e758ddc6d4dafc8c817b4751784ad366651c3b9acfba3a7cb3746b2283d"
+          "owner_sha256": "2f191547c2a65890f4edee2646a40299cb2d463732ff82c035510331a8d2909c"
         },
         "parser_type": null,
         "original_cases": [
@@ -9508,7 +9508,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9516,7 +9516,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9524,7 +9524,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9532,7 +9532,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -9542,7 +9542,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "gates.anchored-bifurgate"
           ],
@@ -9588,7 +9588,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9596,7 +9596,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9604,7 +9604,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9612,7 +9612,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9620,7 +9620,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9628,7 +9628,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -9638,7 +9638,7 @@
           "command": "npx vitest run tests/kinetics.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "kinetics.series"
           ],
@@ -9679,7 +9679,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9687,7 +9687,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9695,7 +9695,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9703,7 +9703,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -9713,7 +9713,7 @@
           "command": "npx vitest run tests/kinetics.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "kinetics.smoothing-threshold"
           ],
@@ -9728,7 +9728,7 @@
         "owner": {
           "module_path": "src/core/kinetics.ts",
           "symbol": "timesliceStats",
-          "owner_sha256": "6c9544f6bafa47585f08d0a6879667bbc41ffa09a71931a06b060528020c26ae"
+          "owner_sha256": "f73f3ca60b22c2f87c54e870de801da430eca708dab004193710be24ead921d2"
         },
         "parser_type": null,
         "original_cases": [
@@ -9759,7 +9759,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9767,7 +9767,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9775,7 +9775,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9783,7 +9783,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9791,7 +9791,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9799,7 +9799,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9807,7 +9807,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9815,7 +9815,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -9825,7 +9825,7 @@
           "command": "npx vitest run tests/kinetics.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "kinetics.timeslices"
           ],
@@ -9861,7 +9861,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9869,7 +9869,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9877,7 +9877,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9885,7 +9885,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9893,7 +9893,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9901,7 +9901,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -9911,7 +9911,7 @@
           "command": "npx vitest run tests/formula.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "derived.language"
           ],
@@ -9926,7 +9926,7 @@
         "owner": {
           "module_path": "src/core/formula.ts",
           "symbol": "compileFormula",
-          "owner_sha256": "26f30b1e314da261cf70d57f3a9f9383b20b5380c095e7200a5ce23bb8bd1990"
+          "owner_sha256": "0cecaf813b724e1c58142a997970a229d3978e2f88cce4b4926d26b2955f2de7"
         },
         "parser_type": null,
         "original_cases": [
@@ -9952,7 +9952,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9960,7 +9960,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9968,7 +9968,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9976,7 +9976,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -9984,7 +9984,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -9994,7 +9994,7 @@
           "command": "npx vitest run tests/formula.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "derived.evaluation"
           ],
@@ -10009,7 +10009,7 @@
         "owner": {
           "module_path": "src/core/formula.ts",
           "symbol": "derivedNameError",
-          "owner_sha256": "2fbdfe5cdbb73c7c7dc4f0131fc4e88d3c8973450d4c1fc7ca30f9602b755625"
+          "owner_sha256": "f0120a7c1eb84bfbfba5d3dbc0fe5c3b5aa1088066d4864b29438480bb70cab9"
         },
         "parser_type": null,
         "original_cases": [
@@ -10030,7 +10030,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -10038,7 +10038,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -10048,7 +10048,7 @@
           "command": "npx vitest run tests/formula.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "derived.dialog-wsp"
           ],
@@ -10089,7 +10089,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -10097,7 +10097,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -10105,7 +10105,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -10113,7 +10113,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -10121,7 +10121,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -10129,7 +10129,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -10139,7 +10139,7 @@
           "command": "npx vitest run tests/fcs-flowjo.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "fcs.read"
           ],
@@ -10175,7 +10175,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -10183,7 +10183,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -10191,7 +10191,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -10201,7 +10201,7 @@
           "command": "npx vitest run tests/comp-flowjo.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "compensation.files"
           ],
@@ -10252,7 +10252,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -10260,7 +10260,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -10268,7 +10268,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -10276,7 +10276,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -10284,7 +10284,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -10294,7 +10294,7 @@
           "command": "npx vitest run tests/comp-flowjo.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "compensation.wizard-ssm"
           ],
@@ -10330,7 +10330,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -10338,7 +10338,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -10348,7 +10348,7 @@
           "command": "npx vitest run tests/cellcycle.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "platforms.cellcycle-models"
           ],
@@ -10384,7 +10384,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -10392,7 +10392,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -10402,7 +10402,7 @@
           "command": "npx vitest run tests/proliferation.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "platforms.proliferation-indices"
           ],
@@ -10417,7 +10417,7 @@
         "owner": {
           "module_path": "src/core/prefs.ts",
           "symbol": "skipConfirm",
-          "owner_sha256": "45807ac48e03f271eae88bb91e9c8123fa21e90257fb00a3962eda40d82c8297"
+          "owner_sha256": "519abd85a7239e5d2942ee01fe757838f985536602e6f45d032086cedbf0221b"
         },
         "parser_type": null,
         "original_cases": [
@@ -10438,7 +10438,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -10446,7 +10446,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -10456,7 +10456,7 @@
           "command": "npx vitest run tests/prefs-tables.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "workspace.dont-ask-again"
           ],
@@ -10471,7 +10471,7 @@
         "owner": {
           "module_path": "src/core/prefs.ts",
           "symbol": "shouldAutoSave",
-          "owner_sha256": "21a67b0d06b8a7e3416d7b7036212553aa29e44a4127274f717bedd92621eb1f"
+          "owner_sha256": "f43f0c576762f26f05854b21a9fb08c2a75044063b022e91e695d9bf1b1a8d64"
         },
         "parser_type": null,
         "original_cases": [
@@ -10492,7 +10492,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -10500,7 +10500,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -10510,7 +10510,7 @@
           "command": "npx vitest run tests/prefs-tables.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "workspace.autosave"
           ],
@@ -10525,7 +10525,7 @@
         "owner": {
           "module_path": "src/core/prefs.ts",
           "symbol": "edgeWarning",
-          "owner_sha256": "21a67b0d06b8a7e3416d7b7036212553aa29e44a4127274f717bedd92621eb1f"
+          "owner_sha256": "f43f0c576762f26f05854b21a9fb08c2a75044063b022e91e695d9bf1b1a8d64"
         },
         "parser_type": null,
         "original_cases": [
@@ -10546,7 +10546,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -10554,7 +10554,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -10564,7 +10564,7 @@
           "command": "npx vitest run tests/prefs-tables.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "graphs.edge-warning"
           ],
@@ -10600,7 +10600,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -10608,7 +10608,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -10618,7 +10618,7 @@
           "command": "npx vitest run tests/prefs-tables.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "tables.editor"
           ],
@@ -10633,7 +10633,7 @@
         "owner": {
           "module_path": "src/core/tableEditor.ts",
           "symbol": "iterate",
-          "owner_sha256": "9537c92cc23dd8e19b8f8d4242060027b0fb15b1f2172aec70adb6acd7e76966"
+          "owner_sha256": "84ea673da789ee098248166a0ad9f78d5e65963df8092ce46d8a958d08dde969"
         },
         "parser_type": null,
         "original_cases": [
@@ -10654,7 +10654,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -10662,7 +10662,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -10672,7 +10672,7 @@
           "command": "npx vitest run tests/prefs-tables.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "tables.iteration-batch"
           ],
@@ -10687,7 +10687,7 @@
         "owner": {
           "module_path": "src/ui/axes.ts",
           "symbol": "withStains",
-          "owner_sha256": "cc83de5817eeb9e71790ddcfd4809a159b5a4bd9e9a07d9d9f91fcd4500c0883"
+          "owner_sha256": "a22fae5caca3fbaada611cb52996d68307aa3afaf9362af09150e44b5b49b2fc"
         },
         "parser_type": null,
         "original_cases": [
@@ -10708,7 +10708,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -10716,7 +10716,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -10726,7 +10726,7 @@
           "command": "npx vitest run tests/stains.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "graph.stain-axis-title"
           ],
@@ -10741,7 +10741,7 @@
         "owner": {
           "module_path": "src/core/layoutArrange.ts",
           "symbol": "align",
-          "owner_sha256": "39dd272c2f1085eec95be4667bf8431de43fa37b30c23975045256747d98d32f"
+          "owner_sha256": "9b63474c6d346bf4b6a380486ab4dfcde1592a16803012f8b93c745f1e80ac96"
         },
         "parser_type": null,
         "original_cases": [
@@ -10762,7 +10762,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           },
           {
@@ -10770,7 +10770,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619"
+              "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9"
             ]
           }
         ],
@@ -10780,7 +10780,7 @@
           "command": "npx vitest run tests/layout-arrange.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_20429b051b2f484b41e67c0c509fc6d2afc0ebb8c6ad27ebc04dfb4e0d332619",
+          "result_evidence_id": "ev_7c8b2aa37c78e742cff1d6a7b2d050d08f9a5d1bcdc315e6a8616233f5b05df9",
           "enumerated_obligation_ids": [
             "layout.arrange-iteration"
           ],

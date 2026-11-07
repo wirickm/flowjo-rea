@@ -222,3 +222,22 @@ export function iterationValues<S extends { id: string }>(it: LayoutIteration, g
   if (it.type === 'PANEL') { const n = Math.max(1, Math.floor(it.size)); return group.filter((_, i) => i % n === 0).map((s) => s.id); }
   return group.map((s) => s.id);
 }
+
+// S4-S5 (LayerGuides.<init>/snap, DragMove.continueDrag): a new layout has one
+// vertical and one horizontal guide at 250 pt, at most 8 guides; while guides
+// are shown, a moved selection's enclosing rectangle snaps its left or right
+// edge (and top or bottom edge) to the nearest guide within 30 pt.
+export interface Guides { v: number[]; h: number[] }
+export const DEFAULT_GUIDES: Guides = { v: [250], h: [250] };
+export const MAX_GUIDES = 8;
+export const SNAP_RADIUS = 30;
+export function snapToGuides(rect: Box, dx: number, dy: number, g: Guides, radius = SNAP_RADIUS): { dx: number; dy: number } {
+  const best = (edges: number[], lines: number[]) => {
+    let d: number | null = null;
+    for (const e of edges) for (const l of lines) { const k = l - e; if (Math.abs(k) <= radius && (d === null || Math.abs(k) < Math.abs(d))) d = k; }
+    return d;
+  };
+  const sx = best([rect.x + dx, rect.x + dx + rect.w], g.v);
+  const sy = best([rect.y + dy, rect.y + dy + rect.h], g.h);
+  return { dx: dx + (sx ?? 0), dy: dy + (sy ?? 0) };
+}

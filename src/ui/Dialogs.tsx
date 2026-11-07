@@ -539,7 +539,7 @@ export function GateNamerDialog(p: { initial: string; siblings: string[]; favori
           data-testid="gate-namer-name"
           onFocus={(e) => e.target.select()}
           onChange={(e) => { setName(e.target.value); setError(''); }}
-          onKeyDown={(e) => { if (e.key === 'Enter') ok(); if (e.key === 'Escape') p.onCancel(); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') ok(); if (e.key === 'Escape') { e.stopPropagation(); p.onCancel(); } }}
         />
       </label>
       <div className="row">

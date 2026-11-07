@@ -83,6 +83,12 @@ export interface RenderOptions {
   // specs 18.1). Default: the parameter name.
   xTitle?: string;
   yTitle?: string;
+  // Gate annotations (FlowJo showGateNameOnPlots / showFreqOnPlots; default on).
+  gateNames?: boolean;
+  gateFreq?: boolean;
+  // FlowJo's axes string (AnnotationPanel.getShowAxes): x letters t n l (ticks,
+  // numbers, label), y letters T N L; a letter shown when present. Default all.
+  axes?: string;
 }
 
 const maxOf = (a: ArrayLike<number>) => {
@@ -227,22 +233,23 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
     ctx.fillStyle = '#222';
     ctx.font = '10px sans-serif';
     ctx.textAlign = 'center';
+    const ax = o.axes ?? 'tnlTNL';
     for (const t of ticks(o.x.t)) {
       const X = sx(t.pos);
-      ctx.beginPath(); ctx.moveTo(X, PLOT.mt + ph); ctx.lineTo(X, PLOT.mt + ph + (t.major ? 5 : 2)); ctx.stroke();
-      if (t.label) drawLabel(ctx, t.label, X, PLOT.mt + ph + 16, 'center');
+      if (ax.includes('t')) { ctx.beginPath(); ctx.moveTo(X, PLOT.mt + ph); ctx.lineTo(X, PLOT.mt + ph + (t.major ? 5 : 2)); ctx.stroke(); }
+      if (t.label && ax.includes('n')) drawLabel(ctx, t.label, X, PLOT.mt + ph + 16, 'center');
     }
     ctx.font = '11px sans-serif';
-    ctx.fillText(o.xTitle ?? o.x.channel, PLOT.ml + pw / 2, PLOT.h - 8);
+    if (ax.includes('l')) ctx.fillText(o.xTitle ?? o.x.channel, PLOT.ml + pw / 2, PLOT.h - 8);
     ctx.textAlign = 'right';
     ctx.font = '10px sans-serif';
     if (o.y) {
       for (const t of ticks(o.y.t)) {
         const Y = sy(t.pos);
-        ctx.beginPath(); ctx.moveTo(PLOT.ml, Y); ctx.lineTo(PLOT.ml - (t.major ? 5 : 2), Y); ctx.stroke();
-        if (t.label) drawLabel(ctx, t.label, PLOT.ml - 7, Y + 3, 'right');
+        if (ax.includes('T')) { ctx.beginPath(); ctx.moveTo(PLOT.ml, Y); ctx.lineTo(PLOT.ml - (t.major ? 5 : 2), Y); ctx.stroke(); }
+        if (t.label && ax.includes('N')) drawLabel(ctx, t.label, PLOT.ml - 7, Y + 3, 'right');
       }
-    } else {
+    } else if (ax.includes('N')) {
       for (let k = 0; k <= 4; k++) {
         const c = (histMax * 1.05 * k) / 4;
         ctx.fillText(String(Math.round(c)), PLOT.ml - 7, hy(c) + 3);
@@ -253,7 +260,7 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
     ctx.rotate(-Math.PI / 2);
     ctx.textAlign = 'center';
     ctx.font = '11px sans-serif';
-    ctx.fillText(o.y ? o.yTitle ?? o.y.channel : hs.label, 0, 0);
+    if (ax.includes('L')) ctx.fillText(o.y ? o.yTitle ?? o.y.channel : hs.label, 0, 0);
     ctx.restore();
     // Gates
     ctx.save();
@@ -308,7 +315,8 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
       }
       if (g.kind === 'spline' && sel && g.editable) for (const [a, b] of [...g.xPts, ...g.yPts]) ctx.strokeRect(sx(a) - 3, sy(b) - 3, 6, 6);
       ctx.fillStyle = sel ? '#d0021b' : '#111';
-      const text = `${g.pop.name} ${pct}`;
+      const text = [o.gateNames === false ? '' : g.pop.name, o.gateFreq === false ? '' : pct].filter(Boolean).join(' ');
+      if (!text) continue;
       const p = placeLabel(placed, ctx.measureText(text).width, lx, ly, { x0: PLOT.ml + 2, y0: PLOT.mt + 11, x1: PLOT.ml + pw - 2, y1: PLOT.mt + ph - 2 });
       ctx.fillText(text, p.x, p.y);
     }

@@ -87,3 +87,15 @@ describe('FlowJo 10 layout iteration (specs 21.3)', () => {
     expect([tilePitch(400, 468), tilePitch(468, 468), tilePitch(900, 468)]).toEqual([468, 936, 936]);
   });
 });
+
+describe('FlowJo 10 layout guides (specs 21.2)', () => {
+  it('a moved rectangle snaps its nearest edge to a guide within 30 pt', async () => {
+    const { snapToGuides, DEFAULT_GUIDES } = await import('../src/core/layoutArrange');
+    // left edge 0 + 230 = 230 is 20 pt from the 250 guide -> snaps to 250
+    expect(snapToGuides(b('a', 0, 0, 100, 50), 230, 0, DEFAULT_GUIDES)).toEqual({ dx: 250, dy: 0 });
+    // right edge 100 + 120 = 220 is 30 pt away -> snaps; 40 pt away does not
+    expect(snapToGuides(b('a', 0, 0, 100, 50), 120, 0, DEFAULT_GUIDES).dx).toBe(150);
+    expect(snapToGuides(b('a', 0, 0, 100, 50), 110, 0, DEFAULT_GUIDES).dx).toBe(110);
+    expect(snapToGuides(b('a', 0, 0, 100, 50), 0, 190, DEFAULT_GUIDES).dy).toBe(200);
+  });
+});

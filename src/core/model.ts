@@ -166,6 +166,7 @@ export interface Workspace {
   plots?: Record<string, PlotSettings>;
   layoutPage?: import('./layoutArrange').PageSetup;
   layoutIteration?: import('./layoutArrange').LayoutIteration;
+  layoutGuides?: import('./layoutArrange').Guides;
   // FlowJo Kinetics node settings and timeslices per population path (specs 11).
   kinetics?: Record<string, import('./kinetics').KineticsSettings>;
   layout?: LayoutItem[];
@@ -214,6 +215,9 @@ export interface LayoutPlot extends PlotSettings, LayoutPlace {
   sampleId?: string; // the sample the graph came from (iteration binding, specs 21.3)
   showGates?: boolean; // Show Gates (default on)
   showAnnotation?: boolean; // Show Annotation: the title line (default off)
+  gateFreq?: boolean; // with Frequencies (default on; needs Show Gates)
+  gateNames?: boolean; // with Names (default on; needs Show Gates)
+  axes?: string; // FlowJo axes string: t n l (x), T N L (y); default 'tnlTNL'
   text?: undefined;
 }
 export interface LayoutText extends LayoutPlace {

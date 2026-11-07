@@ -110,6 +110,7 @@ export function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const navRef = useRef<(d: number) => void>(() => {});
   const keyRef = useRef<(e: KeyboardEvent) => boolean>(() => false);
+  const escRef = useRef<() => boolean>(() => false);
   const pasteTextRef = useRef<(text: string) => boolean>(() => false);
   // Anchored gating: the statistic column armed for the next histogram click.
   const [anchorCol, setAnchorCol] = useState<string | null>(null);
@@ -143,6 +144,8 @@ export function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Own rule (comparison C17): Escape closes the topmost menu or dialog.
+      if (e.key === 'Escape' && escRef.current()) { e.preventDefault(); return; }
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
       if (keyRef.current(e)) { e.preventDefault(); return; }
@@ -882,6 +885,14 @@ export function App() {
       { label: 'Copy to Layout Editor', onClick: () => document.querySelector<HTMLButtonElement>('[data-testid=add-to-layout]')?.click() },
     ];
     setCtx({ x, y, items });
+  };
+
+  escRef.current = () => {
+    if (ctx) { setCtx(null); return true; }
+    if (naming) { setNaming(null); note('info', 'Gate discarded'); return true; }
+    if (question) { question.resolve(null); setQuestion(null); return true; }
+    if (dialog) { setDialog(null); return true; }
+    return false;
   };
 
   // --- shortcuts (specs 19.1) ----------------------------------------------------

@@ -139,8 +139,35 @@ const pw = await page.getByTestId('layout-page').evaluate((e) => e.getBoundingCl
 check('landscape Letter page is 648 pt wide inside the margins', Math.round(pw) % 648 === 0, String(pw));
 await page.screenshot({ path: join(out, 'layout-editor.png') });
 
-// Spacing needs 3 items: add two more text blocks and space them
 await page.getByTestId('layout-orientation').selectOption('portrait');
+await page.waitForTimeout(300);
+
+// Guides: shown on request; a dragged graph snaps to the 250 pt guide within 30 pt
+await page.getByTestId('layout-show-guides').check();
+check('a new layout has one vertical and one horizontal guide at 250 pt', (await page.getByTestId('layout-guide-v').getAttribute('data-at')) === '250' && (await page.getByTestId('layout-guide-h').getAttribute('data-at')) === '250');
+const gcard = page.locator('[data-testid=layout-card]').filter({ has: page.locator('img') }).first();
+await page.locator('[data-testid=layout-page]').click({ position: { x: 440, y: 620 } });
+await pick(gcard);
+const gb0 = (await gcard.getAttribute('data-box')).split(',').map(Number);
+const cb = await gcard.boundingBox();
+// Move so the left edge lands 20 pt short of the guide (x = 230) and the top 300 pt down
+await page.mouse.move(cb.x + 150, cb.y + 150); await page.mouse.down();
+await page.mouse.move(cb.x + 150 + (230 - gb0[0]), cb.y + 150 + (400 - gb0[1]), { steps: 8 }); await page.mouse.up();
+await page.waitForTimeout(200);
+const gb1 = (await gcard.getAttribute('data-box')).split(',').map(Number);
+check('a dragged graph snaps its left edge to the guide', gb1[0] === 250, `${gb0.join(',')} -> ${gb1.join(',')}`);
+
+// Gate annotations: frequencies / names need Show Gates; axes string toggles
+await page.getByTestId('layout-show-gates').uncheck();
+check('with Frequencies / with Names are disabled while Show Gates is off', (await page.getByTestId('layout-gate-freq').isDisabled()) && (await page.getByTestId('layout-gate-names').isDisabled()));
+await page.getByTestId('layout-show-gates').check();
+await page.getByTestId('layout-hide-x-label').check();
+check('hide X label is kept for the graph', await page.getByTestId('layout-hide-x-label').isChecked());
+
+// Escape closes the layout editor (own rule)
+await page.keyboard.press('Escape');
+await page.waitForTimeout(200);
+check('Escape closes the dialog', (await page.getByRole('dialog', { name: 'Layout editor' }).count()) === 0);
 check('no page errors', errors.length === 0, errors.join(' | '));
 await browser.close();
 const failed = results.filter((r) => !r.ok);

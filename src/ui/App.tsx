@@ -10,7 +10,7 @@ import { formatStat, statsCsv } from '../core/statsTable';
 import { makeTransform, type TransformSpec } from '../core/transforms';
 import { parseWsp } from '../core/wsp';
 import { writeWsp } from '../core/wspWriter';
-import { channelRange, defaultTransform, isScatterOrTime, makeAxis, sampleChannels, withStains } from './axes';
+import { channelRange, defaultTransform, isScatterOrTime, makeAxis, sampleChannels, withStains, withUncompTwins } from './axes';
 import { channelDisplayName } from '../core/fcs';
 import { readMtx } from '../core/compFlowjo';
 import { EVENT_NUMBER } from '../core/formula';
@@ -225,10 +225,14 @@ export function App() {
   }, [sel.popId, sample, selPopValid]);
   const channels = useMemo(() => {
     if (!sMeta || !sample) return [];
-    const cs = sampleChannels(sMeta, sample.compensation, ws.matrices, ws.derivedParameters);
+    let cs = sampleChannels(sMeta, sample.compensation, ws.matrices, ws.derivedParameters);
+    if (ws.showUncompensated && sample.compensation !== 'none') {
+      const m = sample.compensation === 'file' ? sMeta.spillover : ws.matrices.find((x) => x.id === sample.compensation);
+      cs = withUncompTwins(cs, m?.channels ?? []);
+    }
     // Show Event # Parameter: an "Event #" axis at the end of the list (specs 24.2).
     return ws.showEventNumber ? [...cs, { index: cs.length + 1, name: EVENT_NUMBER, label: '', bits: 32, range: Math.max(1, sample.eventCount), logDecades: 0, logOffset: 0, gain: 1 }] : cs;
-  }, [sMeta, sample?.compensation, sample?.eventCount, ws.matrices, ws.derivedParameters, ws.showEventNumber]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sMeta, sample?.compensation, sample?.eventCount, ws.matrices, ws.derivedParameters, ws.showEventNumber, ws.showUncompensated]); // eslint-disable-line react-hooks/exhaustive-deps
   // FlowJo Graph Window axis title: "name :: stain" (specs 18.1).
   const axisTitle = (ch: string) => { const c = channels.find((x) => x.name === ch); return c ? channelDisplayName(c) : ch; };
   const annotationKeys = [...new Set(groupSamples.flatMap((s) => Object.keys(s.annotations ?? {})))].sort();
@@ -1480,6 +1484,7 @@ export function App() {
                 <label><input type="checkbox" checked={!plotSettings.hideGateFreq} onChange={(e) => setPlotSettings({ hideGateFreq: e.target.checked ? undefined : true })} data-testid="display-freq" /> Show Gate Frequencies</label>
                 <label><input type="checkbox" checked={!plotSettings.hideGateNames} onChange={(e) => setPlotSettings({ hideGateNames: e.target.checked ? undefined : true })} data-testid="display-names" /> Show Gate Names</label>
                 <label title="A + at the medians (more than 10 events); a dotted line on a histogram"><input type="checkbox" checked={!!plotSettings.medians} onChange={(e) => setPlotSettings({ medians: e.target.checked || undefined })} data-testid="display-medians" /> Show Medians</label>
+                <label title="Adds the raw twin of each compensated parameter to the axis lists (workspace-wide)"><input type="checkbox" checked={!!ws.showUncompensated} onChange={(e) => updateWs((w) => { if (e.target.checked) w.showUncompensated = true; else delete w.showUncompensated; })} data-testid="display-uncomp" /> Show Uncompensated Parameters</label>
                 <label title="Adds an Event # parameter to the axis lists (workspace-wide)"><input type="checkbox" checked={!!ws.showEventNumber} onChange={(e) => updateWs((w) => { if (e.target.checked) w.showEventNumber = true; else delete w.showEventNumber; })} data-testid="display-event-number" /> Show Event # Parameter</label>
                 <label title="Colour the pseudocolor plot by the mean of a third parameter (Ctrl/Cmd+] / [ step it)">Color axis <select disabled={kind !== 'pseudocolor'} value={plotSettings.colorBy ?? ''} onChange={(e) => setPlotSettings({ colorBy: e.target.value || undefined })} data-testid="display-color">
                   <option value="">off</option>

@@ -9,7 +9,7 @@ import {
 } from '../core/layoutArrange';
 import { populationPath, type LayoutItem, type SampleState, type Workspace } from '../core/model';
 import type { PlotResult, SampleMeta } from '../core/service';
-import { makeAxis, sampleChannels, withStains } from './axes';
+import { makeAxis, sampleChannels, withStains, withUncompTwins } from './axes';
 import { channelDisplayName } from '../core/fcs';
 import { EVENT_NUMBER } from '../core/formula';
 import { drawableGates } from './gateGeometry';
@@ -31,10 +31,22 @@ const ANNOT_H = 14; // the annotation line drawn above a graph (Show Annotation)
 const ANC_PX = Math.round(140 / GRAPH_SCALE), ANC_GAP = Math.round(8 / GRAPH_SCALE), ADJ_PX = 40;
 const ancestorCount = (path: string) => (path ? path.split('/').length : 0);
 // Footprint of a graph with its ancestry row and adjunct histograms (pixels of the composite).
-export function graphCanvasSize(it: { populationPath: string; ancestry?: boolean; adjunct?: boolean; kind: string }): { w: number; h: number } {
+// Show Multigraph (FigChartGrid, at most multiGraphLimit = 10 parameters): a grid
+// of small charts after the graph: one histogram per parameter, or N x N.
+const MG_PX = Math.round(PLOT.h * 0.42), MG_LIMIT = 10;
+export const multigraphCells = (it: { multigraph?: 'histograms' | 'nxn'; multiParams?: string[] }) => {
+  const n = Math.min(MG_LIMIT, it.multiParams?.length ?? 0);
+  if (!it.multigraph || !n) return { cols: 0, rows: 0 };
+  if (it.multigraph === 'nxn') return { cols: n, rows: n };
+  const cols = Math.ceil(Math.sqrt(n));
+  return { cols, rows: Math.ceil(n / cols) };
+};
+export function graphCanvasSize(it: { populationPath: string; ancestry?: boolean; adjunct?: boolean; kind: string; multigraph?: 'histograms' | 'nxn'; multiParams?: string[] }): { w: number; h: number } {
   const n = it.ancestry ? ancestorCount(it.populationPath) : 0;
   const adj = it.adjunct && it.kind !== 'histogram' ? ADJ_PX : 0;
-  return { w: Math.ceil(PLOT.w + adj + n * (ANC_GAP + ANC_PX * (PLOT.w / PLOT.h)) + ANC_GAP), h: PLOT.h + adj };
+  const mg = multigraphCells(it);
+  const mgW = mg.cols ? ANC_GAP + mg.cols * MG_PX * (PLOT.w / PLOT.h) : 0;
+  return { w: Math.ceil(PLOT.w + adj + n * (ANC_GAP + ANC_PX * (PLOT.w / PLOT.h)) + ANC_GAP + mgW), h: Math.max(PLOT.h + adj, mg.rows * MG_PX) };
 }
 export const graphBoxSize = (it: Parameters<typeof graphCanvasSize>[0]) => { const c = graphCanvasSize(it); return { w: Math.round(c.w * GRAPH_SCALE), h: Math.round(c.h * GRAPH_SCALE) }; };
 
@@ -93,7 +105,8 @@ export async function renderLayout(client: Client, ws: Workspace, meta: Record<s
     const pop = item.populationPath ? s.populations.find((p) => populationPath(s.populations, p.id) === item.populationPath) : null;
     if (item.populationPath && !pop) { out.push({ item, canvas: null, title: `${s.fileName} / ${label}`, error: 'population not present in this sample' }); continue; }
     const m = withStains(meta[s.id], s.stains);
-    const base0 = sampleChannels(m, s.compensation, ws.matrices, ws.derivedParameters);
+    let base0 = sampleChannels(m, s.compensation, ws.matrices, ws.derivedParameters);
+    if (ws.showUncompensated && s.compensation !== 'none') base0 = withUncompTwins(base0, (s.compensation === 'file' ? m.spillover : ws.matrices.find((x) => x.id === s.compensation))?.channels ?? []);
     const chans = ws.showEventNumber ? [...base0, { index: base0.length + 1, name: EVENT_NUMBER, label: '', bits: 32, range: Math.max(1, s.eventCount), logDecades: 0, logOffset: 0, gain: 1 }] : base0;
     const x = makeAxis(chans, m.keywords, ws.channelTransforms, item.x);
     const y = item.kind === 'histogram' ? null : makeAxis(chans, m.keywords, ws.channelTransforms, item.y ?? '');
@@ -112,7 +125,7 @@ export async function renderLayout(client: Client, ws: Workspace, meta: Record<s
     cv.width = PLOT.w;
     cv.height = PLOT.h;
     renderPlot(cv.getContext('2d')!, options);
-    if ((item.adjunct && y) || (item.ancestry && item.populationPath)) {
+    if ((item.adjunct && y) || (item.ancestry && item.populationPath) || multigraphCells(item).cols) {
       const size = graphCanvasSize(item);
       const comp = document.createElement('canvas');
       comp.width = size.w; comp.height = size.h;
@@ -155,6 +168,24 @@ export async function renderLayout(client: Client, ws: Workspace, meta: Record<s
           renderPlot(mini.getContext('2d')!, { kind: 'pseudocolor', x: ax, y: ay, data: ad, gates: drawableGates(s.populations, anc?.id ?? null, ax, ay).filter((g) => { const gp = populationPath(s.populations, g.pop.id); return item.populationPath === gp || item.populationPath.startsWith(`${gp}/`); }), counts: counts.get(s.id)!, overlays: ov, xTitle: title(ax.channel), yTitle: title(ay.channel), axes: 'lL' });
           ctx.drawImage(mini, ox, adj + (PLOT.h - ANC_PX) / 2, ANC_PX * (PLOT.w / PLOT.h), ANC_PX);
           ox += ANC_PX * (PLOT.w / PLOT.h) + ANC_GAP;
+        }
+      }
+      const mg = multigraphCells(item);
+      if (mg.cols) {
+        const params = (item.multiParams ?? []).slice(0, MG_LIMIT).map((ch) => makeAxis(chans, m.keywords, ws.channelTransforms, ch)).filter((a): a is NonNullable<typeof a> => !!a);
+        const cw = MG_PX * (PLOT.w / PLOT.h);
+        const x0 = size.w - mg.cols * cw;
+        const cell = async (r: number, c: number, ax: NonNullable<typeof x>, ay: NonNullable<typeof x> | null) => {
+          const d = await client.plot({ ...base, popId: pop?.id ?? null, x: { kind: 'channel', channel: ax.channel, transform: ax.spec }, y: ay ? { kind: 'channel', channel: ay.channel, transform: ay.spec } : null, bins: ay ? 120 : 128, xRange: ax.range, yRange: ay ? ay.range : null, maxPoints: 0 });
+          const mini = document.createElement('canvas');
+          mini.width = PLOT.w; mini.height = PLOT.h;
+          renderPlot(mini.getContext('2d')!, { kind: ay ? 'pseudocolor' : 'histogram', x: ax, y: ay, data: d, gates: [], counts: {}, xTitle: title(ax.channel), yTitle: ay ? title(ay.channel) : undefined, axes: 'lL' });
+          ctx.drawImage(mini, x0 + c * cw, r * MG_PX, cw, MG_PX);
+        };
+        if (item.multigraph === 'nxn') {
+          for (let r = 0; r < params.length; r++) for (let c = 0; c < params.length; c++) await cell(r, c, params[c], r === c ? null : params[r]);
+        } else {
+          for (let k = 0; k < params.length; k++) await cell(Math.floor(k / mg.cols), k % mg.cols, params[k], null);
         }
       }
       cv = comp;
@@ -268,6 +299,7 @@ export function LayoutView(p: {
   const [error, setError] = useState('');
   const [drag, setDrag] = useState<{ x0: number; y0: number; dx: number; dy: number; ids: string[] } | null>(null);
   const [gridRows, setGridRows] = useState(3), [gridCols, setGridCols] = useState(4);
+  const [gridBare, setGridBare] = useState(true);
   const pageRef = useRef<HTMLDivElement | null>(null);
 
   const bindFor = (v: string): Bind => (it) => {
@@ -400,7 +432,28 @@ export function LayoutView(p: {
     if (fmt === 'png') return p.onDownload(`${name}.png`, await toBlob(all.canvas));
     p.onDownload(`${name}.pdf`, new Blob([await canvasesToPdf(splitPages(all, page), paperSize.w, paperSize.h, MARGIN)], { type: 'application/pdf' }));
   };
+  // Grid layout (FigGridLayout; specs 25.2): cells row by row; by default the
+  // cells hold bare charts and only the grid border shows axes (bottom row X,
+  // left column Y); the cells form one group.
+  const makeGrid = () => {
+    const ordered = [...selBoxes].sort((a, b) => a.y - b.y || a.x - b.x);
+    const { placed, left } = gridPositions(ordered, { x: Math.min(...selBoxes.map((b) => b.x)), y: Math.min(...selBoxes.map((b) => b.y)) }, gridRows, gridCols);
+    const gid = `grid_${Date.now().toString(36)}`;
+    const lastRow = Math.floor((placed.length - 1) / gridCols);
+    p.onChange(items.map((it) => {
+      const k = placed.findIndex((b) => b.id === it.id);
+      if (k < 0) return it;
+      const moved = withBox(it, placed[k]);
+      if (!gridBare || it.text !== undefined) return moved;
+      const r = Math.floor(k / gridCols), c = k % gridCols;
+      const axes = `${r === lastRow ? 'tnl' : ''}${c === 0 ? 'TNL' : ''}`;
+      return { ...moved, axes, groupId: gid } as LayoutItem;
+    }));
+    if (left.length) setError(`${left.length} item(s) did not fit the ${gridRows} x ${gridCols} grid`);
+  };
   const selected = items.find((i) => i.id === sel[0]);
+  // Parameters offered to Multigraph: the first loaded sample's fluorescence channels.
+  const graphParams = (loaded[0] ? p.meta[loaded[0].id]?.channels.map((c) => c.name) ?? [] : []).filter((n) => !/^(FSC|SSC|Time)/i.test(n));
   const enabled = (n: number) => sel.length >= n;
 
   return (
@@ -451,7 +504,8 @@ export function LayoutView(p: {
             <button disabled={!enabled(1)} onClick={duplicate} data-testid="layout-duplicate" title="Duplicate at +8 pt (Ctrl/Cmd+D)">Duplicate</button>
             <button disabled={!enabled(1)} onClick={remove} data-testid="layout-remove">Delete</button>
             | <button disabled={!items.length} onClick={() => commit(avoidPageBreaks(boxes, page))} data-testid="layout-avoid-breaks">Avoid page breaks</button>
-            <button disabled={!enabled(1)} onClick={() => { const { placed, left } = gridPositions(selBoxes, { x: Math.min(...selBoxes.map((b) => b.x)), y: Math.min(...selBoxes.map((b) => b.y)) }, gridRows, gridCols); commit(placed); if (left.length) setError(`${left.length} item(s) did not fit the ${gridRows} x ${gridCols} grid`); }} data-testid="layout-grid">Grid layout</button>
+            <button disabled={!enabled(1)} onClick={makeGrid} data-testid="layout-grid">Grid layout</button>
+            <label title="Cells hold bare charts; X axes on the bottom border, Y axes on the left border (FigGridLayout: minimalChartInGrids, border axes)"><input type="checkbox" checked={gridBare} onChange={(e) => setGridBare(e.target.checked)} data-testid="layout-grid-bare" /> bare charts, border axes</label>
             <input type="number" min={1} style={{ width: 40 }} value={gridRows} onChange={(e) => setGridRows(Math.max(1, Number(e.target.value) || 1))} aria-label="grid rows" /> x <input type="number" min={1} style={{ width: 40 }} value={gridCols} onChange={(e) => setGridCols(Math.max(1, Number(e.target.value) || 1))} aria-label="grid columns" />
             <button data-testid="layout-add-text" onClick={addText}>Add text</button>
           </div>
@@ -468,6 +522,8 @@ export function LayoutView(p: {
                   <label><input type="checkbox" checked={!!selected.showAnnotation} onChange={(e) => setItem(selected.id, { showAnnotation: e.target.checked || undefined })} data-testid="layout-show-annotation" /> Show Annotation</label>
                   <label title="1-D distributions of X and Y along the edges of a 2-D plot"><input type="checkbox" disabled={selected.kind === 'histogram'} checked={!!selected.adjunct} onChange={(e) => { const next = { ...selected, adjunct: e.target.checked || undefined }; const sz = graphBoxSize(next); setItem(selected.id, { adjunct: next.adjunct, width: sz.w, height: sz.h }); }} data-testid="layout-adjunct" /> Show Adjunct Histograms</label>
                   <label title="One chart per ancestor level, 140 pt, to the right"><input type="checkbox" disabled={!selected.populationPath} checked={!!selected.ancestry} onChange={(e) => { const next = { ...selected, ancestry: e.target.checked || undefined }; const sz = graphBoxSize(next); setItem(selected.id, { ancestry: next.ancestry, backgating: next.ancestry ? selected.backgating : undefined, width: sz.w, height: sz.h }); }} data-testid="layout-ancestry" /> Show Ancestry</label>
+                  <label title="Other parameter combinations for the same population (at most 10 parameters)">Multigraph <select value={selected.multigraph ?? ''} onChange={(e) => { const v = (e.target.value || undefined) as 'histograms' | 'nxn' | undefined; const next = { ...selected, multigraph: v, multiParams: selected.multiParams ?? graphParams.slice(0, 4) }; const sz = graphBoxSize(next); setItem(selected.id, { multigraph: v, multiParams: next.multiParams, width: sz.w, height: sz.h }); }} data-testid="layout-multigraph"><option value="">off</option><option value="histograms">Histograms</option><option value="nxn">N x N</option></select></label>
+                  {selected.multigraph && <select multiple size={4} value={selected.multiParams ?? []} onChange={(e) => { const ps = Array.from(e.target.selectedOptions).map((o) => o.value).slice(0, 10); const sz = graphBoxSize({ ...selected, multiParams: ps }); setItem(selected.id, { multiParams: ps, width: sz.w, height: sz.h }); }} data-testid="layout-multigraph-params">{graphParams.map((n) => <option key={n} value={n}>{n}</option>)}</select>}
                   <label><input type="checkbox" disabled={!selected.ancestry} checked={!!selected.backgating} onChange={(e) => setItem(selected.id, { backgating: e.target.checked || undefined })} data-testid="layout-backgating" /> with Backgating</label>
                   {(['x', 'y'] as const).map((axis) => (['ticks', 'numbers', 'label'] as const).map((part) => {
                     const ch = { ticks: 't', numbers: 'n', label: 'l' }[part];

@@ -492,6 +492,30 @@ export class AnalysisService {
     });
   }
 
+  // Compensation Matrix Editor preview (MatrixNxNPanel): uncompensated values
+  // of the matrix detectors for an evenly spaced subsample (at most maxEvents)
+  // of the preview population; the editor compensates them with the matrix
+  // being edited. Channels the sample lacks are listed in missing.
+  compPreview(r: AnalyzeRequest & { popId: string | null; channels: string[]; maxEvents: number }): { count: number; raw: Record<string, Float32Array>; missing: string[] } {
+    const eng = this.engine(r);
+    const mask = r.popId ? eng.masks.get(r.popId) : eng.root;
+    if (!mask) throw new AppError('GATE_INVALID', 'Population not found');
+    const names = this.files.get(r.sampleId)!.channels.map((c) => c.name);
+    const missing = r.channels.filter((c) => !names.includes(c));
+    let count = 0;
+    for (let i = 0; i < mask.length; i++) if (mask[i]) count++;
+    const step = Math.max(1, Math.ceil(count / Math.max(1, r.maxEvents)));
+    const idx: number[] = [];
+    for (let i = 0, k = 0; i < mask.length; i++) if (mask[i] && k++ % step === 0) idx.push(i);
+    const raw: Record<string, Float32Array> = {};
+    for (const c of r.channels) {
+      if (missing.includes(c)) continue;
+      const col = eng.column(c, 'none');
+      raw[c] = Float32Array.from(idx, (i) => col[i]);
+    }
+    return { count, raw, missing };
+  }
+
   dimensionValues(r: AnalyzeRequest, d: Dimension): Float64Array {
     return this.engine(r).dimension(d);
   }

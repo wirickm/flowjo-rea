@@ -17,6 +17,12 @@ export interface SpilloverMatrix {
   // never infers the type from shape (specs section 6.3). When absent, the
   // shape decides (older workspaces, $SPILLOVER, Gating-ML, .wsp imports).
   kind?: 'spillover' | 'spectral';
+  // Spectral detector weights for weighted least squares unmixing, one per
+  // detector (SpectralWeightsDialog); absent = all 1 (ordinary least squares).
+  weights?: number[];
+  // Spillover spreading matrix saved with a wizard-made matrix (MatrixEntryPanel
+  // SSM view; docs/validation/ui-gaps/compensation.md).
+  ssm?: { channels: string[]; values: number[][] };
 }
 
 export function parseSpilloverKeyword(text: string): { channels: string[]; values: number[][] } {
@@ -119,17 +125,20 @@ function matmul(a: number[][], b: number[][]): number[][] {
   return a.map((r) => b[0].map((_, j) => r.reduce((s, v, k) => s + v * b[k][j], 0)));
 }
 
-// Ordinary least squares unmixing operator M = S^T (S S^T)^-1 (detectors x
-// fluorochromes): fluor = raw x M minimises ||raw - fluor x S||.
+// Least squares unmixing operator M = W S^T (S W S^T)^-1 (detectors x
+// fluorochromes), W = diag(detector weights), 1 when none are set (ordinary
+// least squares): fluor = raw x M minimises sum_d w_d (raw - fluor x S)_d^2.
 export function unmixingOperator(m: SpilloverMatrix): number[][] {
   const S = m.values;
+  const w = m.weights && m.weights.length === m.channels.length ? m.weights : null;
+  const WSt = w ? transpose(S).map((r, d) => r.map((v) => v * w[d])) : transpose(S);
   let inv: number[][];
   try {
-    inv = invert(matmul(S, transpose(S)));
+    inv = invert(matmul(S, WSt));
   } catch {
     fail('COMP_SINGULAR', 'Spectral matrix rows are linearly dependent; unmixing is undefined');
   }
-  return matmul(transpose(S), inv);
+  return matmul(WSt, inv);
 }
 
 function validateSpectral(m: SpilloverMatrix, available: string[]): string[] {

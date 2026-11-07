@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PopulationResult } from '../core/analysis';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../core/gatingml';
 import { emptyWorkspace, newId, populationPath, uniqueName, type Gate, type Group, type KeywordRule, type PlotSettings, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
-import { pasteAnnotations, copyAnalysisToGroup, deleteGroupAnalysis, propagateOwnedEdits, renameGroupAnalysis, criteriaLabel, deletionRoots, fingerprint, subtreeIds, mergeImported, relinkTarget, removeSample, derivedParameterUsers, deserializeWorkspace, groupByKey, copyPopulations, pastePopulations, removePopulation, sampleValue, serializeWorkspace, syncLiveGroups } from '../core/project';
+import { addKeywordToAll, duplicatePopulation, replaceKeywords, pasteAnnotations, copyAnalysisToGroup, deleteGroupAnalysis, propagateOwnedEdits, renameGroupAnalysis, criteriaLabel, deletionRoots, fingerprint, subtreeIds, mergeImported, relinkTarget, removeSample, derivedParameterUsers, deserializeWorkspace, groupByKey, copyPopulations, pastePopulations, removePopulation, sampleValue, serializeWorkspace, syncLiveGroups } from '../core/project';
 import type { PlotResult, SampleMeta } from '../core/service';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL, validPercentile } from '../core/stats';
 import { statScales } from '../core/flowjoStats';
@@ -13,7 +13,7 @@ import { writeWsp } from '../core/wspWriter';
 import { channelRange, defaultTransform, isScatterOrTime, makeAxis, sampleChannels, withStains } from './axes';
 import { channelDisplayName } from '../core/fcs';
 import { readMtx } from '../core/compFlowjo';
-import { CompensationDialog, DerivedDialog, GateNamerDialog, KeywordsDialog, TransformDialog } from './Dialogs';
+import { AddKeywordDialog, CompensationDialog, DerivedDialog, FindDialog, GateNamerDialog, KeywordsDialog, TransformDialog } from './Dialogs';
 import { GroupDialog } from './GroupDialog';
 import { ContextMenu, GateActions, ManualGateDialog, type MenuItem } from './GateActions';
 import { everyNth, FLOWJO_FUNCTIONS, removeFromGroup, stainSet } from '../core/groupCriteria';
@@ -37,7 +37,7 @@ import { PrefsDialog, TablesDialog } from './Editors';
 const client = createAnalysisClient();
 
 type Analysis = { results: PopulationResult[]; total: number; compError?: string };
-type Dialog = null | { kind: 'group'; id: string | null } | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export' } | { kind: 'layout' } | { kind: 'derived' } | { kind: 'platforms' } | { kind: 'manual' } | { kind: 'prefs' } | { kind: 'tables' };
+type Dialog = null | { kind: 'addKeyword' } | { kind: 'find' } | { kind: 'group'; id: string | null } | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export' } | { kind: 'layout' } | { kind: 'derived' } | { kind: 'platforms' } | { kind: 'manual' } | { kind: 'prefs' } | { kind: 'tables' };
 
 function download(name: string, data: BlobPart, type = 'application/octet-stream') {
   const url = URL.createObjectURL(new Blob([data], { type }));
@@ -109,6 +109,7 @@ export function App() {
   const [rule, setRule] = useState<{ keyword: string; op: KeywordRule['op']; value: string }>({ keyword: '', op: 'contains', value: '' });
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const navRef = useRef<(d: number) => void>(() => {});
+  const plotActions = useRef<{ scaleGate: (f: number) => boolean } | null>(null);
   const keyRef = useRef<(e: KeyboardEvent) => boolean>(() => false);
   const escRef = useRef<() => boolean>(() => false);
   const pasteTextRef = useRef<(text: string) => boolean>(() => false);
@@ -435,6 +436,7 @@ export function App() {
     [sMeta, channels, ws.channelTransforms],
   );
   const kind: PlotKind = plotSettings.kind;
+  const displayOpts = { grid: !!plotSettings.grid, largeDots: !!plotSettings.largeDots, medians: !!plotSettings.medians, gateNames: !plotSettings.hideGateNames, gateFreq: !plotSettings.hideGateFreq };
   const xAxis = useMemo(() => axisFor(plotSettings.x), [axisFor, plotSettings.x]);
   const yAxis = useMemo(() => (kind === 'histogram' ? null : axisFor(plotSettings.y ?? '')), [axisFor, plotSettings.y, kind]);
 
@@ -877,6 +879,9 @@ export function App() {
         null,
         conv('polygon', 'Convert to Polygon'), conv('rect', 'Convert to Rectangle'), conv('ellipse', 'Convert to Ellipse'),
         null,
+        { label: 'Increase Size', onClick: () => { if (!plotActions.current?.scaleGate(1.1)) note('warn', 'Only polygon, rectangle and ellipse gates change size'); } },
+        { label: 'Decrease Size', onClick: () => { if (!plotActions.current?.scaleGate(1 / 1.1)) note('warn', 'Only polygon, rectangle and ellipse gates change size'); } },
+        null,
       ] as MenuItem[] : []),
       { label: 'Add Statistic', onClick: () => addStatFor(pop ? populationPath(sample.populations, pop.id) : popPath) },
       { label: 'Copy Image', onClick: copyPlotImage },
@@ -895,6 +900,24 @@ export function App() {
     return false;
   };
 
+  // Expand / Collapse (specs 22.4): a node and its whole subtree; "all" covers every sample.
+  const setCollapsed = (ids: string[] | 'all', collapsed: boolean, sampleId = sample?.id) => updateWs((w) => {
+    for (const s of w.samples) {
+      if (ids !== 'all' && s.id !== sampleId) continue;
+      const scope = ids === 'all' ? new Set(s.populations.map((p) => p.id)) : subtreeIds(s.populations, ids);
+      for (const p of s.populations) if (scope.has(p.id)) { if (collapsed) p.collapsed = true; else delete p.collapsed; }
+    }
+  });
+  // Select Equivalent Nodes (specs 22.4): the same path in every sample of the
+  // current group; this app checks those samples (its cross-sample selection).
+  const selectEquivalent = () => {
+    if (!sample) return;
+    const ids = groupSamples.filter((s) => !popPath || s.populations.some((p) => populationPath(s.populations, p.id) === popPath)).map((s) => s.id);
+    setChecked(ids);
+    note('info', `"${popPath || 'All events'}" is in ${ids.length} sample(s) of group ${group?.name}; they are checked`);
+  };
+  const duplicateSel = (id: string) => sample && updateWs((w, say) => duplicatePopulation(w.samples.find((x) => x.id === sample.id)!, id).forEach((m) => say('warn', m)));
+
   // --- shortcuts (specs 19.1) ----------------------------------------------------
   // One page stands in for FlowJo's windows: with the plot focused the graph
   // window's accelerators apply, otherwise the workspace's (FJRibbonFrame and
@@ -911,7 +934,8 @@ export function App() {
     if (!sample) return false;
     if (inPlot) {
       const names = channels.map((c) => c.name);
-      const step = (cur: string | null, d: number) => names[(names.indexOf(cur ?? '') + d + names.length) % names.length];
+      // No wrap: at either end nothing changes (C2, specs 22.3).
+      const step = (cur: string | null, d: number) => names[Math.min(names.length - 1, Math.max(0, names.indexOf(cur ?? '') + d))];
       if (k === 'c' && !e.shiftKey) { copyPlotImage(); return true; }
       if (k === 'f' && !e.shiftKey && kind === 'histogram') { copyHistogram(); return true; } // Copy Histogram Function (gw.copy.histogram)
       if (k === 't' && kind !== 'histogram' && plotSettings.y) { setPlotSettings({ x: plotSettings.y, y: plotSettings.x }); return true; } // Transpose
@@ -933,6 +957,10 @@ export function App() {
     if (k === 'g' && e.shiftKey) { document.querySelector<HTMLButtonElement>('[data-testid=apply-group]')?.click(); return true; } // Copy analysis to group
     if (e.shiftKey && (k === 'a' || k === 'o') && multi.length >= 2) { makeBoolean(k === 'a' ? 'and' : 'or'); return true; }
     if (e.shiftKey && k === 'n' && notOperand) { makeBoolean('not'); return true; }
+    if (k === 'u') { setCollapsed('all', e.shiftKey); return true; } // Expand All / Collapse All
+    if (k === 'e' && e.shiftKey) { selectEquivalent(); return true; } // Select Equivalent Nodes
+    if (k === 'i' && e.shiftKey) { setDialog({ kind: 'addKeyword' }); return true; } // Add Keyword
+    if (k === 'f' && !e.shiftKey) { setDialog({ kind: 'find' }); return true; } // Find
     return false;
   };
 
@@ -962,6 +990,9 @@ export function App() {
               }}
               onDoubleClick={() => setRenaming(p.id)}
             >
+              {sample.populations.some((q) => q.parentId === p.id) ? (
+                <span className="twisty" data-testid={`twisty-${p.name}`} title={p.collapsed ? 'Expand' : 'Collapse'} onClick={(e) => { e.stopPropagation(); setCollapsed([p.id], !p.collapsed); }}>{p.collapsed ? '+' : '-'}</span>
+              ) : <span className="twisty" />}
               {renaming === p.id ? (
                 <input
                   autoFocus
@@ -976,7 +1007,7 @@ export function App() {
               <span className="pcount" data-testid={`count-${p.name}`}>{r2?.error ? 'error' : r ? r.count.toLocaleString() : '-'}</span>
               <span className="ppct">{pct && `${pct}%`}</span>
             </div>
-            {tree(p.id, depth + 1)}
+            {!p.collapsed && tree(p.id, depth + 1)}
           </div>
         );
       });
@@ -999,12 +1030,17 @@ export function App() {
       { label: 'Paste', disabled: !clip?.length, onClick: () => updateWs((w, say) => pastePopulations(w.samples.find((x) => x.id === s.id)!, clip!, [popId]).forEach((m) => say('warn', m))) },
       { label: 'Rename', onClick: () => setRenaming(popId) },
       { label: 'Delete', onClick: () => void deletePop(popId) },
+      { label: 'Duplicate', onClick: () => duplicateSel(popId) },
       null,
+      { label: 'Add Keyword...', onClick: () => setDialog({ kind: 'addKeyword' }) },
       { label: 'Add Statistic', onClick: () => addStatFor(path) },
       null,
       { label: 'Inspect...', onClick: () => setDialog({ kind: 'keywords' }) },
       null,
       { label: 'Copy analysis to group', disabled: pop?.owningGroup === groupId, onClick: () => { updateWs((w, say) => copyAnalysisToGroup(w, s.id, popId, groupId).forEach((m) => say('warn', m))); note('info', `Applied "${path}" and its children to group ${group?.name}`); } },
+      null,
+      { label: 'Select Equivalent Nodes', onClick: selectEquivalent },
+      { label: pop?.collapsed ? 'Expand' : 'Collapse', disabled: !s.populations.some((q) => q.parentId === popId), onClick: () => setCollapsed([popId], !pop?.collapsed, s.id) },
       null,
       { label: 'Export / Concatenate...', onClick: () => setDialog({ kind: 'export' }) },
     ] : [
@@ -1020,23 +1056,43 @@ export function App() {
 
   return (
     <div className="app" onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); }} onDrop={(e) => { if (e.dataTransfer.files.length) { e.preventDefault(); void dropFiles(e.dataTransfer.files); } }}>
+      {/* Toolbar grouped like FlowJo 10's workspace ribbon (WSRibbonStructure.loadDefaults,
+          WSRibbonFrame.addTaskbarComponents; specs 22.5): the quick row first, then bands. */}
       <header className="toolbar">
         <b className="brand">flowjo-rea</b>
-        <label className="file-btn">Add FCS files<input type="file" multiple accept=".fcs,.lmd,*" data-testid="add-fcs" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ''; }} /></label>
-        <label className="file-btn">Open workspace / FlowJo .wsp<input type="file" accept=".json,.wsp,.frea" data-testid="open-ws" onChange={(e) => { const f = e.target.files?.[0]; if (f) openWorkspace(f); e.target.value = ''; }} /></label>
-        <label className="file-btn">Import Gating-ML<input type="file" accept=".xml" data-testid="import-gml" onChange={(e) => { const f = e.target.files?.[0]; if (f) importGatingMl(f); e.target.value = ''; }} /></label>
-        <button data-testid="open-prefs" onClick={() => setDialog({ kind: 'prefs' })} title="Preferences (Ctrl/Cmd+Y)">Preferences</button>
-        <button data-testid="open-tables" onClick={() => setDialog({ kind: 'tables' })} title="Table editor (Ctrl/Cmd+T)">Tables ({ws.tables?.length ?? 0})</button>
-        <button data-testid="save-ws" onClick={() => { setSavedOnce(true); download(`${ws.name.replace(/\.(wsp|json)$/i, '') || 'workspace'}.frea.json`, serializeWorkspace(ws), 'application/json'); }}>Save workspace</button>
-        <button disabled={!hist.past.length} onClick={() => setHist(undo)} data-testid="undo" title="Undo (Ctrl+Z)">Undo</button>
-        <button disabled={!hist.future.length} onClick={() => setHist(redo)} data-testid="redo" title="Redo (Ctrl+Shift+Z)">Redo</button>
-        <span className="sep" />
-        <button disabled={!sample} onClick={() => setDialog({ kind: 'comp' })} data-testid="open-comp">Compensation</button>
-        <button disabled={!sMeta} onClick={() => setDialog({ kind: 'keywords' })} data-testid="open-keywords">Keywords</button>
-        <button disabled={!sMeta} onClick={() => setDialog({ kind: 'derived' })} data-testid="open-derived">Derived ({ws.derivedParameters?.length ?? 0})</button>
-        <button disabled={!sample} onClick={() => setDialog({ kind: 'export' })} data-testid="open-export">Export</button>
-        <button disabled={!sMeta} onClick={() => setDialog({ kind: 'platforms' })} data-testid="open-platforms">Platforms</button>
-        <button onClick={() => setDialog({ kind: 'layout' })} data-testid="open-layout">Layout ({ws.layout?.length ?? 0})</button>
+        <span className="band" aria-label="Quick access">
+          <button disabled={!hist.past.length} onClick={() => setHist(undo)} data-testid="undo" title="Undo (Ctrl/Cmd+Z)">Undo</button>
+          <button disabled={!hist.future.length} onClick={() => setHist(redo)} data-testid="redo" title="Redo (Ctrl/Cmd+Shift+Z)">Redo</button>
+          <label className="file-btn" title="Add Samples (or drop FCS files on the window)">Add FCS files<input type="file" multiple accept=".fcs,.lmd,*" data-testid="add-fcs" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ''; }} /></label>
+          <button onClick={() => setDialog({ kind: 'group', id: null })} data-testid="quick-create-group" title="Create Group... (Ctrl/Cmd+G outside the plot)">Create Group</button>
+          <button disabled={!sample} onClick={() => setDialog({ kind: 'comp' })} data-testid="open-comp">Compensation</button>
+          <button data-testid="open-tables" onClick={() => setDialog({ kind: 'tables' })} title="Table Editor (Ctrl/Cmd+T)">Tables ({ws.tables?.length ?? 0})</button>
+          <button onClick={() => setDialog({ kind: 'layout' })} data-testid="open-layout" title="Layout Editor (Ctrl/Cmd+L)">Layout ({ws.layout?.length ?? 0})</button>
+        </span>
+        <span className="band" aria-label="Document"><span className="band-label">Document</span>
+          <label className="file-btn">Open workspace / FlowJo .wsp<input type="file" accept=".json,.wsp,.frea" data-testid="open-ws" onChange={(e) => { const f = e.target.files?.[0]; if (f) openWorkspace(f); e.target.value = ''; }} /></label>
+          <button data-testid="save-ws" title="Save (Ctrl/Cmd+S)" onClick={() => { setSavedOnce(true); download(`${ws.name.replace(/\.(wsp|json)$/i, '') || 'workspace'}.frea.json`, serializeWorkspace(ws), 'application/json'); }}>Save workspace</button>
+          <label className="file-btn">Import Gating-ML<input type="file" accept=".xml" data-testid="import-gml" onChange={(e) => { const f = e.target.files?.[0]; if (f) importGatingMl(f); e.target.value = ''; }} /></label>
+          <button disabled={!sample} onClick={() => setDialog({ kind: 'export' })} data-testid="open-export" title="Export / Concatenate (Ctrl/Cmd+E)">Export</button>
+        </span>
+        <span className="band" aria-label="Find"><span className="band-label">Find</span>
+          <button disabled={!ws.samples.length} onClick={() => setDialog({ kind: 'find' })} data-testid="open-find" title="Find keyword values (Ctrl/Cmd+F outside the plot)">Find</button>
+        </span>
+        <span className="band" aria-label="Keywords"><span className="band-label">Keywords</span>
+          <button disabled={!sMeta} onClick={() => setDialog({ kind: 'keywords' })} data-testid="open-keywords" title="Inspect (Ctrl/Cmd+I)">Keywords</button>
+          <button disabled={!ws.samples.length} onClick={() => setDialog({ kind: 'addKeyword' })} data-testid="open-add-keyword" title="Add Keyword (Ctrl/Cmd+Shift+I)">Add Keyword</button>
+        </span>
+        <span className="band" aria-label="Expand"><span className="band-label">Expand</span>
+          <button disabled={!ws.samples.length} onClick={() => setCollapsed('all', false)} data-testid="expand-all" title="Expand All (Ctrl/Cmd+U)">Expand All</button>
+          <button disabled={!ws.samples.length} onClick={() => setCollapsed('all', true)} data-testid="collapse-all" title="Collapse All (Ctrl/Cmd+Shift+U)">Collapse All</button>
+        </span>
+        <span className="band" aria-label="Cytometry"><span className="band-label">Cytometry</span>
+          <button disabled={!sMeta} onClick={() => setDialog({ kind: 'derived' })} data-testid="open-derived">Derived ({ws.derivedParameters?.length ?? 0})</button>
+          <button disabled={!sMeta} onClick={() => setDialog({ kind: 'platforms' })} data-testid="open-platforms">Platforms</button>
+        </span>
+        <span className="band" aria-label="Settings"><span className="band-label">Settings</span>
+          <button data-testid="open-prefs" onClick={() => setDialog({ kind: 'prefs' })} title="Preferences (Ctrl/Cmd+Y)">Preferences</button>
+        </span>
         <span className="sep" />
         <span className="status" data-testid="busy">{busy > 0 ? 'Working...' : 'Ready'}</span>
       </header>
@@ -1321,6 +1377,14 @@ export function App() {
                   <label title="FlowJo 10: each curve scaled so its mode is 100; default is raw counts on one axis"><input type="checkbox" checked={!!plotSettings.normalize} onChange={(e) => setPlotSettings({ normalize: e.target.checked })} data-testid="hist-normalize" /> Normalized To Mode</label>
                 </div>
               )}
+              <details className="display-menu" data-testid="display-menu">
+                <summary>Display</summary>
+                <label title="Light grey lines at the labelled ticks"><input type="checkbox" checked={!!plotSettings.grid} onChange={(e) => setPlotSettings({ grid: e.target.checked || undefined })} data-testid="display-grid" /> Show Grid</label>
+                <label title="Dot plots only (own size)"><input type="checkbox" disabled={kind !== 'dot'} checked={!!plotSettings.largeDots} onChange={(e) => setPlotSettings({ largeDots: e.target.checked || undefined })} data-testid="display-large-dots" /> Draw Large Dots</label>
+                <label><input type="checkbox" checked={!plotSettings.hideGateFreq} onChange={(e) => setPlotSettings({ hideGateFreq: e.target.checked ? undefined : true })} data-testid="display-freq" /> Show Gate Frequencies</label>
+                <label><input type="checkbox" checked={!plotSettings.hideGateNames} onChange={(e) => setPlotSettings({ hideGateNames: e.target.checked ? undefined : true })} data-testid="display-names" /> Show Gate Names</label>
+                <label title="A + at the medians (more than 10 events); a dotted line on a histogram"><input type="checkbox" checked={!!plotSettings.medians} onChange={(e) => setPlotSettings({ medians: e.target.checked || undefined })} data-testid="display-medians" /> Show Medians</label>
+              </details>
               <div className="row tools">
                 {(kind === 'histogram' ? TOOLS_1D : TOOLS_2D).map((t) => {
                   const key = Object.keys(TOOL_KEYS).find((k) => TOOL_KEYS[k] === t);
@@ -1343,6 +1407,8 @@ export function App() {
                 onDelete={(id) => void deletePop(id)}
                 onNav={navSample}
                 onContext={plotMenu}
+                display={displayOpts}
+                actionsRef={plotActions}
                 onOpen={(id) => { setSel({ sampleId: sample.id, popId: id }); setMulti([]); setGateSel(null); }}
                 onUpdate={updateGates}
                 onSelect={setGateSel}
@@ -1603,6 +1669,16 @@ export function App() {
           }}
         />
       )}
+      {dialog?.kind === 'addKeyword' && <AddKeywordDialog onClose={() => setDialog(null)} onOk={(raw) => { updateWs((w, say) => { const n = addKeywordToAll(w.samples, raw); if (n) say('info', `Keyword "${n}" added to every sample`); }); setDialog(null); }} />}
+      {dialog?.kind === 'find' && (
+        <FindDialog
+          samples={ws.samples}
+          keywords={[...new Set(ws.samples.flatMap((s) => [...Object.keys(s.keywordsSnapshot), ...Object.keys(s.annotations ?? {})]))].sort()}
+          onShow={(id) => setSel({ sampleId: id, popId: null })}
+          onReplace={(hits, what, withText, opts) => updateWs((w, say) => { const n = replaceKeywords(w.samples, hits, what, withText, opts); say('info', `Replaced ${n} keyword value(s)`); })}
+          onClose={() => setDialog(null)}
+        />
+      )}
       {ctx && <ContextMenu x={ctx.x} y={ctx.y} items={ctx.items} onClose={() => setCtx(null)} />}
       {naming && sample && (
         <GateNamerDialog
@@ -1703,7 +1779,7 @@ export function App() {
           onSvg={() => {
             if (!xAxis || !plotData) return;
             const svg = new SvgContext(PLOT.w, PLOT.h);
-            renderPlot(asCanvas(svg), { kind, x: xAxis, y: yAxis, data: plotData, gates: drawableGates(sample.populations, sel.popId, xAxis, yAxis), counts, contourLevel: plotSettings.contourLevel, showOutliers: plotSettings.showOutliers, overlays: overlayData, normalize: plotSettings.normalize, xTitle: axisTitle(xAxis.channel), yTitle: yAxis ? axisTitle(yAxis.channel) : undefined });
+            renderPlot(asCanvas(svg), { kind, x: xAxis, y: yAxis, data: plotData, gates: drawableGates(sample.populations, sel.popId, xAxis, yAxis), counts, contourLevel: plotSettings.contourLevel, showOutliers: plotSettings.showOutliers, overlays: overlayData, normalize: plotSettings.normalize, xTitle: axisTitle(xAxis.channel), yTitle: yAxis ? axisTitle(yAxis.channel) : undefined, ...displayOpts });
             download(`${sample.fileName}_${(popPath || 'all').replace(/[^\w.-]+/g, '_')}.svg`, svg.toString(), 'image/svg+xml');
           }}
           onPng={() => canvasRef.current?.toBlob((b) => b && download(`${sample.fileName}_${(popPath || 'all').replace(/[^\w.-]+/g, '_')}.png`, b, 'image/png'))}

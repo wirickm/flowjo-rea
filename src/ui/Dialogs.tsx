@@ -4,7 +4,8 @@ import { describeTransform, makeTransform, type TransformSpec } from '../core/tr
 import type { SampleMeta } from '../core/service';
 import type { WizardResult } from '../core/compWizard';
 import { withAutofluorescence } from '../core/autofluorescence';
-import { derivedFormula, type DerivedParameter } from '../core/model';
+import { derivedFormula, type DerivedParameter, type SampleState } from '../core/model';
+import { findKeywords, type FindHit } from '../core/project';
 import { compileFormula, defaultDerivedName, derivedNameError, EVENT_NUMBER, FORMULA_FUNCTIONS } from '../core/formula';
 import { specForKind } from './axes';
 import { readMtx, ssmCsv, writeMatrixCsv, writeMtx, type FlowjoWizardResult } from '../core/compFlowjo';
@@ -555,6 +556,52 @@ export function GateNamerDialog(p: { initial: string; siblings: string[]; favori
         <button onClick={ok} disabled={!name.trim()} data-testid="gate-namer-ok">OK</button>
         <button onClick={p.onCancel} data-testid="gate-namer-cancel">Cancel</button>
       </div>
+    </Modal>
+  );
+}
+
+// Add Keyword (specs 22.4, WSKeywordMgr.addKeyword): a name only, pre-filled "SampleID".
+export function AddKeywordDialog(p: { onOk: (name: string) => void; onClose: () => void }) {
+  const [name, setName] = useState('SampleID');
+  return (
+    <Modal title="Add Keyword" onClose={p.onClose}>
+      <label>Keyword name <input autoFocus value={name} data-testid="add-keyword-name" onFocus={(e) => e.target.select()} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && name.trim() && p.onOk(name)} /></label>
+      <p className="muted">Added to every sample with an empty value; fill values in the Annotations panel or paste them from a spreadsheet.</p>
+      <div className="row"><button disabled={!name.trim()} onClick={() => p.onOk(name)} data-testid="add-keyword-ok">OK</button><button onClick={p.onClose}>Cancel</button></div>
+    </Modal>
+  );
+}
+
+// Find / Replace (specs 22.4, ws.find.*): keyword values; Sample | Keyword | Value.
+export function FindDialog(p: { samples: SampleState[]; keywords: string[]; onReplace: (hits: FindHit[], what: string, withText: string, opts: { matchCase: boolean; partial: boolean }) => void; onShow: (sampleId: string) => void; onClose: () => void }) {
+  const [what, setWhat] = useState('');
+  const [withText, setWithText] = useState('');
+  const [keyword, setKeyword] = useState('');
+  const [matchCase, setMatchCase] = useState(false);
+  const [wholeWord, setWholeWord] = useState(false);
+  const [partial, setPartial] = useState(true);
+  const [at, setAt] = useState(-1);
+  const hits = findKeywords(p.samples, what, { keyword: keyword || undefined, matchCase, wholeWord });
+  const next = () => { if (!hits.length) return; const i = (at + 1) % hits.length; setAt(i); p.onShow(hits[i].sampleId); }; // Find Next wraps
+  return (
+    <Modal title="Find" onClose={p.onClose} wide>
+      <div className="row">
+        <label>Find what <input autoFocus value={what} onChange={(e) => { setWhat(e.target.value); setAt(-1); }} onKeyDown={(e) => e.key === 'Enter' && next()} data-testid="find-what" /></label>
+        <label>Replace with <input value={withText} onChange={(e) => setWithText(e.target.value)} data-testid="find-replace" /></label>
+        <label>Context <select value={keyword} onChange={(e) => setKeyword(e.target.value)} data-testid="find-context"><option value="">All Keywords</option>{p.keywords.map((k) => <option key={k} value={k}>{k}</option>)}</select></label>
+      </div>
+      <div className="row">
+        <label><input type="checkbox" checked={matchCase} onChange={(e) => setMatchCase(e.target.checked)} data-testid="find-case" /> Match case</label>
+        <label><input type="checkbox" checked={wholeWord} onChange={(e) => setWholeWord(e.target.checked)} data-testid="find-whole" /> Match whole word</label>
+        <label><input type="checkbox" checked={partial} onChange={(e) => setPartial(e.target.checked)} /> Replace partial</label>
+        <button disabled={!hits.length} onClick={next} data-testid="find-next">Find Next</button>
+        <button disabled={!hits.some((h) => h.editable)} title="File keywords are read-only; annotation keywords are replaced" onClick={() => p.onReplace(hits, what, withText, { matchCase, partial })} data-testid="find-replace-all">Replace All</button>
+        <span className="muted" data-testid="find-count">{what ? `${hits.length} match${hits.length === 1 ? '' : 'es'}` : ''}</span>
+      </div>
+      <table className="grid" data-testid="find-results">
+        <thead><tr><th>Sample</th><th>Keyword</th><th>Value</th></tr></thead>
+        <tbody>{hits.slice(0, 500).map((h, i) => <tr key={`${h.sampleId}-${h.keyword}-${h.editable}`} className={i === at ? 'sel' : ''} onClick={() => { setAt(i); p.onShow(h.sampleId); }}><td>{h.fileName}</td><td>{h.keyword}{h.editable ? '' : ' (file)'}</td><td>{h.value}</td></tr>)}</tbody>
+      </table>
     </Modal>
   );
 }

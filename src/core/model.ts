@@ -89,6 +89,8 @@ export interface Population {
   // FlowJo magnetic gate (specs 10.4): on each sample the gate moves toward
   // the densest events of the parent before gating.
   magnetic?: boolean;
+  // Tree expansion (FlowJo expanded="0|1"; specs 22.4); undefined = expanded.
+  collapsed?: boolean;
 }
 
 export interface SampleState {
@@ -195,6 +197,12 @@ export interface PlotSettings {
   showOutliers?: boolean;
   normalize?: boolean; // histogram "Normalized To Mode" (default raw counts)
   overlays?: string[]; // population paths drawn on top (backgating)
+  // Graph window Display menu, saved per population (specs 22.1).
+  grid?: boolean;
+  largeDots?: boolean;
+  medians?: boolean;
+  hideGateFreq?: boolean;
+  hideGateNames?: boolean;
 }
 
 // A layout cell: a plot rendered for whichever sample is chosen, or a text block.

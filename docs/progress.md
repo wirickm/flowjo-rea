@@ -1,5 +1,17 @@
 # Progress and handoff
 
+## State (2026-11-07, display menu, tree commands, ribbon, layout guides)
+
+Specs 21 additions: layout guides (30 pt snap), per-graph gate frequency /
+name toggles and the axes string. Specs 22: graph Display menu (grid, large
+dots, two-line gate labels with FlowJo's 3-significant-figure frequency,
+medians), gate size x1.1, no-wrap axis stepping, tree expand / collapse (saved,
+imported from .wsp), Select Equivalent Nodes, Find / Replace, Duplicate, Add
+Keyword, toolbar grouped into the ribbon bands, Escape closes dialogs (own).
+`npm test` 409 pass; e2e display 14/14, layout 18/18, all others pass. Not
+done: colour axis, Duplicate View, uncompensated / Event # parameters, grid
+figures, ancestry / adjunct / multigraph, .wsp layouts.
+
 ## State (2026-11-07, remaining interaction gaps and layout logic)
 
 Specs 20: text paste into sample keyword columns, drag and drop (files,

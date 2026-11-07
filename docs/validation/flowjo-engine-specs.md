@@ -1430,6 +1430,78 @@ control layers (I2) are not modelled.
 - Not implemented: frequencies / names toggles, ancestry, backgating rows,
   adjunct histograms, multigraph, the axes string (N3-N8).
 
+## 22. Graph display, gate size, tree commands, ribbon (FlowJo 10.6.2)
+
+Rules with citations: `docs/validation/flowjo-display-tree-model.md` (javap on
+the FlowJo 10.6.2 jar and fjlib; FlowJo was not run). Implemented in
+`src/ui/renderPlot.ts` (`formatFreq`, display options), `src/ui/Plot.tsx`
+(`scaleGate`), `src/core/project.ts` (`addKeywordToAll`, `findKeywords`,
+`replaceKeywords`, `duplicatePopulation`), `src/ui/Dialogs.tsx` and
+`src/ui/App.tsx`. Tests: `tests/display.test.ts`, `tests/tree-commands.test.ts`;
+E2E `e2e/display.mjs` (14 checks).
+
+### 22.1 Display menu (matches the drawn items)
+
+| Rule | Behavior | Proven by |
+|---|---|---|
+| D1 | Display toggles belong to the population's graph and are saved with it | `GWActionManager.getDisplayActions`, `GWGraphSpecAction.doAction` |
+| D2 | Show Grid (off): light grey lines at the labelled ticks, over the data, under the gates | `GraphEditor.paintBackground` -> `paintGrid` |
+| D4/D5 | Show Gate Names / Frequencies (on): name on the first line, frequency on the second; quadrant names up to the colon | `Gate.getAnnotation(PopNode, boolean, boolean)` |
+| D6 | Frequency: 3 significant figures, trailing zeros kept, no %; between 0 and 0.01 scientific ("4.00E-3") | `Gate.getFrequencyFormatted`, `FJNumberFormatter.formattedPercentDouble` |
+| D7 | Label position "inside": centred on the gate's bounding box | `AnnotatedFig.getAnnoAnchor`, `AnnotatedFig.drawMultiLineAnnotation` |
+| D8 | Show Medians (off): a 20 px "+" at the medians when the population has more than 10 events; on a histogram a dotted vertical line | `GWGraphSpecAction` (SHOWMEDIANS), `AnnotatedFig.drawAnnotation` |
+
+Own rules: frequencies are capped at 2 decimals to match FlowJo's examples
+(45.678 -> 45.7, 0.5 -> 0.50); medians are taken from the display bins; large
+dots are 3 px (FlowJo's native size was not read) and offered on dot plots;
+Show Uncompensated Parameters and Show Event # Parameter are not offered (the
+app has no raw twins of compensated parameters and no event-number axis).
+
+### 22.2 Gate size (matches)
+
+- Increase / Decrease Size (Ctrl/Cmd+= / Ctrl/Cmd+-, and the gate menu) scale
+  the selected polygon, rectangle or ellipse by 1.1 / (1 / 1.1) about its own
+  centre; quadrants and ranges are not scaled (`GateWinScaleFigAction`, factors
+  1.1 and 1/1.1, built in `GWActionManager.<init>`). Window Reset Size items do
+  not apply (one plot panel).
+
+### 22.3 Axis stepping (matches)
+
+- Next / Previous X and Y stop at either end of the parameter list (no wrap;
+  `GWNavAction.doAction`).
+  Not implemented: the colour axis (Ctrl/Cmd+] / [) and Duplicate View (a
+  second graph window).
+
+### 22.4 Workspace tree (matches; selection model own)
+
+| Rule | Behavior | Proven by |
+|---|---|---|
+| T1 | Expand All / Collapse All (Ctrl/Cmd+U, Ctrl/Cmd+Shift+U): every node and its subtree; a node's toggle covers its subtree | `WSTreeTableAction.doAction` (TREEEXPANDALL / TREECOLLAPSEALL), `STreeTable.collapseLevel` |
+| T2 | Expansion is saved per node (`expanded="0|1"`, imported from .wsp) | `STree.setExpanded`, `AppNode.setExpanded` (reads / writes `expanded`) |
+| T3 | Select Equivalent Nodes (Ctrl/Cmd+Shift+E): the same path in every sample of the current group | `NodeSelectionAction.doAction` (SELECTEQUIVALENTNODES) |
+| T4 | Find (Ctrl/Cmd+F): keyword values only; literal substring, case-insensitive by default; Match case, Match whole word, a keyword context; Find Next wraps; Sample / Keyword / Value results | `FindReplaceDialog` (`getFilterRegex`) |
+| T5 | Duplicate: a deep copy as a sibling, name made unique ("CD4" -> "CD4-1") | `WSDuplicateAction.doAction`, `PopNode.duplicate` |
+| T6 | Add Keyword (Ctrl/Cmd+Shift+I): a name only, pre-filled "SampleID", trimmed; "Off", "Sample", "Panel" get "_"; added to every sample with an empty value | `WSGroupAction` (GROUPADDKEY), `WSKeywordMgr.addKeyword` |
+
+Own rules: Select Equivalent checks the samples (the app's cross-sample
+selection); Replace changes annotation keywords only (file keywords stay as
+read); expanding or collapsing is an undo step.
+
+### 22.5 Ribbon (grouping matches; one row own)
+
+- The toolbar follows the workspace ribbon: the quick row (Undo, Redo, Add
+  Samples, Create Group, Compensation, Table Editor, Layout Editor), then the
+  Document, Find, Keywords, Expand, Cytometry and Settings bands
+  (`WSRibbonStructure.loadDefaults`, `WSRibbonFrame.addTaskbarComponents`).
+  Own rule: one toolbar row instead of tabs.
+
+### 22.6 Escape (differs, own rule)
+
+- FlowJo closes only message dialogs that offer Cancel, the gate namer, Add
+  Statistic and New Keyword on Escape (`QDialog.showDialog`; `FJDialog` has no
+  binding). This app closes the topmost menu or dialog on Escape (comparison
+  C17).
+
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 
 Source: static analysis of `libNativeEngine.dylib` from the public FlowJo

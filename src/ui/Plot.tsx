@@ -68,6 +68,10 @@ interface Props {
   onNav?: (delta: number) => void;
   // Right-click: the gate under the pointer (or null) and the screen point (GatePanel.maybeDoPopup).
   onContext?: (popId: string | null, x: number, y: number) => void;
+  // Display menu (specs 22.1)
+  // Commands other UI (menus) can call on this plot.
+  actionsRef?: React.MutableRefObject<{ scaleGate: (f: number) => boolean } | null>;
+  display?: { grid?: boolean; largeDots?: boolean; medians?: boolean; gateNames?: boolean; gateFreq?: boolean };
   // 256 x 256 counts of the parent (index x * 256 + y) for the auto gate.
   autoCounts?: { counts: Float64Array; n: number } | null;
   // Magnetic gates as moved on this sample, anchored ranges as resolved.
@@ -106,7 +110,7 @@ export function Plot(p: Props) {
     if (!cv) return;
     if (p.canvasRef) p.canvasRef.current = cv;
     const ctx = cv.getContext('2d')!;
-    cv.dataset.contourSegments = String(renderPlot(ctx, { kind: p.kind, x: p.x, y: p.y, data: p.data, gates: shown, counts: p.counts, selectedId: p.selectedId, contourLevel: p.contourLevel, showOutliers: p.showOutliers, overlays: p.overlays, normalize: p.normalize, xTitle: p.xTitle, yTitle: p.yTitle }));
+    cv.dataset.contourSegments = String(renderPlot(ctx, { kind: p.kind, x: p.x, y: p.y, data: p.data, gates: shown, counts: p.counts, selectedId: p.selectedId, contourLevel: p.contourLevel, showOutliers: p.showOutliers, overlays: p.overlays, normalize: p.normalize, xTitle: p.xTitle, yTitle: p.yTitle, ...p.display }));
     cv.dataset.overlayPoints = String((p.overlays ?? []).reduce((n, o) => n + (p.y ? o.data.points.length / 2 : o.data.count), 0));
     cv.dataset.autoContours = String(contours.length);
     ctx.save();
@@ -457,6 +461,29 @@ export function Plot(p: Props) {
     return true;
   };
 
+  // Increase / Decrease Size (specs 22.2): the selected polygon, rectangle or
+  // ellipse grows or shrinks by the factor about its own centre.
+  const scaleGate = (f: number) => {
+    const sel = gates.filter((g) => g.pop.id === p.selectedId && (g.kind === 'polygon' || g.kind === 'rect' || (g.kind === 'ellipse' && g.editable)));
+    if (!sel.length || !p.y) return false;
+    const out = sel.map((g): Drawable => {
+      if (g.kind === 'polygon') {
+        const xs = g.pts.map((q) => q[0]), ys = g.pts.map((q) => q[1]);
+        const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+        return { ...g, pts: g.pts.map(([a, b]) => [cx + (a - cx) * f, cy + (b - cy) * f] as Pt) };
+      }
+      if (g.kind === 'rect') {
+        const cx = (g.x0 + g.x1) / 2, cy = (g.y0 + g.y1) / 2;
+        return { ...g, x0: cx + (g.x0 - cx) * f, x1: cx + (g.x1 - cx) * f, y0: cy + (g.y0 - cy) * f, y1: cy + (g.y1 - cy) * f };
+      }
+      if (g.kind === 'ellipse') return ellipseDrawable(g.pop, { ...g.axes, a: g.axes.a * f, b: g.axes.b * f }, p.x, p.y!);
+      return g;
+    });
+    commitPreview(out, sel);
+    return true;
+  };
+  if (p.actionsRef) p.actionsRef.current = { scaleGate };
+
   const onUp = (e: React.MouseEvent) => {
     const pt = pos(e);
     if (pencil) {
@@ -511,6 +538,8 @@ export function Plot(p: Props) {
           if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); setDraft(draft.slice(0, -1)); return; }
           if (e.key === ' ') { e.preventDefault(); e.stopPropagation(); if (draft.length >= 3) { finishShape(draft); setDraft([]); } return; }
         }
+        // Menu+= / Menu+- : Increase / Decrease Size of the selected gate (gw.graph size keys).
+        if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+' || e.key === '-')) { if (scaleGate(e.key === '-' ? 1 / 1.1 : 1.1)) { e.preventDefault(); e.stopPropagation(); } return; }
         if (e.key.startsWith('Arrow')) { if (nudge(e)) { e.preventDefault(); e.stopPropagation(); } return; }
         if ((e.key === 'Backspace' || e.key === 'Delete') && p.selectedId && p.onDelete && !(e.ctrlKey || e.metaKey)) { e.preventDefault(); e.stopPropagation(); p.onDelete(p.selectedId); return; }
         if (e.key === ' ' && p.onNav && !(e.ctrlKey && e.shiftKey)) { e.preventDefault(); e.stopPropagation(); p.onNav(e.shiftKey || e.ctrlKey || e.altKey ? -1 : 1); return; }

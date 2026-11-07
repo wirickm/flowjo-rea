@@ -53,6 +53,9 @@ const fmtStat = formatStat;
 export function App() {
   // Workspace with undo/redo history; every edit goes through setWs.
   const [hist, setHist] = useState<History<Workspace>>(() => initHistory(emptyWorkspace()));
+  // "Disable Undo" is read when a workspace is created or opened (Workspace.undoEnabled;
+  // specs 19.3): a later change applies to the next workspace, and history is never wiped.
+  const undoOffRef = useRef<boolean>(loadPrefs().noUndo);
   const ws = hist.present;
   // FlowJo preferences (specs 16), kept in this browser.
   const [prefs, setPrefsState] = useState<Prefs>(() => loadPrefs());
@@ -66,7 +69,7 @@ export function App() {
       const copy = structuredClone(w);
       if (syncLiveGroups(copy)) w = copy;
       // Preference "Disable Undo": edits replace the present state.
-      return prefsRef.current.noUndo ? { ...h, present: w, past: [], future: [] } : pushHistory(h, w);
+      return undoOffRef.current ? { ...h, present: w } : pushHistory(h, w);
     });
   const [meta, setMeta] = useState<Record<string, SampleMeta>>({});
   const [analysis, setAnalysis] = useState<Record<string, Analysis>>({});
@@ -104,6 +107,7 @@ export function App() {
   const [rule, setRule] = useState<{ keyword: string; op: KeywordRule['op']; value: string }>({ keyword: '', op: 'contains', value: '' });
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const navRef = useRef<(d: number) => void>(() => {});
+  const keyRef = useRef<(e: KeyboardEvent) => boolean>(() => false);
   // Anchored gating: the statistic column armed for the next histogram click.
   const [anchorCol, setAnchorCol] = useState<string | null>(null);
   // Workspace gate clipboard (FlowJo WSClipboard).
@@ -138,6 +142,7 @@ export function App() {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (keyRef.current(e)) { e.preventDefault(); return; }
       // Graph window Next / Previous Sample (specs 18.5): plain PageDown next,
       // PageUp previous (EditorController.doPageUpDown); with Ctrl/Cmd the menu
       // accelerators are reversed: PageUp next, PageDown previous (gw.nav).
@@ -214,16 +219,24 @@ export function App() {
     gatingPath.unshift(q);
     id = q.parentId;
   }
-  // Next / Previous Sample: the same population in the neighbouring sample of
-  // the current group (its All events when it lacks the population); no wrap.
-  const navSample = (d: number) => {
-    if (!sample) return;
+  // Next / Previous Sample: the nearest sample of the current group, in that
+  // direction, that has the same population (GWActionManager.adjust enables the
+  // commands only when one exists; specs 19.2); no wrap.
+  const neighbour = (d: number): { s: typeof ws.samples[number]; popId: string | null } | null => {
+    if (!sample) return null;
     const list = groupSamples.length ? groupSamples : ws.samples;
-    const i = list.indexOf(sample);
-    const next = i < 0 ? undefined : list[i + d];
-    if (!next) return;
-    const same = popPath ? next.populations.find((p) => populationPath(next.populations, p.id) === popPath) : undefined;
-    setSel({ sampleId: next.id, popId: same?.id ?? null });
+    for (let i = list.indexOf(sample) + d; i >= 0 && i < list.length && list.indexOf(sample) >= 0; i += d) {
+      const t = list[i];
+      if (!popPath) return { s: t, popId: null };
+      const same = t.populations.find((p) => populationPath(t.populations, p.id) === popPath);
+      if (same) return { s: t, popId: same.id };
+    }
+    return null;
+  };
+  const navSample = (d: number) => {
+    const hit = neighbour(d);
+    if (!hit) return;
+    setSel({ sampleId: hit.s.id, popId: hit.popId });
     setMulti([]);
   };
   navRef.current = navSample;
@@ -299,6 +312,7 @@ export function App() {
       setMeta({});
       setAnalysis({});
       setStats({});
+      undoOffRef.current = prefsRef.current.noUndo;
       setHist(initHistory(next)); // opening a workspace resets history
       setGroupId('all');
       setSel({ sampleId: next.samples[0]?.id ?? null, popId: null });
@@ -688,6 +702,105 @@ export function App() {
     return out;
   })();
 
+  // --- clipboard (specs 19.4) ------------------------------------------------------
+  // Copy takes the whole selection (WSClipboard.copy): the Ctrl-clicked
+  // populations, else the selected one; sibling quadrants come along.
+  const selIds = () => (multi.length ? multi : sel.popId ? [sel.popId] : []);
+  const copySel = () => {
+    if (!sample || !selIds().length) return;
+    setClip(copyPopulations(sample.populations, selIds()));
+    note('info', `Copied ${selIds().map((id) => `"${populationPath(sample.populations, id)}"`).join(', ')}`);
+  };
+  // Cut = Copy, then delete with the usual confirmation (WSClipboard.cut).
+  // Own rule: one population at a time.
+  const cutSel = () => {
+    if (!sample || !sel.popId) return;
+    if (multi.length > 1) return note('warn', 'Cut works on one population at a time; use Copy, then Delete');
+    copySel();
+    void deletePop(sel.popId);
+  };
+  // Paste under the same population paths in each target sample
+  // (WSClipboard.internalPaste pastes under every selected node).
+  const pasteTo = (sampleIds: string[]) => {
+    if (!sample || !clip?.length) return;
+    const paths = (multi.length ? multi : [sel.popId]).map((id) => (id ? populationPath(sample.populations, id) : ''));
+    updateWs((w, say) => {
+      for (const id of sampleIds) {
+        const sw = w.samples.find((x) => x.id === id);
+        if (!sw) continue;
+        const targets: (string | null)[] = [];
+        for (const path of paths) {
+          if (!path) { targets.push(null); continue; }
+          const t = sw.populations.find((p) => populationPath(sw.populations, p.id) === path);
+          if (t) targets.push(t.id); else say('warn', `${sw.fileName}: no "${path}"; not pasted there`);
+        }
+        pastePopulations(sw, clip, targets).forEach((m) => say('warn', m));
+      }
+    });
+    if (sampleIds.length > 1) note('info', `Pasted into ${sampleIds.length} samples`);
+  };
+  // Copy Image (GateWinController.doCopy): the plot as an image on the system clipboard.
+  const copyPlotImage = () => {
+    const cv = canvasRef.current;
+    if (!cv) return;
+    cv.toBlob((blob) => {
+      const fail = () => note('error', 'There was an error adding the image to the system clipboard.');
+      if (!blob || typeof ClipboardItem === 'undefined' || !navigator.clipboard?.write) return fail();
+      navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(() => note('info', 'Plot image copied'), fail);
+    }, 'image/png');
+  };
+  // Copy Table to Clipboard: HTML and plain text (tab separated).
+  const copyTable = async () => {
+    const head = ['Sample', ...annotationKeys, ...ws.statColumns.map(colLabel)];
+    const rows = groupSamples.map((s) => [s.fileName, ...annotationKeys.map((k) => s.annotations?.[k] ?? ''), ...ws.statColumns.map((_, i) => (meta[s.id] ? String(fmtStat(stats[s.id]?.[i] ?? '-')) : 'no data'))]);
+    const esc = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const html = `<table><tr>${head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr>${rows.map((r) => `<tr>${r.map((v) => `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</table>`;
+    const text = [head, ...rows].map((r) => r.join('\t')).join('\n');
+    try {
+      if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([text], { type: 'text/plain' }) })]);
+      else await navigator.clipboard.writeText(text);
+      note('info', 'Table copied');
+    } catch { note('error', 'Could not copy the table to the clipboard'); }
+  };
+
+  // --- shortcuts (specs 19.1) ----------------------------------------------------
+  // One page stands in for FlowJo's windows: with the plot focused the graph
+  // window's accelerators apply, otherwise the workspace's (FJRibbonFrame and
+  // GraphWinMenuBar keep separate maps; FJAction.lookupAccelerator adds the menu key).
+  keyRef.current = (e: KeyboardEvent): boolean => {
+    const inPlot = (document.activeElement as HTMLElement | null)?.dataset?.testid === 'plot-canvas';
+    const menu = e.ctrlKey || e.metaKey;
+    const k = e.key.toLowerCase();
+    if (!menu) {
+      // Workspace tree: Delete / Backspace deletes the selection (KTreeTable.keyPressed).
+      if (!inPlot && !e.altKey && (e.key === 'Delete' || e.key === 'Backspace') && sample && sel.popId) { void deletePop(sel.popId); return true; }
+      return false;
+    }
+    if (!sample) return false;
+    if (inPlot) {
+      const names = channels.map((c) => c.name);
+      const step = (cur: string | null, d: number) => names[(names.indexOf(cur ?? '') + d + names.length) % names.length];
+      if (k === 'c' && !e.shiftKey) { copyPlotImage(); return true; }
+      if (k === 't' && kind !== 'histogram' && plotSettings.y) { setPlotSettings({ x: plotSettings.y, y: plotSettings.x }); return true; } // Transpose
+      if (k === 'k' && !e.shiftKey) { setPlotSettings({ x: step(plotSettings.x, 1) }); return true; } // Next X
+      if (k === 'j' && !e.shiftKey) { setPlotSettings({ x: step(plotSettings.x, -1) }); return true; } // Previous X
+      if (k === 'y' && kind !== 'histogram') { setPlotSettings({ y: step(plotSettings.y, e.shiftKey ? -1 : 1) }); return true; } // Next Y; previous Y own key (FlowJo's is F10)
+      if (k === 'u' && !e.shiftKey) { if (sel.popId) setSel({ sampleId: sample.id, popId: sample.populations.find((p) => p.id === sel.popId)?.parentId ?? null }); return true; } // Up to Parent
+      if (k === 'o' && !e.shiftKey) { if (gateSel) setSel({ sampleId: sample.id, popId: gateSel }); return true; } // Open Child
+      return false; // Ctrl+G manual gate etc. fall through
+    }
+    if (k === 'c' && !e.shiftKey) { copySel(); return true; }
+    if (k === 'x' && !e.shiftKey) { cutSel(); return true; }
+    if (k === 'v' && !e.shiftKey) { if (clip?.length) pasteTo(checked.length ? [...new Set([sample.id, ...checked])] : [sample.id]); return true; }
+    if (k === 'b' && !e.shiftKey) { document.querySelector<HTMLButtonElement>('[data-testid=add-stat]')?.click(); return true; } // Add Statistic
+    if (k === 'i' && !e.shiftKey) { setDialog({ kind: 'keywords' }); return true; } // Inspect
+    if (k === 'g' && !e.shiftKey) { setDialog({ kind: 'group', id: null }); return true; } // Create Group (workspace)
+    if (k === 'g' && e.shiftKey) { document.querySelector<HTMLButtonElement>('[data-testid=apply-group]')?.click(); return true; } // Copy analysis to group
+    if (e.shiftKey && (k === 'a' || k === 'o') && multi.length >= 2) { makeBoolean(k === 'a' ? 'and' : 'or'); return true; }
+    if (e.shiftKey && k === 'n' && notOperand) { makeBoolean('not'); return true; }
+    return false;
+  };
+
   // --- render helpers -----------------------------------------------------------------
   const tree = (parentId: string | null, depth: number): React.ReactNode =>
     sample?.populations
@@ -941,7 +1054,9 @@ export function App() {
                   else if (q.owningGroup) delete q.owningGroup;
                 })}
                 onConvert={(gate) => updateGates([{ id: sel.popId!, gate }])}
-                onCopy={() => { setClip(copyPopulations(sample.populations, [sel.popId!])); note('info', `Copied "${popPath}"`); }}
+                onCopy={copySel}
+                onCut={cutSel}
+                onPasteGroup={() => pasteTo(groupSamples.map((s) => s.id))}
                 onBifurcate={() => run(async () => {
                   // ws.autoquad: fluorescent parameters not on the gating path,
                   // skipping -H / -W when the -A parameter exists.
@@ -965,14 +1080,10 @@ export function App() {
                   }
                   if (made.length) createGates(made);
                 })}
-                onPaste={() => updateWs((w, say) => {
-                  const sw = w.samples.find((x) => x.id === sample.id)!;
-                  const targets = multi.length ? multi : [sel.popId];
-                  pastePopulations(sw, clip!, targets).forEach((m) => say('warn', m));
-                })}
+                onPaste={() => pasteTo(checked.length ? [...new Set([sample.id, ...checked])] : [sample.id])}
               />
               <div className="row">
-                <button disabled={!sel.popId} data-testid="apply-group" onClick={() => {
+                <button disabled={!sel.popId || sample.populations.find((p) => p.id === sel.popId)?.owningGroup === groupId} title="Disabled when the analysis already belongs to this group (WSActionManager)" data-testid="apply-group" onClick={() => {
                   updateWs((w, say) => {
                     const msgs = copyAnalysisToGroup(w, sample.id, sel.popId!, groupId);
                     msgs.forEach((m) => say('warn', m));
@@ -990,8 +1101,8 @@ export function App() {
           {sample && sMeta && xAxis ? (
             <>
               <div className="row breadcrumb" data-testid="gating-path">
-                <button onClick={() => navSample(-1)} title="Previous Sample (PageUp, or Ctrl/Cmd+PageDown): view the previous population at this level" data-testid="prev-sample">&lt;</button>
-                <button onClick={() => navSample(1)} title="Next Sample (PageDown, or Ctrl/Cmd+PageUp): view the next population at this level" data-testid="next-sample">&gt;</button>
+                <button disabled={!neighbour(-1)} onClick={() => navSample(-1)} title="Previous Sample (PageUp, or Ctrl/Cmd+PageDown): view the previous population at this level" data-testid="prev-sample">&lt;</button>
+                <button disabled={!neighbour(1)} onClick={() => navSample(1)} title="Next Sample (PageDown, or Ctrl/Cmd+PageUp): view the next population at this level" data-testid="next-sample">&gt;</button>
                 <span className="muted">Gating Path:</span>
                 <a href="#" onClick={(e) => { e.preventDefault(); setSel({ sampleId: sample.id, popId: null }); }} data-testid="crumb-root">{sample.fileName}</a>
                 {gatingPath.map((q) => (
@@ -1054,6 +1165,8 @@ export function App() {
                 tool={tool}
                 selectedId={gateSel}
                 onCreate={(g) => (g.length === 1 ? setNaming({ ...g[0], name: uniqueName(g[0].name, siblingNames(sel.popId)) }) : createGates(g))}
+                onDelete={(id) => void deletePop(id)}
+                onNav={navSample}
                 onOpen={(id) => { setSel({ sampleId: sample.id, popId: id }); setMulti([]); setGateSel(null); }}
                 onUpdate={updateGates}
                 onSelect={setGateSel}
@@ -1148,6 +1261,7 @@ export function App() {
               Add for "{popPath || 'All events'}"
             </button>
             <button disabled={!ws.statColumns.length} onClick={exportStatsCsv} data-testid="export-stats">Export CSV</button>
+            <button disabled={!ws.statColumns.length} onClick={() => void copyTable()} data-testid="copy-table" title="Copy Table to Clipboard: HTML and plain text (FormattedTextTransferable)">Copy table</button>
             <button disabled={!ws.statColumns.length} onClick={exportAllGroupsCsv} data-testid="export-stats-all">Export all groups</button>
           </div>
           <div className="row">

@@ -1,5 +1,16 @@
 # Progress and handoff
 
+## State (2026-11-07, interaction model)
+
+FlowJo 10.6.2 interaction model decoded with javap
+(`docs/validation/flowjo-interaction-model.md`: 62 rules with citations, 168
+accelerators). Implemented (specs 19): focus-aware workspace / graph shortcuts,
+gate nudge and delete keys, polygon Backspace / Space, Space / PageDown sample
+stepping, multi-population copy, Cut, paste into checked samples and to the
+group, Copy Image and Copy table to the system clipboard, E6 / E10 enable
+rules, Disable Undo read per workspace. `e2e/interaction.mjs` 21/21; all other
+e2e scripts pass. Next: keyword text paste (C10), drag and drop, context menus.
+
 ## State (2026-11-07, graph window interaction parity)
 
 Decoded with javap on FlowJo 10.6.2 (specs 18): stain editing and

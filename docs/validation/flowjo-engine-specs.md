@@ -1088,8 +1088,8 @@ Read with headless Ghidra and javap on the FlowJo 10.6.2 jar (`FJPrefsFJML`,
 ### 16.1 Preferences (matches the honoured subset)
 
 - Defaults: Disable Undo off, auto-save off every 10 minutes, edge warning on
-  at 5%. Disable Undo: edits replace the present state and leave nothing to
-  undo or redo.
+  at 5%. Disable Undo: read when a workspace is created or opened; while on,
+  edits are not recorded (the existing history is kept; specs 19.3).
 - Own rule: preferences are kept in this browser (FlowJo keeps them in its
   preferences file). Preferences without an effect in this app are not shown.
 
@@ -1222,6 +1222,75 @@ and `src/ui/App.tsx`. E2E: `e2e/uiparity.mjs`.
 - This app: each path element selects that population. PageDown / PageUp,
   Ctrl/Cmd+PageUp / PageDown and the < > buttons move within the current group, keeping the population path;
   a sample without it shows All events. Own rule: no wrap at either end.
+
+## 19. Interaction model: shortcuts, dispatch, undo, clipboard (FlowJo 10.6.2)
+
+Full rule set with a citation for each rule, and the 168-entry accelerator
+table: `docs/validation/flowjo-interaction-model.md` (javap on the FlowJo 10.6.2
+jar and fjlib 2.3.0; FlowJo was not run). This section lists what is
+implemented and the FlowJo function that proves each rule. Implemented in
+`src/ui/App.tsx` (`keyRef`, clipboard helpers, `neighbour`), `src/ui/Plot.tsx`
+(`nudge`, `previewFor`, `commitPreview`, key handler) and
+`src/ui/GateActions.tsx`. E2E: `e2e/interaction.mjs` (21 checks).
+
+### 19.1 Keyboard (matches the implemented subset)
+
+| Rule | Behavior | Proven by |
+|---|---|---|
+| K1 | Every bundle accelerator carries the menu key (Cmd on macOS, Ctrl elsewhere); a numeric value is a key code, an upper-case letter adds Shift | fjlib `FJAction.lookupAccelerator`, `FJAction.getMask` |
+| K4/K7 | Workspace and graph window keep separate key maps. This app: the graph window's keys apply while the plot has focus, the workspace's otherwise | fjlib `FJRibbonFrame.addAcceleratorToFrame`; `GraphWinMenuBar`, `GWActionManager.get*Actions` |
+| Workspace | Ctrl/Cmd+C copy, X cut, V paste, B add statistic, I inspect (Keywords), G create group, Shift+G copy analysis to group, Shift+A / O / N AND / OR / NOT gate | `WSCommand` keys `le.action.*`, `ws.addstat`, `ws.sample.properties`, `ws.newgroup`, `ws.group.copygate`, `ws.boolean.*` via K1 |
+| K10 | Delete / Backspace deletes the selected population (usual confirmation) | `KTreeTable.keyPressed`, `STreeMgr.deleteSelection` |
+| Graph | Ctrl/Cmd+C copy image, T transpose, K / J next / previous X, Y next Y, U up to parent, O open child, G manual gate | `GWCommand` keys `gw.copy.picturetransparency`, `gw.graph.transpose/nextx/prevx/nexty`, `gw.nav.parent/child`, `gw.gate.manual`; `GWAction.doAction`, `AbstractGraphWinController.actionPerformed` |
+| K9 | Arrow keys nudge the selected gate one pixel; Alt x2, Ctrl x2, Shift x3, multiplied; one undo step each | `EditorKeys.keyPressed`, `EditorKeys.nudge` |
+| K9 | Delete / Backspace deletes the selected gate | `GWFrame$GWKeyDispatcher.dispatchKeyEvent`, `EditorKeys.keyPressed` |
+| K9 | Space next sample; Shift / Ctrl / Alt+Space previous; PageDown next, PageUp previous (18.5) | `EditorController.doSpaceBar`, `EditorController.doPageUpDown` |
+| K9 | While drawing a polygon: Backspace / Delete removes the last vertex, Space closes it, Escape aborts | `PolygonDrag.doEscapeAction`, `EditorKeys.keyPressed` |
+
+Own rules: shortcuts fire on key press without FlowJo's 2 s repeat block
+(`ActionAcceleratorListener.dispatchKeyEvent`); previous Y is Ctrl/Cmd+Shift+Y
+because FlowJo's value (121) is F10 (K2); keys typed in a text field or
+checkbox stay there; browser-reserved combinations are not claimed (C16).
+
+### 19.2 Dispatch and enable rules (matches the implemented subset)
+
+| Rule | Behavior | Proven by |
+|---|---|---|
+| D2 | A shortcut and its button run the same command (Ctrl/Cmd+B and Shift+G press the buttons) | `ActionAcceleratorListener.dispatchKeyEvent`, `SampleTreeTable.buildPopup` |
+| E6 | Copy analysis to group is disabled when the selected analysis already belongs to the current group | `WSActionManager$1.run` |
+| E10 | Next / Previous Sample go to the nearest sample of the group that has the same population, and are disabled when none does | `GWActionManager.adjust` |
+| E3 | AND / OR need two or more selected populations of one sample | `WSActionManager$1.run` (`getCombineActions`) |
+
+### 19.3 Undo / redo (matches)
+
+| Rule | Behavior | Proven by |
+|---|---|---|
+| U1-U5 | One history for workspace and graph edits, one step per user action, no merging, limit 100, a new edit drops redo | `Workspace` constructor, `FJUndoManager.addEdit/startNewEdit/endCurrentEdit`, Swing `UndoManager` |
+| U8 | Saving does not clear history; opening a workspace starts a new one | no caller of `WSUndoManager.discardAllEdits` |
+| U9 | "Disable Undo" is read when a workspace is created or opened; while on, edits are not recorded; the existing history is kept | `Workspace.undoEnabled`, `FJUndoManager.canModify` |
+| U10/U11 | Labels "Undo" / "Redo"; Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z | `fj.action.undo/redo` via K1 |
+
+### 19.4 Clipboard (matches; scope own)
+
+| Rule | Behavior | Proven by |
+|---|---|---|
+| C1 | Copy takes every selected population plus sibling quadrants | `WSClipboard.copy`, `NodeList.addSiblingQuads` |
+| C2 | Populations go to an internal clipboard, not the system one; it survives pasting | `WSClipboard` (`sFlowjoClipboard`) |
+| C5 | Cut = Copy, then delete with the usual confirmation | `WSClipboard.cut` |
+| C7 | Paste under every selected node across samples. This app: the selected population path(s) in the current sample and every checked sample; "Paste to group" pastes into every sample of the current group | `WSClipboard.internalPaste` |
+| C8 | Pasted populations lose group ownership; name clashes and missing parameters skip with a notice (10.7) | `STreeTable.addElementToTree`, `SampleTreeTable.addDroppedNode` |
+| C12 | Copy Image puts the plot on the system clipboard as an image; failure text "There was an error adding the image to the system clipboard." | `GateWinController.doCopy`, `FJClipboardUtil.addImageToClipboard` |
+| C16 | Copy Table to Clipboard puts the statistics table as HTML and plain text | `FormattedTextTransferable`, `fj.tableactionmanager.copy` |
+
+Own rules: Cut handles one population at a time; "Paste to group" pastes
+sample-owned copies (FlowJo's group paste with nothing selected); the content
+is captured at Copy time (FlowJo builds it at paste time, C3, medium
+confidence); the image is PNG with transparency only.
+
+Not implemented (see the interaction model's top gaps): pasting tab/CSV text
+into keyword columns (C10), drag and drop (C11), Copy Histogram Function and
+Copy Statistics (C13), context menus (D7), gate size and duplicate view, the
+layout editor's own keys and undo history.
 
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 

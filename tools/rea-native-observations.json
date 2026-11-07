@@ -149,6 +149,7 @@
     "prefs-dontask-autosave": ["jar"],
     "edge-warning": ["jar"],
     "table-layout-editors": ["jar"],
-    "graph-window-stains": ["jar"]
+    "graph-window-stains": ["jar"],
+    "layout-editor-logic": ["jar"]
   }
 }

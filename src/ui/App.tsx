@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PopulationResult } from '../core/analysis';
 import { exportGatingMl, gatingMlNames, parseGatingMl } from '../core/gatingml';
 import { emptyWorkspace, newId, populationPath, uniqueName, type Gate, type Group, type KeywordRule, type PlotSettings, type Population, type StatColumn, type StatKind, type Workspace } from '../core/model';
-import { copyAnalysisToGroup, deleteGroupAnalysis, propagateOwnedEdits, renameGroupAnalysis, criteriaLabel, deletionRoots, fingerprint, subtreeIds, mergeImported, relinkTarget, removeSample, derivedParameterUsers, deserializeWorkspace, groupByKey, copyPopulations, pastePopulations, removePopulation, sampleValue, serializeWorkspace, syncLiveGroups } from '../core/project';
+import { pasteAnnotations, copyAnalysisToGroup, deleteGroupAnalysis, propagateOwnedEdits, renameGroupAnalysis, criteriaLabel, deletionRoots, fingerprint, subtreeIds, mergeImported, relinkTarget, removeSample, derivedParameterUsers, deserializeWorkspace, groupByKey, copyPopulations, pastePopulations, removePopulation, sampleValue, serializeWorkspace, syncLiveGroups } from '../core/project';
 import type { PlotResult, SampleMeta } from '../core/service';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL, validPercentile } from '../core/stats';
 import { statScales } from '../core/flowjoStats';
@@ -12,18 +12,20 @@ import { parseWsp } from '../core/wsp';
 import { writeWsp } from '../core/wspWriter';
 import { channelRange, defaultTransform, isScatterOrTime, makeAxis, sampleChannels, withStains } from './axes';
 import { channelDisplayName } from '../core/fcs';
+import { readMtx } from '../core/compFlowjo';
 import { CompensationDialog, DerivedDialog, GateNamerDialog, KeywordsDialog, TransformDialog } from './Dialogs';
 import { GroupDialog } from './GroupDialog';
-import { GateActions, ManualGateDialog } from './GateActions';
+import { ContextMenu, GateActions, ManualGateDialog, type MenuItem } from './GateActions';
 import { everyNth, FLOWJO_FUNCTIONS, removeFromGroup, stainSet } from '../core/groupCriteria';
 import { concatGroups, type ConcatMode, type HeaderFormat } from '../core/exportRules';
-import { LayoutView } from './Layout';
+import { GRAPH_H, GRAPH_W, LayoutView } from './Layout';
+import { COPY_TO_LAYOUT_POINT, placeRow } from '../core/layoutArrange';
 import { PlatformsDialog } from './Platforms';
 import { KineticsPanel } from './Kinetics';
 import { defaultKinetics, KIN_KEYS, KIN_LABELS } from '../core/kinetics';
 import type { Axis } from './gateGeometry';
 import { Plot, TOOL_HINTS, TOOL_KEYS, TOOL_LABELS, TOOLS_1D, TOOLS_2D, type PlotKind, type Tool } from './Plot';
-import { AUTO_GATE_BINS, bisectorNames, gateLabel } from '../core/gateTools';
+import { AUTO_GATE_BINS, bisectorNames, convertGate, gateLabel } from '../core/gateTools';
 import { PLOT, renderPlot } from './renderPlot';
 import { asCanvas, SvgContext } from './svgContext';
 import { drawableGates } from './gateGeometry';
@@ -108,6 +110,7 @@ export function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const navRef = useRef<(d: number) => void>(() => {});
   const keyRef = useRef<(e: KeyboardEvent) => boolean>(() => false);
+  const pasteTextRef = useRef<(text: string) => boolean>(() => false);
   // Anchored gating: the statistic column armed for the next histogram click.
   const [anchorCol, setAnchorCol] = useState<string | null>(null);
   // Workspace gate clipboard (FlowJo WSClipboard).
@@ -167,6 +170,16 @@ export function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      const text = e.clipboardData?.getData('text/plain') ?? '';
+      if (text && pasteTextRef.current(text)) e.preventDefault();
+    };
+    document.addEventListener('paste', onPaste);
+    return () => document.removeEventListener('paste', onPaste);
   }, []);
 
   const note = useCallback((level: 'info' | 'warn' | 'error', text: string) => setLog((l) => [{ level, text }, ...l].slice(0, 200)), []);
@@ -763,6 +776,114 @@ export function App() {
     } catch { note('error', 'Could not copy the table to the clipboard'); }
   };
 
+  // Text paste into the sample table (KTreeTable.pasteFromSystemClipboard; specs
+  // 20.1): rows fill the group's samples from the selected one down; one undo step.
+  pasteTextRef.current = (text: string) => {
+    if (clip?.length || !groupSamples.length) return false;
+    const ids = groupSamples.map((s) => s.id);
+    const start = Math.max(0, sample ? ids.indexOf(sample.id) : 0);
+    updateWs((w, say) => {
+      const n = pasteAnnotations(ids.map((id) => w.samples.find((s) => s.id === id)!), start, text, annotationKeys, checked);
+      say(n ? 'info' : 'warn', n ? `Pasted keyword values into ${n} sample(s)` : 'Pasted text had no values to fill (the first row names the keyword columns)');
+    });
+    return true;
+  };
+
+  // --- drag and drop (specs 20.2) -------------------------------------------------
+  // Files dropped on the window open by type (TreeTableDropListener.processDropFile);
+  // a matrix dropped on a sample or group is applied there (compDrop).
+  const POP_TYPE = 'application/x-flowjo-rea-population';
+  const dropFiles = async (files: FileList, target?: { sampleId?: string; groupId?: string }) => {
+    const list = Array.from(files);
+    const ext = (f: File) => (f.name.match(/\.([^.]+)$/)?.[1] ?? '').toLowerCase();
+    const fcsFiles = list.filter((f) => ['fcs', 'lmd'].includes(ext(f)) || !/\./.test(f.name));
+    if (fcsFiles.length) await addFiles(fcsFiles);
+    for (const f of list) {
+      const x = ext(f);
+      if (['wsp', 'frea', 'json'].includes(x)) await openWorkspace(f);
+      else if (x === 'mtx') {
+        try {
+          const m = { ...readMtx(await f.text(), f.name.replace(/\.[^.]+$/, '')), id: newId('m') };
+          const ids = target?.groupId ? (ws.groups.find((g) => g.id === target.groupId)?.sampleIds ?? []) : target?.sampleId ? [target.sampleId] : [];
+          updateWs((w) => { w.matrices.push(m); for (const s of w.samples) if (ids.includes(s.id)) s.compensation = m.id; });
+          note('info', `Matrix "${m.name}" added${ids.length ? ` and applied to ${ids.length} sample(s)` : ''}`);
+        } catch (e) { note('error', `${f.name}: ${(e as Error).message}`); }
+      } else if (x === 'xml') await importGatingMl(f);
+      else if (!fcsFiles.includes(f)) note('warn', `${f.name}: this file type cannot be opened here`);
+    }
+  };
+  // A population dragged onto a sample, a population or a group is applied there
+  // as a copy (TreeTableDropListener.initiateNodeDrop, GroupTableDropListener.drop).
+  const dragPop = (e: React.DragEvent, popId: string) => {
+    if (!sample) return;
+    e.dataTransfer.setData(POP_TYPE, JSON.stringify({ sampleId: sample.id, popId }));
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+  const accepts = (e: React.DragEvent) => e.dataTransfer.types.includes(POP_TYPE) || e.dataTransfer.types.includes('Files');
+  const onDropOn = (target: { sampleId?: string; popId?: string | null; groupId?: string }) => (e: React.DragEvent) => {
+    if (!accepts(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.files.length) return void dropFiles(e.dataTransfer.files, target);
+    const raw = e.dataTransfer.getData(POP_TYPE);
+    if (!raw) return;
+    const { sampleId, popId } = JSON.parse(raw) as { sampleId: string; popId: string };
+    const from = ws.samples.find((x) => x.id === sampleId);
+    if (!from) return;
+    if (target.groupId) {
+      updateWs((w, say) => copyAnalysisToGroup(w, sampleId, popId, target.groupId!).forEach((m) => say('warn', m)));
+      note('info', `Applied "${populationPath(from.populations, popId)}" to group ${ws.groups.find((g) => g.id === target.groupId)?.name}`);
+      return;
+    }
+    const clipPops = copyPopulations(from.populations, [popId]);
+    const destId = target.sampleId ?? sample?.id;
+    if (!destId) return;
+    if (destId === sampleId && target.popId !== undefined && target.popId !== null && subtreeIds(from.populations, [popId]).has(target.popId)) return note('warn', 'A population cannot be dropped onto itself or its children');
+    updateWs((w, say) => {
+      const sw = w.samples.find((x) => x.id === destId)!;
+      pastePopulations(sw, clipPops, [target.popId ?? null]).forEach((m) => say('warn', m));
+    });
+  };
+
+  // Text copies from the graph (GWAction.copyText / copyStatistics; specs 20.4).
+  const copyText = (text: string, what: string) => navigator.clipboard.writeText(text).then(() => note('info', `${what} copied`), () => note('error', `Could not copy the ${what.toLowerCase()} to the clipboard`));
+  // Copy Histogram Function: one row per display bin, the bin centre in scale
+  // units and its count (own layout; FlowJo's text form was not read).
+  const copyHistogram = () => {
+    if (!plotData || kind !== 'histogram' || !xAxis) return;
+    const B = plotData.bins, [a, b] = xAxis.range;
+    const rows = [`${axisTitle(xAxis.channel)}\tCount`];
+    for (let i = 0; i < B; i++) rows.push(`${+xAxis.t.inverse(a + ((i + 0.5) / B) * (b - a)).toPrecision(6)}\t${plotData.density[i]}`);
+    void copyText(rows.join('\n'), 'Histogram');
+  };
+  // Copy Statistics: the selected population's statistic values, one per line.
+  const copyStatistics = () => {
+    if (!sample) return;
+    const cols = ws.statColumns.map((c, i) => [c, i] as const).filter(([c]) => c.populationPath === popPath);
+    if (!cols.length) return note('warn', `No statistics for "${popPath || 'All events'}"; add one first`);
+    void copyText(cols.map(([c, i]) => `${colLabel(c)}\t${fmtStat(stats[sample.id]?.[i] ?? '-')}`).join('\n'), 'Statistics');
+  };
+  const plotMenu = (popId: string | null, x: number, y: number) => {
+    if (!sample) return;
+    const pop = popId ? sample.populations.find((p) => p.id === popId) : undefined;
+    const conv = (to: 'polygon' | 'rect' | 'ellipse', label: string): MenuItem => ({ label, disabled: !pop || !convertGate(pop.gate, to), onClick: () => { const g = pop && convertGate(pop.gate, to); if (g) updateGates([{ id: pop!.id, gate: g }]); } });
+    const items: MenuItem[] = [
+      ...(pop ? [
+        { label: 'Rename...', onClick: () => setRenaming(pop.id) },
+        { label: 'Clear', onClick: () => void deletePop(pop.id) },
+        null,
+        conv('polygon', 'Convert to Polygon'), conv('rect', 'Convert to Rectangle'), conv('ellipse', 'Convert to Ellipse'),
+        null,
+      ] as MenuItem[] : []),
+      { label: 'Add Statistic', onClick: () => addStatFor(pop ? populationPath(sample.populations, pop.id) : popPath) },
+      { label: 'Copy Image', onClick: copyPlotImage },
+      { label: 'Copy Histogram Function', disabled: kind !== 'histogram', onClick: copyHistogram },
+      { label: 'Copy Statistics', onClick: copyStatistics },
+      { label: 'Copy to Layout Editor', onClick: () => document.querySelector<HTMLButtonElement>('[data-testid=add-to-layout]')?.click() },
+    ];
+    setCtx({ x, y, items });
+  };
+
   // --- shortcuts (specs 19.1) ----------------------------------------------------
   // One page stands in for FlowJo's windows: with the plot focused the graph
   // window's accelerators apply, otherwise the workspace's (FJRibbonFrame and
@@ -781,6 +902,7 @@ export function App() {
       const names = channels.map((c) => c.name);
       const step = (cur: string | null, d: number) => names[(names.indexOf(cur ?? '') + d + names.length) % names.length];
       if (k === 'c' && !e.shiftKey) { copyPlotImage(); return true; }
+      if (k === 'f' && !e.shiftKey && kind === 'histogram') { copyHistogram(); return true; } // Copy Histogram Function (gw.copy.histogram)
       if (k === 't' && kind !== 'histogram' && plotSettings.y) { setPlotSettings({ x: plotSettings.y, y: plotSettings.x }); return true; } // Transpose
       if (k === 'k' && !e.shiftKey) { setPlotSettings({ x: step(plotSettings.x, 1) }); return true; } // Next X
       if (k === 'j' && !e.shiftKey) { setPlotSettings({ x: step(plotSettings.x, -1) }); return true; } // Previous X
@@ -791,7 +913,9 @@ export function App() {
     }
     if (k === 'c' && !e.shiftKey) { copySel(); return true; }
     if (k === 'x' && !e.shiftKey) { cutSel(); return true; }
-    if (k === 'v' && !e.shiftKey) { if (clip?.length) pasteTo(checked.length ? [...new Set([sample.id, ...checked])] : [sample.id]); return true; }
+    // Nodes first; with no copied populations the browser's paste event brings
+    // the system clipboard's text (WSClipboard.paste, WSViewMgr.pasteText).
+    if (k === 'v' && !e.shiftKey && clip?.length) { pasteTo(checked.length ? [...new Set([sample.id, ...checked])] : [sample.id]); return true; }
     if (k === 'b' && !e.shiftKey) { document.querySelector<HTMLButtonElement>('[data-testid=add-stat]')?.click(); return true; } // Add Statistic
     if (k === 'i' && !e.shiftKey) { setDialog({ kind: 'keywords' }); return true; } // Inspect
     if (k === 'g' && !e.shiftKey) { setDialog({ kind: 'group', id: null }); return true; } // Create Group (workspace)
@@ -816,6 +940,11 @@ export function App() {
               className={`node ${isSel ? 'sel' : ''} ${multi.includes(p.id) ? 'multi' : ''}`}
               style={{ paddingLeft: 8 + depth * 14 }}
               data-testid={`pop-${p.name}`}
+              onContextMenu={(e) => { e.preventDefault(); popMenu(sample, p.id, e.clientX, e.clientY); }}
+              draggable={renaming !== p.id}
+              onDragStart={(e) => dragPop(e, p.id)}
+              onDragOver={(e) => accepts(e) && e.preventDefault()}
+              onDrop={onDropOn({ sampleId: sample.id, popId: p.id })}
               onClick={(e) => {
                 if (e.ctrlKey || e.metaKey || e.shiftKey) setMulti((m) => (m.includes(p.id) ? m.filter((x) => x !== p.id) : [...m, p.id]));
                 else { setSel({ sampleId: sample.id, popId: p.id }); setMulti([]); }
@@ -842,9 +971,44 @@ export function App() {
       });
 
   const [newStat, setNewStat] = useState<{ stat: StatKind; channel: string; percentile: number; ancestor: string; correlate: string }>({ stat: 'count', channel: '', percentile: 50, ancestor: '', correlate: '' });
+  const statReady = !((STAT_NEEDS_CHANNEL(newStat.stat) && !newStat.channel) || (newStat.stat === 'percentile' && !validPercentile(newStat.percentile)) || (newStat.stat === 'correlation' && !newStat.correlate) || (newStat.stat === 'freqOf' && !newStat.ancestor));
+  const addStatFor = (path: string) => {
+    if (!statReady) return note('warn', 'Choose the statistic (and its parameter) in the Statistics panel first');
+    updateWs((w) => { w.statColumns.push({ id: newId('col'), populationPath: path, stat: newStat.stat, channel: STAT_NEEDS_CHANNEL(newStat.stat) ? newStat.channel : undefined, percentile: newStat.percentile, ...(newStat.stat === 'freqOf' ? { ancestor: newStat.ancestor } : {}), ...(newStat.stat === 'correlation' ? { correlate: newStat.correlate } : {}) }); });
+  };
+  // Right-click menus (SampleTreeTable.buildPopup, GatePanel.makeGatePopupMenu; specs 20.3).
+  const [ctx, setCtx] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
+  const popMenu = (s: typeof ws.samples[number], popId: string | null, x: number, y: number) => {
+    const path = popId ? populationPath(s.populations, popId) : '';
+    const pop = popId ? s.populations.find((p) => p.id === popId) : undefined;
+    setSel({ sampleId: s.id, popId });
+    setMulti([]);
+    const items: MenuItem[] = popId ? [
+      { label: 'Copy', onClick: () => { setClip(copyPopulations(s.populations, [popId])); note('info', `Copied "${path}"`); } },
+      { label: 'Paste', disabled: !clip?.length, onClick: () => updateWs((w, say) => pastePopulations(w.samples.find((x) => x.id === s.id)!, clip!, [popId]).forEach((m) => say('warn', m))) },
+      { label: 'Rename', onClick: () => setRenaming(popId) },
+      { label: 'Delete', onClick: () => void deletePop(popId) },
+      null,
+      { label: 'Add Statistic', onClick: () => addStatFor(path) },
+      null,
+      { label: 'Inspect...', onClick: () => setDialog({ kind: 'keywords' }) },
+      null,
+      { label: 'Copy analysis to group', disabled: pop?.owningGroup === groupId, onClick: () => { updateWs((w, say) => copyAnalysisToGroup(w, s.id, popId, groupId).forEach((m) => say('warn', m))); note('info', `Applied "${path}" and its children to group ${group?.name}`); } },
+      null,
+      { label: 'Export / Concatenate...', onClick: () => setDialog({ kind: 'export' }) },
+    ] : [
+      { label: 'Paste', disabled: !clip?.length, onClick: () => updateWs((w, say) => pastePopulations(w.samples.find((x) => x.id === s.id)!, clip!, [null]).forEach((m) => say('warn', m))) },
+      { label: 'Add Statistic', onClick: () => addStatFor('') },
+      null,
+      { label: 'Inspect...', onClick: () => setDialog({ kind: 'keywords' }) },
+      null,
+      { label: 'Export / Concatenate...', onClick: () => setDialog({ kind: 'export' }) },
+    ];
+    setCtx({ x, y, items });
+  };
 
   return (
-    <div className="app">
+    <div className="app" onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); }} onDrop={(e) => { if (e.dataTransfer.files.length) { e.preventDefault(); void dropFiles(e.dataTransfer.files); } }}>
       <header className="toolbar">
         <b className="brand">flowjo-rea</b>
         <label className="file-btn">Add FCS files<input type="file" multiple accept=".fcs,.lmd,*" data-testid="add-fcs" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ''; }} /></label>
@@ -870,7 +1034,7 @@ export function App() {
           <h3>Groups</h3>
           <div className="groups">
             {ws.groups.map((g) => (
-              <div key={g.id} className={`node ${g.id === groupId ? 'sel' : ''}`} onClick={() => setGroupId(g.id)} onDoubleClick={() => g.id !== 'all' && setRenaming(`group:${g.id}`)} data-testid={`group-${g.name}`}>
+              <div key={g.id} className={`node ${g.id === groupId ? 'sel' : ''}`} onDragOver={(e) => accepts(e) && e.preventDefault()} onDrop={onDropOn({ groupId: g.id })} onClick={() => setGroupId(g.id)} onDoubleClick={() => g.id !== 'all' && setRenaming(`group:${g.id}`)} data-testid={`group-${g.name}`}>
                 {renaming === `group:${g.id}` ? (
                   <input
                     autoFocus
@@ -948,7 +1112,7 @@ export function App() {
           </div>
           <h3>Samples ({groupSamples.length})</h3>
           {groupSamples.map((s) => (
-            <div key={s.id} className={`node ${s.id === sel.sampleId ? 'sel' : ''}`} data-testid={`sample-${s.fileName}`} onClick={() => setSel({ sampleId: s.id, popId: s.id === sel.sampleId ? sel.popId : null })}>
+            <div key={s.id} className={`node ${s.id === sel.sampleId ? 'sel' : ''}`} data-testid={`sample-${s.fileName}`} onDragOver={(e) => accepts(e) && e.preventDefault()} onDrop={onDropOn({ sampleId: s.id, popId: null })} onContextMenu={(e) => { e.preventDefault(); popMenu(s, null, e.clientX, e.clientY); }} onClick={() => setSel({ sampleId: s.id, popId: s.id === sel.sampleId ? sel.popId : null })}>
               <input type="checkbox" checked={checked.includes(s.id)} onClick={(e) => e.stopPropagation()} onChange={() => setChecked((c) => (c.includes(s.id) ? c.filter((x) => x !== s.id) : [...c, s.id]))} aria-label={`check ${s.fileName}`} />
               <span className="pname" title={s.fileName}>{s.fileName}</span>
               <span className="pcount">{meta[s.id] ? s.eventCount.toLocaleString() : <i className="missing">data missing</i>}</span>
@@ -1022,7 +1186,7 @@ export function App() {
           <h3>Populations {sample && <span className="muted">- {sample.fileName}</span>}</h3>
           {sample && (
             <>
-              <div className={`node ${sel.popId === null ? 'sel' : ''}`} onClick={() => setSel({ sampleId: sample.id, popId: null })} data-testid="pop-root">
+              <div className={`node ${sel.popId === null ? 'sel' : ''}`} onClick={() => setSel({ sampleId: sample.id, popId: null })} onDragOver={(e) => accepts(e) && e.preventDefault()} onDrop={onDropOn({ sampleId: sample.id, popId: null })} onContextMenu={(e) => { e.preventDefault(); popMenu(sample, null, e.clientX, e.clientY); }} data-testid="pop-root">
                 <span className="pname">All events</span>
                 <span className="pcount">{meta[sample.id] ? sample.eventCount.toLocaleString() : '-'}</span>
               </div>
@@ -1167,6 +1331,7 @@ export function App() {
                 onCreate={(g) => (g.length === 1 ? setNaming({ ...g[0], name: uniqueName(g[0].name, siblingNames(sel.popId)) }) : createGates(g))}
                 onDelete={(id) => void deletePop(id)}
                 onNav={navSample}
+                onContext={plotMenu}
                 onOpen={(id) => { setSel({ sampleId: sample.id, popId: id }); setMulti([]); setGateSel(null); }}
                 onUpdate={updateGates}
                 onSelect={setGateSel}
@@ -1200,7 +1365,7 @@ export function App() {
                 } : undefined}
               />
               <div className="row">
-                <button data-testid="add-to-layout" onClick={() => { updateWs((w) => { w.layout = [...(w.layout ?? []), { id: newId('lay'), populationPath: popPath, ...plotSettings }]; }); note('info', `Added ${popPath || 'All events'} (${plotSettings.x}${kind === 'histogram' ? '' : ` vs ${plotSettings.y}`}) to the layout`); }}>Add to layout</button>
+                <button data-testid="add-to-layout" title="Copy to Layout Editor: placed centred on (200, 200) pt (GWAction.copyToLayout)" onClick={() => { const [at] = placeRow([{ w: GRAPH_W, h: GRAPH_H }], COPY_TO_LAYOUT_POINT); updateWs((w) => { w.layout = [...(w.layout ?? []), { id: newId('lay'), populationPath: popPath, ...plotSettings, sampleId: sample.id, left: at.x, top: at.y, width: GRAPH_W, height: GRAPH_H }]; }); note('info', `Added ${popPath || 'All events'} (${plotSettings.x}${kind === 'histogram' ? '' : ` vs ${plotSettings.y}`}) to the layout`); }}>Add to layout</button>
               </div>
               <div className="muted" data-testid="plot-caption">
                 {popPath || 'All events'}: {plotData ? plotData.count.toLocaleString() : '-'} events shown
@@ -1255,8 +1420,8 @@ export function App() {
             )}
             <button
               data-testid="add-stat"
-              disabled={!sample || (STAT_NEEDS_CHANNEL(newStat.stat) && !newStat.channel) || (newStat.stat === 'percentile' && !validPercentile(newStat.percentile)) || (newStat.stat === 'correlation' && !newStat.correlate) || (newStat.stat === 'freqOf' && !newStat.ancestor)}
-              onClick={() => updateWs((w) => { w.statColumns.push({ id: newId('col'), populationPath: popPath, stat: newStat.stat, channel: STAT_NEEDS_CHANNEL(newStat.stat) ? newStat.channel : undefined, percentile: newStat.percentile, ...(newStat.stat === 'freqOf' ? { ancestor: newStat.ancestor } : {}), ...(newStat.stat === 'correlation' ? { correlate: newStat.correlate } : {}) }); })}
+              disabled={!sample || !statReady}
+              onClick={() => addStatFor(popPath)}
             >
               Add for "{popPath || 'All events'}"
             </button>
@@ -1334,6 +1499,7 @@ export function App() {
           samples={groupSamples}
           client={client}
           onChange={(items) => updateWs((w) => { w.layout = items; })}
+          onSettings={(patch) => updateWs((w) => { Object.assign(w, patch); })}
           onDownload={(name, blob) => download(name, blob, 'image/png')}
           onClose={() => setDialog(null)}
         />
@@ -1426,6 +1592,7 @@ export function App() {
           }}
         />
       )}
+      {ctx && <ContextMenu x={ctx.x} y={ctx.y} items={ctx.items} onClose={() => setCtx(null)} />}
       {naming && sample && (
         <GateNamerDialog
           initial={naming.name}

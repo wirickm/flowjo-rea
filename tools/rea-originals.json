@@ -508,6 +508,17 @@
       ],
       "behavior": "Editing a sample's $PnS keyword sets the parameter stain (SampleKeywordProxy.install -> GParameter.setStain); acquisition keywords are not editable (isEditable); the Graph Window axis title is name + ' :: ' + stain when a stain exists, else the name (ParameterID.getLongName), under showStain (default true).",
       "spec_section": "18.1"
+    },
+    {
+      "key": "layout-editor-logic",
+      "subject": "jar",
+      "symbols": ["layout.AlignableLayerDiagram", "layout.AbstractLayerDiagram", "application.leditor.Iteration", "application.leditor.Batch"],
+      "locations": [
+        { "kind": "artifact-path", "path": "com/treestar/flowjo/application/leditor/Iteration.class" },
+        { "kind": "artifact-path", "path": "com/treestar/flowjo/application/leditor/Batch.class" }
+      ],
+      "behavior": "Layout coordinates are points on US Letter with 1 inch margins; align left/top/right/bottom use the selection extent and centres the integer mean of centres; spacing keeps first and last and steps leading edges by floor(centre span / (n-1)); align to grid snaps to 36 pt; bring to front keeps selection order and send to back reverses it; nudge steps multiply Alt 2, Ctrl 2, Shift 3; panel iteration keeps a graph's position in its panel and keyword iteration maps the k-th sample by value.",
+      "spec_section": "21"
     }
   ]
 }

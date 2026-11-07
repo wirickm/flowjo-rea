@@ -66,6 +66,8 @@ interface Props {
   // gate, Space / Shift+Space next / previous sample.
   onDelete?: (popId: string) => void;
   onNav?: (delta: number) => void;
+  // Right-click: the gate under the pointer (or null) and the screen point (GatePanel.maybeDoPopup).
+  onContext?: (popId: string | null, x: number, y: number) => void;
   // 256 x 256 counts of the parent (index x * 256 + y) for the auto gate.
   autoCounts?: { counts: Float64Array; n: number } | null;
   // Magnetic gates as moved on this sample, anchored ranges as resolved.
@@ -490,6 +492,7 @@ export function Plot(p: Props) {
       onMouseMove={onMove}
       onMouseUp={onUp}
       onMouseLeave={() => setHover(null)}
+      onContextMenu={(e) => { if (!p.onContext) return; e.preventDefault(); if (draft.length) return; const h = hit(pos(e)); if (h) p.onSelect(h.g.pop.id); p.onContext(h ? h.g.pop.id : null, e.clientX, e.clientY); }}
       onDoubleClick={(e) => {
         if (p.tool === 'polygon' && draft.length >= 3) {
           finishShape(draft);

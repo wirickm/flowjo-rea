@@ -483,3 +483,56 @@ export function pastePopulations(s: SampleState, clip: Population[], targets: (s
   }
   return notes;
 }
+
+// Text pasted into the workspace table (KTreeTable.pasteFromSystemClipboard,
+// StringUtil.parseTabOrCsvString; specs 20.1): rows split on line breaks, cells
+// on tabs when the text has any, else on commas (CSV quoting honoured).
+export function parseTabOrCsv(text: string): string[][] {
+  const lines = text.replace(/\r\n?/g, '\n').split('\n');
+  while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+  if (text.includes('\t')) return lines.map((l) => l.split('\t').map((c) => c.trim()));
+  return lines.map((l) => {
+    const out: string[] = [];
+    let cur = '', q = false;
+    for (let i = 0; i < l.length; i++) {
+      const ch = l[i];
+      if (q) {
+        if (ch === '"' && l[i + 1] === '"') { cur += '"'; i++; } else if (ch === '"') q = false; else cur += ch;
+      } else if (ch === '"') q = true;
+      else if (ch === ',') { out.push(cur.trim()); cur = ''; } else cur += ch;
+    }
+    out.push(cur.trim());
+    return out;
+  });
+}
+
+// Fills sample annotations from pasted rows. The first row names the keyword
+// columns when the table has none yet (addPastedHeaderKeywords); own rule: it
+// is also a header when every cell is an existing keyword. Otherwise columns map
+// to the existing keywords in order. Rows fill samples from startIndex down.
+// A single value fills every target sample's first keyword (selected rows).
+// Returns the number of samples changed.
+export function pasteAnnotations(samples: SampleState[], startIndex: number, text: string, existingKeys: string[], fillIds: string[] = []): number {
+  const rows = parseTabOrCsv(text).filter((r) => r.some((c) => c !== ''));
+  if (!rows.length) return 0;
+  let keys = existingKeys;
+  if (!keys.length || rows[0].every((c) => existingKeys.includes(c))) {
+    keys = rows.shift()!.filter((c) => c !== '');
+    if (!rows.length) return 0;
+  }
+  if (!keys.length) return 0;
+  if (rows.length === 1 && rows[0].length === 1 && fillIds.length > 1) {
+    for (const s of samples) if (fillIds.includes(s.id)) s.annotations = { ...(s.annotations ?? {}), [keys[0]]: rows[0][0] };
+    return fillIds.length;
+  }
+  let n = 0;
+  rows.forEach((r, i) => {
+    const s = samples[startIndex + i];
+    if (!s) return;
+    const ann = { ...(s.annotations ?? {}) };
+    keys.forEach((k, j) => { if (j < r.length) ann[k] = r[j]; });
+    s.annotations = ann;
+    n++;
+  });
+  return n;
+}

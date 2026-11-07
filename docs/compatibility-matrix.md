@@ -150,8 +150,9 @@ count matches FlowJo except 7 rows where FlowJo versions disagree.
 
 ## Backlog for broader parity (not implemented)
 
-Plugins; table editor Excel / SQL outputs (statistic, keyword and formula
-columns, iteration and CSV / TAB / HTML are in, specs 17); free layout positioning and vector PDF; derived-parameter types
+Plugins; table editor binary Excel / FlowJo XML / SQL outputs, 3D plot and
+figures (columns, iteration, CSV / TAB / HTML / XML Excel, the generated
+table window and table plots are in, specs 17 and docs/validation/ui-gaps/tables.md); free layout positioning and vector PDF; derived-parameter types
 other than ratio; WLS unmixing; FlowJo statistic conventions
 (median/percentile/robust CV) verified against FlowJo output; every
 "Not compared with FlowJo" item above (each needs FlowJo-side output).

@@ -2089,7 +2089,11 @@ export function App() {
         />
       )}
       {dialog?.kind === 'prefs' && <PrefsDialog prefs={prefs} onChange={setPrefs} onClose={() => setDialog(null)} />}
-      {dialog?.kind === 'tables' && <TablesDialog ws={ws} updateWs={updateWs} stats={stats} colLabel={colLabel} ask={ask} download={download} onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'tables' && <TablesDialog ws={ws} updateWs={updateWs} stats={stats} colLabel={colLabel} ask={ask} download={download} onClose={() => setDialog(null)}
+        statsOf={(sid, cols) => { const s = ws.samples.find((x) => x.id === sid); return s ? client.stats({ sampleId: s.id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters, columns: cols, kinetics: ws.kinetics, scales: statScales(ws.channelTransforms, s.flowjoLinearRanges, cols.map((c) => c.channel)) }) : Promise.resolve(undefined); }}
+        loaded={(sid) => !!meta[sid]} channels={channels.map((c) => c.name)} note={note}
+        copyRich={(html, text, what) => { void (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write ? navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([text], { type: 'text/plain' }) })]) : navigator.clipboard.writeText(text)).then(() => note('info', `${what} copied`), () => note('error', `Could not copy the ${what.toLowerCase()} to the clipboard`)); }}
+        openSamples={(ids, path) => { setDialog(null); for (const sid of ids) { const s = ws.samples.find((x) => x.id === sid); const pop = path ? s?.populations.find((q) => populationPath(s.populations, q.id) === path) : null; if (s && (!path || pop)) openWin(s.id, pop?.id ?? null); } }} />}
       {dialog?.kind === 'export' && sample && (
         <ExportDialog
           popLabel={popPath || 'All events'}

@@ -10,7 +10,7 @@ import { compileFormula, defaultDerivedName, derivedNameError, EVENT_NUMBER, FOR
 import { specForKind } from './axes';
 import { readMtx, ssmCsv, writeMatrixCsv, writeMtx, type FlowjoWizardResult } from '../core/compFlowjo';
 import { animationScales, compareMatrices, DEFAULT_ZOOM, duplicateMatrix, fitZoom, fromDisplay, identityMatrix, loadCompPrefs, removeUnusedParameters, saveCompPrefs, scaleLabel, scaleSpillover, ssmWithSums, toDisplay, zoomIn, zoomOut, type CompPrefs, type CompView } from '../core/compEditor';
-import { CompPlotGrid, MATRIX_DRAG_TYPE, WeightsPanel } from './CompEditor';
+import { CompPlotGrid, MATRIX_DRAG_TYPE, OptimizeWeightsPanel, WeightsPanel, type PopPick, type WeightOptResult } from './CompEditor';
 
 function saveText(name: string, text: string, type: string) {
   const url = URL.createObjectURL(new Blob([text], { type }));
@@ -159,6 +159,8 @@ export function CompensationDialog(p: {
   // FlowJo wizard: population paths per control sample, and the run.
   pathsBySample: Record<string, string[]>;
   onFlowjoWizard: (entries: { sampleId: string; primary: string; posPath: string | null; negSampleId: string; negPath: string | null }[]) => Promise<FlowjoWizardResult & { ssm: { channels: string[]; values: number[][] } }>;
+  // Optimize Weights (OPTIMIZEWT) for a spectral matrix; null when cancelled.
+  onOptimizeWeights?: (matrix: SpilloverMatrix, controls: { pos: PopPick; neg: PopPick }[], onProgress: (pr: { fraction: number; message: string }) => void, cancelled: () => boolean) => Promise<WeightOptResult | null>;
 }) {
   const [fj, setFj] = useState<Record<string, { primary: string; pos: string; neg: string }>>({});
   const [univ, setUniv] = useState('');
@@ -186,6 +188,7 @@ export function CompensationDialog(p: {
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [ssmView, setSsmView] = useState(false);
   const [weightsOpen, setWeightsOpen] = useState(false);
+  const [optOpen, setOptOpen] = useState(false);
   const [view, setView] = useState<CompView>({ kind: 'nxn' });
   const [overlay, setOverlay] = useState(prefs.overlay);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
@@ -423,7 +426,7 @@ export function CompensationDialog(p: {
       </details>
       <h4 style={{ margin: '8px 0 4px' }}>Matrix Editor</h4>
       <div className="row">
-        <select value={selected} onChange={(e) => { setSelected(e.target.value); setSsmView(false); setWeightsOpen(false); }} data-testid="matrix-select">
+        <select value={selected} onChange={(e) => { setSelected(e.target.value); setSsmView(false); setWeightsOpen(false); setOptOpen(false); }} data-testid="matrix-select">
           {mats.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
         </select>
         <button data-testid="comp-identity" title="Create an empty matrix" onClick={() => setIdentityPick(identityPick ? null : (p.meta?.channels ?? []).map((c) => c.name).filter((c) => p.channels.includes(c)))}>New Identity Matrix</button>
@@ -481,8 +484,10 @@ export function CompensationDialog(p: {
             <button disabled={!m.ssm} data-testid="comp-ssm-export" title="Export the SSM matrix to a CSV file" onClick={() => m.ssm && saveText(`SSM_${m.name}.csv`, ssmCsv(m.ssm), 'text/csv')}>Export SSM</button>
             <button disabled={!saved || JSON.stringify(saved) === JSON.stringify(m)} data-testid="comp-reset" title="Remove any edits made here since the matrix was last saved" onClick={() => saved && setMats(mats.map((x) => (x.id === m.id ? structuredClone(saved) : x)))}>Reset</button>
             {isSpectral(m) && <button data-testid="comp-weights" title="Preview, import or export weights for the weighted least square unmixing algorithm used for spectral compensation." onClick={() => setWeightsOpen(!weightsOpen)}>Weights</button>}
+            {isSpectral(m) && p.onOptimizeWeights && p.samples && <button data-testid="comp-optimize-weights" title="Optimize the detector weights of the weighted least squares unmixing so that the spillover spreading of the single-stain controls is smallest." onClick={() => setOptOpen(!optOpen)}>Optimize Weights</button>}
           </div>
           {weightsOpen && isSpectral(m) && <WeightsPanel matrix={m} save={(n, t) => saveText(n, t, 'text/csv')} onClose={(w) => { setMats(mats.map((x) => (x.id === m.id ? { ...m, weights: w.every((v) => v === 1) ? undefined : w } : x))); setWeightsOpen(false); }} />}
+          {optOpen && isSpectral(m) && p.onOptimizeWeights && p.samples && <OptimizeWeightsPanel matrix={m} samples={p.samples} onRun={(c, pr, cx) => p.onOptimizeWeights!(m, c, pr, cx)} onClose={() => setOptOpen(false)} onDone={(r) => setMats((all) => all.map((x) => (x.id === m.id ? { ...x, weights: r.weights, ssm: { channels: m.outputNames ?? [], values: r.ssm } } : x)))} />}
           {ssmView && m.ssm ? (() => {
             const t = ssmWithSums(m.ssm.values);
             return (

@@ -1034,6 +1034,25 @@ Implemented in `src/core/compFlowjo.ts` and the Compensation dialog.
   "SSM_<matrix>.csv": "SSM" then the parameters; rows the parameter without
   the comp prefix, then the values.
 
+### 14.5 Spectral weights and Optimize Weights (libNativeEngine 3.6.2, Ghidra)
+
+- Spectral unmixing is weighted least squares: unmixed = (S W S^T)^-1 S W x
+  per event (`EigenSolver`, column-pivoting Householder QR), W = diag(detector
+  weights). `CompensationSpec::FromXML` fills every detector weight with 1.0
+  and overrides only detectors listed under `weights`, so the default is
+  ordinary least squares.
+- Optimize Weights (SSM-based, `WeightOptimizer::OptimizeWeights`): weights
+  start at 1; the objective is the sum of all SSM entries of the single-stain
+  controls unmixed with the trial weights (14.3 formula on percentiles 50 and
+  84 of the unmixed fluorochromes). Coordinate search: for each detector in
+  turn try f x w and (1/f) x w with the others fixed and keep the trial that
+  lowers the best sum so far (float32 comparison). f starts at 0.6667 and
+  after every sweep becomes (f - 1) x 0.9 + 1. A sweep improving the best sum
+  by less than 1% is a stall (counted from sweep index 5); the first stall
+  switches to f = 0.3333 with damping 0.5, the third ends the search; it also
+  ends after sweep index 50. Full rules: `docs/validation/ui-gaps/
+  compensation.md`, OPTIMIZEWT. Implemented in `src/core/weightOptimizer.ts`.
+
 ### 14.4 Applying a matrix (matches)
 
 - Compensated values solve observed = true x S per event (LU for square

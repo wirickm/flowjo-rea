@@ -65,7 +65,7 @@ const dropFiles = async (selector, files) => {
 const canvas = page.getByTestId('plot-canvas');
 const at = async (fx, fy) => { const b = await canvas.boundingBox(); return [b.x + 64 + fx * (460 - 78), b.y + 14 + (1 - fy) * (420 - 62)]; };
 
-await page.goto(base);
+await page.goto(base + (base.includes('?') ? '&' : '?') + 'layout=classic');
 
 // 1. File drop on the window opens FCS files
 await dropFiles('.app', [{ name: 'a.fcs', b64: fileA }, { name: 'b.fcs', b64: fileB }]);

@@ -40,7 +40,7 @@ const download = async (fn) => {
 };
 const count = async (name) => (await page.getByTestId(`count-${name}`).first().textContent()).replace(/,/g, '');
 
-await page.goto(base);
+await page.goto(base + (base.includes('?') ? '&' : '?') + 'layout=classic');
 // 1. import
 const t0 = Date.now();
 await page.getByTestId('add-fcs').setInputFiles([fcs(F1), fcs(F2)]);

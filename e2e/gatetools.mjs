@@ -85,7 +85,7 @@ const deleteAll = async (prefix) => {
   }
 };
 
-await page.goto(base);
+await page.goto(base + (base.includes('?') ? '&' : '?') + 'layout=classic');
 await page.getByTestId('add-fcs').setInputFiles([join(out, 'gates.fcs')]);
 await idle();
 await page.getByTestId('sample-gates.fcs').click();

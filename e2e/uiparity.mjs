@@ -41,7 +41,7 @@ const drawPolygon = async () => {
   await page.mouse.click(x, y);
 };
 
-await page.goto(base);
+await page.goto(base + (base.includes('?') ? '&' : '?') + 'layout=classic');
 await page.getByTestId('add-fcs').setInputFiles([fcs(F1), fcs(F2)]);
 await idle();
 await page.getByTestId(`sample-${F1}`).click();

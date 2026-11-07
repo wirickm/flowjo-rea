@@ -43,7 +43,7 @@ const rect = async (a, b) => {
 };
 const sel = (f) => page.getByTestId(`sample-${f}`).evaluate((n) => n.classList.contains('sel'));
 
-await page.goto(base);
+await page.goto(base + (base.includes('?') ? '&' : '?') + 'layout=classic');
 await page.getByTestId('add-fcs').setInputFiles([fcs(F1), fcs(F2)]);
 await idle();
 await page.getByTestId(`sample-${F1}`).click();

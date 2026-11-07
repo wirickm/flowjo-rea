@@ -34,7 +34,7 @@ const canvas = page.getByTestId('plot-canvas');
 const at = async (fx, fy) => { const b = await canvas.boundingBox(); return [b.x + 64 + fx * (460 - 78), b.y + 14 + (1 - fy) * (420 - 62)]; };
 const count = async (name) => Number((await page.getByTestId(`count-${name}`).first().textContent()).replace(/,/g, ''));
 
-await page.goto(base);
+await page.goto(base + (base.includes('?') ? '&' : '?') + 'layout=classic');
 await page.getByTestId('add-fcs').setInputFiles([fcs(F1), fcs(F2)]);
 await idle();
 await page.getByTestId(`sample-${F1}`).click();

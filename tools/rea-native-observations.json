@@ -148,6 +148,7 @@
     "prolif-indices": ["0x834e80",  "0x8365a0",  "0x837a80"],
     "prefs-dontask-autosave": ["jar"],
     "edge-warning": ["jar"],
-    "table-layout-editors": ["jar"]
+    "table-layout-editors": ["jar"],
+    "graph-window-stains": ["jar"]
   }
 }

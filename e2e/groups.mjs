@@ -43,6 +43,8 @@ page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 const idle = async () => {
   await page.waitForTimeout(200);
+  // A drawn gate opens Subpopulation Identification; keep its default name.
+  if (await page.getByTestId('gate-namer-ok').count()) { await page.getByTestId('gate-namer-ok').click(); await page.waitForTimeout(150); }
   await page.waitForFunction(() => document.querySelector('[data-testid=busy]')?.textContent === 'Ready', null, { timeout: 120000 });
 };
 const download = async (fn) => {

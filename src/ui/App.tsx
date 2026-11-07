@@ -10,8 +10,9 @@ import { formatStat, statsCsv } from '../core/statsTable';
 import { makeTransform, type TransformSpec } from '../core/transforms';
 import { parseWsp } from '../core/wsp';
 import { writeWsp } from '../core/wspWriter';
-import { channelRange, defaultTransform, isScatterOrTime, makeAxis, sampleChannels } from './axes';
-import { CompensationDialog, DerivedDialog, KeywordsDialog, TransformDialog } from './Dialogs';
+import { channelRange, defaultTransform, isScatterOrTime, makeAxis, sampleChannels, withStains } from './axes';
+import { channelDisplayName } from '../core/fcs';
+import { CompensationDialog, DerivedDialog, GateNamerDialog, KeywordsDialog, TransformDialog } from './Dialogs';
 import { GroupDialog } from './GroupDialog';
 import { GateActions, ManualGateDialog } from './GateActions';
 import { everyNth, FLOWJO_FUNCTIONS, removeFromGroup, stainSet } from '../core/groupCriteria';
@@ -90,6 +91,8 @@ export function App() {
   const [dialog, setDialog] = useState<Dialog>(null);
   const [stats, setStats] = useState<Record<string, (number | string)[]>>({});
   const [renaming, setRenaming] = useState<string | null>(null);
+  // A drawn gate waiting for its name (Subpopulation Identification, specs 18.2).
+  const [naming, setNaming] = useState<{ name: string; gate: Gate } | null>(null);
   const [gateSel, setGateSel] = useState<string | null>(null);
   const [groupKey, setGroupKey] = useState('');
   const [templateId, setTemplateId] = useState('');
@@ -100,6 +103,7 @@ export function App() {
   const [nth, setNth] = useState(2);
   const [rule, setRule] = useState<{ keyword: string; op: KeywordRule['op']; value: string }>({ keyword: '', op: 'contains', value: '' });
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const navRef = useRef<(d: number) => void>(() => {});
   // Anchored gating: the statistic column armed for the next histogram click.
   const [anchorCol, setAnchorCol] = useState<string | null>(null);
   // Workspace gate clipboard (FlowJo WSClipboard).
@@ -134,6 +138,8 @@ export function App() {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      // Graph window Next / Previous Sample: PageUp / PageDown (gw.nav; specs 18.5).
+      if ((e.key === 'PageUp' || e.key === 'PageDown') && !(e.ctrlKey || e.metaKey || e.altKey)) { e.preventDefault(); navRef.current(e.key === 'PageUp' ? 1 : -1); return; }
       if (!(e.ctrlKey || e.metaKey)) return;
       const k = e.key.toLowerCase();
       if (k === 'g') { e.preventDefault(); setDialog({ kind: 'manual' }); } // Manually Enter Gate... (FlowJo menu shortcut G)
@@ -178,7 +184,8 @@ export function App() {
   }, [note]);
 
   const sample = ws.samples.find((s) => s.id === sel.sampleId) ?? null;
-  const sMeta = sample ? meta[sample.id] : undefined;
+  const stainKey = JSON.stringify(sample?.stains ?? {});
+  const sMeta = useMemo(() => (sample && meta[sample.id] ? withStains(meta[sample.id], sample.stains) : undefined), [sample?.id, meta, stainKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const group = ws.groups.find((g) => g.id === groupId) ?? ws.groups[0];
   const groupSamples = ws.samples.filter((s) => group?.sampleIds.includes(s.id));
   // Undo/redo can remove the selected population; fall back to its absence.
@@ -187,9 +194,32 @@ export function App() {
     if (sel.popId && sample && !selPopValid) setSel({ sampleId: sample.id, popId: null });
   }, [sel.popId, sample, selPopValid]);
   const channels = useMemo(() => (sMeta && sample ? sampleChannels(sMeta, sample.compensation, ws.matrices, ws.derivedParameters) : []), [sMeta, sample?.compensation, ws.matrices, ws.derivedParameters]); // eslint-disable-line react-hooks/exhaustive-deps
+  // FlowJo Graph Window axis title: "name :: stain" (specs 18.1).
+  const axisTitle = (ch: string) => { const c = channels.find((x) => x.name === ch); return c ? channelDisplayName(c) : ch; };
   const annotationKeys = [...new Set(groupSamples.flatMap((s) => Object.keys(s.annotations ?? {})))].sort();
   const groupKeys = [...new Set([...annotationKeys, ...groupSamples.flatMap((s) => Object.keys(s.keywordsSnapshot))])].sort();
   const popPath = sample && sel.popId && selPopValid ? populationPath(sample.populations, sel.popId) : '';
+  // Gating path of the selected population, root first (gw.breadcrumbbar; specs 18.5).
+  const gatingPath: Population[] = [];
+  for (let id = selPopValid ? sel.popId : null; sample && id; ) {
+    const q = sample.populations.find((p) => p.id === id);
+    if (!q) break;
+    gatingPath.unshift(q);
+    id = q.parentId;
+  }
+  // Next / Previous Sample: the same population in the neighbouring sample of
+  // the current group (its All events when it lacks the population); no wrap.
+  const navSample = (d: number) => {
+    if (!sample) return;
+    const list = groupSamples.length ? groupSamples : ws.samples;
+    const i = list.indexOf(sample);
+    const next = i < 0 ? undefined : list[i + d];
+    if (!next) return;
+    const same = popPath ? next.populations.find((p) => populationPath(next.populations, p.id) === popPath) : undefined;
+    setSel({ sampleId: next.id, popId: same?.id ?? null });
+    setMulti([]);
+  };
+  navRef.current = navSample;
 
   // --- file loading -------------------------------------------------------
   const addFiles = async (files: FileList | File[]) => {
@@ -335,14 +365,26 @@ export function App() {
   }, [sample?.id, sample?.compensation, sample?.populations, ws.matrices, meta, run, note]);
 
   const plotSettings = useMemo(() => {
-    const saved = ws.plots?.[popPath];
     const has = (ch: string | null) => !!ch && channels.some((c) => c.name === ch);
-    if (saved && has(saved.x) && (saved.kind === 'histogram' || has(saved.y))) return saved;
+    const usable = (v: PlotSettings | undefined) => !!v && has(v.x) && (v.kind === 'histogram' || has(v.y));
+    const saved = ws.plots?.[popPath];
+    if (usable(saved)) return saved!;
+    // A population never viewed opens with its parent's plot axes and type
+    // (FlowJo 10 preferences displayOtherParams = false, child graph type
+    // "Same as parent graph"; specs 18.4), else the nearest viewed ancestor's.
+    let a = sample && sel.popId ? sample.populations.find((p) => p.id === sel.popId)?.parentId : undefined;
+    while (sample && a !== undefined) {
+      const path = a ? populationPath(sample.populations, a) : '';
+      const up = ws.plots?.[path];
+      if (usable(up)) return { x: up!.x, y: up!.y, kind: up!.kind };
+      if (!a) break;
+      a = sample.populations.find((p) => p.id === a)?.parentId ?? null;
+    }
     const names = channels.map((c) => c.name);
     const x = names.find((n) => /^FSC-A$/i.test(n)) ?? names.find((n) => isScatterOrTime(n)) ?? names[0] ?? '';
     const y = names.find((n) => /^SSC-A$/i.test(n)) ?? names.find((n) => n !== x) ?? null;
     return { x, y, kind: 'pseudocolor' as PlotKind };
-  }, [ws.plots, popPath, channels]);
+  }, [ws.plots, popPath, channels, sample, sel.popId]);
   const setPlotSettings = (patch: Partial<PlotSettings>) =>
     updateWs((w) => {
       w.plots = { ...(w.plots ?? {}), [popPath]: { ...plotSettings, ...patch } };
@@ -940,6 +982,16 @@ export function App() {
         <section className="panel plot">
           {sample && sMeta && xAxis ? (
             <>
+              <div className="row breadcrumb" data-testid="gating-path">
+                <button onClick={() => navSample(-1)} title="Previous Sample (PageDown): view the previous population at this level" data-testid="prev-sample">&lt;</button>
+                <button onClick={() => navSample(1)} title="Next Sample (PageUp): view the next population at this level" data-testid="next-sample">&gt;</button>
+                <span className="muted">Gating Path:</span>
+                <a href="#" onClick={(e) => { e.preventDefault(); setSel({ sampleId: sample.id, popId: null }); }} data-testid="crumb-root">{sample.fileName}</a>
+                {gatingPath.map((q) => (
+                  <span key={q.id}> &gt; <a href="#" onClick={(e) => { e.preventDefault(); setSel({ sampleId: sample.id, popId: q.id }); }} data-testid={`crumb-${q.name}`}>{q.name}</a></span>
+                ))}
+                {!gatingPath.length && <span className="muted"> (Ungated)</span>}
+              </div>
               <div className="row plot-controls">
                 <select value={kind} onChange={(e) => setPlotSettings({ kind: e.target.value as PlotKind })} data-testid="plot-kind">
                   <option value="pseudocolor">Pseudocolor</option>
@@ -994,7 +1046,8 @@ export function App() {
                 counts={counts}
                 tool={tool}
                 selectedId={gateSel}
-                onCreate={createGates}
+                onCreate={(g) => (g.length === 1 ? setNaming({ ...g[0], name: uniqueName(g[0].name, siblingNames(sel.popId)) }) : createGates(g))}
+                onOpen={(id) => { setSel({ sampleId: sample.id, popId: id }); setMulti([]); setGateSel(null); }}
                 onUpdate={updateGates}
                 onSelect={setGateSel}
                 onRefuse={(m) => note('warn', m)}
@@ -1006,6 +1059,8 @@ export function App() {
                 onTool={setTool}
                 xLabel={gateLabel(xAxis.channel, channels.find((c) => c.name === xAxis.channel)?.label)}
                 yLabel={yAxis ? gateLabel(yAxis.channel, channels.find((c) => c.name === yAxis.channel)?.label) : undefined}
+                xTitle={axisTitle(xAxis.channel)}
+                yTitle={yAxis ? axisTitle(yAxis.channel) : undefined}
                 autoCounts={autoCounts}
                 moved={movedGates}
                 onAnchor={anchorCol && kind === 'histogram' ? (v, alt, shift) => {
@@ -1235,7 +1290,31 @@ export function App() {
           />
         );
       })()}
-      {dialog?.kind === 'keywords' && sMeta && <KeywordsDialog meta={sMeta} onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'keywords' && sMeta && sample && (
+        <KeywordsDialog
+          meta={sMeta}
+          onClose={() => setDialog(null)}
+          onStain={(ch, stain, all) => {
+            updateWs((w) => {
+              for (const s of w.samples) {
+                if (s.id !== sample.id && !(all && s.channelNames.includes(ch))) continue;
+                s.stains = { ...(s.stains ?? {}), [ch]: stain };
+              }
+            });
+            note('info', `Stain of ${ch} set to "${stain}"${all ? ' in every sample with this parameter' : ''}`);
+          }}
+        />
+      )}
+      {naming && sample && (
+        <GateNamerDialog
+          initial={naming.name}
+          siblings={siblingNames(sel.popId)}
+          favorites={prefs.gateNames}
+          onFavorites={(names) => setPrefs({ ...prefsRef.current, gateNames: names })}
+          onOk={(name) => { createGates([{ name, gate: naming.gate }]); setNaming(null); }}
+          onCancel={() => { setNaming(null); note('info', 'Gate discarded'); }}
+        />
+      )}
       {dialog?.kind === 'derived' && sMeta && (
         <DerivedDialog
           params={ws.derivedParameters ?? []}
@@ -1325,7 +1404,7 @@ export function App() {
           onSvg={() => {
             if (!xAxis || !plotData) return;
             const svg = new SvgContext(PLOT.w, PLOT.h);
-            renderPlot(asCanvas(svg), { kind, x: xAxis, y: yAxis, data: plotData, gates: drawableGates(sample.populations, sel.popId, xAxis, yAxis), counts, contourLevel: plotSettings.contourLevel, showOutliers: plotSettings.showOutliers, overlays: overlayData, normalize: plotSettings.normalize });
+            renderPlot(asCanvas(svg), { kind, x: xAxis, y: yAxis, data: plotData, gates: drawableGates(sample.populations, sel.popId, xAxis, yAxis), counts, contourLevel: plotSettings.contourLevel, showOutliers: plotSettings.showOutliers, overlays: overlayData, normalize: plotSettings.normalize, xTitle: axisTitle(xAxis.channel), yTitle: yAxis ? axisTitle(yAxis.channel) : undefined });
             download(`${sample.fileName}_${(popPath || 'all').replace(/[^\w.-]+/g, '_')}.svg`, svg.toString(), 'image/svg+xml');
           }}
           onPng={() => canvasRef.current?.toBlob((b) => b && download(`${sample.fileName}_${(popPath || 'all').replace(/[^\w.-]+/g, '_')}.png`, b, 'image/png'))}

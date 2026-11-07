@@ -56,6 +56,12 @@ interface Props {
   // Gate names: the stain of each axis when it has one, else the parameter.
   xLabel?: string;
   yLabel?: string;
+  // Axis titles ("name :: stain"; specs 18.1).
+  xTitle?: string;
+  yTitle?: string;
+  // Double-click inside a gate opens its population (FlowJo "Open Child
+  // Population"; specs 18.3).
+  onOpen?: (popId: string) => void;
   // 256 x 256 counts of the parent (index x * 256 + y) for the auto gate.
   autoCounts?: { counts: Float64Array; n: number } | null;
   // Magnetic gates as moved on this sample, anchored ranges as resolved.
@@ -94,7 +100,7 @@ export function Plot(p: Props) {
     if (!cv) return;
     if (p.canvasRef) p.canvasRef.current = cv;
     const ctx = cv.getContext('2d')!;
-    cv.dataset.contourSegments = String(renderPlot(ctx, { kind: p.kind, x: p.x, y: p.y, data: p.data, gates: shown, counts: p.counts, selectedId: p.selectedId, contourLevel: p.contourLevel, showOutliers: p.showOutliers, overlays: p.overlays, normalize: p.normalize }));
+    cv.dataset.contourSegments = String(renderPlot(ctx, { kind: p.kind, x: p.x, y: p.y, data: p.data, gates: shown, counts: p.counts, selectedId: p.selectedId, contourLevel: p.contourLevel, showOutliers: p.showOutliers, overlays: p.overlays, normalize: p.normalize, xTitle: p.xTitle, yTitle: p.yTitle }));
     cv.dataset.overlayPoints = String((p.overlays ?? []).reduce((n, o) => n + (p.y ? o.data.points.length / 2 : o.data.count), 0));
     cv.dataset.autoContours = String(contours.length);
     ctx.save();
@@ -455,11 +461,15 @@ export function Plot(p: Props) {
       onMouseMove={onMove}
       onMouseUp={onUp}
       onMouseLeave={() => setHover(null)}
-      onDoubleClick={() => {
+      onDoubleClick={(e) => {
         if (p.tool === 'polygon' && draft.length >= 3) {
           finishShape(draft);
           setDraft([]);
+          return;
         }
+        if (p.tool !== 'select' || draft.length || !p.onOpen) return;
+        const h = hit(pos(e));
+        if (h) p.onOpen(h.g.pop.id);
       }}
       onKeyDown={(e) => {
         if (e.key === 'Escape') { setDraft([]); setPencil(null); return; }

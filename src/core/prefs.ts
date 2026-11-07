@@ -14,8 +14,9 @@ export interface Prefs {
   warningThreshold: number; // percent
   useStainForGateName: boolean;
   dontAsk: string[]; // message keys answered "don't ask again"
+  gateNames: string[]; // Gates / common gate names: the gate namer's Favorites (specs 18.2)
 }
-export const DEFAULT_PREFS: Prefs = { noUndo: false, autoSave: false, autoSaveMinutes: 10, resetDontAskOnExit: false, eventsOnAxis: true, warningThreshold: 5, useStainForGateName: true, dontAsk: [] };
+export const DEFAULT_PREFS: Prefs = { noUndo: false, autoSave: false, autoSaveMinutes: 10, resetDontAskOnExit: false, eventsOnAxis: true, warningThreshold: 5, useStainForGateName: true, dontAsk: [], gateNames: [] };
 
 // Confirmations that offer "Don't ask again" (STreeMgr.confirmNodeDeletion);
 // group deletion always asks.

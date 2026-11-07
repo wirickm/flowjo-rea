@@ -114,6 +114,20 @@ export function makeAxis(channels: FcsChannel[], keywords: Record<string, string
   return { channel: ch, spec, t, range: axisRange(t) };
 }
 
+// A sample's metadata with its edited stains applied: the channel labels and
+// the $PnS keywords (FlowJo SampleKeywordProxy.install; specs 18.1). An empty
+// stain clears the file's stain. Returns the same object when nothing is edited.
+export function withStains<M extends { channels: FcsChannel[]; keywords: Record<string, string> }>(meta: M, stains: Record<string, string> | undefined): M {
+  if (!stains || !Object.keys(stains).length) return meta;
+  const keywords = { ...meta.keywords };
+  const channels = meta.channels.map((c) => {
+    if (!(c.name in stains)) return c;
+    keywords[`$P${c.index}S`] = stains[c.name];
+    return { ...c, label: stains[c.name] };
+  });
+  return { ...meta, channels, keywords };
+}
+
 // Channels a sample offers for plots and stats: its FCS parameters plus the
 // unmixed fluorochromes of a spectral matrix assigned to it.
 export function sampleChannels(meta: { channels: FcsChannel[] }, compensation: string, matrices: SpilloverMatrix[], derived: DerivedParameter[] = []): FcsChannel[] {

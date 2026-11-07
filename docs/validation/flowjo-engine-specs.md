@@ -1159,6 +1159,68 @@ and `src/ui/Layout.tsx`.
 - "Are you sure you want to delete this table? " (with Don't Ask Again);
   layouts: "Are you sure you want to delete this layout? ".
 
+## 18. Graph window interaction: stains, gate naming, navigation (FlowJo 10.6.2)
+
+Read with javap on the FlowJo 10.6.2 jar and fjlib 2.3.0 (`SampleKeywordProxy`,
+`GParameter`, `ParameterID`, `FJPrefsFJML$Graph`, `FJPrefsFJML` gate
+preferences, `PrefsGates`) and the resource bundles (`flowjodictionary*.properties`);
+all Java. Implemented independently in `src/ui/axes.ts` (`withStains`),
+`src/ui/Dialogs.tsx` (`KeywordsDialog`, `GateNamerDialog`), `src/ui/Plot.tsx`
+and `src/ui/App.tsx`. E2E: `e2e/uiparity.mjs`.
+
+### 18.1 Parameter stains and axis titles (matches; scope own)
+
+- FlowJo renames a parameter for display by editing its keywords on the
+  sample (`SampleKeywordProxy.install`): `$PnS` sets the stain
+  (`GParameter.setStain`), `$PnN` sets a name override (and "Comp-" + name on
+  the compensated twin). `$PnG/R/E/B`, `$FIL`, `$TOT`, `$PAR` and other
+  acquisition keywords are not editable (`isEditable`).
+- The Graph Window axis title is the long name, `name + " :: " + stain` when
+  the parameter has a stain, else the name (`ParameterID.getLongName`), when
+  the preference "Include Parameter Stain ($P#S keyword)" is on
+  (`FJPrefsFJML$Graph.showStain`, default true).
+- This app: the Keywords window's `$PnS` column is editable; the edit is stored
+  per sample (`SampleState.stains`) and replaces the stain in axis titles, gate
+  names and the keyword list. Own rules: "apply to all samples with this
+  parameter" (default on; FlowJo edits one sample's keyword at a time),
+  `$PnN` overrides are not offered (they would rename the gating dimension),
+  no confirmation prompt, the preference is always on, layout-editor plots
+  still show the parameter name, and .wsp/FCS export writes the file's stain.
+
+### 18.2 Subpopulation Identification (matches; colour own)
+
+- After a gate is drawn FlowJo asks "Enter the name of this subpopulation:"
+  in "Subpopulation Identification" (`dlog.gatenamer.*`). The name must be
+  unique among siblings ("Name must be unique."). Favorites list the common
+  gate names (preferences, Gates); "+" adds the shown name, "-" removes it.
+- This app: shown for every single gate drawn on the plot (multi-gate tools
+  such as quadrants and manual entry name automatically); prefilled with the
+  automatic name, made unique as in 6.7. Cancel discards the gate (assumed;
+  not confirmed in FlowJo). Not implemented: layer colour, the confirmation
+  before "-".
+
+### 18.3 Open Child Population (matches)
+
+- Double-click inside a gate (Arrow tool) opens its population
+  (`gw.nav.child`, "Show the selected gate's target population").
+
+### 18.4 Child plot axes (matches)
+
+- Preferences `displayOtherParams` = false and `childGraphType` = 1 ("Same as
+  parent graph") by default (`FJPrefsFJML`): a new subset opens with its
+  parent's X / Y parameters and plot type. This app: a population never viewed
+  takes the plot of its nearest viewed ancestor; once changed it keeps its own.
+
+### 18.5 Gating path and Next / Previous Sample (matches; wrap own)
+
+- Breadcrumb "Gating Path" (`gw.breadcrumbbar.path.prompt`; "Ungated" at the
+  sample). Next Sample: accelerator 33 (PageUp); Previous Sample: 34
+  (PageDown) (`gw.nav.nextsibling/prevsibling`, "View the next population at
+  this level").
+- This app: each path element selects that population. PageUp / PageDown and
+  the < > buttons move within the current group, keeping the population path;
+  a sample without it shows All events. Own rule: no wrap at either end.
+
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 
 Source: static analysis of `libNativeEngine.dylib` from the public FlowJo

@@ -78,6 +78,11 @@ export interface RenderOptions {
   // Histograms: FlowJo's "Normalized To Mode": every curve scaled so its mode is
   // 100; the axis is relabelled. Off by default, as in FlowJo 10 (specs 6.7).
   normalize?: boolean;
+  // Axis titles; FlowJo's Graph Window shows "name :: stain" when the
+  // parameter has a stain (preference "Include Parameter Stain", on by default;
+  // specs 18.1). Default: the parameter name.
+  xTitle?: string;
+  yTitle?: string;
 }
 
 const maxOf = (a: ArrayLike<number>) => {
@@ -228,7 +233,7 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
       if (t.label) drawLabel(ctx, t.label, X, PLOT.mt + ph + 16, 'center');
     }
     ctx.font = '11px sans-serif';
-    ctx.fillText(o.x.channel, PLOT.ml + pw / 2, PLOT.h - 8);
+    ctx.fillText(o.xTitle ?? o.x.channel, PLOT.ml + pw / 2, PLOT.h - 8);
     ctx.textAlign = 'right';
     ctx.font = '10px sans-serif';
     if (o.y) {
@@ -248,7 +253,7 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
     ctx.rotate(-Math.PI / 2);
     ctx.textAlign = 'center';
     ctx.font = '11px sans-serif';
-    ctx.fillText(o.y ? o.y.channel : hs.label, 0, 0);
+    ctx.fillText(o.y ? o.yTitle ?? o.y.channel : hs.label, 0, 0);
     ctx.restore();
     // Gates
     ctx.save();

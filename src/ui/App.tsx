@@ -28,6 +28,7 @@ import type { Axis } from './gateGeometry';
 import { Plot, TOOL_HINTS, TOOL_KEYS, TOOL_LABELS, TOOLS_1D, TOOLS_2D, type PlotKind, type Tool } from './Plot';
 import { AUTO_GATE_BINS, bisectorNames, convertGate, gateLabel } from '../core/gateTools';
 import { formatFreq, PLOT, renderPlot } from './renderPlot';
+import { Popout } from './Popout';
 import { asCanvas, SvgContext } from './svgContext';
 import { drawableGates } from './gateGeometry';
 import { initHistory, pushHistory, redo, undo, type History } from './history';
@@ -113,6 +114,7 @@ export function App() {
   const plotActions = useRef<{ scaleGate: (f: number) => boolean } | null>(null);
   const keyRef = useRef<(e: KeyboardEvent) => boolean>(() => false);
   const escRef = useRef<() => boolean>(() => false);
+  const globalKeyRef = useRef<(e: KeyboardEvent) => void>(() => {});
   const pasteTextRef = useRef<(text: string) => boolean>(() => false);
   // Anchored gating: the statistic column armed for the next histogram click.
   const [anchorCol, setAnchorCol] = useState<string | null>(null);
@@ -173,6 +175,7 @@ export function App() {
       else if (k === 'z' && !e.shiftKey) { e.preventDefault(); setHist(undo); }
       else if ((k === 'z' && e.shiftKey) || (k === 'y' && e.shiftKey)) { e.preventDefault(); setHist(redo); }
     };
+    globalKeyRef.current = onKey;
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
@@ -441,7 +444,11 @@ export function App() {
   }, [uiLayout, groupSamples, meta, ws.matrices, ws.derivedParameters, sample?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // Graph windows: one per opened node (GWFrame); the active one hosts the live
   // plot, the others keep a picture of their last view (own rule).
-  type GraphWin = { id: string; sampleId: string; popId: string | null; x: number; y: number; snap?: string };
+  type GraphWin = { id: string; sampleId: string; popId: string | null; x: number; y: number; snap?: string; inPage?: boolean };
+  // FlowJo opens each graph in its own OS window; this app does too (browser or
+  // Electron child windows), with in-page windows as the fallback / option.
+  const [separateWins, setSeparateWins] = useState<boolean>(() => { try { return localStorage.getItem('flowjo-rea.separateWindows') !== '0'; } catch { return true; } });
+  const toggleSeparate = (on: boolean) => { setSeparateWins(on); try { localStorage.setItem('flowjo-rea.separateWindows', on ? '1' : '0'); } catch { /* per-viewer */ } };
   const [wins, setWins] = useState<GraphWin[]>([]);
   const [activeWin, setActiveWin] = useState<string | null>(null);
   const winDrag = useRef<{ id: string; dx: number; dy: number } | null>(null);
@@ -468,6 +475,8 @@ export function App() {
     setMulti([]);
   };
   const closeWin = (id: string) => { setWins((ws0) => ws0.filter((w) => w.id !== id)); if (activeWin === id) setActiveWin(null); };
+  // Dialogs live in the workspace window: bring it forward when one opens from a separate graph window.
+  useEffect(() => { if ((naming || dialog || question) && separateWins && activeWin) window.focus(); }, [naming, dialog, question]); // eslint-disable-line react-hooks/exhaustive-deps
   // In-window navigation (gating path, double-click a gate, sample keys) moves the active window.
   useEffect(() => {
     if (!activeWin || !sel.sampleId) return;
@@ -1005,7 +1014,8 @@ export function App() {
   // window's accelerators apply, otherwise the workspace's (FJRibbonFrame and
   // GraphWinMenuBar keep separate maps; FJAction.lookupAccelerator adds the menu key).
   keyRef.current = (e: KeyboardEvent): boolean => {
-    const inPlot = (document.activeElement as HTMLElement | null)?.dataset?.testid === 'plot-canvas';
+    // The plot may be in a separate graph window, so look at the key's own target too.
+    const inPlot = (e.target as HTMLElement | null)?.dataset?.testid === 'plot-canvas' || (document.activeElement as HTMLElement | null)?.dataset?.testid === 'plot-canvas';
     const menu = e.ctrlKey || e.metaKey;
     const k = e.key.toLowerCase();
     if (!menu) {
@@ -1791,6 +1801,7 @@ export function App() {
           {ribbonTab === 'Configure' && <>
             <div className="fj-band"><div className="fj-band-body">
               <button onClick={() => switchLayout('classic')} data-testid="layout-classic" title="The earlier four-panel screen">Switch to classic layout</button>
+              <label title="Each graph window opens as its own window, as in FlowJo; off: windows inside the page"><input type="checkbox" checked={separateWins} onChange={(e) => toggleSeparate(e.target.checked)} data-testid="separate-windows" /> Graph windows as separate windows</label>
             </div><div className="fj-band-title">Settings</div></div>
           </>}
         </div>
@@ -1837,16 +1848,28 @@ export function App() {
           const ws1 = ws.samples.find((x) => x.id === w.sampleId);
           const active = w.id === activeWin;
           const title = `${ws1?.fileName ?? '?'}: ${w.popId && ws1 ? populationPath(ws1.populations, w.popId) : 'Ungated'}`;
+          const buttons = (
+            <span>
+              <button title="Duplicate View" onMouseDown={(e) => e.stopPropagation()} onClick={() => openWin(w.sampleId, w.popId, true)} data-testid="gw-duplicate">Duplicate View</button>
+              <button aria-label="Close" onMouseDown={(e) => e.stopPropagation()} onClick={() => closeWin(w.id)} data-testid="gw-close">x</button>
+            </span>
+          );
+          const body = <div className="fj-gw-body">{active ? (sample && sMeta && xAxis ? plotBlock : <p className="muted">Loading...</p>) : w.snap ? <img src={w.snap} alt={title} data-testid="gw-snapshot" /> : <p className="muted">Click to show</p>}</div>;
+          if (separateWins && !w.inPage) return (
+            <Popout key={w.id} id={w.id} title={title} x={w.x} y={w.y} onClose={() => closeWin(w.id)} onFocus={() => focusWin(w)} onKey={(e) => globalKeyRef.current(e)} onBlocked={() => { setWins((ws0) => ws0.map((x) => (x.id === w.id ? { ...x, inPage: true } : x))); note('warn', 'The browser blocked the graph window; it opens inside the page (allow pop-ups for separate windows)'); }}>
+              <div className={`fj-gw popped ${active ? 'active' : ''}`} data-testid="graph-window" data-active={active ? '1' : '0'} onMouseDown={() => focusWin(w)}>
+                <div className="fj-gw-title"><span>{title}</span>{buttons}</div>
+                {body}
+              </div>
+            </Popout>
+          );
           return (
             <div key={w.id} className={`fj-gw ${active ? 'active' : ''}`} style={{ left: w.x, top: w.y, zIndex: active ? 40 : 30 }} data-testid="graph-window" data-active={active ? '1' : '0'} onMouseDown={() => focusWin(w)}>
               <div className="fj-gw-title" onMouseDown={(e) => { winDrag.current = { id: w.id, dx: e.clientX - w.x, dy: e.clientY - w.y }; }}>
                 <span>{title}</span>
-                <span>
-                  <button title="Duplicate View" onMouseDown={(e) => e.stopPropagation()} onClick={() => openWin(w.sampleId, w.popId, true)} data-testid="gw-duplicate">Duplicate View</button>
-                  <button aria-label="Close" onMouseDown={(e) => e.stopPropagation()} onClick={() => closeWin(w.id)} data-testid="gw-close">x</button>
-                </span>
+                {buttons}
               </div>
-              <div className="fj-gw-body">{active ? (sample && sMeta && xAxis ? plotBlock : <p className="muted">Loading...</p>) : w.snap ? <img src={w.snap} alt={title} data-testid="gw-snapshot" /> : <p className="muted">Click to show</p>}</div>
+              {body}
             </div>
           );
         })}

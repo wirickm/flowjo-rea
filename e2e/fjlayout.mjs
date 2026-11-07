@@ -21,7 +21,10 @@ const check = (name, ok, detail = '') => {
 };
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 2 });
+const context = await browser.newContext({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 2 });
+// In-page graph windows for the first part; separate windows are checked at the end.
+await context.addInitScript(() => { if (!sessionStorage.getItem('fj-init')) { localStorage.setItem('flowjo-rea.separateWindows', '0'); sessionStorage.setItem('fj-init', '1'); } });
+const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
@@ -107,6 +110,34 @@ await page.getByTestId('layout-flowjo').click();
 await page.waitForTimeout(300);
 check('and back to the FlowJo layout', (await page.getByTestId('sample-table').count()) === 1);
 
+// Separate windows (default): a double-click opens a real window with the plot
+await page.getByTestId('ribbon-tab-Configure').click();
+await page.getByTestId('separate-windows').check();
+// Turning it on moves the open graph windows into windows of their own; close them.
+await page.waitForTimeout(800);
+for (const pg of context.pages()) if (pg !== page) await pg.close();
+await page.waitForTimeout(300);
+await page.getByTestId(`row-${F2}`).dblclick({ position: { x: 40, y: 6 } });
+// React's development mode mounts twice, so the window may be reopened once: use the open one.
+let popup = null;
+for (let t = 0; t < 120 && !popup; t++) {
+  await page.waitForTimeout(250);
+  for (const pg of context.pages()) if (pg !== page && !pg.isClosed() && (await pg.locator('[data-testid=plot-canvas]').count().catch(() => 0))) popup = pg;
+}
+await idle();
+check('with separate windows on, a graph window is a real window with the live plot', (await popup.locator('[data-testid=plot-canvas]').count()) === 1 && (await page.getByTestId('graph-window').count()) === 0, await popup.title());
+await popup.getByTestId('tool-rect').click();
+const pb = await popup.getByTestId('plot-canvas').boundingBox();
+await popup.mouse.move(pb.x + 120, pb.y + 300); await popup.mouse.down(); await popup.mouse.move(pb.x + 300, pb.y + 200, { steps: 4 }); await popup.mouse.up();
+await idle();
+check('gating in the separate window adds the population to the workspace table', (await page.getByTestId(`row-${F2}/Rect 1`).count()) === 1);
+await popup.getByTestId('plot-canvas').focus();
+await popup.keyboard.press('Control+t');
+await idle();
+check('graph-window shortcuts work in the separate window (Ctrl+T transposes)', (await popup.getByTestId('x-channel').inputValue()) === 'SSC-A', await popup.getByTestId('x-channel').inputValue());
+await popup.close();
+await page.waitForTimeout(300);
+check('closing the window removes it from the workspace', (await page.getByTestId('graph-window').count()) === 0);
 check('no page errors', errors.length === 0, errors.join(' | '));
 await browser.close();
 const failed = results.filter((r) => !r.ok);

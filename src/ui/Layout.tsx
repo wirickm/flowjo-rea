@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   align, alignToGrid, avoidPageBreaks, bindSample, bringToFront, DEFAULT_PAGE, DUPLICATE_OFFSET, FRAME_PT, GRID_PT, gridPositions, iterationValues, MARGIN, nudge, nudgeStep,
-  pageGrid, PAPERS, sendToBack, spacing, stepOrder, tilePitch, unionBox, usablePage, DEFAULT_GUIDES, MAX_GUIDES, snapToGuides, type AlignMode, type Box, type Guides, type LayoutIteration, type PageSetup,
+  pageGrid, PAPERS, sendToBack, spacing, stepOrder, tilePitch, unionBox, usablePage, DEFAULT_GUIDES, MAX_GUIDES, snapToGuides, borderAxes, cellOrigin, gridBounds, gridDelete, gridInsert, gridResize, type AlignMode, type Box, type CellRef, type GridDef, type Guides, type LayoutIteration, type PageSetup,
 } from '../core/layoutArrange';
 import { populationPath, type LayoutItem, type SampleState, type Workspace } from '../core/model';
 import type { PlotResult, SampleMeta } from '../core/service';
@@ -272,7 +272,7 @@ export function LayoutView(p: {
   samples: SampleState[];
   client: Client;
   onChange: (items: LayoutItem[]) => void;
-  onSettings: (patch: { layoutPage?: PageSetup; layoutIteration?: LayoutIteration; layoutGuides?: Guides }) => void;
+  onSettings: (patch: { layoutPage?: PageSetup; layoutIteration?: LayoutIteration; layoutGuides?: Guides; layoutGrids?: GridDef[]; layout?: LayoutItem[] }) => void;
   onDownload: (name: string, blob: Blob) => void;
   onClose: () => void;
 }) {
@@ -319,7 +319,12 @@ export function LayoutView(p: {
   // Selecting a grouped item selects its group (FigGroup is one figure).
   const expand = (ids: string[]) => { const gs = new Set(boxes.filter((b) => ids.includes(b.id) && b.groupId).map((b) => b.groupId)); return [...new Set([...ids, ...boxes.filter((b) => b.groupId && gs.has(b.groupId)).map((b) => b.id)])]; };
   const selBoxes = boxes.filter((b) => sel.includes(b.id));
-  const commit = (next: Box[]) => p.onChange(items.map((it) => { const b = next.find((x) => x.id === it.id); return b ? withBox(it, b) : it; }));
+  const commit = (next: Box[]) => {
+    const out = items.map((it) => { const b = next.find((x) => x.id === it.id); return b ? withBox(it, b) : it; });
+    // A moved grid figure carries its grid with it.
+    const moved = grids.map((g) => { const it = out.find((x) => x.cell?.grid === g.id && next.some((b) => b.id === x.id)); if (!it || !it.cell) return g; const o = cellOrigin(g, it.cell.row, it.cell.col); return { ...g, x: g.x + (it.left ?? 0) - o.x, y: g.y + (it.top ?? 0) - o.y }; });
+    if (moved.some((g, i) => g !== grids[i])) p.onSettings({ layout: out, layoutGrids: moved }); else p.onChange(out);
+  };
   // Arrange on "units": a group acts as one figure, its members follow.
   const arrange = (fn: (units: Box[]) => Box[]) => {
     const units: { box: Box; members: Box[] }[] = [];
@@ -432,25 +437,59 @@ export function LayoutView(p: {
     if (fmt === 'png') return p.onDownload(`${name}.png`, await toBlob(all.canvas));
     p.onDownload(`${name}.pdf`, new Blob([await canvasesToPdf(splitPages(all, page), paperSize.w, paperSize.h, MARGIN)], { type: 'application/pdf' }));
   };
-  // Grid layout (FigGridLayout; specs 25.2): cells row by row; by default the
-  // cells hold bare charts and only the grid border shows axes (bottom row X,
-  // left column Y); the cells form one group.
+  // Grid figures (FigGridLayout; specs 25.2): a grid object (rows, columns,
+  // padding, cell size) whose cells hold the items, row by row. By default the
+  // cells hold bare charts and only the border shows axes; the cells form one group.
+  const grids = p.ws.layoutGrids ?? [];
+  // Re-place a grid's cells and their border axes; one undo step with the grid list.
+  const applyGrids = (nextGrids: GridDef[], base: LayoutItem[], released: string[] = [], removed: string[] = []) => {
+    const out = base.filter((it) => !removed.includes(it.id)).map((it) => {
+      if (released.includes(it.id)) { const { cell: _c, groupId: _g, ...rest } = it; void _c; void _g; return { ...rest, axes: undefined } as LayoutItem; }
+      const g = it.cell && nextGrids.find((x) => x.id === it.cell!.grid);
+      if (!g || !it.cell) return it;
+      const cells: CellRef[] = base.filter((x) => x.cell?.grid === g.id && !removed.includes(x.id) && !released.includes(x.id)).map((x) => ({ id: x.id, ...x.cell! }));
+      const o = cellOrigin(g, it.cell.row, it.cell.col);
+      const b0 = boxOf(it, base.indexOf(it));
+      return { ...it, left: o.x, top: o.y, width: b0.w, height: b0.h, groupId: g.id, ...(it.text === undefined ? { axes: borderAxes(g, { id: it.id, ...it.cell }, cells) } : {}) } as LayoutItem;
+    });
+    p.onSettings({ layout: out, layoutGrids: nextGrids });
+  };
   const makeGrid = () => {
     const ordered = [...selBoxes].sort((a, b) => a.y - b.y || a.x - b.x);
-    const { placed, left } = gridPositions(ordered, { x: Math.min(...selBoxes.map((b) => b.x)), y: Math.min(...selBoxes.map((b) => b.y)) }, gridRows, gridCols);
-    const gid = `grid_${Date.now().toString(36)}`;
-    const lastRow = Math.floor((placed.length - 1) / gridCols);
-    p.onChange(items.map((it) => {
-      const k = placed.findIndex((b) => b.id === it.id);
-      if (k < 0) return it;
-      const moved = withBox(it, placed[k]);
-      if (!gridBare || it.text !== undefined) return moved;
-      const r = Math.floor(k / gridCols), c = k % gridCols;
-      const axes = `${r === lastRow ? 'tnl' : ''}${c === 0 ? 'TNL' : ''}`;
-      return { ...moved, axes, groupId: gid } as LayoutItem;
-    }));
-    if (left.length) setError(`${left.length} item(s) did not fit the ${gridRows} x ${gridCols} grid`);
+    const g: GridDef = { id: `grid_${Date.now().toString(36)}`, x: Math.min(...ordered.map((b) => b.x)), y: Math.min(...ordered.map((b) => b.y)), rows: gridRows, cols: gridCols, pad: 4, cellW: Math.max(...ordered.map((b) => b.w)), cellH: Math.max(...ordered.map((b) => b.h)), bare: gridBare };
+    const fit = ordered.slice(0, g.rows * g.cols);
+    const base = items.map((it) => { const k = fit.findIndex((b) => b.id === it.id); return k < 0 ? it : ({ ...it, cell: { grid: g.id, row: Math.floor(k / g.cols), col: k % g.cols } } as LayoutItem); });
+    applyGrids([...grids, g], base);
+    if (ordered.length > fit.length) setError(`${ordered.length - fit.length} item(s) did not fit the ${g.rows} x ${g.cols} grid`);
   };
+  // The grid of the first selected cell, and that cell.
+  const selCell = items.find((i) => sel.includes(i.id) && i.cell)?.cell;
+  const selGrid = selCell ? grids.find((g) => g.id === selCell.grid) : undefined;
+  const cellsOf = (g: GridDef): CellRef[] => items.filter((x) => x.cell?.grid === g.id).map((x) => ({ id: x.id, ...x.cell! }));
+  const withCells = (g: GridDef, cells: CellRef[]) => items.map((it) => { const c = cells.find((x) => x.id === it.id); return c ? ({ ...it, cell: { grid: g.id, row: c.row, col: c.col } } as LayoutItem) : it; });
+  const gridOp = (op: 'insertRow' | 'insertCol' | 'deleteRow' | 'deleteCol') => {
+    if (!selGrid || !selCell) return;
+    const cells = cellsOf(selGrid);
+    const r = op === 'insertRow' ? gridInsert(selGrid, cells, 'row', selCell.row) : op === 'insertCol' ? gridInsert(selGrid, cells, 'col', selCell.col) : gridDelete(selGrid, cells, op === 'deleteRow' ? 'row' : 'col', op === 'deleteRow' ? selCell.row : selCell.col);
+    const removed: string[] = 'removed' in r ? (r as { removed: string[] }).removed : [];
+    applyGrids(grids.map((g) => (g.id === selGrid.id ? r.grid : g)), withCells(r.grid, r.cells), [], removed);
+    if (removed.length) setSel([]);
+  };
+  const setGrid = (patch: Partial<GridDef>) => {
+    if (!selGrid) return;
+    const cells = cellsOf(selGrid);
+    if (patch.rows !== undefined || patch.cols !== undefined) {
+      const r = gridResize(selGrid, cells, patch.rows ?? selGrid.rows, patch.cols ?? selGrid.cols);
+      return applyGrids(grids.map((g) => (g.id === selGrid.id ? { ...r.grid, ...patch, rows: r.grid.rows, cols: r.grid.cols } : g)), withCells(r.grid, r.cells), r.released);
+    }
+    applyGrids(grids.map((g) => (g.id === selGrid.id ? { ...g, ...patch } : g)), items);
+  };
+  // Autofit Cells: cells as large as the largest content.
+  const autofit = () => { if (!selGrid) return; const bs = items.filter((x) => x.cell?.grid === selGrid.id).map((x) => boxOf(x, items.indexOf(x))); if (bs.length) setGrid({ cellW: Math.max(...bs.map((b) => b.w)), cellH: Math.max(...bs.map((b) => b.h)) }); };
+  // Clear Cells: the selected cells' contents are removed; the cells stay.
+  const clearCells = () => { if (!selGrid) return; applyGrids(grids, items, [], items.filter((x) => sel.includes(x.id) && x.cell?.grid === selGrid.id).map((x) => x.id)); setSel([]); };
+  // Extract Cells from Grid: the grid goes, each figure stays where it is.
+  const extractGrid = () => { if (!selGrid) return; p.onSettings({ layoutGrids: grids.filter((g) => g.id !== selGrid.id), layout: items.map((it) => (it.cell?.grid === selGrid.id ? ({ ...it, cell: undefined, groupId: undefined } as LayoutItem) : it)) }); };
   const selected = items.find((i) => i.id === sel[0]);
   // Parameters offered to Multigraph: the first loaded sample's fluorescence channels.
   const graphParams = (loaded[0] ? p.meta[loaded[0].id]?.channels.map((c) => c.name) ?? [] : []).filter((n) => !/^(FSC|SSC|Time)/i.test(n));
@@ -536,6 +575,23 @@ export function LayoutView(p: {
               <span className="muted">{sel.length} selected; arrows nudge 1 pt (Alt x2, Ctrl x2, Shift x3)</span>
             </>}
           </div>
+          {selGrid && (
+            <div className="row layout-gridbar" data-testid="layout-gridbar">
+              <b>Grid {selGrid.rows} x {selGrid.cols}</b>
+              <button onClick={() => gridOp('insertRow')} data-testid="grid-insert-row" title="Insert a row above the selected cell">Insert row</button>
+              <button onClick={() => gridOp('insertCol')} data-testid="grid-insert-col" title="Insert a column left of the selected cell">Insert column</button>
+              <button onClick={() => gridOp('deleteRow')} disabled={selGrid.rows <= 1} data-testid="grid-delete-row" title="Delete the selected cell's row with its contents">Delete row</button>
+              <button onClick={() => gridOp('deleteCol')} disabled={selGrid.cols <= 1} data-testid="grid-delete-col" title="Delete the selected cell's column with its contents">Delete column</button>
+              <button onClick={() => setGrid({})} data-testid="grid-even" title="Make Rows or Columns Even: put every cell back in place">Make even</button>
+              <button onClick={autofit} data-testid="grid-autofit" title="Autofit Cells to their contents">Autofit</button>
+              <button onClick={clearCells} data-testid="grid-clear" title="Clear the selected cells">Clear cells</button>
+              Rows <input type="number" min={1} style={{ width: 40 }} value={selGrid.rows} onChange={(e) => setGrid({ rows: Math.max(1, Number(e.target.value) || 1) })} data-testid="grid-rows" />
+              Columns <input type="number" min={1} style={{ width: 40 }} value={selGrid.cols} onChange={(e) => setGrid({ cols: Math.max(1, Number(e.target.value) || 1) })} data-testid="grid-cols" />
+              Padding <input type="number" min={0} style={{ width: 40 }} value={selGrid.pad} onChange={(e) => setGrid({ pad: Math.max(0, Number(e.target.value) || 0) })} data-testid="grid-pad" /> pt
+              <label><input type="checkbox" checked={selGrid.bare} onChange={(e) => setGrid({ bare: e.target.checked })} data-testid="grid-bare" /> bare charts, border axes</label>
+              <button onClick={extractGrid} data-testid="grid-extract" title="Extract Cells from Grid">Extract cells</button>
+            </div>
+          )}
           <div className="row">
             <button disabled={!rendered.length} data-testid="layout-export" onClick={() => void exportAs('png', `layout_${safe(valueLabel(cur))}`, rendered, items)}>Export PNG</button>
             <button disabled={!rendered.length} data-testid="layout-export-svg" onClick={() => void exportAs('svg', `layout_${safe(valueLabel(cur))}`, rendered, items)}>Export SVG</button>
@@ -587,6 +643,7 @@ export function LayoutView(p: {
             >
               {Array.from({ length: grid.cols - 1 }, (_, i) => <div key={`v${i}`} className="page-break v" style={{ left: (i + 1) * page.w * zoom, height: H * zoom }} />)}
               {Array.from({ length: grid.rows - 1 }, (_, i) => <div key={`h${i}`} className="page-break h" style={{ top: (i + 1) * page.h * zoom, width: W * zoom }} />)}
+              {grids.map((g) => { const b = gridBounds(g); const cw = (g.cellW + 2 * g.pad) * zoom, ch = (g.cellH + 2 * g.pad) * zoom; return <div key={g.id} className="layout-gridlines" data-testid="layout-gridlines" style={{ left: b.x * zoom, top: b.y * zoom, width: b.w * zoom, height: b.h * zoom, backgroundSize: `${cw}px ${ch}px` }} />; })}
               {showGuides && (['v', 'h'] as const).flatMap((axis) => guides[axis].map((g, i) => {
                 const at = guideDrag && guideDrag.axis === axis && guideDrag.i === i ? guideDrag.at : g;
                 return <div key={`g${axis}${i}`} className={`layout-guide ${axis}`} data-testid={`layout-guide-${axis}`} data-at={at}

@@ -99,3 +99,39 @@ describe('FlowJo 10 layout guides (specs 21.2)', () => {
     expect(snapToGuides(b('a', 0, 0, 100, 50), 0, 190, DEFAULT_GUIDES).dy).toBe(200);
   });
 });
+
+describe('FlowJo 10 grid figure editing (specs 25.2)', () => {
+  const g = { id: 'g', x: 0, y: 0, rows: 2, cols: 3, pad: 4, cellW: 100, cellH: 50, bare: true };
+  const cells = [{ id: 'a', row: 0, col: 0 }, { id: 'b', row: 0, col: 1 }, { id: 'c', row: 1, col: 0 }, { id: 'd', row: 1, col: 2 }];
+  it('cells sit at (col * (w + 2 pad) + pad, row * (h + 2 pad) + pad)', async () => {
+    const { cellOrigin, gridBounds } = await import('../src/core/layoutArrange');
+    expect(cellOrigin(g, 1, 2)).toEqual({ x: 220, y: 62 });
+    expect(gridBounds(g)).toMatchObject({ w: 324, h: 116 });
+  });
+  it('border axes: X on the bottom cell of each column, Y on the first cell of each row', async () => {
+    const { borderAxes } = await import('../src/core/layoutArrange');
+    expect(cells.map((c) => borderAxes(g, c, cells))).toEqual(['TNL', 'tnl', 'tnlTNL', 'tnl']);
+    expect(borderAxes({ ...g, bare: false }, cells[1], cells)).toBe('tnlTNL');
+  });
+  it('insert a row / column shifts the later cells', async () => {
+    const { gridInsert } = await import('../src/core/layoutArrange');
+    const r = gridInsert(g, cells, 'row', 1);
+    expect(r.grid.rows).toBe(3);
+    expect(r.cells.map((c) => c.row)).toEqual([0, 0, 2, 2]);
+    expect(gridInsert(g, cells, 'col', 1).cells.map((c) => c.col)).toEqual([0, 2, 0, 3]);
+  });
+  it('delete a row / column removes its cells with their contents and closes the gap', async () => {
+    const { gridDelete } = await import('../src/core/layoutArrange');
+    const r = gridDelete(g, cells, 'col', 0);
+    expect(r.removed).toEqual(['a', 'c']);
+    expect(r.cells).toEqual([{ id: 'b', row: 0, col: 0 }, { id: 'd', row: 1, col: 1 }]);
+    expect(r.grid.cols).toBe(2);
+    expect(gridDelete({ ...g, rows: 1 }, cells, 'row', 0).removed).toEqual([]);
+  });
+  it('set dimensions releases cells outside; next free cell goes row by row', async () => {
+    const { gridResize, nextFreeCell } = await import('../src/core/layoutArrange');
+    const r = gridResize(g, cells, 2, 2);
+    expect(r.released).toEqual(['d']);
+    expect(nextFreeCell(g, cells)).toEqual({ row: 0, col: 2 });
+  });
+});

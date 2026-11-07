@@ -8,3 +8,4 @@ flowjo-rea.html
 # REA bundles of FlowJo analysis contain decompiled FlowJo code; never commit them.
 *.bundle.json
 rea-ledger-request.native.json
+release/

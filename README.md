@@ -20,6 +20,17 @@ styles and analysis worker inlined). Open it by double-clicking; it runs
 offline from disk and FCS files never leave the browser. Verified in Chromium
 from `file://` with the full E2E run; Firefox and Safari not yet verified.
 
+## Mac app
+
+`npm run app` builds the page and opens it in an Electron window.
+`npm run app:mac` packages `release/flowjo-rea-<version>-<arch>.dmg` and
+`.zip` (run on a Mac for the .dmg; on Linux use
+`npx electron-builder --mac zip`). The app is unsigned: the first time, right
+click it and choose Open (or `xattr -cr flowjo-rea.app`). It has no network
+access (every request other than file:, data: and blob: is cancelled) and no
+Node access in the page. Smoke test: `npm run build && node e2e/electron.mjs`
+(Linux: `xvfb-run -a node e2e/electron.mjs`).
+
 ## Run (development)
 
 ```bash

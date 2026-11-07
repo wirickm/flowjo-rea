@@ -188,8 +188,12 @@ is not, this app's version is an Own rule.
   Parks formula W = (M - log10(T / |r|)) / 2.
 - flowjo-rea: **Done** for FlowJo biex (width) and logicle (W, A kept valid).
   Own rule: exact values instead of 4096-channel bins (events in the lowest
-  3/4096 of the display are dropped). Arcsinh autoM **Deferred** (its rule
-  was not read). Tests: `Calculate Width Basis: 5th percentile of the
+  3/4096 of the display are dropped). Arcsinh (follow-up f2): `autoWidth`
+  calls `ArcsinhTransform.autoM`, which only sets m to NaN; `getM` then reads
+  log10(getMax()), so the width basis (`getWidthBasis` = -10^M) becomes
+  minus the top of scale. Not data driven. **Done**: Calculate Width Basis
+  on an arcsinh axis sets M = log10(T) (`arcsinhAutoM`, unit "Calculate
+  Width Basis on arcsinh: M = log10(T), width basis -T"). Tests: `Calculate Width Basis: 5th percentile of the
   negative events` (unit), "Calculate Width Basis reports the width basis"
   (e2e).
 
@@ -198,7 +202,12 @@ is not, this app's version is an Own rule.
 - No action in 10.6.2 and no engine routine (the only data-driven transform
   routine in the engine is the auto width above; the neg-decades slider in
   `TransformSliderBox` is manual).
-- flowjo-rea: **Deferred**: there is no FlowJo 10.6.2 rule to match.
+- Re-checked (follow-up f2): `CALCULATE_NEG_TRANSFORM_VALUE` is referenced
+  only by the `TransformCommand` enum (no class in the jar uses it: no
+  `graphwindow.actions` handler, no transform dialog, no menu), and the engine
+  has no matching routine (the only data-driven transform routine is
+  `TransformedParameter::DetermineTransformationAutoWidth`).
+- flowjo-rea: **Not a gap: no-op in FlowJo 10.6.2.**
 
 ### 6.7 Derive Linear / Log Parameter (TransformCommand.DERIVE_LIN_PARM / DERIVE_LOG_PARM)
 

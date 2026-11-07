@@ -301,3 +301,24 @@ export function erfc(x: number): number {
   const r = t * Math.exp(-z * z - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + t * (-0.18628806 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277)))))))));
   return x >= 0 ? r : 2 - r;
 }
+
+// "CC Gates in Workspace" (CCCommand.GATES, CCNode.updateGates /
+// getGateBoundaries): range gates on the DNA parameter, in channel value
+// units. G1 and G2: mean +/- 2 SD, SD = mean * CV / 100 (1 when the CV is not
+// a number); S: from the top of G1 to the bottom of G2. Names
+// "<model>-<parameter>-G1|S|G2" (CCModelType.getModelName).
+export function cellCycleGateRanges(fit: Pick<CellCycleFit, 'model' | 'g1' | 'g2'>, binWidth: number, parameter: string): { name: string; min: number; max: number }[] {
+  const prefix = `${fit.model === 'watson' ? 'Watson' : 'DeanJettFox'}-${parameter}-`;
+  const range = (c: { mean: number; sd: number }) => {
+    const mean = (c.mean + 0.5) * binWidth;
+    const cv = (100 * c.sd) / (c.mean + 0.5);
+    const sd = Number.isNaN(cv) ? 1 : (mean * cv) / 100;
+    return [mean - 2 * sd, mean + 2 * sd] as const;
+  };
+  const g1 = range(fit.g1), g2 = range(fit.g2);
+  return [
+    { name: `${prefix}G1`, min: g1[0], max: g1[1] },
+    { name: `${prefix}G2`, min: g2[0], max: g2[1] },
+    { name: `${prefix}S`, min: g1[1], max: g1[1] + (g2[0] - g1[1]) },
+  ];
+}

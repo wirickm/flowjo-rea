@@ -48,7 +48,7 @@
     ],
     "scenarios": [
       {
-        "evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+        "evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
         "operation": "verify_reconstruction_obligations",
         "authority": "controlled-replay"
       }
@@ -3993,7 +3993,7 @@
         "locations": []
       },
       {
-        "evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+        "evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
         "analysis_profile": null,
         "raw_result": null,
         "relationship_coverage": null,
@@ -5187,7 +5187,7 @@
             {
               "obligation_id": "platforms.cellcycle-models",
               "obligation_version": 1,
-              "owner_sha256": "8b8ea624e1f0c430b39d055fea5fb4161a3840b2f88e09489ffe8f43e71100a2",
+              "owner_sha256": "8a0d6106732029ae51304a8bda89b39ece34a7336fc65f6328a447a2aba52417",
               "fixtures": [
                 {
                   "fixture_id": "cc.watson",
@@ -5211,7 +5211,7 @@
             {
               "obligation_id": "platforms.proliferation-indices",
               "obligation_version": 1,
-              "owner_sha256": "a775ca7055f008c48e546d0dd49c7cde3ee7bd1735be864c9c017795b33915f4",
+              "owner_sha256": "9579f5b0b0f90abe4842f240f93a6206a46d2c7f71d72d164b2a8effc48b8177",
               "fixtures": [
                 {
                   "fixture_id": "prolif.indices",
@@ -5235,7 +5235,7 @@
             {
               "obligation_id": "workspace.dont-ask-again",
               "obligation_version": 1,
-              "owner_sha256": "2c529a3dedc659e445ff6796f7e7bbc1b415071e93a33bacab4b3834003cb0cc",
+              "owner_sha256": "bf321a521b94aa2c87d4615789ec542fc654baa12e9c1bf1bc379e9546f4b498",
               "fixtures": [
                 {
                   "fixture_id": "workspace.dont-ask-again.pos",
@@ -5259,7 +5259,7 @@
             {
               "obligation_id": "workspace.autosave",
               "obligation_version": 1,
-              "owner_sha256": "e196e9b992826a6c25e24e6b0962da45dc6ccc8fb3b3d933178b1163cf672789",
+              "owner_sha256": "222107c7bc06612d3a0beb8c64c84cf449477dc9ce0f9ef36c158965cc6ece07",
               "fixtures": [
                 {
                   "fixture_id": "workspace.autosave.pos",
@@ -5283,7 +5283,7 @@
             {
               "obligation_id": "graphs.edge-warning",
               "obligation_version": 1,
-              "owner_sha256": "e196e9b992826a6c25e24e6b0962da45dc6ccc8fb3b3d933178b1163cf672789",
+              "owner_sha256": "222107c7bc06612d3a0beb8c64c84cf449477dc9ce0f9ef36c158965cc6ece07",
               "fixtures": [
                 {
                   "fixture_id": "graphs.edge-warning.pos",
@@ -5355,7 +5355,7 @@
             {
               "obligation_id": "graph.stain-axis-title",
               "obligation_version": 1,
-              "owner_sha256": "f067cb0e9bc9d7d66cbee264c7a9e1eda147057ef48a2643bfa56331adbdb3b5",
+              "owner_sha256": "6745a33d4e6086e07fccf2460e5b5c8a20028fac12cdfcb50f26f67d63692d77",
               "fixtures": [
                 {
                   "fixture_id": "graph.stain-axis-title.pos",
@@ -7918,7 +7918,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -7926,7 +7926,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -7934,7 +7934,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -7944,7 +7944,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "wsp.polygon-counts"
           ],
@@ -7980,7 +7980,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -7988,7 +7988,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -7998,7 +7998,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "wsp.logicle-ellipse"
           ],
@@ -8034,7 +8034,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8042,7 +8042,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -8052,7 +8052,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "gate.rect-open-bounds"
           ],
@@ -8093,7 +8093,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8101,7 +8101,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8109,7 +8109,7 @@
             "case_kind": "malformed",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -8119,7 +8119,7 @@
           "command": "npx vitest run tests/flowjo-stats.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "stats.flowjo-conventions"
           ],
@@ -8155,7 +8155,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8163,7 +8163,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -8173,7 +8173,7 @@
           "command": "npx vitest run tests/uat-step2.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "names.unique-sibling"
           ],
@@ -8209,7 +8209,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8217,7 +8217,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -8227,7 +8227,7 @@
           "command": "npx vitest run tests/uat-step2.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "gate.min-shape"
           ],
@@ -8263,7 +8263,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8271,7 +8271,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8279,7 +8279,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -8289,7 +8289,7 @@
           "command": "npx vitest run tests/uat-step2.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "sample.relink-keywords"
           ],
@@ -8325,7 +8325,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8333,7 +8333,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8341,7 +8341,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -8351,7 +8351,7 @@
           "command": "npx vitest run tests/quad-delete.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "gate.quad-sibling-delete"
           ],
@@ -8387,7 +8387,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8395,7 +8395,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -8405,7 +8405,7 @@
           "command": "npx vitest run tests/cellcycle.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "cellcycle.histogram-channels"
           ],
@@ -8441,7 +8441,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8449,7 +8449,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8457,7 +8457,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -8467,7 +8467,7 @@
           "command": "npx vitest run tests/history.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "workspace.undo-limit"
           ],
@@ -8508,7 +8508,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8516,7 +8516,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8524,7 +8524,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8532,7 +8532,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8540,7 +8540,7 @@
             "case_kind": "malformed",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -8550,7 +8550,7 @@
           "command": "npx vitest run tests/group-criteria.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "groups.keyword-criteria"
           ],
@@ -8586,7 +8586,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8594,7 +8594,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8602,7 +8602,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -8612,7 +8612,7 @@
           "command": "npx vitest run tests/group-criteria.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "groups.acceptance"
           ],
@@ -8648,7 +8648,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8656,7 +8656,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -8666,7 +8666,7 @@
           "command": "npx vitest run tests/group-criteria.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "groups.roles"
           ],
@@ -8702,7 +8702,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8710,7 +8710,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8718,7 +8718,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8726,7 +8726,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8734,7 +8734,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -8744,7 +8744,7 @@
           "command": "npx vitest run tests/group-analysis.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "groups.owned-analysis"
           ],
@@ -8780,7 +8780,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8788,7 +8788,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8796,7 +8796,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -8806,7 +8806,7 @@
           "command": "npx vitest run tests/flowjo-stats-moments.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "stats.histogram-moments"
           ],
@@ -8847,7 +8847,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8855,7 +8855,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8863,7 +8863,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -8873,7 +8873,7 @@
           "command": "npx vitest run tests/flowjo-stats-moments.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "stats.mode-mad-correlation"
           ],
@@ -8909,7 +8909,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8917,7 +8917,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8925,7 +8925,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -8935,7 +8935,7 @@
           "command": "npx vitest run tests/flowjo-stats-moments.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "stats.wsp-names"
           ],
@@ -8971,7 +8971,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8979,7 +8979,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -8987,7 +8987,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -8997,7 +8997,7 @@
           "command": "npx vitest run tests/export-rules.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "export.event-cap"
           ],
@@ -9033,7 +9033,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9041,7 +9041,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9049,7 +9049,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -9059,7 +9059,7 @@
           "command": "npx vitest run tests/export-rules.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "export.csv-format"
           ],
@@ -9095,7 +9095,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9103,7 +9103,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9111,7 +9111,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9119,7 +9119,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -9129,7 +9129,7 @@
           "command": "npx vitest run tests/export-rules.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "export.concatenate"
           ],
@@ -9165,7 +9165,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9173,7 +9173,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -9183,7 +9183,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "gates.quad-bisector"
           ],
@@ -9219,7 +9219,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9227,7 +9227,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -9237,7 +9237,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "gates.names-tools"
           ],
@@ -9278,7 +9278,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9286,7 +9286,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9294,7 +9294,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9302,7 +9302,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -9312,7 +9312,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "gates.spider-curly"
           ],
@@ -9348,7 +9348,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9356,7 +9356,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9364,7 +9364,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -9374,7 +9374,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "gates.magnetic"
           ],
@@ -9415,7 +9415,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9423,7 +9423,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9431,7 +9431,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9439,7 +9439,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -9449,7 +9449,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "gates.auto-gate"
           ],
@@ -9490,7 +9490,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9498,7 +9498,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9506,7 +9506,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9514,7 +9514,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -9524,7 +9524,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "gates.pencil-convert"
           ],
@@ -9565,7 +9565,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9573,7 +9573,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9581,7 +9581,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9589,7 +9589,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -9599,7 +9599,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "gates.clipboard-manual"
           ],
@@ -9645,7 +9645,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9653,7 +9653,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9661,7 +9661,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9669,7 +9669,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -9679,7 +9679,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "gates.anchored-bifurgate"
           ],
@@ -9725,7 +9725,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9733,7 +9733,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9741,7 +9741,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9749,7 +9749,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9757,7 +9757,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9765,7 +9765,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -9775,7 +9775,7 @@
           "command": "npx vitest run tests/kinetics.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "kinetics.series"
           ],
@@ -9816,7 +9816,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9824,7 +9824,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9832,7 +9832,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9840,7 +9840,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -9850,7 +9850,7 @@
           "command": "npx vitest run tests/kinetics.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "kinetics.smoothing-threshold"
           ],
@@ -9896,7 +9896,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9904,7 +9904,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9912,7 +9912,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9920,7 +9920,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9928,7 +9928,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9936,7 +9936,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9944,7 +9944,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -9952,7 +9952,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -9962,7 +9962,7 @@
           "command": "npx vitest run tests/kinetics.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "kinetics.timeslices"
           ],
@@ -9998,7 +9998,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10006,7 +10006,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10014,7 +10014,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10022,7 +10022,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10030,7 +10030,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10038,7 +10038,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -10048,7 +10048,7 @@
           "command": "npx vitest run tests/formula.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "derived.language"
           ],
@@ -10089,7 +10089,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10097,7 +10097,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10105,7 +10105,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10113,7 +10113,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10121,7 +10121,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -10131,7 +10131,7 @@
           "command": "npx vitest run tests/formula.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "derived.evaluation"
           ],
@@ -10167,7 +10167,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10175,7 +10175,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -10185,7 +10185,7 @@
           "command": "npx vitest run tests/formula.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "derived.dialog-wsp"
           ],
@@ -10226,7 +10226,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10234,7 +10234,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10242,7 +10242,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10250,7 +10250,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10258,7 +10258,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10266,7 +10266,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -10276,7 +10276,7 @@
           "command": "npx vitest run tests/fcs-flowjo.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "fcs.read"
           ],
@@ -10312,7 +10312,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10320,7 +10320,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10328,7 +10328,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -10338,7 +10338,7 @@
           "command": "npx vitest run tests/comp-flowjo.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "compensation.files"
           ],
@@ -10389,7 +10389,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10397,7 +10397,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10405,7 +10405,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10413,7 +10413,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10421,7 +10421,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -10431,7 +10431,7 @@
           "command": "npx vitest run tests/comp-flowjo.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "compensation.wizard-ssm"
           ],
@@ -10446,7 +10446,7 @@
         "owner": {
           "module_path": "src/core/cellcycle.ts",
           "symbol": "fitCellCycle",
-          "owner_sha256": "8b8ea624e1f0c430b39d055fea5fb4161a3840b2f88e09489ffe8f43e71100a2"
+          "owner_sha256": "8a0d6106732029ae51304a8bda89b39ece34a7336fc65f6328a447a2aba52417"
         },
         "parser_type": null,
         "original_cases": [
@@ -10467,7 +10467,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10475,7 +10475,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -10485,7 +10485,7 @@
           "command": "npx vitest run tests/cellcycle.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "platforms.cellcycle-models"
           ],
@@ -10500,7 +10500,7 @@
         "owner": {
           "module_path": "src/core/proliferation.ts",
           "symbol": "fitProliferation",
-          "owner_sha256": "a775ca7055f008c48e546d0dd49c7cde3ee7bd1735be864c9c017795b33915f4"
+          "owner_sha256": "9579f5b0b0f90abe4842f240f93a6206a46d2c7f71d72d164b2a8effc48b8177"
         },
         "parser_type": null,
         "original_cases": [
@@ -10521,7 +10521,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10529,7 +10529,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -10539,7 +10539,7 @@
           "command": "npx vitest run tests/proliferation.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "platforms.proliferation-indices"
           ],
@@ -10554,7 +10554,7 @@
         "owner": {
           "module_path": "src/core/prefs.ts",
           "symbol": "skipConfirm",
-          "owner_sha256": "2c529a3dedc659e445ff6796f7e7bbc1b415071e93a33bacab4b3834003cb0cc"
+          "owner_sha256": "bf321a521b94aa2c87d4615789ec542fc654baa12e9c1bf1bc379e9546f4b498"
         },
         "parser_type": null,
         "original_cases": [
@@ -10575,7 +10575,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10583,7 +10583,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -10593,7 +10593,7 @@
           "command": "npx vitest run tests/prefs-tables.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "workspace.dont-ask-again"
           ],
@@ -10608,7 +10608,7 @@
         "owner": {
           "module_path": "src/core/prefs.ts",
           "symbol": "shouldAutoSave",
-          "owner_sha256": "e196e9b992826a6c25e24e6b0962da45dc6ccc8fb3b3d933178b1163cf672789"
+          "owner_sha256": "222107c7bc06612d3a0beb8c64c84cf449477dc9ce0f9ef36c158965cc6ece07"
         },
         "parser_type": null,
         "original_cases": [
@@ -10629,7 +10629,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10637,7 +10637,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -10647,7 +10647,7 @@
           "command": "npx vitest run tests/prefs-tables.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "workspace.autosave"
           ],
@@ -10662,7 +10662,7 @@
         "owner": {
           "module_path": "src/core/prefs.ts",
           "symbol": "edgeWarning",
-          "owner_sha256": "e196e9b992826a6c25e24e6b0962da45dc6ccc8fb3b3d933178b1163cf672789"
+          "owner_sha256": "222107c7bc06612d3a0beb8c64c84cf449477dc9ce0f9ef36c158965cc6ece07"
         },
         "parser_type": null,
         "original_cases": [
@@ -10683,7 +10683,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10691,7 +10691,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -10701,7 +10701,7 @@
           "command": "npx vitest run tests/prefs-tables.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "graphs.edge-warning"
           ],
@@ -10737,7 +10737,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10745,7 +10745,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -10755,7 +10755,7 @@
           "command": "npx vitest run tests/prefs-tables.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "tables.editor"
           ],
@@ -10791,7 +10791,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10799,7 +10799,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -10809,7 +10809,7 @@
           "command": "npx vitest run tests/prefs-tables.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "tables.iteration-batch"
           ],
@@ -10824,7 +10824,7 @@
         "owner": {
           "module_path": "src/ui/axes.ts",
           "symbol": "withStains",
-          "owner_sha256": "f067cb0e9bc9d7d66cbee264c7a9e1eda147057ef48a2643bfa56331adbdb3b5"
+          "owner_sha256": "6745a33d4e6086e07fccf2460e5b5c8a20028fac12cdfcb50f26f67d63692d77"
         },
         "parser_type": null,
         "original_cases": [
@@ -10845,7 +10845,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10853,7 +10853,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -10863,7 +10863,7 @@
           "command": "npx vitest run tests/stains.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "graph.stain-axis-title"
           ],
@@ -10899,7 +10899,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10907,7 +10907,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -10917,7 +10917,7 @@
           "command": "npx vitest run tests/layout-arrange.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "layout.arrange-iteration"
           ],
@@ -10953,7 +10953,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           },
           {
@@ -10961,7 +10961,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899"
+              "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c"
             ]
           }
         ],
@@ -10971,7 +10971,7 @@
           "command": "npx vitest run tests/wsp-figures.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_ccb6785aea6eee205e4cca84ff83408aa1665d90ade24b5a10d6b0d0010c2899",
+          "result_evidence_id": "ev_cb546d1a4ce3788bff34e3948054ae9389032f03d6a9899137af7068683f623c",
           "enumerated_obligation_ids": [
             "wsp.layout-figures"
           ],

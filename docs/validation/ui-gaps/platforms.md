@@ -20,7 +20,7 @@ Tests: `tests/plate.test.ts` (20 tests), `tests/compare.test.ts` (13 tests),
 `e2e/platforms-gaps.mjs` (30 checks, dev server port 5186).
 
 Status counts (63 rows; COMBOGATES belongs to the workspace area):
-Done 50, Own rule 6, Deferred 7 (several Done rows carry small own-rule notes).
+Done 50, Own rule 8 (RIBBONCONFIG and RIBBONSETDEFAULT done with own rules in the follow-up round f2), Deferred 5 (several Done rows carry small own-rule notes).
 
 ## 1. Where the platforms live in FlowJo 10.6.2
 
@@ -356,10 +356,20 @@ Well popup (right click): "Add attributes to table" (pairs into the keyword
 list), "Clear attributes" (all of that well), "Create Staging Well from
 attributes" (new staging well with a copy).
 
-#### RIBBONCONFIG "Configure Ribbon", RIBBONSETDEFAULT "Apply Defaults" - Deferred
-Ribbon customisation (`PERibbonConfigDialog`; "Are you sure? This will
-discard all ribbon customizations saved to your preferences."). flowjo-rea
-has no customisable ribbons anywhere; deferred.
+#### RIBBONCONFIG "Configure Ribbon", RIBBONSETDEFAULT "Apply Defaults" - Done (own rule)
+Ribbon customisation (`PERibbonConfigDialog`, `PERibbonAddBandAction`,
+`PERibbonRemoveBandAction`, `PERibbonDropTargetListener`; defaults
+`PERibbonStructure`: Plates: Plates, Experiment; File: Document; Edit:
+Clipboard, Select; Tools: Configure, Settings, Keywords; "Are you sure? This
+will discard all ribbon customizations saved to your preferences."). Rules as
+the workspace ribbon: docs/validation/ui-gaps/workspace.md section F2.3.
+flowjo-rea: "Configure Ribbon" (`pe-ribbon-config`) at the end of the band
+strip; remove / add / reorder bands, Apply defaults. Own rule: the plate
+editor's bands are one strip (one task) of the app's fieldsets (Plates,
+Document, Clipboard, Select, Experiment, Plate size, Settings); no Commit to
+Preferences (PECommand has none). Tests: e2e `e2e/followup-f2.mjs` "plate
+editor: removing a band hides it", "plate editor: drag moves a band",
+"plate editor: Apply defaults".
 
 ## 4. Compare Populations (COMPARISON)
 

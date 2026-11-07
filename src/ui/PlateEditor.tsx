@@ -13,6 +13,8 @@ import {
 } from '../core/plate';
 import { statScales } from '../core/flowjoStats';
 import { formatStat } from '../core/statsTable';
+import { useRibbon } from './RibbonConfig';
+import { PE_RIBBON } from './ribbons';
 
 type Say = (level: 'info' | 'warn' | 'error', text: string) => void;
 export interface PlateEditorProps {
@@ -39,6 +41,7 @@ export function PlateEditor(p: PlateEditorProps) {
   const st: PlateEditorState = p.ws.plateEditor ?? newEditorState();
   const plate = st.plates[Math.min(st.current, st.plates.length - 1)];
   const [sel, setSel] = useState<string[]>([]);
+  const peRib = useRibbon(PE_RIBBON); // PECommand.RIBBONCONFIG / RIBBONSETDEFAULT
   const [anchor, setAnchor] = useState<string | null>(null);
   const [kwRow, setKwRow] = useState<number | null>(null);
   const [attr, setAttr] = useState('');
@@ -124,45 +127,45 @@ export function PlateEditor(p: PlateEditorProps) {
         <div className="modal-body">
           {/* Ribbon bands as PERibbonStructure: Plates, Document, Clipboard, Add, Select, Experiment, Keywords, Settings */}
           <div className="row" style={{ flexWrap: 'wrap', gap: 4 }}>
-            <fieldset><legend>Plates</legend>
+            {peRib.has('Plate Editor', 'plates') && <fieldset style={peRib.style('Plate Editor', 'plates')}><legend>Plates</legend>
               <select value={st.current} onChange={(e) => edit((s) => { s.current = Number(e.target.value); })} data-testid="pe-plate-select">{st.plates.map((x, i) => <option key={i} value={i}>{x.name}</option>)}</select>
               <button data-testid="pe-add-plate" title="Add another plate to the list of definitions" onClick={() => edit((s) => { s.plates.push(newPlate(uniqueName('Plate', s.plates.map((x) => x.name)))); s.current = s.plates.length - 1; })}>Add New Plate</button>
               <button data-testid="pe-dup-plate" title="Make a copy of the current plate with all the keywords" onClick={() => edit((s, pl) => { const c = structuredClone(pl); c.name = uniqueName(`${pl.name} copy`, s.plates.map((x) => x.name)); s.plates.push(c); s.current = s.plates.length - 1; })}>Duplicate Plate</button>
               <button data-testid="pe-del-plate" title="Remove the current plate" onClick={() => { if (window.confirm('Are you sure you want to delete this plate?')) edit((s) => { s.plates.splice(s.current, 1); if (!s.plates.length) s.plates.push(newPlate('Plate')); s.current = Math.max(0, s.current - 1); }); }}>Delete Plate</button>
               <input value={plate.name} onChange={(e) => toSel((pl) => { pl.name = e.target.value; })} style={{ width: 110 }} title="Plate Name" data-testid="pe-plate-name" />
-            </fieldset>
-            <fieldset><legend>Document</legend>
+            </fieldset>}
+            {peRib.has('Plate Editor', 'document') && <fieldset style={peRib.style('Plate Editor', 'document')}><legend>Document</legend>
               <button data-testid="pe-open" title="Load a saved plate setup (XML) file" onClick={() => readFile('.xml', (t) => guard(() => { const s2 = parsePlateXml(t); p.updateWs((w) => { w.plateEditor = s2; }); }))}>Open...</button>
               <button data-testid="pe-save" title="Save the current plate definition to a XML file." onClick={() => p.download('untitled plate.xml', plateXml(st), 'application/xml')}>Save</button>
               <button data-testid="pe-export" title="Spreadsheet table with a column for every keyword found in any well" onClick={() => p.download(`${plate.name}.csv`, plateCsv(plate), 'text/csv')}>Save As CSV Table</button>
               <button data-testid="pe-import" title='Import a CSV file with annotation which includes a mandatory "well_id" column.' onClick={() => readFile('.csv,.txt', (t) => guard(() => { const pl2 = structuredClone(plate); const r = importCsv(pl2, t); edit((_, pl) => { Object.assign(pl, pl2); }); setError(r.ignored ? `${r.ignored} line(s) ignored: well id not in the plate` : null); }))}>Import</button>
-            </fieldset>
-            <fieldset><legend>Clipboard</legend>
+            </fieldset>}
+            {peRib.has('Plate Editor', 'clipboard') && <fieldset style={peRib.style('Plate Editor', 'clipboard')}><legend>Clipboard</legend>
               <button data-testid="pe-cut" disabled={!sel.length} onClick={() => { clip.current = copyText(plate, sel); void navigator.clipboard?.writeText(clip.current).catch(() => {}); toSel((pl) => clearWells(pl, sel)); }}>Cut</button>
               <button data-testid="pe-copy" disabled={!sel.length} onClick={() => { clip.current = copyText(plate, sel); void navigator.clipboard?.writeText(clip.current).catch(() => {}); }}>Copy</button>
               <button data-testid="pe-paste" title="Tab/newline text with attributes in the first row and well ids in the first column" onClick={async () => { let t = clip.current; try { t = (await navigator.clipboard.readText()) || t; } catch { /* clipboard permission denied: internal clipboard */ } toSel((pl) => { pasteText(pl, t); }); }}>Paste</button>
               <button data-testid="pe-fill-down" disabled={!sel.length} title="Copy the top well's keyword values down to all other selected wells below it" onClick={() => toSel((pl) => fillDown(pl, sel))}>Fill Down</button>
               <button data-testid="pe-fill-right" disabled={!sel.length} title="Copy the leftmost well's keyword values across to all other wells to its right" onClick={() => toSel((pl) => fillRight(pl, sel))}>Fill Right</button>
               <button data-testid="pe-titrate" disabled={!sel.length} title="Set up a keyword value series for multiple wells" onClick={() => setSeries({ ...DEFAULT_SERIES })}>Dilution Series...</button>
-            </fieldset>
-            <fieldset><legend>Select</legend>
+            </fieldset>}
+            {peRib.has('Plate Editor', 'select') && <fieldset style={peRib.style('Plate Editor', 'select')}><legend>Select</legend>
               <button data-testid="pe-select-all" onClick={() => setSel(allWells(plate))}>Select All</button>
               <button data-testid="pe-invert" onClick={() => setSel(invert(plate, sel))}>Invert Selection</button>
               <button data-testid="pe-deselect" onClick={() => setSel([])}>Deselect All</button>
               <select value="" onChange={(e) => { const g = p.groups.find((x) => x.id === e.target.value); if (g) setSel(wellsOfSamples(plate, p.ws.samples.filter((s) => g.sampleIds.includes(s.id)))); }} data-testid="pe-select-group" title="Select all wells based on the associated samples in a chosen workspace group"><option value="">Select Group...</option>{p.groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</select>
               <button data-testid="pe-save-selection" disabled={!sel.length} title="Create a new button in the footer to be able to recall this selection" onClick={() => { const n = window.prompt('Enter a name to describe the selection:', `Selection ${st.selections.length + 1}`); if (n) edit((s) => { s.selections.push({ name: n, wells: [...sel] }); }); }}>Save Well Selection</button>
-            </fieldset>
-            <fieldset><legend>Experiment</legend>
+            </fieldset>}
+            {peRib.has('Plate Editor', 'experiment') && <fieldset style={peRib.style('Plate Editor', 'experiment')}><legend>Experiment</legend>
               <button data-testid="pe-read-attrs" title="Assign attributes from the data files in the currently selected group to the wells" onClick={() => edit((_, pl, say) => { const r = readAttributesFromGroup(pl, groupSamples.map((s) => structuredClone(s))); if (r.missing) say('warn', `Unable to read attributes from all samples in group: ${r.missing} missing Well ID(s)`); })}>Read Attributes from Group</button>
               <button data-testid="pe-read-samples" title="Attempt to match the samples in the current group to the wells in the current plate" onClick={() => { const m: Record<string, string> = {}; for (const [w, l] of Object.entries(samplesByWell(plate, groupSamples))) m[w] = l.map((s) => s.fileName).join(', '); setAttached(m); }}>Read Samples from Group</button>
               <button data-testid="pe-apply" title="Copy the Keywords in the wells to the current group" onClick={() => p.updateWs((w, say) => { const ids = new Set(group?.sampleIds ?? []); const n = applyToSamples(plate, w.samples.filter((s) => ids.has(s.id))); say('info', `Plate keywords applied to ${n} sample(s)`); })}>Apply Plate Keywords to Group</button>
               <button data-testid="pe-make-group" disabled={!sel.length} title="Create a group in the workspace corresponding to the selected wells in the plate" onClick={() => { const n = window.prompt('Group name', `${plate.name} selection`); if (!n) return; const by = samplesByWell(plate, p.ws.samples); const ids = [...new Set(sel.flatMap((w) => (by[w] ?? []).map((s) => s.id)))]; p.updateWs((w, say) => { w.groups.push({ id: newId('grp'), name: n, sampleIds: ids }); say('info', `Group "${n}" created with ${ids.length} sample(s)`); }); }}>Make Group...</button>
-            </fieldset>
-            <fieldset><legend>Plate size</legend>
+            </fieldset>}
+            {peRib.has('Plate Editor', 'size') && <fieldset style={peRib.style('Plate Editor', 'size')}><legend>Plate size</legend>
               {([96, 384, 1536] as const).map((n) => <button key={n} data-testid={`pe-size-${n}`} onClick={() => toSel((pl) => setDimensions(pl, PLATE_SIZES[n].cols, PLATE_SIZES[n].rows))}>{n} well plate</button>)}
               <button data-testid="pe-size-custom" onClick={() => setCustom({ cols: plate.cols, rows: plate.rows })}>Custom</button>
-            </fieldset>
-            <fieldset><legend>Settings</legend>
+            </fieldset>}
+            {peRib.has('Plate Editor', 'settings') && <fieldset style={peRib.style('Plate Editor', 'settings')}><legend>Settings</legend>
               <label><input type="checkbox" checked={plate.showNEntries !== false} onChange={(e) => toSel((pl) => { pl.showNEntries = e.target.checked; })} data-testid="pe-show-n" />Show number of attributes</label>
               <label><input type="checkbox" checked={!!plate.thickBorders} onChange={(e) => toSel((pl) => { pl.thickBorders = e.target.checked; })} data-testid="pe-thick" />Use thicker borders</label>
               <label><input type="checkbox" checked={!!plate.heatmap} onChange={(e) => toSel((pl) => { pl.heatmap = e.target.checked; })} data-testid="pe-heatmap" />Show heatmaps of numerical keys</label>
@@ -170,8 +173,10 @@ export function PlateEditor(p: PlateEditorProps) {
               <select value={filter} onChange={(e) => toSel((pl) => { pl.keywordFilter = e.target.value; })} data-testid="pe-filter" title="Select a keyword to show corresponding well values and hide display of all others"><option value="">All Keywords</option>{keys.map((k) => <option key={k} value={k}>{k}</option>)}</select>
               <select value={statCol} onChange={(e) => setStatCol(e.target.value)} data-testid="pe-stat" title="Heat map of a statistics table column for each well's sample"><option value="">No Statistics</option>{p.ws.statColumns.map((c) => <option key={c.id} value={c.id}>{c.populationPath || 'All'} {c.stat}{c.channel ? ` ${c.channel}` : ''}</option>)}</select>
               <button data-testid="pe-toggle-notation" onClick={() => edit((s) => { s.hideInstructions = !s.hideInstructions; })}>{st.hideInstructions ? 'Show Instructions' : 'Hide Instructions'}</button>
-            </fieldset>
+            </fieldset>}
+            <button style={{ order: 99, alignSelf: 'center' }} data-testid="pe-ribbon-config" title="Configure Ribbon" onClick={() => peRib.openConfig('Plate Editor')}>Configure Ribbon</button>
           </div>
+          {peRib.dialog}
           {error && <p className="error" data-testid="pe-error">{error}</p>}
           {!st.hideInstructions && <ul className="muted" data-testid="pe-instructions" style={{ margin: '4px 0' }}>{INSTRUCTIONS.map((t) => <li key={t}>{t}</li>)}</ul>}
           <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>

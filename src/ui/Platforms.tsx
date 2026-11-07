@@ -2,7 +2,7 @@
 // Watson), proliferation (dye-dilution generations) and kinetics (statistic
 // over time). Numerics run in the worker; validated synthetically only.
 import { useState } from 'react';
-import type { CellCycleFit } from '../core/cellcycle';
+import { cellCycleGateRanges, type CellCycleFit } from '../core/cellcycle';
 import { MAX_PEAKS, type ProliferationFit } from '../core/proliferation';
 
 type Platform = 'cellcycle' | 'proliferation' | 'kinetics';
@@ -17,6 +17,9 @@ interface Props {
   runProliferation: (channel: string, maxGenerations: number) => Promise<ProliferationFit | undefined>;
   // The FlowJo Kinetics window for this population (src/ui/Kinetics.tsx).
   kinetics: React.ReactNode;
+  // CC Gates in Workspace (CCCommand.GATES): on creates the G1 / S / G2 range
+  // gates under the population, off removes them.
+  onCcGates?: (channel: string, ranges: { name: string; min: number; max: number }[], on: boolean) => void;
 }
 
 // Undefined results (e.g. indices with no divided cells) show "-", never NaN.
@@ -57,6 +60,7 @@ export function PlatformsDialog(p: Props) {
   const [model, setModel] = useState<'dean-jett-fox' | 'watson'>('dean-jett-fox');
   const [gens, setGens] = useState(4); // FlowJo 10 "Number of Peaks" default
   const [cc, setCc] = useState<CellCycleResult | null>(null);
+  const [ccGates, setCcGates] = useState(false);
   const [pr, setPr] = useState<ProliferationFit | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -120,6 +124,8 @@ export function PlatformsDialog(p: Props) {
               </table>
               <Chart observed={cc.histogram} testId="cc-chart" xLabel={`${channel} (linear)`} lines={[{ values: cc.fitted, color: '#111' }, { values: cc.components.g1, color: '#2a7de1' }, { values: cc.components.s, color: '#e1a42a' }, { values: cc.components.g2, color: '#d0021b' }]} />
               {cc.warnings.map((w, i) => <p key={i} className="warn">{w}</p>)}
+              {p.onCcGates && <label title="Create G1, S and G2 range gates in the workspace from the fitted model"><input type="checkbox" data-testid="cc-gates" checked={ccGates}
+                onChange={(e) => { setCcGates(e.target.checked); p.onCcGates!(channel, cellCycleGateRanges(cc, cc.binWidth, channel), e.target.checked); }} /> CC Gates in Workspace</label>}
             </div>
           )}
 

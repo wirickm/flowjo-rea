@@ -1729,3 +1729,15 @@ Status: *observed* (structure), not reference-validated.
   which stored field is `a` versus `b`. Snapping the defining points to an
   integer grid is a candidate explanation for the logicle ellipse gap (2-3%),
   untested.
+
+## Sample quality check (SampleValidity, engine 3.6.2)
+
+Behavioural spec of `SampleValidity::ProcessQuery` / `CheckDataConsistency`
+as used by FlowJo 10.6.2's Check Sample Quality: at least 2000 events; K
+time segments (7, 10, 20, 30, 40 by event count); per data parameter the
+truncated median channel of each segment (channel range 4096 for float data,
+next power of two of $PnR for integer data), a least-squares line through
+the medians (ratio = |slope| * K / mean), mean and SD of the medians; the
+Java side counts parameters with |ratio| > 0.01 and grades floor(sqrt(n)).
+Full rules: docs/validation/ui-gaps/workspace.md section F2.1;
+implementation `src/core/sampleQuality.ts`.

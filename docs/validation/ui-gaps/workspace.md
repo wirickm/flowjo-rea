@@ -384,21 +384,180 @@ Tests: `tests/workspace-gaps.test.ts` (18 tests), `e2e/workspace-gaps.mjs`
 |---|---|---|
 | REPLACE "Replace" | `KeywordFindRelpaceDialog.getReplaceAction` -> `replaceSelectedRows`: only the selected result rows (Replace All selects all first) | **Done**: Find dialog "Replace" changes the highlighted result (annotation keywords only, as Replace All); e2e "Replace changes only the selected result" |
 | BROWSESAMPLES "Search for FCS files..." | `WSDialogAction.doBrowseForSamples`: traverse local folders or the network for a filtered list of FCS files | **Own rule**: File tab "Search for FCS files..." opens the browser's folder picker; every `.fcs` / `.lmd` file under the folder is added (no network search) |
-| AUTOCC "Create Cell Cycle Gates" | Not wired (no action in `WSActionManager`); tooltip: 5 regions from DNA and S-phase markers | **Deferred**: unreachable in 10.6.2 and needs a bivariate DNA / BrdU model this app does not have; the cell cycle platform stays univariate |
-| CHECKSAMPLEQUALITY "Check Sample Quality" | `WSSampleQualityAction`: marks each sample of the current group; `SampleQualityControl` asks the native engine for rate / trend / kinetic consistency, shown in the sample badge | **Deferred**: the engine's quality metrics were not decoded |
+| AUTOCC "Create Cell Cycle Gates" | No action in `WSActionManager` (AUTOCC appears only in the `WSCommand` enum and its `$VALUES`); not in any band (`WSBiologyBand` / `getBiologyActions`), menu, `CCCommand` or the cell cycle window | **Not a gap: no-op in FlowJo 10.6.2** (section F2.2). The reachable 10.6.2 path to cell cycle gates, the cell cycle window's "CC Gates in Workspace" (`CCCommand.GATES`), is **Done** |
+| CHECKSAMPLEQUALITY "Check Sample Quality" | `WSSampleQualityAction.doAction` -> `Sample.setCheckQuality(true)` for every sample of the current group; `SampleQualityControl` + engine `SampleValidity` | **Done** (section F2.1): Tools > Cytometry "Check Sample Quality", status badge per sample, report dialog; tests `tests/sampleQuality.test.ts`, e2e `e2e/followup-f2.mjs` |
 | IMPORT_CSV_CLR "Import Parameters from CSV/CLR..." | `WSDialogAction.importCsvClr` | **Deferred**: no CSV / CLR parameter file sample to define the format against (compatibility matrix own rule kept) |
 | CONSENSUS_DP "Consensus Gate", CLUSTER_FREQ_DP "Cluster Frequency" | `WorkspaceAction` -> `FlowCAPUtil.createClusterComparisonParameter`: derived parameters of per-event inclusion probability across populations (FlowCAP tooling) | **Deferred**: FlowCAP comparison tooling, outside the analysis workflow; formula not decoded |
 | MIFlowCyt "Annotate Experiment..." / MIFLOW | `WSAction` delegating to `WSController` (MIFlowCyt metadata dialog, bundle key `test.debug.miflowcyt`) | **Deferred**: the MIFlowCyt field list was not decoded; free annotations and keywords remain |
 | REPORTEDITOR "Report Editor" | `FJNavAction` to the report editor window | **Deferred**: a separate editor (report layout and export) |
 | SCRIPTEDITOR "Script Editor" | `WSScriptAction`: FlowJo scripting console | **Deferred**: needs FlowJo's scripting language |
 | EXPORT_DIVA / IMPORT_DIVA | `WSExportDivaAction` / `WSImportDivaAction`: gates and compensation to / from a FACSDiva experiment | **Deferred**: vendor format, no sample experiment file |
-| RIBBONCONFIG "Customize Ribbon", RIBBONSETDEFAULT "Apply defaults", RIBBONCOMMITTOPREFS "Commit to Preferences" | `WSRibbonConfigDialog`, `WSRibbonSetDefaultAction`, `WSRibbonCommitToPrefsAction` | **Deferred**: cosmetic; the ribbon is fixed |
+| RIBBONCONFIG "Customize Ribbon", RIBBONSETDEFAULT "Apply defaults", RIBBONCOMMITTOPREFS "Commit to Preferences" | `WSDialogAction` (RIBBONCONFIG) -> `WSRibbonConfigDialog`; `WSRibbonSetDefaultAction`; `WSRibbonCommitToPrefsAction`; `AbstractRibbonStructure`, `FJRibbonDropTargetListener` | **Done** with own rules (section F2.3); tests `tests/ribbon.test.ts`, e2e `e2e/followup-f2.mjs` |
 
 ## Counts
 
-Of the 51 gap rows: Done 25, Own rule 12 (CLOSE, REVERT, EXCEL, ACS,
-BROWSESAMPLES, ADDKEYTOGROUP, BOOLEANCREATE, BOOLEANEDIT, SORT1-3,
-TREEREMOVECOLUMN), Deferred 14 (REPORTEDITOR, SCRIPTEDITOR, AUTOCC,
-CHECKSAMPLEQUALITY, IMPORT_CSV_CLR, CONSENSUS_DP, CLUSTER_FREQ_DP, MIFlowCyt,
-MIFLOW, EXPORT_DIVA, IMPORT_DIVA, RIBBONCONFIG, RIBBONSETDEFAULT,
-RIBBONCOMMITTOPREFS). Some Done rows carry small own-rule notes, stated above.
+Of the 51 gap rows (after the follow-up round f2): Done 26 (+ CHECKSAMPLEQUALITY),
+Own rule 15 (CLOSE, REVERT, EXCEL, ACS, BROWSESAMPLES, ADDKEYTOGROUP,
+BOOLEANCREATE, BOOLEANEDIT, SORT1-3, TREEREMOVECOLUMN, RIBBONCONFIG,
+RIBBONSETDEFAULT, RIBBONCOMMITTOPREFS: done with own rules), Not a gap 1
+(AUTOCC), Deferred 9 (REPORTEDITOR, SCRIPTEDITOR, IMPORT_CSV_CLR,
+CONSENSUS_DP, CLUSTER_FREQ_DP, MIFlowCyt, MIFLOW, EXPORT_DIVA, IMPORT_DIVA). Some Done rows carry small own-rule notes, stated above.
+
+
+## F2. Follow-up round f2 (2026-11-07)
+
+### F2.1 WSCommand.CHECKSAMPLEQUALITY "Check Sample Quality"
+
+FlowJo 10.6.2 evidence:
+- `WSActionManager` creates `aSampleQuality = WSSampleQualityAction(CHECKSAMPLEQUALITY)`
+  (ribbon priority TOP) and lists it in `getInstrumentationActions`, shown by
+  `WSInstrumentationBand` (Tools > Cytometry).
+- `WSSampleQualityAction.doAction`: for every sample of the current group,
+  `Sample.setCheckQuality(true)`, which sets the flag on the sample's
+  `SampleQualityControl` and re-analyses the sample in the background. The
+  workspace preference `checkSampleQuality` (`WSSampleMgr`) does the same for
+  every added sample.
+- `SampleQualityControl.doQualityQuery` sends a header request
+  (`HeaderRequest(SampleQualityControl, Sample)`: element `SampleQuality` with
+  `minPercentageThreshold` 0 and `maxPercentageThreshold` 1) and keeps the
+  engine's `SampleValidity` answer (`HeaderResponseReader.getSampleQuality`).
+- Status (`getStatusForQualityResponse`): n = number of `ParameterCheck`
+  elements whose `TrendThresholdCheck` |ratio| > 0.01; k = floor(sqrt(n));
+  k > 8 Potentially malformed (red), k > 4 Flawed (orange), k > 2 Irregular
+  (magenta), k > 0 OK (blue), otherwise Valid (green); no answer = Unchecked
+  (light gray). Enum `SampleQualityControl$QC`, labels `ws.sample.qc.*`.
+- Display: `TreeTableCellRenderer` paints the status colour as the sample's
+  indicator; `SampleTreeTable` tooltip "Sample quality: <label>";
+  `PropertiesDialog` shows `getTrendConsistency` ("slope / mean = ratio"),
+  `getKineticConsistency` ("mean +/- stddev : ratio") and `getEventRate2`
+  ("Sample time", "Time values").
+
+Engine (libNativeEngine 3.6.2, `SampleValidity::ProcessQuery`,
+`CheckDataConsistency()`, `CheckDataConsistency(int,int)` run as
+`SampleQualityTask`s, `ParameterCheckInfo::ToXML`,
+`SampleValidityResult::ToXML`, `BasicHistogram::ChannelMedian`,
+`GParameter::GetChannelRange`):
+- Fewer than 2000 events: failure "Too few events to check validity." (no
+  parameter checks, so the Java side reads Valid). A negative percentage
+  threshold fails with "No min or max percentage threshold specified.".
+- K time segments: 7 (< 5000 events), 10 (< 25000), 20 (< 200000), 30
+  (< 1000000), else 40. Segment k holds events k*floor(N/K) to
+  (k+1)*floor(N/K) - 1 in acquisition order; the remainder is not used.
+- Per data parameter (time and non-data parameters skipped): a histogram
+  over the channel range (4096 channels for $DATATYPE F, D or A or $PnR above
+  4096; for integer data the power of two at or above $PnR); the median
+  channel of each segment (first channel whose cumulative count reaches half
+  of the segment), truncated to an integer. KineticsThresholdCheck: mean and
+  sample SD (K - 1) of the K medians. TrendThresholdCheck: least-squares line
+  through the medians at x = 1..K, slope, mean = sum / K, ratio =
+  |slope| * K / mean. Also the counts in the first and last channel of the
+  whole-sample histogram (numInFirstChannels / numInLastChannels).
+- Time (only when the elapsed time is at least 20 s): `sampleTime`; `Time`
+  avgDeltaT = (last - first time) * 0.02 and 50 values (time span of each
+  1/50 of the events); `LargeDeltaTimeCheck` biggestDeltaT and avgDeltaT of a
+  4096-bucket histogram of event-to-event time steps; `EventRateConsistency`
+  slope and mean of a line through the K segment time spans, without 1
+  (< 200000 events) or 2 segments at each end.
+
+flowjo-rea: `src/core/sampleQuality.ts` (rules), Tools > Cytometry "Check
+Sample Quality" (`check-quality`) in `src/ui/App.tsx`, a status dot left of
+the sample name (`quality-<file>`, colour and tooltip as FlowJo) that opens
+the report (`src/ui/QualityReport.tsx`). **Done**: `tests/sampleQuality.test.ts`
+(10 tests), e2e "Check Sample Quality marks every sample of the group with a
+badge" and the report checks. Own rules: the channel of an event is the
+app's display scale of that parameter (the engine histograms the
+TransformedParameter; which scale its data set tag carries was not
+confirmed); the time-step histogram is replaced by exact values (largest
+step, mean positive step); results stay with the window and are not written
+to the workspace file (FlowJo keeps a `SampleQuality` element per sample);
+the `checkSampleQuality` preference is not offered. Uncertain: exactly which
+parameter types the engine skips (it tests a type code and two virtual
+flags; flowjo-rea skips Time only).
+
+### F2.2 WSCommand.AUTOCC "Create Cell Cycle Gates"
+
+Re-checked in 10.6.2: the constant `AUTOCC` (label `ws.auto.cc`, tooltip "Divide
+the current population into 5 standard regions...") is referenced only by
+`WSCommand` itself (constructor and `$VALUES`). `WSActionManager` creates no
+action for it, so `AbstractActionManager.get(AUTOCC)` has nothing to run;
+no ribbon band (`WSBiologyBand` uses `getBiologyActions`: Cell Cycle,
+Kinetics, Compare Populations, Proliferation), no menu, no `PlatformNavCommand`
+and no `CCCommand` refers to it (`CCCommand`: WATSON, DJF, GATES, SYNC_PEAK,
+DRAW_SUM, DRAW_COMPONENTS, FILL_COMPONENTS, MEAN_CONSTRAINT, CV_CONSTRAINT,
+CONSTRAIN_G, RESET). **Not a gap: no-op in FlowJo 10.6.2.**
+
+The cell cycle gates that 10.6.2 can make come from the cell cycle window's
+"CC Gates in Workspace" checkbox (`CCCommand.GATES`, label `cc.gates.enable`,
+in `ModelsOptionPanel`): `CCProfile.setAutoGate`, then `CCNode.updateGates`.
+Rule: if none of G1 / G2 / S gating is enabled, notify `plat.cellcycle.noautogate`;
+otherwise `getGateBoundaries` gives G1 and G2 ranges mean +/- 2 SD with
+SD = mean * CV / 100 (1 when the CV is NaN), from the model's G1/G2 mean and
+CV statistics; S runs from the top of G1 to the bottom of G2. Each is a
+`RangeGate` on the model's parameter (y level 0.5, 0.6, 0.55; tint from the
+cell cycle colour preferences), created under the platform's parent
+population by `createGate`, named `<model>-<parameter>-G1|G2|S`
+(`getGateNamePrefix`, `CCModelType.getModelName`: Watson, DeanJettFox); an
+existing child of that name has its range updated. Unchecking removes them
+(`removeGates`). flowjo-rea: checkbox `cc-gates` in the cell cycle result
+(`src/ui/Platforms.tsx`), ranges from `cellCycleGateRanges`
+(`src/core/cellcycle.ts`). **Done**: unit "CC Gates in Workspace: G1 / G2 mean
++/- 2 SD, S between them", e2e "CC Gates in Workspace adds the G1, G2 and S
+range gates", "unchecking removes them". Own rule: an existing child of the
+same name is kept (not re-ranged); gate tints and label heights are not set.
+
+### F2.3 Ribbon customization (RIBBONCONFIG, RIBBONSETDEFAULT, RIBBONCOMMITTOPREFS)
+
+FlowJo 10.6.2 evidence:
+- Structure: `AbstractRibbonStructure` keeps tasks (tabs), each an ordered
+  band list; saved in the preferences as `<Task name=..><Band name=../></Task>`
+  (`getElement`; root `WSRibbon`, `TERibbon`, `PERibbon`); reading skips
+  unknown task / band names. Defaults: `WSRibbonStructure.loadDefaults`
+  (FlowJo: Navigate, Experiment, Biology, Help; File: Document, Find; Edit:
+  Clipboard, Select, Expand; Workspace: Groups, Populations, Statistics,
+  Keywords; Tools: Cytometry, Biology, Boolean; Configure: Settings, Font,
+  Power). A band may sit on several tasks.
+- `removeBand`: refused for the last band of a task ("Unable to remove the
+  last band from a task."). `addBand`: refused when the task already has the
+  band ("No band was added since it already exists in the selected task.");
+  appended, or inserted at the target band's index + 0 / + 1.
+- `WSRibbonConfigDialog` / `FJRibbonConfigDialog` ("Ribbon Configuration",
+  prompt "Drag bands to add them to the ribbon. To remove a band, drag it off
+  of the ribbon. To swap positions of existing bands, drag them."): a list of
+  every band, dragged onto the live ribbon; `FJRibbonDropTargetListener.drop`
+  finds the band under the pointer of the selected task (left half: before,
+  right half: after, past a band's right edge: after); a drop on itself does
+  nothing; a band already on the task is removed first (a move); dragging a
+  ribbon band off the ribbon removes it. The dialog's button is Apply
+  defaults.
+- RIBBONCONFIG is on the workspace taskbar (`WSRibbonFrame`, via
+  `WSDialogAction`). `WSRibbonSetDefaultAction`: confirm
+  `ws.ribbon.setdefaults.confirm`, new default structure, save preferences.
+  `WSRibbonCommitToPrefsAction`: confirm `ws.ribbon.committoprefs.confirm`,
+  the workspace's structure into the `WSRibbon` preference, reload every open
+  workspace's ribbon. In 10.6.2 the commit action is created by
+  `WSActionManager` but no band, menu or dialog refers to it (unreachable);
+  add / remove / drop already save the preferences.
+- Table editor: `TECommand` has RIBBONCONFIG and RIBBONSETDEFAULT
+  (`TERibbonConfigAction`, `TERibbonSetDefaultAction`; `TERibbonCommitToPrefsAction`
+  exists with no command); defaults `TERibbonStructure` (Table Editor: Tables,
+  Iteration, Output; Edit: Columns; Visualize: Formatting, Plots). Plate
+  editor: `PECommand` RIBBONCONFIG "Configure Ribbon", RIBBONSETDEFAULT "Apply
+  Defaults"; defaults `PERibbonStructure` (Plates: Plates, Experiment; File:
+  Document; Edit: Clipboard, Select; Tools: Configure, Settings, Keywords).
+
+flowjo-rea: rules in `src/core/ribbon.ts`, dialog and state in
+`src/ui/RibbonConfig.tsx`, structures in `src/ui/ribbons.ts`. Workspace:
+"Customize Ribbon" on the taskbar (`ribbon-config`), opening on the current
+tab; the dialog lists the tab's bands (drag to move, drop before / after by
+half, Remove, move buttons) and every band (drag onto the tab or Add;
+dragging a tab band onto the list removes it), Apply defaults and Commit to
+Preferences. Table editor (`te-ribbon-config`) and plate editor
+(`pe-ribbon-config`): same dialog, Apply defaults, no commit (no command).
+**Done** with own rules: the bands are flowjo-rea's own control groups
+(e.g. "Populations / Groups / Boolean"), so the band set and default
+placement are the app's; the table and plate editors show their bands as one
+strip (one task); edits last for the browser session and Commit to
+Preferences writes the preferences new sessions start from (FlowJo saves the
+preferences on most edits); the commit command is offered in the dialog
+although 10.6.2 does not reach it. Tests: `tests/ribbon.test.ts` (5 ribbon
+tests), e2e `e2e/followup-f2.mjs` (19 ribbon checks).

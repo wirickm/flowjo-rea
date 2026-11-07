@@ -21,13 +21,19 @@ export const PAPERS: Record<Paper, { w: number; h: number; label: string }> = {
   a4: { w: 8.2677 * 72, h: 11.6929 * 72, label: 'A4' },
 };
 export const MARGIN = 72;
-export interface PageSetup { paper: Paper; orientation: Orientation }
+// scale: print content scaling (Scale To Page / Width / Height, P14); default 1.
+export interface PageSetup { paper: Paper; orientation: Orientation; scale?: number }
 export const DEFAULT_PAGE: PageSetup = { paper: 'letter', orientation: 'portrait' };
 // P6: the editor's page is the imageable area (paper minus margins), scale 1.
 export function usablePage(p: PageSetup = DEFAULT_PAGE): { w: number; h: number } {
   const paper = PAPERS[p.paper];
   const w = Math.round(paper.w - 2 * MARGIN), h = Math.round(paper.h - 2 * MARGIN);
   return p.orientation === 'landscape' ? { w: h, h: w } : { w, h };
+}
+// The page in layout points: the imageable area times the content scaling.
+export function scaledPage(p: PageSetup = DEFAULT_PAGE): { w: number; h: number } {
+  const u = usablePage(p), k = p.scale && p.scale > 0 ? p.scale : 1;
+  return { w: Math.round(u.w * k), h: Math.round(u.h * k) };
 }
 // P6: a point lies on page floor(coord / page) + 1 (LayoutEditorController.pointToPage).
 export const pageOf = (coord: number, size: number) => Math.floor(coord / size) + 1;
@@ -285,3 +291,97 @@ export function nextFreeCell(g: GridDef, cells: CellRef[]): { row: number; col: 
   for (let r = 0; r < g.rows; r++) for (let c = 0; c < g.cols; c++) if (!cells.some((x) => x.row === r && x.col === c)) return { row: r, col: c };
   return null;
 }
+
+// R1-R4 (Fig.pointToHandleIndex / resizeClick / shouldStartResize, ResizeDrag,
+// FigEditable.doResize): a figure resizes from its four corner handles only;
+// a handle is hit within 6 pt of the corner; the opposite corner stays put;
+// Shift (without Ctrl), or a locked aspect ratio, keeps the aspect ratio by
+// moving the dragged corner to the closest point on the diagonal through the
+// fixed corner; figures are at least 4 pt (Fig.MIN_SIZE); size-locked figures
+// do not resize. Handles are numbered 1..9, row by row (1 top-left, 3 top-right,
+// 7 bottom-left, 9 bottom-right; 5 = inside, -1 = outside).
+export const HANDLE_SLOP = 6;
+export const MIN_FIG = 4;
+export function handleAt(b: Box, pt: { x: number; y: number }, slop = HANDLE_SLOP): number {
+  if (pt.x < b.x - slop || pt.x > b.x + b.w + slop || pt.y < b.y - slop || pt.y > b.y + b.h + slop) return -1;
+  const col = Math.abs(pt.x - b.x) < slop ? 0 : Math.abs(pt.x - (b.x + b.w / 2)) < slop ? 1 : Math.abs(pt.x - (b.x + b.w)) < slop ? 2 : -1;
+  const row = Math.abs(pt.y - b.y) < slop ? 0 : Math.abs(pt.y - (b.y + b.h / 2)) < slop ? 1 : Math.abs(pt.y - (b.y + b.h)) < slop ? 2 : -1;
+  if (col < 0 || row < 0) return 5;
+  const h = row * 3 + col + 1;
+  return h % 2 === 0 ? 5 : h; // edge midpoints act as the inside (move)
+}
+export const isCornerHandle = (h: number) => h === 1 || h === 3 || h === 7 || h === 9;
+export function resizeBox(b: Box, handle: number, pt: { x: number; y: number }, keepAspect = false): Box {
+  if (!isCornerHandle(handle)) return { ...b };
+  const ax = handle === 1 || handle === 7 ? b.x + b.w : b.x;
+  const ay = handle === 1 || handle === 3 ? b.y + b.h : b.y;
+  let px = pt.x, py = pt.y;
+  if (keepAspect && b.w > 0 && b.h > 0) {
+    // Closest point on the line through the anchor with slope +-h/w.
+    const sx = px < ax ? -1 : 1, sy = py < ay ? -1 : 1;
+    const dx = sx * b.w, dy = sy * b.h;
+    const t = ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy);
+    px = ax + t * dx; py = ay + t * dy;
+  }
+  const x = Math.round(Math.min(ax, px)), y = Math.round(Math.min(ay, py));
+  return { ...b, x, y, w: Math.max(MIN_FIG, Math.round(Math.abs(px - ax))), h: Math.max(MIN_FIG, Math.round(Math.abs(py - ay))) };
+}
+
+// Z1-Z4 (EditorZoom): zoom steps 12, 25, 33, 50, 66, 75, 100, 150, 200, 400 %.
+// The current step is the first step >= the scale; Zoom In takes the next step
+// (at most 400 %), Zoom Out the previous (at least 12 %); Fit to Window takes
+// the step before the first step >= the ratio that fits the figures' enclosing
+// rectangle into the window, at least 12 %; Reset Zoom is 100 %.
+export const ZOOM_STEPS = [12, 25, 33, 50, 66, 75, 100, 150, 200, 400];
+const stepIndex = (pct: number) => { const i = ZOOM_STEPS.findIndex((s) => s >= pct); return i < 0 ? ZOOM_STEPS.length - 1 : i; };
+export const zoomIndex = (scale: number) => stepIndex(Math.round(scale * 1000) / 10);
+export const zoomIn = (scale: number) => ZOOM_STEPS[Math.min(ZOOM_STEPS.length - 1, zoomIndex(scale) + 1)] / 100;
+export const zoomOut = (scale: number) => ZOOM_STEPS[Math.max(0, zoomIndex(scale) - 1)] / 100;
+export function zoomFit(view: { w: number; h: number }, content: { w: number; h: number }): number {
+  if (content.w <= 0 || content.h <= 0) return 1;
+  const r = Math.min(view.w / content.w, view.h / content.h);
+  return ZOOM_STEPS[Math.max(0, stepIndex(Math.trunc(r * 100)) - 1)] / 100;
+}
+
+// P14 (LayoutEditor.setAutoPageScale, PrintLayout.setContentScaling): Scale To
+// Width / Height / Page set the page's content scaling to the figures' right
+// (bottom) extent over the page width (height), Page the larger of the two, so
+// all figures print on one page width, height or page. With figures smaller
+// than 50 pt either way the scaling is 1. A page then holds page x scaling
+// layout points. Undoable (SetScaleEdit).
+export type ScaleType = 'page' | 'width' | 'height';
+export function autoPageScale(boxes: Box[], page: { w: number; h: number }, type: ScaleType): number {
+  let right = Math.max(0, ...boxes.map((b) => b.x + b.w)), bottom = Math.max(0, ...boxes.map((b) => b.y + b.h));
+  if (right < 50 || bottom < 50) { right = page.w; bottom = page.h; }
+  const rw = right / page.w, rh = bottom / page.h;
+  return type === 'width' ? rw : type === 'height' ? rh : Math.max(rw, rh);
+}
+
+// C1-C4 (LECopyAction, FJClipboardUtil.copy, LEPasteAction.paste): Copy puts
+// the selected figures (all figures when none is selected) on the clipboard as
+// figures and as an image (PNG with transparency, else opaque); Paste places
+// them back moved so their top-left lies in the visible area, then by (+4, +4).
+export function pasteOffset(bounds: { x: number; y: number }, visible: Box): { dx: number; dy: number } {
+  const inside = bounds.x >= visible.x && bounds.x < visible.x + visible.w && bounds.y >= visible.y && bounds.y < visible.y + visible.h;
+  const dx = inside ? 0 : visible.x - bounds.x, dy = inside ? 0 : visible.y - bounds.y;
+  return { dx: dx + PASTE_OFFSET, dy: dy + PASTE_OFFSET };
+}
+// Pasted text or a pasted image becomes a figure at (30, 50).
+export const PASTE_TEXT_POINT = { x: 30, y: 50 };
+
+// SEL1-SEL2 (LESelectionAction, QuadLayer.selectAll / toggleSelection).
+export const invertSelection = (all: string[], sel: string[]) => all.filter((id) => !sel.includes(id));
+
+// L1-L4 (SExplorer.doNewTemplate / doDuplicateTemplate / deleteSelectedTemplates /
+// sortTemplateList, NameUtil.uniqueName): layouts are listed by name, ignoring
+// case; a new layout is "Layout", made unique; a name in use gets "-1", "-2", ...
+// after any "-<1 to 3 digits>" suffix is dropped.
+export function uniqueName(name: string, taken: string[]): string {
+  if (!taken.includes(name)) return name;
+  let base = name;
+  const dash = name.lastIndexOf('-');
+  if (dash > 2 && dash > name.length - 4 && dash < name.length - 1 && /^\d+$/.test(name.slice(dash + 1))) base = name.slice(0, dash);
+  for (let i = 1; i < 1000; i++) { const n = `${base}-${i}`; if (!taken.includes(n)) return n; }
+  return `${name}${Date.now()}`;
+}
+export const sortNames = (names: string[]) => [...names].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));

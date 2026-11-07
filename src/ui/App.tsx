@@ -1901,6 +1901,7 @@ export function App() {
           onSettings={(patch) => updateWs((w) => { Object.assign(w, patch); })}
           onDownload={(name, blob) => download(name, blob, 'image/png')}
           onClose={() => setDialog(null)}
+          onOpenGraph={(sampleId, path) => { const s0 = ws.samples.find((x) => x.id === sampleId); const pop = path && s0 ? s0.populations.find((q) => populationPath(s0.populations, q.id) === path) : null; if (!s0 || (path && !pop)) return; setDialog(null); openWin(sampleId, pop?.id ?? null); }}
         />
       )}
       {dialog?.kind === 'platforms' && sample && sMeta && (() => {

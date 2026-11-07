@@ -5,9 +5,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   align, alignToGrid, avoidPageBreaks, bindSample, bringToFront, DEFAULT_PAGE, DUPLICATE_OFFSET, FRAME_PT, GRID_PT, gridPositions, iterationValues, MARGIN, nudge, nudgeStep,
-  pageGrid, PAPERS, sendToBack, spacing, stepOrder, tilePitch, unionBox, usablePage, DEFAULT_GUIDES, MAX_GUIDES, snapToGuides, borderAxes, cellOrigin, gridBounds, gridDelete, gridInsert, gridResize, type AlignMode, type Box, type CellRef, type GridDef, type Guides, type LayoutIteration, type PageSetup,
+  pageGrid, PAPERS, sendToBack, spacing, stepOrder, tilePitch, unionBox, DEFAULT_GUIDES, MAX_GUIDES, snapToGuides, borderAxes, cellOrigin, gridBounds, gridDelete, gridInsert, gridResize, type AlignMode, type Box, type CellRef, type GridDef, type Guides, type LayoutIteration, type PageSetup,
+  scaledPage, handleAt, isCornerHandle, resizeBox, ZOOM_STEPS, zoomIn, zoomOut, zoomFit, autoPageScale, pasteOffset, PASTE_TEXT_POINT, invertSelection, DROP_GAP, type ScaleType,
 } from '../core/layoutArrange';
-import { populationPath, type LayoutItem, type SampleState, type Workspace } from '../core/model';
+import { isPlotItem, populationPath, type LayoutItem, type LayoutPlot, type LayoutShape, type LayoutText, type SampleState, type Workspace } from '../core/model';
+import {
+  ANNOTATIONS, annoToken, DEFAULT_HEADER_FOOTER, GRADIENTS, headerText, keywordToken, LINE_STYLES, LINE_WEIGHTS, liveText, paintFigFrame, SPECIAL_CHARS, styleOf,
+  addLayout, deleteLayout, duplicateLayout, layoutNames, renameLayout, selectLayout, DEFAULT_LAYOUT_NAME, type FigStyle, type GradientType, type HeaderFooter, type LineStyle, type LineWeight,
+} from '../core/layoutFigures';
 import type { PlotResult, SampleMeta } from '../core/service';
 import { makeAxis, sampleChannels, withStains, withUncompTwins } from './axes';
 import { channelDisplayName } from '../core/fcs';
@@ -16,6 +21,7 @@ import { drawableGates } from './gateGeometry';
 import { PLOT, pw as PLOT_PW, renderPlot, type RenderOptions } from './renderPlot';
 import { asCanvas, SvgContext } from './svgContext';
 import { canvasesToPdf } from './pdf';
+import { usablePage as usablePageOf } from '../core/layoutArrange';
 import type { createAnalysisClient } from './workerClient';
 
 type Client = ReturnType<typeof createAnalysisClient>;
@@ -32,36 +38,49 @@ const ANC_PX = Math.round(140 / GRAPH_SCALE), ANC_GAP = Math.round(8 / GRAPH_SCA
 const ancestorCount = (path: string) => (path ? path.split('/').length : 0);
 // Footprint of a graph with its ancestry row and adjunct histograms (pixels of the composite).
 // Show Multigraph (FigChartGrid, at most multiGraphLimit = 10 parameters): a grid
-// of small charts after the graph: one histogram per parameter, or N x N.
+// of small charts after the graph: one histogram per parameter (Histograms),
+// every pair (N x N), the diagonal and the cells below it (half N x N), every
+// parameter against the graph's Y (All Parameters by Y, one row), or one chart of
+// all histograms stacked (Slinky; own static form of FlowJo's interactive one).
 const MG_PX = Math.round(PLOT.h * 0.42), MG_LIMIT = 10;
-export const multigraphCells = (it: { multigraph?: 'histograms' | 'nxn'; multiParams?: string[] }) => {
+type MgItem = { multigraph?: LayoutPlot['multigraph']; multiParams?: string[]; y?: string | null };
+export const multigraphCells = (it: MgItem) => {
   const n = Math.min(MG_LIMIT, it.multiParams?.length ?? 0);
   if (!it.multigraph || !n) return { cols: 0, rows: 0 };
-  if (it.multigraph === 'nxn') return { cols: n, rows: n };
+  if (it.multigraph === 'nxn' || it.multigraph === 'halfnxn') return { cols: n, rows: n };
+  if (it.multigraph === 'allby') { const k = (it.multiParams ?? []).slice(0, MG_LIMIT).filter((p) => p !== it.y).length; return { cols: k, rows: k ? 1 : 0 }; }
+  if (it.multigraph === 'slinky') return { cols: 2, rows: 2 };
   const cols = Math.ceil(Math.sqrt(n));
   return { cols, rows: Math.ceil(n / cols) };
 };
-export function graphCanvasSize(it: { populationPath: string; ancestry?: boolean; adjunct?: boolean; kind: string; multigraph?: 'histograms' | 'nxn'; multiParams?: string[] }): { w: number; h: number } {
+type SizeItem = MgItem & { populationPath: string; ancestry?: boolean; ancestryVertical?: boolean; adjunct?: boolean; kind: string };
+export function graphCanvasSize(it: SizeItem): { w: number; h: number } {
   const n = it.ancestry ? ancestorCount(it.populationPath) : 0;
   const adj = it.adjunct && it.kind !== 'histogram' ? ADJ_PX : 0;
   const mg = multigraphCells(it);
   const mgW = mg.cols ? ANC_GAP + mg.cols * MG_PX * (PLOT.w / PLOT.h) : 0;
-  return { w: Math.ceil(PLOT.w + adj + n * (ANC_GAP + ANC_PX * (PLOT.w / PLOT.h)) + ANC_GAP + mgW), h: Math.max(PLOT.h + adj, mg.rows * MG_PX) };
+  const ancW = ANC_PX * (PLOT.w / PLOT.h);
+  // Vertical ancestry (BACKGATINGVERT): the ancestry charts in a column below the graph.
+  if (it.ancestryVertical && n) return { w: Math.ceil(Math.max(PLOT.w + adj, ancW) + mgW), h: Math.max(PLOT.h + adj + n * (ANC_GAP + ANC_PX), mg.rows * MG_PX) };
+  return { w: Math.ceil(PLOT.w + adj + n * (ANC_GAP + ancW) + ANC_GAP + mgW), h: Math.max(PLOT.h + adj, mg.rows * MG_PX) };
 }
-export const graphBoxSize = (it: Parameters<typeof graphCanvasSize>[0]) => { const c = graphCanvasSize(it); return { w: Math.round(c.w * GRAPH_SCALE), h: Math.round(c.h * GRAPH_SCALE) }; };
+export const graphBoxSize = (it: SizeItem) => { const c = graphCanvasSize(it); return { w: Math.round(c.w * GRAPH_SCALE), h: Math.round(c.h * GRAPH_SCALE) }; };
 
 // Position of an item; items saved before positions existed are laid out two
 // across in list order (own migration rule).
 export function boxOf(it: LayoutItem, i: number): Box {
-  const w = it.width ?? (it.text !== undefined ? TEXT_W : GRAPH_W);
-  const h = it.height ?? (it.text !== undefined ? TEXT_H : GRAPH_H);
+  const w = it.width ?? (isPlotItem(it) ? GRAPH_W : TEXT_W);
+  const h = it.height ?? (isPlotItem(it) ? GRAPH_H : TEXT_H);
   return { id: it.id, x: it.left ?? (i % 2) * (GRAPH_W + 30), y: it.top ?? Math.floor(i / 2) * (GRAPH_H + 30), w, h, locked: it.locked, groupId: it.groupId };
 }
 const withBox = (it: LayoutItem, b: Box): LayoutItem => ({ ...it, left: b.x, top: b.y, width: b.w, height: b.h });
 
-// Greedy word wrap at ~7 pt per character; also splits on explicit newlines.
-function wrapText(text: string, widthPt: number): string[] {
-  const max = Math.max(8, Math.floor(widthPt / 7));
+// Text figure font: FlowJo's SansSerif / Serif / Monospaced, 11 pt by default.
+const FONTS: Record<string, string> = { SansSerif: 'sans-serif', Serif: 'serif', Monospaced: 'monospace' };
+export const textFont = (it: LayoutText, zoom = 1) => `${it.italic ? 'italic ' : ''}${it.bold ? 'bold ' : ''}${(it.size ?? 11) * zoom}px ${FONTS[it.font ?? 'SansSerif'] ?? it.font ?? 'sans-serif'}`;
+// Greedy word wrap at ~0.6 em per character; also splits on explicit newlines.
+function wrapText(text: string, widthPt: number, size = 11): string[] {
+  const max = Math.max(8, Math.floor(widthPt / (size * 0.6)));
   const lines: string[] = [];
   for (const para of text.split('\n')) {
     let cur = '';
@@ -80,20 +99,43 @@ interface Rendered {
   text?: string;
   title: string;
   error?: string;
+  placeholder?: boolean;
 }
 
 // The sample a layout item shows for an iteration value (I1-I7). Items saved
 // without their sample follow the value's sample.
 export type Bind = (it: LayoutItem) => SampleState | undefined;
+export interface RenderExtras { valueSample?: SampleState; placeholders?: boolean; title?: string; page?: number }
+
+const loadImage = (src: string) => new Promise<HTMLImageElement>((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('image not available')); im.src = src; });
 
 // Render every layout item for its bound sample.
-export async function renderLayout(client: Client, ws: Workspace, meta: Record<string, SampleMeta>, items: LayoutItem[], bind: Bind): Promise<Rendered[]> {
+export async function renderLayout(client: Client, ws: Workspace, meta: Record<string, SampleMeta>, items: LayoutItem[], bind: Bind, extras: RenderExtras = {}): Promise<Rendered[]> {
   const counts = new Map<string, Record<string, { count: number; parentCount: number }>>();
   const out: Rendered[] = [];
   for (const item of items) {
-    if (item.text !== undefined) { out.push({ item, canvas: null, text: item.text, title: '' }); continue; }
-    const s = bind(item);
+    if (item.text !== undefined) {
+      // Live text (Insert Keyword / Insert Annotation) for the iteration's sample.
+      const s = extras.valueSample;
+      const kwOf = (k: string) => s ? s.keywordsSnapshot[k.toUpperCase()] ?? s.keywordsSnapshot[k] ?? s.annotations?.[k] : undefined;
+      out.push({ item, canvas: null, text: liveText(item.text, { keyword: kwOf, sampleName: s?.fileName, title: extras.title, page: extras.page, version: 'flowjo-rea', compensation: s ? (s.compensation === 'none' ? 'None' : s.compensation === 'file' ? 'Acquisition-defined' : ws.matrices.find((m) => m.id === s.compensation)?.name) : undefined }), title: '' });
+      continue;
+    }
+    if (item.shape !== undefined) { out.push({ item, canvas: null, title: '' }); continue; }
+    if (item.image !== undefined) {
+      try {
+        const im = await loadImage(item.image);
+        const cv = document.createElement('canvas');
+        cv.width = im.naturalWidth || 1; cv.height = im.naturalHeight || 1;
+        cv.getContext('2d')!.drawImage(im, 0, 0);
+        out.push({ item, canvas: cv, title: 'Image' });
+      } catch (e) { out.push({ item, canvas: null, title: 'Image', error: (e as Error).message }); }
+      continue;
+    }
     const label = item.populationPath || 'All events';
+    if (item.empty) { out.push({ item, canvas: null, title: 'Empty chart', placeholder: true }); continue; }
+    if (extras.placeholders) { out.push({ item, canvas: null, title: label, placeholder: true }); continue; }
+    const s = bind(item);
     if (!s || !meta[s.id]) { out.push({ item, canvas: null, title: label, error: 'no sample for this iteration value' }); continue; }
     const base = { sampleId: s.id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters };
     if (!counts.has(s.id)) {
@@ -120,7 +162,7 @@ export async function renderLayout(client: Client, ws: Workspace, meta: Record<s
       if (op) overlays.push({ label: path, data: await req(op.id, 5000) });
     }
     const title = (ch: string) => { const c = chans.find((q) => q.name === ch); return c ? channelDisplayName(c) : ch; };
-    const options: RenderOptions = { kind: item.kind, x, y, data, gates: item.showGates === false ? [] : drawableGates(s.populations, pop?.id ?? null, x, y), counts: counts.get(s.id)!, contourLevel: item.contourLevel, showOutliers: item.showOutliers, overlays, normalize: item.normalize, xTitle: title(x.channel), yTitle: y ? title(y.channel) : undefined, gateNames: item.gateNames !== false && !item.hideGateNames, gateFreq: item.gateFreq !== false && !item.hideGateFreq, axes: item.axes, grid: item.grid, largeDots: item.largeDots, medians: item.medians, ...(cAxis && data.colorMean ? { colorBy: { values: data.colorMean, range: cAxis.range, label: cAxis.channel } } : {}) };
+    const options: RenderOptions = { kind: item.kind, x, y, data, gates: item.showGates === false ? [] : drawableGates(s.populations, pop?.id ?? null, x, y), counts: counts.get(s.id)!, contourLevel: item.contourLevel, showOutliers: item.showOutliers, overlays, noLegend: item.legend === false, normalize: item.normalize, xTitle: title(x.channel), yTitle: y ? title(y.channel) : undefined, gateNames: item.gateNames !== false && !item.hideGateNames, gateFreq: item.gateFreq !== false && !item.hideGateFreq, axes: item.axes, grid: item.grid, largeDots: item.largeDots, medians: item.medians, ...(cAxis && data.colorMean ? { colorBy: { values: data.colorMean, range: cAxis.range, label: cAxis.channel } } : {}) };
     let cv = document.createElement('canvas');
     cv.width = PLOT.w;
     cv.height = PLOT.h;
@@ -150,24 +192,39 @@ export async function renderLayout(client: Client, ws: Workspace, meta: Record<s
       }
       if (item.ancestry && item.populationPath) {
         // Show Ancestry (FigChartRow): one chart per ancestor level, each showing the
-        // gate that leads to the next level; with Backgating the graph's population is overlaid.
+        // gate that leads to the next level; with Backgating the graph's population is
+        // overlaid (as large dots or as contours when chosen). Horizontal: a row to
+        // the right; Vertical: a column below.
         const chain: (typeof s.populations[number] | null)[] = [null];
         for (let q = pop; q && q.parentId; q = s.populations.find((z) => z.id === q!.parentId)) chain.splice(1, 0, s.populations.find((z) => z.id === q!.parentId) ?? null);
-        let ox = PLOT.w + adj + ANC_GAP;
+        const ancW = ANC_PX * (PLOT.w / PLOT.h);
+        let ox = PLOT.w + adj + ANC_GAP, oy = PLOT.h + adj + ANC_GAP;
         for (const anc of chain) {
           const path = anc ? populationPath(s.populations, anc.id) : '';
           const saved = ws.plots?.[path];
           const ax = makeAxis(chans, m.keywords, ws.channelTransforms, saved?.x ?? item.x);
           const ay = makeAxis(chans, m.keywords, ws.channelTransforms, saved?.y ?? item.y ?? '');
-          if (!ax || !ay) { ox += ANC_PX + ANC_GAP; continue; }
+          const at = item.ancestryVertical ? { x: 0, y: oy } : { x: ox, y: adj + (PLOT.h - ANC_PX) / 2 };
+          if (item.ancestryVertical) oy += ANC_PX + ANC_GAP; else ox += ancW + ANC_GAP;
+          if (!ax || !ay) continue;
           const reqA = (pid: string | null, mp: number) => client.plot({ ...base, popId: pid, x: { kind: 'channel', channel: ax.channel, transform: ax.spec }, y: { kind: 'channel', channel: ay.channel, transform: ay.spec }, bins: 160, xRange: ax.range, yRange: ay.range, maxPoints: mp });
           const ad = await reqA(anc?.id ?? null, 5000);
-          const ov = item.backgating ? [{ label: label, data: await reqA(pop?.id ?? null, 3000) }] : [];
+          const ov = item.backgating && !item.backgateContours ? [{ label: label, data: await reqA(pop?.id ?? null, 3000) }] : [];
           const mini = document.createElement('canvas');
           mini.width = PLOT.w; mini.height = PLOT.h;
-          renderPlot(mini.getContext('2d')!, { kind: 'pseudocolor', x: ax, y: ay, data: ad, gates: drawableGates(s.populations, anc?.id ?? null, ax, ay).filter((g) => { const gp = populationPath(s.populations, g.pop.id); return item.populationPath === gp || item.populationPath.startsWith(`${gp}/`); }), counts: counts.get(s.id)!, overlays: ov, xTitle: title(ax.channel), yTitle: title(ay.channel), axes: 'lL' });
-          ctx.drawImage(mini, ox, adj + (PLOT.h - ANC_PX) / 2, ANC_PX * (PLOT.w / PLOT.h), ANC_PX);
-          ox += ANC_PX * (PLOT.w / PLOT.h) + ANC_GAP;
+          const mctx = mini.getContext('2d')!;
+          renderPlot(mctx, { kind: 'pseudocolor', x: ax, y: ay, data: ad, gates: drawableGates(s.populations, anc?.id ?? null, ax, ay).filter((g) => { const gp = populationPath(s.populations, g.pop.id); return item.populationPath === gp || item.populationPath.startsWith(`${gp}/`); }), counts: counts.get(s.id)!, overlays: ov, overlayLarge: item.backgateLarge, xTitle: title(ax.channel), yTitle: title(ay.channel), axes: 'lL' });
+          if (item.backgating && item.backgateContours) {
+            // Show Contours: the backgated population as contour lines over the chart.
+            const cd = await reqA(pop?.id ?? null, 0);
+            const c2 = document.createElement('canvas');
+            c2.width = PLOT.w; c2.height = PLOT.h;
+            renderPlot(c2.getContext('2d')!, { kind: 'contour', x: ax, y: ay, data: cd, gates: [], counts: {}, axes: 'lL' });
+            mctx.globalCompositeOperation = 'multiply';
+            mctx.drawImage(c2, 0, 0);
+            mctx.globalCompositeOperation = 'source-over';
+          }
+          ctx.drawImage(mini, item.ancestryVertical ? (PLOT.w - ancW) / 2 : at.x, at.y, ancW, ANC_PX);
         }
       }
       const mg = multigraphCells(item);
@@ -175,15 +232,32 @@ export async function renderLayout(client: Client, ws: Workspace, meta: Record<s
         const params = (item.multiParams ?? []).slice(0, MG_LIMIT).map((ch) => makeAxis(chans, m.keywords, ws.channelTransforms, ch)).filter((a): a is NonNullable<typeof a> => !!a);
         const cw = MG_PX * (PLOT.w / PLOT.h);
         const x0 = size.w - mg.cols * cw;
+        const k2 = item.multiKind ?? 'pseudocolor';
         const cell = async (r: number, c: number, ax: NonNullable<typeof x>, ay: NonNullable<typeof x> | null) => {
-          const d = await client.plot({ ...base, popId: pop?.id ?? null, x: { kind: 'channel', channel: ax.channel, transform: ax.spec }, y: ay ? { kind: 'channel', channel: ay.channel, transform: ay.spec } : null, bins: ay ? 120 : 128, xRange: ax.range, yRange: ay ? ay.range : null, maxPoints: 0 });
+          const d = await client.plot({ ...base, popId: pop?.id ?? null, x: { kind: 'channel', channel: ax.channel, transform: ax.spec }, y: ay ? { kind: 'channel', channel: ay.channel, transform: ay.spec } : null, bins: ay ? 120 : 128, xRange: ax.range, yRange: ay ? ay.range : null, maxPoints: ay && k2 === 'dot' ? 3000 : 0 });
           const mini = document.createElement('canvas');
           mini.width = PLOT.w; mini.height = PLOT.h;
-          renderPlot(mini.getContext('2d')!, { kind: ay ? 'pseudocolor' : 'histogram', x: ax, y: ay, data: d, gates: [], counts: {}, xTitle: title(ax.channel), yTitle: ay ? title(ay.channel) : undefined, axes: 'lL' });
+          renderPlot(mini.getContext('2d')!, { kind: ay ? k2 : 'histogram', x: ax, y: ay, data: d, gates: [], counts: {}, xTitle: title(ax.channel), yTitle: ay ? title(ay.channel) : undefined, axes: 'lL' });
           ctx.drawImage(mini, x0 + c * cw, r * MG_PX, cw, MG_PX);
         };
-        if (item.multigraph === 'nxn') {
-          for (let r = 0; r < params.length; r++) for (let c = 0; c < params.length; c++) await cell(r, c, params[c], r === c ? null : params[r]);
+        if (item.multigraph === 'nxn' || item.multigraph === 'halfnxn') {
+          for (let r = 0; r < params.length; r++) for (let c = 0; c < params.length; c++) if (item.multigraph === 'nxn' || c <= r) await cell(r, c, params[c], r === c ? null : params[r]);
+        } else if (item.multigraph === 'allby' && y) {
+          let k = 0;
+          for (const pa of params) if (pa.channel !== y.channel) await cell(0, k++, pa, y);
+        } else if (item.multigraph === 'slinky') {
+          // Slinky: every parameter's histogram, normalised to its mode, stacked with an offset.
+          const W = mg.cols * cw, H = mg.rows * MG_PX, step = (H - 20) / Math.max(1, params.length + 1);
+          ctx.font = '10px sans-serif';
+          for (const [k, pa] of params.entries()) {
+            const d = await client.plot({ ...base, popId: pop?.id ?? null, x: { kind: 'channel', channel: pa.channel, transform: pa.spec }, y: null, bins: 128, xRange: pa.range, yRange: null, maxPoints: 0 });
+            const mx = Math.max(1, ...Array.from(d.density));
+            const baseY = H - 10 - k * step;
+            ctx.strokeStyle = `hsl(${(k * 47) % 360} 60% 40%)`; ctx.lineWidth = 1.2; ctx.beginPath();
+            for (let i = 0; i < d.bins; i++) { const X = x0 + 30 + (i / d.bins) * (W - 40), Y = baseY - (d.density[i] / mx) * step * 2; if (i) ctx.lineTo(X, Y); else ctx.moveTo(X, Y); }
+            ctx.stroke();
+            ctx.fillStyle = ctx.strokeStyle; ctx.fillText(title(pa.channel), x0 + 2, baseY - 2, 28);
+          }
         } else {
           for (let k = 0; k < params.length; k++) await cell(Math.floor(k / mg.cols), k % mg.cols, params[k], null);
         }
@@ -195,30 +269,43 @@ export async function renderLayout(client: Client, ws: Workspace, meta: Record<s
   return out;
 }
 
+// Background, outline, shape, text or image of a non-chart figure, and the
+// fill / outline of a chart's box (Figure Properties), in layout points.
+function drawFig(ctx: CanvasRenderingContext2D, it: LayoutItem, b: Box, r: Rendered | undefined) {
+  paintFigFrame(ctx, it, b);
+  if (it.text !== undefined) {
+    ctx.fillStyle = it.color ?? '#111';
+    ctx.font = textFont(it);
+    const sz = it.size ?? 11;
+    wrapText(r?.text ?? it.text, b.w - 8, sz).forEach((ln, k) => ctx.fillText(ln, b.x + 4, b.y + sz + 3 + k * Math.round(sz * 1.27)));
+  } else if (it.image !== undefined) {
+    if (r?.canvas) ctx.drawImage(r.canvas, b.x, b.y, b.w, b.h);
+    else { ctx.strokeStyle = '#999'; ctx.strokeRect(b.x, b.y, b.w, b.h); ctx.fillStyle = '#999'; ctx.font = '10px sans-serif'; ctx.fillText(r?.error ?? 'image', b.x + 4, b.y + 14); }
+  }
+}
+const drawPlaceholder = (ctx: CanvasRenderingContext2D, b: Box, label: string) => { ctx.fillStyle = '#f3f3f3'; ctx.fillRect(b.x, b.y, b.w, b.h); ctx.strokeStyle = '#999'; ctx.strokeRect(b.x, b.y, b.w, b.h); ctx.fillStyle = '#666'; ctx.font = '10px sans-serif'; ctx.fillText(label, b.x + 6, b.y + 16, b.w - 12); };
+
 // The whole layout as pages: one canvas covering cols x rows pages (points x
-// scale), items drawn in z-order at their boxes.
-export function composePages(rendered: Rendered[], items: LayoutItem[], page: { w: number; h: number }, scale = 2): { canvas: HTMLCanvasElement; cols: number; rows: number } {
+// scale), items drawn in z-order at their boxes. transparent: no white page.
+export function composePages(rendered: Rendered[], items: LayoutItem[], page: { w: number; h: number }, scale = 2, transparent = false): { canvas: HTMLCanvasElement; cols: number; rows: number } {
   const boxes = items.map(boxOf);
   const { cols, rows } = pageGrid(boxes, page);
   const cv = document.createElement('canvas');
   cv.width = Math.round(cols * page.w * scale);
   cv.height = Math.round(rows * page.h * scale);
   const ctx = cv.getContext('2d')!;
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, cv.width, cv.height);
+  if (!transparent) { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height); }
   ctx.scale(scale, scale);
   items.forEach((it, i) => {
     const b = boxes[i];
     const r = rendered.find((x) => x.item.id === it.id);
+    if (!isPlotItem(it)) return drawFig(ctx, it, b, r);
     ctx.fillStyle = '#111';
-    if (it.text !== undefined) {
-      ctx.font = '11px sans-serif';
-      wrapText(it.text, b.w - 8).forEach((ln, k) => ctx.fillText(ln, b.x + 4, b.y + 14 + k * 14));
-      return;
-    }
     if (it.showAnnotation && r) { ctx.font = '9px sans-serif'; ctx.fillText(r.title, b.x, b.y - 4, b.w); }
-    if (r?.canvas) ctx.drawImage(r.canvas, b.x, b.y, b.w, b.h);
+    if (r?.placeholder) drawPlaceholder(ctx, b, r.title);
+    else if (r?.canvas) ctx.drawImage(r.canvas, b.x, b.y, b.w, b.h);
     else { ctx.fillStyle = '#b00020'; ctx.font = '10px sans-serif'; ctx.fillText(r?.error ?? 'not rendered', b.x + 8, b.y + 20, b.w - 16); }
+    if (it.style) paintFigFrame(ctx, { ...it, style: { ...it.style, fill: undefined } }, b);
   });
   return { canvas: cv, cols, rows };
 }
@@ -237,7 +324,27 @@ export function splitPages(all: { canvas: HTMLCanvasElement; cols: number; rows:
   return out;
 }
 
-// The same pages as one SVG document with vector plots.
+// H1: each page on the whole paper with the header in the top margin and the
+// footer in the bottom margin (left and right parts).
+export function withHeaderFooter(pages: HTMLCanvasElement[], paper: { w: number; h: number }, hf: HeaderFooter, doc: string, scale = 2): HTMLCanvasElement[] {
+  const d = { ...DEFAULT_HEADER_FOOTER, ...hf };
+  return pages.map((pg, k) => {
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(paper.w * scale); cv.height = Math.round(paper.h * scale);
+    const ctx = cv.getContext('2d')!;
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(pg, MARGIN * scale, MARGIN * scale, (paper.w - 2 * MARGIN) * scale, (paper.h - 2 * MARGIN) * scale);
+    ctx.scale(scale, scale);
+    ctx.fillStyle = '#111'; ctx.font = '9px sans-serif';
+    const t = (s: string) => headerText(s, { document: doc, page: k + 1, version: 'flowjo-rea' });
+    const line = (y: number, left: string, right: string) => { ctx.textAlign = 'left'; ctx.fillText(t(left), MARGIN, y); ctx.textAlign = 'right'; ctx.fillText(t(right), paper.w - MARGIN, y); ctx.textAlign = 'left'; };
+    if (d.header) line(MARGIN / 2, d.headerLeft, d.headerRight);
+    if (d.footer) line(paper.h - MARGIN / 2, d.footerLeft, d.footerRight);
+    return cv;
+  });
+}
+
+// The same pages as one SVG document with vector plots and shapes.
 export function composeSvgPages(rendered: Rendered[], items: LayoutItem[], page: { w: number; h: number }): string {
   const boxes = items.map(boxOf);
   const { cols, rows } = pageGrid(boxes, page);
@@ -245,18 +352,22 @@ export function composeSvgPages(rendered: Rendered[], items: LayoutItem[], page:
   items.forEach((it, i) => {
     const b = boxes[i];
     const r = rendered.find((x) => x.item.id === it.id);
-    svg.fillStyle = '#111';
-    if (it.text !== undefined) {
-      svg.font = '11px sans-serif';
-      wrapText(it.text, b.w - 8).forEach((ln, k) => svg.fillText(ln, b.x + 4, b.y + 14 + k * 14));
+    if (it.image !== undefined) {
+      paintFigFrame(asCanvas(svg), it, b);
+      if (r?.canvas) svg.embed(`<image x="0" y="0" width="${b.w}" height="${b.h}" preserveAspectRatio="none" href="${r.canvas.toDataURL()}"/>`, b.x, b.y);
       return;
     }
+    if (!isPlotItem(it)) return drawFig(asCanvas(svg), it, b, r);
+    svg.fillStyle = '#111';
     if (it.showAnnotation && r) { svg.font = '9px sans-serif'; svg.fillText(r.title, b.x, b.y - 4); }
-    if (r?.options) {
+    if (r?.options && !multigraphCells(it).cols && !it.ancestry && !it.adjunct) {
       const sub = new SvgContext(PLOT.w, PLOT.h);
       renderPlot(asCanvas(sub), r.options);
       svg.embed(sub.body(), b.x, b.y, b.w / PLOT.w);
-    } else { svg.fillStyle = '#b00020'; svg.font = '10px sans-serif'; svg.fillText(r?.error ?? 'not rendered', b.x + 8, b.y + 20); }
+    } else if (r?.canvas) svg.embed(`<image x="0" y="0" width="${b.w}" height="${b.h}" preserveAspectRatio="none" href="${r.canvas.toDataURL()}"/>`, b.x, b.y);
+    else if (r?.placeholder) drawPlaceholder(asCanvas(svg), b, r.title);
+    else { svg.fillStyle = '#b00020'; svg.font = '10px sans-serif'; svg.fillText(r?.error ?? 'not rendered', b.x + 8, b.y + 20); }
+    if (it.style) paintFigFrame(asCanvas(svg), { ...it, style: { ...it.style, fill: undefined } }, b);
   });
   return svg.toString();
 }
@@ -266,19 +377,26 @@ const ALIGN: { mode: AlignMode; label: string; key: string }[] = [
   { mode: 'top', label: 'Top', key: 't' }, { mode: 'vcenter', label: 'Middle', key: 'm' }, { mode: 'bottom', label: 'Bottom', key: 'b' },
 ];
 
+// The layout editor's clipboard (Copy / Cut / Paste within and between layouts).
+let clipboard: LayoutItem[] = [];
+const newFigId = (p: string) => `${p}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+const FONT_NAMES = ['SansSerif', 'Serif', 'Monospaced'];
+
 export function LayoutView(p: {
   ws: Workspace;
   meta: Record<string, SampleMeta>;
   samples: SampleState[];
   client: Client;
   onChange: (items: LayoutItem[]) => void;
-  onSettings: (patch: { layoutPage?: PageSetup; layoutIteration?: LayoutIteration; layoutGuides?: Guides; layoutGrids?: GridDef[]; layout?: LayoutItem[] }) => void;
+  onSettings: (patch: Partial<Workspace>) => void;
   onDownload: (name: string, blob: Blob) => void;
   onClose: () => void;
+  onOpenGraph?: (sampleId: string, populationPath: string) => void;
 }) {
   const items = useMemo(() => p.ws.layout ?? [], [p.ws.layout]);
   const setup = p.ws.layoutPage ?? DEFAULT_PAGE;
-  const page = usablePage(setup);
+  const page = scaledPage(setup);
+  const pageScale = setup.scale && setup.scale > 0 ? setup.scale : 1;
   const iter: LayoutIteration = p.ws.layoutIteration ?? { type: 'OFF' };
   const loaded = p.samples.filter((s) => p.meta[s.id]);
   const kw = (s: SampleState, k: string) => s.keywordsSnapshot[k.toUpperCase()] ?? s.keywordsSnapshot[k] ?? s.annotations?.[k];
@@ -288,6 +406,9 @@ export function LayoutView(p: {
   const [sel, setSel] = useState<string[]>([]);
   const [zoom, setZoom] = useState(1);
   const [showGrid, setShowGrid] = useState(false);
+  const [showBreaks, setShowBreaks] = useState(true);
+  const [showRulers, setShowRulers] = useState(false);
+  const [placeholders, setPlaceholders] = useState(false);
   // P7: guides off by default; S5: one vertical and one horizontal guide at 250 pt.
   const [showGuides, setShowGuides] = useState(false);
   const guides = p.ws.layoutGuides ?? DEFAULT_GUIDES;
@@ -296,29 +417,46 @@ export function LayoutView(p: {
   const [busy, setBusy] = useState(false);
   const [batchFormat, setBatchFormat] = useState<'png' | 'svg' | 'pdf'>('pdf');
   const [tileCols, setTileCols] = useState(0);
+  const [tileOrder, setTileOrder] = useState<'across' | 'down'>('across');
+  const [tileFixed, setTileFixed] = useState<'cols' | 'rows'>('cols');
+  const [separatePages, setSeparatePages] = useState(true);
+  const [fileName, setFileName] = useState('');
   const [error, setError] = useState('');
   const [drag, setDrag] = useState<{ x0: number; y0: number; dx: number; dy: number; ids: string[] } | null>(null);
+  const [resize, setResize] = useState<{ id: string; handle: number; box: Box } | null>(null);
   const [gridRows, setGridRows] = useState(3), [gridCols, setGridCols] = useState(4);
   const [gridBare, setGridBare] = useState(true);
+  const [showChars, setShowChars] = useState(false);
+  const [showHF, setShowHF] = useState(false);
+  const [renaming, setRenaming] = useState<string | null>(null);
   const pageRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const textRef = useRef<HTMLTextAreaElement | null>(null);
+  const layoutName = p.ws.layoutName ?? DEFAULT_LAYOUT_NAME;
+  const hf = { ...DEFAULT_HEADER_FOOTER, ...(p.ws.layoutHeaderFooter ?? {}) };
 
   const bindFor = (v: string): Bind => (it) => {
-    if (it.text !== undefined) return undefined;
+    if (!isPlotItem(it)) return undefined;
     const valueSample = loaded.find((s) => s.id === v);
     if (iter.type === 'OFF' || !values.length) return loaded.find((s) => s.id === it.sampleId) ?? valueSample;
     return bindSample(it.sampleId ?? valueSample?.id, iter, v, loaded, kw);
   };
+  // The sample live text shows for a value: the value's sample, or for keyword
+  // iteration the first sample with that keyword value.
+  const valueSampleFor = (v: string) => loaded.find((s) => s.id === v) ?? (iter.type === 'KEYWORD' ? loaded.find((s) => kw(s, iter.keyword) === v) : undefined) ?? loaded[0];
+  const extrasFor = (v: string) => ({ valueSample: valueSampleFor(v), placeholders, title: layoutName });
 
   useEffect(() => {
     let live = true;
-    renderLayout(p.client, p.ws, p.meta, items, bindFor(cur)).then((r) => live && setRendered(r)).catch((e) => live && setError((e as Error).message));
+    renderLayout(p.client, p.ws, p.meta, items, bindFor(cur), extrasFor(cur)).then((r) => live && setRendered(r)).catch((e) => live && setError((e as Error).message));
     return () => { live = false; };
-  }, [cur, p.ws, p.meta]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cur, p.ws, p.meta, placeholders]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const boxes = items.map(boxOf);
   // Selecting a grouped item selects its group (FigGroup is one figure).
   const expand = (ids: string[]) => { const gs = new Set(boxes.filter((b) => ids.includes(b.id) && b.groupId).map((b) => b.groupId)); return [...new Set([...ids, ...boxes.filter((b) => b.groupId && gs.has(b.groupId)).map((b) => b.id)])]; };
   const selBoxes = boxes.filter((b) => sel.includes(b.id));
+  const selItems = items.filter((i) => sel.includes(i.id));
   const commit = (next: Box[]) => {
     const out = items.map((it) => { const b = next.find((x) => x.id === it.id); return b ? withBox(it, b) : it; });
     // A moved grid figure carries its grid with it.
@@ -336,16 +474,60 @@ export function LayoutView(p: {
   };
   const reorder = (fn: (order: string[]) => string[]) => { const order = fn(items.map((i) => i.id)); p.onChange(order.map((id) => items.find((i) => i.id === id)!)); };
   const remove = () => { p.onChange(items.filter((i) => !sel.includes(i.id))); setSel([]); };
-  const duplicate = () => {
+  // Copies of figures with new ids (groups get new group ids), moved by (dx, dy).
+  const copiesOf = (src: LayoutItem[], dx: number, dy: number) => {
     const stamp = Date.now().toString(36);
     const gmap = new Map<string, string>();
-    const copies = items.filter((i) => sel.includes(i.id)).map((it, k) => {
-      const b = boxOf(it, items.indexOf(it));
+    return src.map((it, k) => {
+      const b = boxOf(it, k);
       const g = it.groupId ? gmap.get(it.groupId) ?? gmap.set(it.groupId, `grp_${stamp}_${k}`).get(it.groupId) : undefined;
-      return { ...withBox(it, { ...b, x: b.x + DUPLICATE_OFFSET, y: b.y + DUPLICATE_OFFSET }), id: `${it.id}_d${stamp}${k}`, groupId: g, locked: undefined };
+      return { ...withBox(it, { ...b, x: b.x + dx, y: b.y + dy }), id: `${it.id.replace(/_[dp][0-9a-z]+$/, '')}_d${stamp}${k}`, groupId: g, cell: undefined, locked: undefined } as LayoutItem;
     });
+  };
+  const duplicate = () => {
+    const copies = copiesOf(selItems, DUPLICATE_OFFSET, DUPLICATE_OFFSET);
     p.onChange([...items, ...copies]);
     setSel(copies.map((c) => c.id));
+  };
+  // C1: Copy takes the selection, or every figure when nothing is selected.
+  const copy = () => { clipboard = JSON.parse(JSON.stringify(sel.length ? selItems : items)) as LayoutItem[]; };
+  const cut = () => { if (!sel.length) return; copy(); remove(); };
+  const visibleRect = (): Box => {
+    const el = scrollRef.current;
+    return el ? { id: 'v', x: el.scrollLeft / zoom, y: el.scrollTop / zoom, w: el.clientWidth / zoom, h: el.clientHeight / zoom } : { id: 'v', x: 0, y: 0, w: page.w, h: page.h };
+  };
+  const paste = () => {
+    if (!clipboard.length) return;
+    const u = unionBox(clipboard.map(boxOf));
+    const { dx, dy } = pasteOffset(u, visibleRect());
+    const copies = copiesOf(clipboard, dx, dy);
+    p.onChange([...items, ...copies]);
+    setSel(copies.map((c) => c.id));
+  };
+  // Paste from the system clipboard: an image becomes an image figure, text a
+  // text figure, both at (30, 50) (LEPasteAction.paste).
+  const pasteSystem = async () => {
+    try {
+      const data = await navigator.clipboard.read();
+      for (const ci of data) {
+        const t = ci.types.find((x) => x.startsWith('image/'));
+        if (t) { const url = await blobUrl(await ci.getType(t)); return addImageFig(url); }
+        if (ci.types.includes('text/plain')) { const txt = await (await ci.getType('text/plain')).text(); if (txt) return addText(txt); }
+      }
+    } catch { /* no system clipboard access: the layout clipboard only */ }
+  };
+  const blobUrl = (b: Blob) => new Promise<string>((res) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.readAsDataURL(b); });
+  // C3-C4: Copy Selection With / Without Transparency: the selection (or all) as
+  // a PNG image on the system clipboard, transparent or on white.
+  const copyImage = async (transparent: boolean) => {
+    const its = sel.length ? selItems : items;
+    if (!its.length) return;
+    const u = unionBox(its.map(boxOf));
+    const shifted = its.map((it) => { const b = boxOf(it, 0); return withBox(it, { ...b, x: b.x - u.x, y: b.y - u.y }); });
+    const all = composePages(rendered.map((r) => ({ ...r, item: shifted.find((s) => s.id === r.item.id) ?? r.item })), shifted, { w: u.w, h: u.h }, 2, transparent);
+    const blob = await new Promise<Blob | null>((res) => all.canvas.toBlob(res, 'image/png'));
+    if (!blob) return;
+    try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); setError(''); } catch { p.onDownload(`${layoutName}_selection.png`, blob); }
   };
   const group = () => {
     const gid = `grp_${Date.now().toString(36)}`;
@@ -354,15 +536,24 @@ export function LayoutView(p: {
     p.onChange([...items.filter((i) => !sel.includes(i.id)), ...members]);
   };
   const ungroup = () => p.onChange(items.map((i) => (sel.includes(i.id) ? { ...withBox(i, boxOf(i, items.indexOf(i))), groupId: undefined } : i)));
-  const toggleLock = () => { const on = !selBoxes.every((b) => b.locked); p.onChange(items.map((i) => (sel.includes(i.id) ? { ...withBox(i, boxOf(i, items.indexOf(i))), locked: on || undefined } : i))); };
+  // LELockAction: the first selected figure's lock decides; all selected follow.
+  const toggle = (key: 'locked' | 'sizeLock' | 'contentLock') => { const on = !selItems[0]?.[key]; p.onChange(items.map((i) => (sel.includes(i.id) ? ({ ...withBox(i, boxOf(i, items.indexOf(i))), [key]: on || undefined } as LayoutItem) : i))); };
   const setItem = (id: string, patch: Partial<LayoutItem>) => p.onChange(items.map((i) => (i.id === id ? ({ ...i, ...patch } as LayoutItem) : i)));
-  const addText = () => {
-    const id = `txt_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-    p.onChange([...items, { id, text: 'New text', left: 30, top: 50, width: TEXT_W, height: TEXT_H }]); // P11: text at (30, 50)
-    setSel([id]);
+  // Figure Properties apply to every selected figure (LEColorAction, LEFigPropAction).
+  const setStyle = (patch: Partial<FigStyle>) => p.onChange(items.map((i) => (sel.includes(i.id) ? ({ ...i, style: { ...(i.style ?? {}), ...patch } } as LayoutItem) : i)));
+  const addFig = (it: LayoutItem) => { p.onChange([...items, it]); setSel([it.id]); };
+  const addText = (text = 'New text') => addFig({ id: newFigId('txt'), text, left: PASTE_TEXT_POINT.x, top: PASTE_TEXT_POINT.y, width: TEXT_W, height: TEXT_H }); // P11: text at (30, 50)
+  // Drawing tools: a new shape at (30, 50), 144 x 72 pt (a line 144 pt long);
+  // resize it with its corner handles (own placement; FlowJo draws by dragging).
+  const addShape = (shape: LayoutShape['shape'], arrow?: LayoutShape['arrow']) => addFig({ id: newFigId('shp'), shape, left: 30, top: 50, width: 144, height: shape === 'line' ? 0 : 72, ...(shape === 'line' ? { ends: [0, 0, 1, 0] as [number, number, number, number] } : {}), ...(arrow ? { arrow } : {}) });
+  // Insert Graphic / pasted image (FigImage): at (30, 50), its own size in points.
+  const addImageFig = async (url: string) => {
+    const im = await new Promise<HTMLImageElement>((res, rej) => { const x = new Image(); x.onload = () => res(x); x.onerror = rej; x.src = url; }).catch(() => null);
+    addFig({ id: newFigId('img'), image: url, left: 30, top: 50, width: im?.naturalWidth || 100, height: im?.naturalHeight || 100 });
   };
 
   const step = (d: number) => { const i = values.indexOf(cur); const j = d === Infinity ? values.length - 1 : d === -Infinity ? 0 : i + d; if (values[j]) setValue(values[j]); };
+  const fit = () => { const el = scrollRef.current; if (!el || !items.length) return setZoom(1); const u = unionBox(boxes); setZoom(zoomFit({ w: el.clientWidth, h: el.clientHeight }, { w: u.x + u.w, h: u.y + u.h })); };
   const onKey = (e: React.KeyboardEvent) => {
     if ((e.target as HTMLElement).tagName === 'TEXTAREA' || (e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'SELECT') return;
     if (e.key === 'Escape') return;
@@ -380,6 +571,16 @@ export function LayoutView(p: {
     if (e.key === 'PageUp') { e.preventDefault(); return step(-1); }
     if (e.key === 'Home') { e.preventDefault(); return step(-Infinity); }
     if (e.key === 'End') { e.preventDefault(); return step(Infinity); }
+    if (menu) {
+      const k = e.key.toLowerCase();
+      if (k === 'a') { e.preventDefault(); return setSel(items.map((i) => i.id)); }
+      if (k === 'c') { e.preventDefault(); return e.shiftKey ? void copyImage(true) : copy(); }
+      if (k === 'x') { e.preventDefault(); return cut(); }
+      if (k === 'v') { e.preventDefault(); return clipboard.length ? paste() : void pasteSystem(); }
+      if (k === '=' || k === '+') { e.preventDefault(); return setZoom(zoomIn(zoom)); }
+      if (k === '-') { e.preventDefault(); return setZoom(zoomOut(zoom)); }
+      if (k === 'o' && selected && isPlotItem(selected)) { e.preventDefault(); return openGraph(); }
+    }
     if (menu && sel.length) {
       // A12 (AlignableLayerDiagram.processAlignKey): L T R B M, K vertical, J horizontal spacing.
       const a = ALIGN.find((x) => x.key && x.key === e.key.toLowerCase());
@@ -394,16 +595,26 @@ export function LayoutView(p: {
   const onItemDown = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     pageRef.current?.focus({ preventScroll: true });
+    const pt = ptAt(e);
+    // R1: a corner handle of a selected, size-unlocked figure starts a resize.
+    const b = boxes.find((x) => x.id === id)!;
+    const it = items.find((x) => x.id === id)!;
+    const h = handleAt(b, pt);
+    if (sel.length === 1 && sel[0] === id && isCornerHandle(h) && !it.sizeLock) { setResize({ id, handle: h, box: b }); return; }
     let next = sel;
     if (e.shiftKey || e.ctrlKey || e.metaKey) next = sel.includes(id) ? sel.filter((x) => !expand([id]).includes(x)) : expand([...sel, id]);
     else if (!sel.includes(id)) next = expand([id]);
     setSel(next);
-    const pt = ptAt(e);
-    setDrag({ x0: pt.x, y0: pt.y, dx: 0, dy: 0, ids: next.filter((x) => !boxes.find((b) => b.id === x)?.locked) });
+    setDrag({ x0: pt.x, y0: pt.y, dx: 0, dy: 0, ids: next.filter((x) => !boxes.find((bb) => bb.id === x)?.locked) });
   };
   const onMove = (e: React.MouseEvent) => {
     const pt = ptAt(e);
     if (guideDrag) return setGuideDrag({ ...guideDrag, at: Math.round(guideDrag.axis === 'v' ? pt.x : pt.y) });
+    if (resize) {
+      const it = items.find((x) => x.id === resize.id)!;
+      const orig = boxes.find((x) => x.id === resize.id)!;
+      return setResize({ ...resize, box: resizeBox(orig, resize.handle, pt, (e.shiftKey && !e.ctrlKey) || !!it.aspectLock) });
+    }
     if (!drag) return;
     let dx = Math.round(pt.x - drag.x0), dy = Math.round(pt.y - drag.y0);
     const moving = boxes.filter((b) => drag.ids.includes(b.id));
@@ -419,11 +630,12 @@ export function LayoutView(p: {
       setGuideDrag(null);
       return;
     }
+    if (resize) { const o = boxes.find((x) => x.id === resize.id)!; if (o.x !== resize.box.x || o.y !== resize.box.y || o.w !== resize.box.w || o.h !== resize.box.h) commit([resize.box]); setResize(null); return; }
     if (drag && (drag.dx || drag.dy)) commit(boxes.filter((b) => drag.ids.includes(b.id)).map((b) => ({ ...b, x: Math.max(0, b.x + drag.dx), y: Math.max(0, b.y + drag.dy) })));
     setDrag(null);
   };
 
-  const view = (b: Box) => (drag?.ids.includes(b.id) ? { ...b, x: b.x + drag.dx, y: b.y + drag.dy } : b);
+  const view = (b: Box) => (resize?.id === b.id ? resize.box : drag?.ids.includes(b.id) ? { ...b, x: b.x + drag.dx, y: b.y + drag.dy } : b);
   const grid = pageGrid(boxes, page);
   const W = grid.cols * page.w, H = grid.rows * page.h;
   const safe = (s: string) => s.replace(/\.fcs$/i, '').replace(/[^\w.-]+/g, '_');
@@ -433,9 +645,13 @@ export function LayoutView(p: {
   const toBlob = (cv: HTMLCanvasElement) => new Promise<Blob>((res, rej) => cv.toBlob((b) => (b ? res(b) : rej(new Error('PNG encoding failed'))), 'image/png'));
   const exportAs = async (fmt: 'png' | 'svg' | 'pdf', name: string, r: Rendered[], its: LayoutItem[]) => {
     if (fmt === 'svg') return p.onDownload(`${name}.svg`, new Blob([composeSvgPages(r, its, page)], { type: 'image/svg+xml' }));
-    const all = composePages(r, its, page);
+    const k = 2 / pageScale;
+    const all = composePages(r, its, page, k);
     if (fmt === 'png') return p.onDownload(`${name}.png`, await toBlob(all.canvas));
-    p.onDownload(`${name}.pdf`, new Blob([await canvasesToPdf(splitPages(all, page), paperSize.w, paperSize.h, MARGIN)], { type: 'application/pdf' }));
+    const pages = splitPages(all, page, k);
+    // H1: with a header or footer, each PDF page is the whole paper.
+    if (hf.header || hf.footer) return p.onDownload(`${name}.pdf`, new Blob([await canvasesToPdf(withHeaderFooter(pages, paperSize, hf, layoutName), paperSize.w, paperSize.h, 0)], { type: 'application/pdf' }));
+    p.onDownload(`${name}.pdf`, new Blob([await canvasesToPdf(pages, paperSize.w, paperSize.h, MARGIN)], { type: 'application/pdf' }));
   };
   // Grid figures (FigGridLayout; specs 25.2): a grid object (rows, columns,
   // padding, cell size) whose cells hold the items, row by row. By default the
@@ -450,17 +666,17 @@ export function LayoutView(p: {
       const cells: CellRef[] = base.filter((x) => x.cell?.grid === g.id && !removed.includes(x.id) && !released.includes(x.id)).map((x) => ({ id: x.id, ...x.cell! }));
       const o = cellOrigin(g, it.cell.row, it.cell.col);
       const b0 = boxOf(it, base.indexOf(it));
-      return { ...it, left: o.x, top: o.y, width: b0.w, height: b0.h, groupId: g.id, ...(it.text === undefined ? { axes: borderAxes(g, { id: it.id, ...it.cell }, cells) } : {}) } as LayoutItem;
+      return { ...it, left: o.x, top: o.y, width: b0.w, height: b0.h, groupId: g.id, ...(isPlotItem(it) ? { axes: borderAxes(g, { id: it.id, ...it.cell }, cells) } : {}) } as LayoutItem;
     });
     p.onSettings({ layout: out, layoutGrids: nextGrids });
   };
   const makeGrid = () => {
     const ordered = [...selBoxes].sort((a, b) => a.y - b.y || a.x - b.x);
     const g: GridDef = { id: `grid_${Date.now().toString(36)}`, x: Math.min(...ordered.map((b) => b.x)), y: Math.min(...ordered.map((b) => b.y)), rows: gridRows, cols: gridCols, pad: 4, cellW: Math.max(...ordered.map((b) => b.w)), cellH: Math.max(...ordered.map((b) => b.h)), bare: gridBare };
-    const fit = ordered.slice(0, g.rows * g.cols);
-    const base = items.map((it) => { const k = fit.findIndex((b) => b.id === it.id); return k < 0 ? it : ({ ...it, cell: { grid: g.id, row: Math.floor(k / g.cols), col: k % g.cols } } as LayoutItem); });
+    const fitIn = ordered.slice(0, g.rows * g.cols);
+    const base = items.map((it) => { const k = fitIn.findIndex((b) => b.id === it.id); return k < 0 ? it : ({ ...it, cell: { grid: g.id, row: Math.floor(k / g.cols), col: k % g.cols } } as LayoutItem); });
     applyGrids([...grids, g], base);
-    if (ordered.length > fit.length) setError(`${ordered.length - fit.length} item(s) did not fit the ${g.rows} x ${g.cols} grid`);
+    if (ordered.length > fitIn.length) setError(`${ordered.length - fitIn.length} item(s) did not fit the ${g.rows} x ${g.cols} grid`);
   };
   // The grid of the first selected cell, and that cell.
   const selCell = items.find((i) => sel.includes(i.id) && i.cell)?.cell;
@@ -491,9 +707,38 @@ export function LayoutView(p: {
   // Extract Cells from Grid: the grid goes, each figure stays where it is.
   const extractGrid = () => { if (!selGrid) return; p.onSettings({ layoutGrids: grids.filter((g) => g.id !== selGrid.id), layout: items.map((it) => (it.cell?.grid === selGrid.id ? ({ ...it, cell: undefined, groupId: undefined } as LayoutItem) : it)) }); };
   const selected = items.find((i) => i.id === sel[0]);
+  const selPlot = selected && isPlotItem(selected) ? selected : undefined;
   // Parameters offered to Multigraph: the first loaded sample's fluorescence channels.
-  const graphParams = (loaded[0] ? p.meta[loaded[0].id]?.channels.map((c) => c.name) ?? [] : []).filter((n) => !/^(FSC|SSC|Time)/i.test(n));
+  const allParams = loaded[0] ? p.meta[loaded[0].id]?.channels.map((c) => c.name) ?? [] : [];
+  const graphParams = allParams.filter((n) => !/^(FSC|SSC|Time)/i.test(n));
+  // Populations offered for a chart: the paths of its bound sample (else the first).
+  const popSample = selPlot ? bindFor(cur)(selPlot) ?? loaded[0] : loaded[0];
+  const popPaths = popSample ? ['', ...popSample.populations.map((q) => populationPath(popSample.populations, q.id))] : [''];
   const enabled = (n: number) => sel.length >= n;
+  const locked = !!selected?.contentLock;
+  // Open Original Graph (LENavAction OPENGRAPH): the chart's population in its graph window.
+  const openGraph = () => { if (!selPlot) return; const s = bindFor(cur)(selPlot); if (s && p.onOpenGraph) p.onOpenGraph(s.id, selPlot.populationPath); };
+  // Change a chart's population or axes after placement (ChartCommand.XAXIS / YAXIS; drop a population).
+  const setPlot = (patch: Partial<LayoutPlot>) => { if (!selPlot) return; const next = { ...selPlot, ...patch }; const sz = graphBoxSize(next); setItem(selPlot.id, { ...patch, ...(patch.multigraph !== undefined || patch.multiParams || patch.ancestry !== undefined || patch.ancestryVertical !== undefined || patch.adjunct !== undefined || patch.populationPath !== undefined ? { width: sz.w, height: sz.h } : {}) } as Partial<LayoutItem>); };
+  const insertAtCaret = (s: string) => {
+    if (!selected || selected.text === undefined) return;
+    const ta = textRef.current;
+    const at = ta ? ta.selectionStart : selected.text.length, end = ta ? ta.selectionEnd : at;
+    setItem(selected.id, { text: selected.text.slice(0, at) + s + selected.text.slice(end) });
+  };
+  const valueSample = valueSampleFor(cur);
+  const keywordNames = valueSample ? Object.keys(valueSample.keywordsSnapshot).sort() : [];
+  const st = selected ? styleOf(selected) : undefined;
+  const names = layoutNames(p.ws);
+  // Batch tile placement (I10, LEGeometryAction): tile k at (col, row) for
+  // Across / Down with a fixed number of columns or rows; tiles step by whole
+  // pages with Separate Pages, else by the layout's extent plus 30 pt.
+  const tileAt = (k: number, n: number) => {
+    const fixed = Math.max(1, tileCols);
+    const cols = tileFixed === 'cols' ? fixed : Math.ceil(n / fixed), rows = tileFixed === 'rows' ? fixed : Math.ceil(n / fixed);
+    return tileOrder === 'across' ? { c: k % cols, r: Math.floor(k / cols) } : { c: Math.floor(k / rows), r: k % rows };
+  };
+  const baseName = fileName.trim() || 'layout';
 
   return (
     <div className="modal-bg">
@@ -503,6 +748,27 @@ export function LayoutView(p: {
           <button onClick={p.onClose} aria-label="Close">x</button>
         </div>
         <div className="modal-body">
+          <div className="row" role="toolbar" aria-label="Layouts">
+            Layout {renaming !== null ? (
+              <input autoFocus data-testid="layout-rename-input" value={renaming} onChange={(e) => setRenaming(e.target.value)} onBlur={() => { p.onSettings(renameLayout(p.ws, renaming)); setRenaming(null); }} onKeyDown={(e) => { if (e.key === 'Enter') { p.onSettings(renameLayout(p.ws, renaming)); setRenaming(null); } if (e.key === 'Escape') setRenaming(null); }} />
+            ) : (
+              <select value={layoutName} onChange={(e) => { setSel([]); p.onSettings(selectLayout(p.ws, e.target.value)); }} data-testid="layout-list">{names.map((n) => <option key={n} value={n}>{n}</option>)}</select>
+            )}
+            <button data-testid="layout-list-add" title="Create: add a new layout" onClick={() => { setSel([]); p.onSettings(addLayout(p.ws)); }}>Add</button>
+            <button data-testid="layout-list-duplicate" title="Duplicate: another layout starting from this one" onClick={() => { setSel([]); p.onSettings(duplicateLayout(p.ws)); }}>Duplicate</button>
+            <button data-testid="layout-list-delete" title="Delete this layout" onClick={() => { if (window.confirm(`Delete the layout "${layoutName}"?`)) { setSel([]); p.onSettings(deleteLayout(p.ws)); } }}>Delete</button>
+            <button data-testid="layout-list-rename" onClick={() => setRenaming(layoutName)}>Rename</button>
+            | Zoom <button data-testid="layout-zoom-out" title="Zoom Out (Ctrl/Cmd+-)" onClick={() => setZoom(zoomOut(zoom))}>-</button>
+            <select value={ZOOM_STEPS.includes(Math.round(zoom * 100)) ? zoom : ''} onChange={(e) => setZoom(Number(e.target.value))} data-testid="layout-zoom">{!ZOOM_STEPS.includes(Math.round(zoom * 100)) && <option value="">{Math.round(zoom * 100)}%</option>}{ZOOM_STEPS.map((z) => <option key={z} value={z / 100}>{z}%</option>)}</select>
+            <button data-testid="layout-zoom-in" title="Zoom In (Ctrl/Cmd+=)" onClick={() => setZoom(zoomIn(zoom))}>+</button>
+            <button data-testid="layout-zoom-fit" title="Fit to Window" onClick={fit}>Fit</button>
+            <button data-testid="layout-zoom-100" title="Reset Zoom" onClick={() => setZoom(1)}>100%</button>
+            | Scale <button data-testid="layout-scale-page" title="Scale To Page" onClick={() => p.onSettings({ layoutPage: { ...setup, scale: autoPageScale(boxes, usablePageOf(setup), 'page') } })}>Page</button>
+            <button data-testid="layout-scale-width" title="Scale To Width" onClick={() => p.onSettings({ layoutPage: { ...setup, scale: autoPageScale(boxes, usablePageOf(setup), 'width') } })}>Width</button>
+            <button data-testid="layout-scale-height" title="Scale To Height" onClick={() => p.onSettings({ layoutPage: { ...setup, scale: autoPageScale(boxes, usablePageOf(setup), 'height') } })}>Height</button>
+            <button data-testid="layout-scale-reset" disabled={pageScale === 1} onClick={() => p.onSettings({ layoutPage: { ...setup, scale: undefined } })}>1:1</button>
+            <span className="muted" data-testid="layout-scale">{Math.round(100 / pageScale)}%</span>
+          </div>
           <div className="row">
             Iterate <select value={iter.type} onChange={(e) => p.onSettings({ layoutIteration: e.target.value === 'KEYWORD' ? { type: 'KEYWORD', keyword: '$FIL' } : e.target.value === 'PANEL' ? { type: 'PANEL', size: 2 } : { type: e.target.value as 'OFF' | 'SAMPLE' } })} data-testid="layout-iter">
               <option value="OFF">Off</option><option value="SAMPLE">Sample</option><option value="KEYWORD">Keyword</option><option value="PANEL">Panel</option>
@@ -519,15 +785,29 @@ export function LayoutView(p: {
             <select value={setup.orientation} onChange={(e) => p.onSettings({ layoutPage: { ...setup, orientation: e.target.value as PageSetup['orientation'] } })} data-testid="layout-orientation">
               <option value="portrait">Portrait</option><option value="landscape">Landscape</option>
             </select>
-            Zoom <select value={zoom} onChange={(e) => setZoom(Number(e.target.value))} data-testid="layout-zoom">{[0.5, 0.75, 1, 1.5].map((z) => <option key={z} value={z}>{z * 100}%</option>)}</select>
             <label><input type="checkbox" checked={showGrid} onChange={(e) => setShowGrid(e.target.checked)} data-testid="layout-show-grid" /> Grid</label>
+            <label><input type="checkbox" checked={showBreaks} onChange={(e) => setShowBreaks(e.target.checked)} data-testid="layout-show-breaks" /> Page breaks</label>
+            <label><input type="checkbox" checked={showRulers} onChange={(e) => setShowRulers(e.target.checked)} data-testid="layout-show-rulers" /> Rulers</label>
+            <label title="Empty boxes stand in for graphs while editing"><input type="checkbox" checked={placeholders} onChange={(e) => setPlaceholders(e.target.checked)} data-testid="layout-placeholders" /> Placeholders</label>
             <label title="Moved items snap to a guide within 30 pt"><input type="checkbox" checked={showGuides} onChange={(e) => setShowGuides(e.target.checked)} data-testid="layout-show-guides" /> Guides</label>
             {showGuides && <>
               <button disabled={guides.v.length + guides.h.length >= MAX_GUIDES} onClick={() => p.onSettings({ layoutGuides: { ...guides, v: [...guides.v, 250] } })} data-testid="layout-add-vguide">+ vertical guide</button>
               <button disabled={guides.v.length + guides.h.length >= MAX_GUIDES} onClick={() => p.onSettings({ layoutGuides: { ...guides, h: [...guides.h, 250] } })} data-testid="layout-add-hguide">+ horizontal guide</button>
               <span className="muted">drag a guide off the page to remove it</span>
             </>}
+            <button data-testid="layout-header-footer" onClick={() => setShowHF(!showHF)} title="Edit Header / Footer of the printed pages">Header / Footer</button>
           </div>
+          {showHF && (
+            <div className="row" data-testid="layout-hf">
+              <label><input type="checkbox" checked={hf.header} onChange={(e) => p.onSettings({ layoutHeaderFooter: { ...hf, header: e.target.checked } })} data-testid="layout-hf-header" /> Header</label>
+              <input value={hf.headerLeft} onChange={(e) => p.onSettings({ layoutHeaderFooter: { ...hf, headerLeft: e.target.value } })} data-testid="layout-hf-header-left" />
+              <input value={hf.headerRight} onChange={(e) => p.onSettings({ layoutHeaderFooter: { ...hf, headerRight: e.target.value } })} data-testid="layout-hf-header-right" />
+              <label><input type="checkbox" checked={hf.footer} onChange={(e) => p.onSettings({ layoutHeaderFooter: { ...hf, footer: e.target.checked } })} data-testid="layout-hf-footer" /> Footer</label>
+              <input value={hf.footerLeft} onChange={(e) => p.onSettings({ layoutHeaderFooter: { ...hf, footerLeft: e.target.value } })} data-testid="layout-hf-footer-left" />
+              <input value={hf.footerRight} onChange={(e) => p.onSettings({ layoutHeaderFooter: { ...hf, footerRight: e.target.value } })} data-testid="layout-hf-footer-right" />
+              <span className="muted" data-testid="layout-hf-preview">{headerText(hf.headerRight, { document: layoutName, page: 1, version: 'flowjo-rea' })}; tags: &lt;DocumentName/&gt; &lt;Date/&gt; &lt;LongDate/&gt; &lt;Time/&gt; &lt;Version/&gt; &lt;PageNumber/&gt;</span>
+            </div>
+          )}
           <div className="row" role="toolbar" aria-label="Arrange">
             Align {ALIGN.map((a) => <button key={a.mode} disabled={!enabled(2)} onClick={() => arrange((u) => align(u, a.mode))} data-testid={`layout-align-${a.mode}`} title={a.key ? `Ctrl/Cmd+${a.key.toUpperCase()}` : undefined}>{a.label}</button>)}
             <button disabled={!enabled(3)} onClick={() => arrange((u) => spacing(u, 'h'))} data-testid="layout-space-h" title="Horizontal spacing (Ctrl/Cmd+J)">Space H</button>
@@ -539,39 +819,93 @@ export function LayoutView(p: {
             <button disabled={!enabled(1)} onClick={() => reorder((o) => sendToBack(o, expand(sel)))} data-testid="layout-back">Back</button>
             | <button disabled={!enabled(2)} onClick={group} data-testid="layout-group">Group</button>
             <button disabled={!selBoxes.some((b) => b.groupId)} onClick={ungroup} data-testid="layout-ungroup">Ungroup</button>
-            <button disabled={!enabled(1)} onClick={toggleLock} data-testid="layout-lock" title="Lock position (drag and nudge skip it; align still moves it, as in FlowJo)">{selBoxes.length && selBoxes.every((b) => b.locked) ? 'Unlock' : 'Lock'}</button>
+            <button disabled={!enabled(1)} onClick={() => toggle('locked')} data-testid="layout-lock" title="Lock position (drag and nudge skip it; align still moves it, as in FlowJo)">{selItems.length && selItems[0].locked ? 'Unlock' : 'Lock'}</button>
+            <button disabled={!enabled(1)} onClick={() => toggle('sizeLock')} data-testid="layout-lock-size" title="Lock Size: no resize handles">{selItems[0]?.sizeLock ? 'Unlock size' : 'Lock size'}</button>
+            <button disabled={!enabled(1)} onClick={() => toggle('contentLock')} data-testid="layout-lock-content" title="Lock Content: chart settings and text cannot change">{selItems[0]?.contentLock ? 'Unlock content' : 'Lock content'}</button>
             <button disabled={!enabled(1)} onClick={duplicate} data-testid="layout-duplicate" title="Duplicate at +8 pt (Ctrl/Cmd+D)">Duplicate</button>
             <button disabled={!enabled(1)} onClick={remove} data-testid="layout-remove">Delete</button>
             | <button disabled={!items.length} onClick={() => commit(avoidPageBreaks(boxes, page))} data-testid="layout-avoid-breaks">Avoid page breaks</button>
             <button disabled={!enabled(1)} onClick={makeGrid} data-testid="layout-grid">Grid layout</button>
             <label title="Cells hold bare charts; X axes on the bottom border, Y axes on the left border (FigGridLayout: minimalChartInGrids, border axes)"><input type="checkbox" checked={gridBare} onChange={(e) => setGridBare(e.target.checked)} data-testid="layout-grid-bare" /> bare charts, border axes</label>
             <input type="number" min={1} style={{ width: 40 }} value={gridRows} onChange={(e) => setGridRows(Math.max(1, Number(e.target.value) || 1))} aria-label="grid rows" /> x <input type="number" min={1} style={{ width: 40 }} value={gridCols} onChange={(e) => setGridCols(Math.max(1, Number(e.target.value) || 1))} aria-label="grid columns" />
-            <button data-testid="layout-add-text" onClick={addText}>Add text</button>
           </div>
+          <div className="row" role="toolbar" aria-label="Edit and insert">
+            <button disabled={!items.length} onClick={() => setSel(items.map((i) => i.id))} data-testid="layout-select-all" title="Select All (Ctrl/Cmd+A)">Select all</button>
+            <button disabled={!items.length} onClick={() => setSel(invertSelection(items.map((i) => i.id), sel))} data-testid="layout-select-invert" title="Invert Selection">Invert</button>
+            <button disabled={!items.length} onClick={copy} data-testid="layout-copy" title="Copy (Ctrl/Cmd+C): the selection, or all figures">Copy</button>
+            <button disabled={!enabled(1)} onClick={cut} data-testid="layout-cut" title="Cut (Ctrl/Cmd+X)">Cut</button>
+            <button onClick={() => (clipboard.length ? paste() : void pasteSystem())} data-testid="layout-paste" title="Paste (Ctrl/Cmd+V): placed in view, +4 pt">Paste</button>
+            <button disabled={!items.length} onClick={() => void copyImage(true)} data-testid="layout-copy-transparent" title="Copy Selection With Transparency (Ctrl/Cmd+Shift+C)">Copy image (transparent)</button>
+            <button disabled={!items.length} onClick={() => void copyImage(false)} data-testid="layout-copy-opaque" title="Copy Selection Without transparency">Copy image (opaque)</button>
+            | Insert <button data-testid="layout-add-text" onClick={() => addText()}>Text</button>
+            <button data-testid="layout-add-rect" onClick={() => addShape('rect')}>Rectangle</button>
+            <button data-testid="layout-add-roundrect" onClick={() => addShape('roundrect')}>Rounded</button>
+            <button data-testid="layout-add-ellipse" onClick={() => addShape('ellipse')}>Ellipse</button>
+            <button data-testid="layout-add-line" onClick={() => addShape('line')}>Line</button>
+            <button data-testid="layout-add-arrow" onClick={() => addShape('line', 'forward')}>Arrow</button>
+            <label className="button-like" title="Insert Graphic: an image file at (30, 50)">Graphic... <input type="file" accept="image/*" style={{ display: 'none' }} data-testid="layout-insert-graphic" onChange={async (e) => { const f = e.target.files?.[0]; if (f) await addImageFig(await blobUrl(f)); e.target.value = ''; }} /></label>
+          </div>
+          {selected && (
+            <div className="row" data-testid="layout-props" role="toolbar" aria-label="Figure properties">
+              <b>Properties</b>
+              <label title="Fill colour (None: unfilled)"><input type="checkbox" checked={!!st?.fill} onChange={(e) => setStyle({ fill: e.target.checked ? st?.fill ?? '#ffffff' : undefined })} data-testid="layout-fill-on" /> Fill</label>
+              <input type="color" value={st?.fill ?? '#ffffff'} onChange={(e) => setStyle({ fill: e.target.value })} data-testid="layout-fill" />
+              Line <input type="color" value={st?.line ?? '#000000'} onChange={(e) => setStyle({ line: e.target.value, ...(st?.weight === 'none' ? { weight: 'normal' as LineWeight } : {}) })} data-testid="layout-line-color" />
+              <select value={st?.weight} onChange={(e) => setStyle({ weight: e.target.value as LineWeight })} data-testid="layout-line-weight" title="Line Weight">{(Object.keys(LINE_WEIGHTS) as LineWeight[]).map((k) => <option key={k} value={k}>{LINE_WEIGHTS[k].label}</option>)}</select>
+              <select value={st?.lineStyle} onChange={(e) => setStyle({ lineStyle: e.target.value as LineStyle })} data-testid="layout-line-style" title="Line Style">{(Object.keys(LINE_STYLES) as LineStyle[]).map((k) => <option key={k} value={k}>{LINE_STYLES[k].label}</option>)}</select>
+              Gradient <input type="color" value={st?.gradient ?? '#ffffff'} onChange={(e) => setStyle({ gradient: e.target.value })} data-testid="layout-gradient" />
+              <select value={st?.gradientType} onChange={(e) => setStyle({ gradientType: e.target.value as GradientType, ...(e.target.value !== 'none' && !st?.fill ? { fill: '#ffffff' } : {}), ...(e.target.value !== 'none' && !st?.gradient ? { gradient: '#808080' } : {}) })} data-testid="layout-gradient-type" title="Gradient Type">{GRADIENTS.map((g) => <option key={g} value={g}>{g[0].toUpperCase() + g.slice(1)}</option>)}</select>
+              {selected.shape === 'line' && <>Arrow <select value={selected.arrow ?? 'none'} onChange={(e) => p.onChange(items.map((i) => (sel.includes(i.id) && i.shape === 'line' ? { ...i, arrow: e.target.value as LayoutShape['arrow'] } : i)))} data-testid="layout-arrowhead"><option value="none">None</option><option value="forward">Forward</option><option value="backward">Backward</option><option value="double">Double-headed</option></select></>}
+              <label title="Resizing keeps the aspect ratio (Shift while dragging does too)"><input type="checkbox" checked={!!selected.aspectLock} onChange={(e) => p.onChange(items.map((i) => (sel.includes(i.id) ? ({ ...i, aspectLock: e.target.checked || undefined } as LayoutItem) : i)))} data-testid="layout-aspect-lock" /> Keep aspect</label>
+              <span className="muted" data-testid="layout-sel-box">{selBoxes[0] ? `${selBoxes[0].w} x ${selBoxes[0].h} pt` : ''}</span>
+            </div>
+          )}
           {/* Always present, so selecting does not shift the page under the pointer. */}
           <div className="row layout-selrow">
-            {!selected ? <span className="muted">Click an item to select it; Shift-click adds to the selection.</span> : <>
+            {!selected ? <span className="muted">Click an item to select it; Shift-click adds to the selection; drag a corner of a selected item to resize it (Shift keeps the aspect ratio).</span> : <>
               {selected.text !== undefined ? (
-                <textarea value={selected.text} data-testid="layout-text" onChange={(e) => setItem(selected.id, { text: e.target.value })} style={{ width: '60%', minHeight: 40 }} />
-              ) : (
                 <>
-                  <label><input type="checkbox" checked={selected.showGates !== false} onChange={(e) => setItem(selected.id, { showGates: e.target.checked ? undefined : false })} data-testid="layout-show-gates" /> Show Gates</label>
-                  <label title="Only while Show Gates is on (AnnotationPanel.adjust)"><input type="checkbox" disabled={selected.showGates === false} checked={selected.gateFreq !== false} onChange={(e) => setItem(selected.id, { gateFreq: e.target.checked ? undefined : false })} data-testid="layout-gate-freq" /> with Frequencies</label>
-                  <label><input type="checkbox" disabled={selected.showGates === false} checked={selected.gateNames !== false} onChange={(e) => setItem(selected.id, { gateNames: e.target.checked ? undefined : false })} data-testid="layout-gate-names" /> with Names</label>
-                  <label><input type="checkbox" checked={!!selected.showAnnotation} onChange={(e) => setItem(selected.id, { showAnnotation: e.target.checked || undefined })} data-testid="layout-show-annotation" /> Show Annotation</label>
-                  <label title="1-D distributions of X and Y along the edges of a 2-D plot"><input type="checkbox" disabled={selected.kind === 'histogram'} checked={!!selected.adjunct} onChange={(e) => { const next = { ...selected, adjunct: e.target.checked || undefined }; const sz = graphBoxSize(next); setItem(selected.id, { adjunct: next.adjunct, width: sz.w, height: sz.h }); }} data-testid="layout-adjunct" /> Show Adjunct Histograms</label>
-                  <label title="One chart per ancestor level, 140 pt, to the right"><input type="checkbox" disabled={!selected.populationPath} checked={!!selected.ancestry} onChange={(e) => { const next = { ...selected, ancestry: e.target.checked || undefined }; const sz = graphBoxSize(next); setItem(selected.id, { ancestry: next.ancestry, backgating: next.ancestry ? selected.backgating : undefined, width: sz.w, height: sz.h }); }} data-testid="layout-ancestry" /> Show Ancestry</label>
-                  <label title="Other parameter combinations for the same population (at most 10 parameters)">Multigraph <select value={selected.multigraph ?? ''} onChange={(e) => { const v = (e.target.value || undefined) as 'histograms' | 'nxn' | undefined; const next = { ...selected, multigraph: v, multiParams: selected.multiParams ?? graphParams.slice(0, 4) }; const sz = graphBoxSize(next); setItem(selected.id, { multigraph: v, multiParams: next.multiParams, width: sz.w, height: sz.h }); }} data-testid="layout-multigraph"><option value="">off</option><option value="histograms">Histograms</option><option value="nxn">N x N</option></select></label>
-                  {selected.multigraph && <select multiple size={4} value={selected.multiParams ?? []} onChange={(e) => { const ps = Array.from(e.target.selectedOptions).map((o) => o.value).slice(0, 10); const sz = graphBoxSize({ ...selected, multiParams: ps }); setItem(selected.id, { multiParams: ps, width: sz.w, height: sz.h }); }} data-testid="layout-multigraph-params">{graphParams.map((n) => <option key={n} value={n}>{n}</option>)}</select>}
-                  <label><input type="checkbox" disabled={!selected.ancestry} checked={!!selected.backgating} onChange={(e) => setItem(selected.id, { backgating: e.target.checked || undefined })} data-testid="layout-backgating" /> with Backgating</label>
+                  <textarea ref={textRef} value={selected.text} disabled={locked} data-testid="layout-text" onChange={(e) => setItem(selected.id, { text: e.target.value })} style={{ width: '35%', minHeight: 40 }} />
+                  <select value={selected.font ?? 'SansSerif'} disabled={locked} onChange={(e) => setItem(selected.id, { font: e.target.value === 'SansSerif' ? undefined : e.target.value })} data-testid="layout-text-font">{FONT_NAMES.map((f) => <option key={f} value={f}>{f}</option>)}</select>
+                  <input type="number" min={4} max={144} style={{ width: 46 }} disabled={locked} value={selected.size ?? 11} onChange={(e) => setItem(selected.id, { size: Math.max(4, Number(e.target.value) || 11) })} data-testid="layout-text-size" title="Size (pt)" />
+                  <label><input type="checkbox" disabled={locked} checked={!!selected.bold} onChange={(e) => setItem(selected.id, { bold: e.target.checked || undefined })} data-testid="layout-text-bold" /> <b>B</b></label>
+                  <label><input type="checkbox" disabled={locked} checked={!!selected.italic} onChange={(e) => setItem(selected.id, { italic: e.target.checked || undefined })} data-testid="layout-text-italic" /> <i>I</i></label>
+                  <input type="color" disabled={locked} value={selected.color ?? '#111111'} onChange={(e) => setItem(selected.id, { color: e.target.value })} data-testid="layout-text-color" title="Text colour" />
+                  <select value="" disabled={locked} onChange={(e) => e.target.value && insertAtCaret(keywordToken(e.target.value))} data-testid="layout-insert-keyword" title="Insert Keyword: a live keyword value of the iteration's sample"><option value="">Insert Keyword...</option>{keywordNames.map((k) => <option key={k} value={k}>{k}</option>)}</select>
+                  <select value="" disabled={locked} onChange={(e) => e.target.value && insertAtCaret(annoToken(e.target.value))} data-testid="layout-insert-annotation" title="Insert Annotation"><option value="">Insert Annotation...</option>{ANNOTATIONS.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}</select>
+                  <button disabled={locked} onClick={() => setShowChars(!showChars)} data-testid="layout-special-chars" title="Special Characters">&Sigma;</button>
+                  {showChars && <span className="layout-chars" data-testid="layout-chars">{SPECIAL_CHARS.map((g) => <span key={g.group} title={g.group}>{g.codes.map((c) => <button key={c} title={`${g.group}: U+${c.toString(16).toUpperCase().padStart(4, '0')}`} onClick={() => insertAtCaret(String.fromCharCode(c))} data-testid="layout-char">{String.fromCharCode(c)}</button>)}</span>)}</span>}
+                  <span className="muted" data-testid="layout-text-live">{rendered.find((r) => r.item.id === selected.id)?.text}</span>
+                </>
+              ) : selPlot ? (
+                <>
+                  <button onClick={openGraph} disabled={!p.onOpenGraph || !!selPlot.empty} data-testid="layout-open-graph" title="Open Original Graph (Ctrl/Cmd+O)">Open graph</button>
+                  Population <select value={selPlot.empty ? '\u0000' : selPlot.populationPath} disabled={locked} onChange={(e) => setPlot({ populationPath: e.target.value, empty: undefined })} data-testid="layout-chart-pop">{selPlot.empty && <option value={'\u0000'}>(empty)</option>}{popPaths.map((q) => <option key={q} value={q}>{q || 'All events'}</option>)}{!popPaths.includes(selPlot.populationPath) && !selPlot.empty && <option value={selPlot.populationPath}>{selPlot.populationPath}</option>}</select>
+                  X <select value={selPlot.x} disabled={locked} onChange={(e) => setPlot({ x: e.target.value })} data-testid="layout-chart-x" title="Chart X Axis">{[...new Set([selPlot.x, ...allParams])].map((c) => <option key={c} value={c}>{c}</option>)}</select>
+                  {selPlot.kind !== 'histogram' && <>Y <select value={selPlot.y ?? ''} disabled={locked} onChange={(e) => setPlot({ y: e.target.value })} data-testid="layout-chart-y" title="Chart Y Axis">{[...new Set([selPlot.y ?? '', ...allParams])].filter(Boolean).map((c) => <option key={c} value={c}>{c}</option>)}</select></>}
+                  <button disabled={locked || !!selPlot.empty} onClick={() => setPlot({ empty: true })} data-testid="layout-remove-data" title="Remove Data from Chart: leave an empty drop box">Remove data</button>
+                  <label><input type="checkbox" disabled={locked} checked={selPlot.showGates !== false} onChange={(e) => setPlot({ showGates: e.target.checked ? undefined : false })} data-testid="layout-show-gates" /> Show Gates</label>
+                  <label title="Only while Show Gates is on (AnnotationPanel.adjust)"><input type="checkbox" disabled={locked || selPlot.showGates === false} checked={selPlot.gateFreq !== false} onChange={(e) => setPlot({ gateFreq: e.target.checked ? undefined : false })} data-testid="layout-gate-freq" /> with Frequencies</label>
+                  <label><input type="checkbox" disabled={locked || selPlot.showGates === false} checked={selPlot.gateNames !== false} onChange={(e) => setPlot({ gateNames: e.target.checked ? undefined : false })} data-testid="layout-gate-names" /> with Names</label>
+                  <label><input type="checkbox" disabled={locked} checked={!!selPlot.showAnnotation} onChange={(e) => setPlot({ showAnnotation: e.target.checked || undefined })} data-testid="layout-show-annotation" /> Show Annotation</label>
+                  <label title="Legend of the overlaid populations"><input type="checkbox" disabled={locked || !selPlot.overlays?.length} checked={selPlot.legend !== false} onChange={(e) => setPlot({ legend: e.target.checked ? undefined : false })} data-testid="layout-legend" /> Legend</label>
+                  <label title="1-D distributions of X and Y along the edges of a 2-D plot"><input type="checkbox" disabled={locked || selPlot.kind === 'histogram'} checked={!!selPlot.adjunct} onChange={(e) => setPlot({ adjunct: e.target.checked || undefined })} data-testid="layout-adjunct" /> Show Adjunct Histograms</label>
+                  <label title="One chart per ancestor level, 140 pt"><input type="checkbox" disabled={locked || !selPlot.populationPath} checked={!!selPlot.ancestry} onChange={(e) => setPlot({ ancestry: e.target.checked || undefined, backgating: e.target.checked ? selPlot.backgating : undefined })} data-testid="layout-ancestry" /> Show Ancestry</label>
+                  <select value={selPlot.ancestryVertical ? 'v' : 'h'} disabled={locked || !selPlot.ancestry} onChange={(e) => setPlot({ ancestryVertical: e.target.value === 'v' || undefined })} data-testid="layout-ancestry-dir" title="Horizontal: a row to the right; Vertical: a column below"><option value="h">Horizontal</option><option value="v">Vertical</option></select>
+                  <label><input type="checkbox" disabled={locked || !selPlot.ancestry} checked={!!selPlot.backgating} onChange={(e) => setPlot({ backgating: e.target.checked || undefined })} data-testid="layout-backgating" /> with Backgating</label>
+                  <label><input type="checkbox" disabled={locked || !selPlot.backgating} checked={!!selPlot.backgateLarge} onChange={(e) => setPlot({ backgateLarge: e.target.checked || undefined })} data-testid="layout-backgate-large" /> Large Dots</label>
+                  <label><input type="checkbox" disabled={locked || !selPlot.backgating} checked={!!selPlot.backgateContours} onChange={(e) => setPlot({ backgateContours: e.target.checked || undefined })} data-testid="layout-backgate-contours" /> Contours</label>
+                  <label title="Other parameter combinations for the same population (at most 10 parameters)">Multigraph <select value={selPlot.multigraph ?? ''} disabled={locked} onChange={(e) => setPlot({ multigraph: (e.target.value || undefined) as LayoutPlot['multigraph'], multiParams: selPlot.multiParams ?? graphParams.slice(0, 4) })} data-testid="layout-multigraph"><option value="">off</option><option value="histograms">Histograms</option><option value="nxn">N x N</option><option value="halfnxn">Half N x N</option><option value="allby">All by Y</option><option value="slinky">Slinky</option></select></label>
+                  {selPlot.multigraph && <select multiple size={4} disabled={locked} value={selPlot.multiParams ?? []} onChange={(e) => setPlot({ multiParams: Array.from(e.target.selectedOptions).map((o) => o.value).slice(0, 10) })} data-testid="layout-multigraph-params">{graphParams.map((n) => <option key={n} value={n}>{n}</option>)}</select>}
+                  {selPlot.multigraph && selPlot.multigraph !== 'histograms' && selPlot.multigraph !== 'slinky' && <select value={selPlot.multiKind ?? 'pseudocolor'} disabled={locked} onChange={(e) => setPlot({ multiKind: e.target.value === 'pseudocolor' ? undefined : e.target.value as LayoutPlot['multiKind'] })} data-testid="layout-multigraph-kind" title="Make NxN Dot / Contour / Pseudocolor Plots"><option value="pseudocolor">Pseudocolor</option><option value="dot">Dot</option><option value="contour">Contour</option></select>}
                   {(['x', 'y'] as const).map((axis) => (['ticks', 'numbers', 'label'] as const).map((part) => {
                     const ch = { ticks: 't', numbers: 'n', label: 'l' }[part];
                     const letter = axis === 'x' ? ch : ch.toUpperCase();
-                    const cur = selected.axes ?? 'tnlTNL';
-                    return <label key={axis + part}><input type="checkbox" checked={!cur.includes(letter)} onChange={(e) => setItem(selected.id, { axes: e.target.checked ? cur.replace(letter, '') : cur + letter })} data-testid={`layout-hide-${axis}-${part}`} /> hide {axis.toUpperCase()} {part}</label>;
+                    const cur0 = selPlot.axes ?? 'tnlTNL';
+                    return <label key={axis + part}><input type="checkbox" disabled={locked} checked={!cur0.includes(letter)} onChange={(e) => setPlot({ axes: e.target.checked ? cur0.replace(letter, '') : cur0 + letter })} data-testid={`layout-hide-${axis}-${part}`} /> hide {axis.toUpperCase()} {part}</label>;
                   }))}
                 </>
-              )}
+              ) : null}
               <span className="muted">{sel.length} selected; arrows nudge 1 pt (Alt x2, Ctrl x2, Shift x3)</span>
             </>}
           </div>
@@ -593,9 +927,9 @@ export function LayoutView(p: {
             </div>
           )}
           <div className="row">
-            <button disabled={!rendered.length} data-testid="layout-export" onClick={() => void exportAs('png', `layout_${safe(valueLabel(cur))}`, rendered, items)}>Export PNG</button>
-            <button disabled={!rendered.length} data-testid="layout-export-svg" onClick={() => void exportAs('svg', `layout_${safe(valueLabel(cur))}`, rendered, items)}>Export SVG</button>
-            <button disabled={!rendered.length} data-testid="layout-export-pdf" onClick={() => void exportAs('pdf', `layout_${safe(valueLabel(cur))}`, rendered, items)}>Export PDF ({grid.cols * grid.rows} page{grid.cols * grid.rows > 1 ? 's' : ''})</button>
+            <button disabled={!rendered.length} data-testid="layout-export" onClick={() => void exportAs('png', `${baseName}_${safe(valueLabel(cur))}`, rendered, items)}>Export PNG</button>
+            <button disabled={!rendered.length} data-testid="layout-export-svg" onClick={() => void exportAs('svg', `${baseName}_${safe(valueLabel(cur))}`, rendered, items)}>Export SVG</button>
+            <button disabled={!rendered.length} data-testid="layout-export-pdf" onClick={() => void exportAs('pdf', `${baseName}_${safe(valueLabel(cur))}`, rendered, items)} title="Print: the pages as a PDF to print">Export PDF ({grid.cols * grid.rows} page{grid.cols * grid.rows > 1 ? 's' : ''})</button>
             <button
               disabled={!items.length || busy || iter.type === 'OFF'}
               title={iter.type === 'OFF' ? 'Choose an iteration to batch' : undefined}
@@ -604,36 +938,44 @@ export function LayoutView(p: {
                 setBusy(true);
                 try {
                   if (tileCols <= 0) {
-                    for (const v of values) await exportAs(batchFormat, `layout_${safe(valueLabel(v))}`, await renderLayout(p.client, p.ws, p.meta, items, bindFor(v)), items);
+                    for (const v of values) await exportAs(batchFormat, `${baseName}_${safe(valueLabel(v))}`, await renderLayout(p.client, p.ws, p.meta, items, bindFor(v), extrasFor(v)), items);
                   } else {
-                    // I10: each value is one tile; tiles step by whole pages.
+                    // I10: each value is one tile; tiles step by whole pages (Separate Pages) or by the extent.
                     const ext = pageGrid(boxes, page);
-                    const pitchX = tilePitch(ext.cols * page.w - 1, page.w), pitchY = tilePitch(ext.rows * page.h - 1, page.h);
+                    const u = unionBox(boxes.length ? boxes : [{ id: 'z', x: 0, y: 0, w: 1, h: 1 }]);
+                    const pitchX = separatePages ? tilePitch(ext.cols * page.w - 1, page.w) : u.x + u.w + DROP_GAP, pitchY = separatePages ? tilePitch(ext.rows * page.h - 1, page.h) : u.y + u.h + DROP_GAP;
                     const allItems: LayoutItem[] = [], allR: Rendered[] = [];
                     for (const [k, v] of values.entries()) {
-                      const r = await renderLayout(p.client, p.ws, p.meta, items, bindFor(v));
-                      const ox = (k % tileCols) * pitchX, oy = Math.floor(k / tileCols) * pitchY;
+                      const r = await renderLayout(p.client, p.ws, p.meta, items, bindFor(v), extrasFor(v));
+                      const t = tileAt(k, values.length);
+                      const ox = t.c * pitchX, oy = t.r * pitchY;
                       items.forEach((it, i) => { const b = boxOf(it, i); const c = { ...withBox(it, { ...b, x: b.x + ox, y: b.y + oy }), id: `${it.id}#${k}` } as LayoutItem; allItems.push(c); const ri = r.find((x) => x.item.id === it.id); if (ri) allR.push({ ...ri, item: c }); });
                     }
-                    await exportAs(batchFormat, 'layout_batch', allR, allItems);
+                    await exportAs(batchFormat, `${baseName}_batch`, allR, allItems);
                   }
                 } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
               }}
             >Batch ({values.length} value{values.length === 1 ? '' : 's'})</button>
-            <select value={batchFormat} onChange={(e) => setBatchFormat(e.target.value as 'png' | 'svg' | 'pdf')} data-testid="layout-batch-format">
+            <select value={batchFormat} onChange={(e) => setBatchFormat(e.target.value as 'png' | 'svg' | 'pdf')} data-testid="layout-batch-format" title="Output Target">
               <option value="pdf">PDF</option><option value="png">PNG</option><option value="svg">SVG</option>
             </select>
-            Tiles across <input type="number" min={0} style={{ width: 50 }} data-testid="layout-tiles" title="0: one file per iteration value" value={tileCols} onChange={(e) => setTileCols(Math.max(0, Number(e.target.value) || 0))} />
+            File name <input style={{ width: 90 }} placeholder="layout" value={fileName} onChange={(e) => setFileName(e.target.value)} data-testid="layout-file-name" />
+            Tiles <input type="number" min={0} style={{ width: 50 }} data-testid="layout-tiles" title="0: one file per iteration value" value={tileCols} onChange={(e) => setTileCols(Math.max(0, Number(e.target.value) || 0))} />
+            <select value={tileFixed} onChange={(e) => setTileFixed(e.target.value as 'cols' | 'rows')} data-testid="layout-tile-fixed"><option value="cols">columns</option><option value="rows">rows</option></select>
+            <select value={tileOrder} onChange={(e) => setTileOrder(e.target.value as 'across' | 'down')} data-testid="layout-tile-order"><option value="across">Across</option><option value="down">Down</option></select>
+            <label><input type="checkbox" checked={separatePages} onChange={(e) => setSeparatePages(e.target.checked)} data-testid="layout-separate-pages" /> Separate pages</label>
             {busy && <span className="muted">exporting...</span>}
           </div>
           {error && <p className="error">{error}</p>}
           {!items.length && <p className="muted">Use "Add to layout" under a plot (or right-click a gate, Copy to Layout Editor) to place it at (200, 200).</p>}
-          <div className="layout-scroll">
+          <div className="layout-scroll" ref={scrollRef}>
+            {showRulers && <div className="layout-ruler h" data-testid="layout-ruler" style={{ width: W * zoom, backgroundSize: `${72 * zoom / pageScale}px 100%` }}>{Array.from({ length: Math.ceil(W / (72 / pageScale)) }, (_, i) => <span key={i} style={{ left: i * 72 * zoom / pageScale }}>{i}</span>)}</div>}
             <div
               ref={pageRef}
               className="layout-page"
               tabIndex={0}
               data-testid="layout-page"
+              data-zoom={zoom}
               style={{ width: W * zoom, height: H * zoom, backgroundSize: `${GRID_PT * zoom}px ${GRID_PT * zoom}px`, backgroundImage: showGrid ? 'linear-gradient(#eee 1px, transparent 1px), linear-gradient(90deg, #eee 1px, transparent 1px)' : undefined }}
               onKeyDown={onKey}
               onMouseDown={() => { setSel([]); pageRef.current?.focus({ preventScroll: true }); }}
@@ -641,8 +983,8 @@ export function LayoutView(p: {
               onMouseUp={onUp}
               onMouseLeave={onUp}
             >
-              {Array.from({ length: grid.cols - 1 }, (_, i) => <div key={`v${i}`} className="page-break v" style={{ left: (i + 1) * page.w * zoom, height: H * zoom }} />)}
-              {Array.from({ length: grid.rows - 1 }, (_, i) => <div key={`h${i}`} className="page-break h" style={{ top: (i + 1) * page.h * zoom, width: W * zoom }} />)}
+              {showBreaks && Array.from({ length: grid.cols - 1 }, (_, i) => <div key={`v${i}`} className="page-break v" style={{ left: (i + 1) * page.w * zoom, height: H * zoom }} />)}
+              {showBreaks && Array.from({ length: grid.rows - 1 }, (_, i) => <div key={`h${i}`} className="page-break h" style={{ top: (i + 1) * page.h * zoom, width: W * zoom }} />)}
               {grids.map((g) => { const b = gridBounds(g); const cw = (g.cellW + 2 * g.pad) * zoom, ch = (g.cellH + 2 * g.pad) * zoom; return <div key={g.id} className="layout-gridlines" data-testid="layout-gridlines" style={{ left: b.x * zoom, top: b.y * zoom, width: b.w * zoom, height: b.h * zoom, backgroundSize: `${cw}px ${ch}px` }} />; })}
               {showGuides && (['v', 'h'] as const).flatMap((axis) => guides[axis].map((g, i) => {
                 const at = guideDrag && guideDrag.axis === axis && guideDrag.i === i ? guideDrag.at : g;
@@ -653,22 +995,30 @@ export function LayoutView(p: {
               {items.map((it, i) => {
                 const b = view(boxes[i]);
                 const r = rendered.find((x) => x.item.id === it.id);
+                const isSel = sel.includes(it.id);
+                const pad = 10; // room for strokes and arrowheads outside thin boxes
                 return (
                   <div
                     key={it.id}
-                    className={`layout-card ${sel.includes(it.id) ? 'sel' : ''} ${it.locked ? 'locked' : ''}`}
+                    className={`layout-card ${isSel ? 'sel' : ''} ${it.locked ? 'locked' : ''} ${it.shape !== undefined ? 'shape' : ''}`}
                     data-testid="layout-card"
                     data-id={it.id}
+                    data-kind={it.text !== undefined ? 'text' : it.shape ?? (it.image !== undefined ? 'image' : 'chart')}
                     data-group={it.groupId}
+                    data-style={it.style ? JSON.stringify(it.style) : undefined}
                     data-box={`${b.x},${b.y},${b.w},${b.h}`}
-                    style={{ left: b.x * zoom, top: b.y * zoom, width: b.w * zoom, height: b.h * zoom, zIndex: i + 1 }}
+                    style={{ left: b.x * zoom, top: b.y * zoom, width: Math.max(b.w, 2) * zoom, height: Math.max(b.h, 2) * zoom, zIndex: i + 1 }}
                     onMouseDown={(e) => onItemDown(e, it.id)}
                     title={r?.title}
                   >
-                    {it.text === undefined && it.showAnnotation && r && <div className="layout-annot" style={{ top: -ANNOT_H * zoom, fontSize: 9 * zoom }}>{r.title}</div>}
-                    {it.text !== undefined ? <div className="layout-textbox" style={{ fontSize: 11 * zoom }}>{it.text}</div>
-                      : r?.canvas ? <img alt={r.title} src={r.canvas.toDataURL()} draggable={false} />
-                        : <p className="error">{r?.error ?? 'rendering...'}</p>}
+                    {isPlotItem(it) && it.showAnnotation && r && <div className="layout-annot" style={{ top: -ANNOT_H * zoom, fontSize: 9 * zoom }}>{r.title}</div>}
+                    {!isPlotItem(it) || it.style ? <FigFace it={it} b={b} r={r} zoom={zoom} pad={pad} /> : null}
+                    {it.text !== undefined ? <div className="layout-textbox" style={{ font: textFont(it, zoom), color: it.color }}>{r?.text ?? it.text}</div>
+                      : it.shape !== undefined || it.image !== undefined ? null
+                        : r?.placeholder ? <p className="muted layout-placeholder">{r.title}</p>
+                          : r?.canvas ? <img alt={r.title} src={r.canvas.toDataURL()} draggable={false} />
+                            : <p className="error">{r?.error ?? 'rendering...'}</p>}
+                    {isSel && sel.length === 1 && !it.sizeLock && [1, 3, 7, 9].map((h) => <span key={h} className={`layout-handle h${h}`} data-testid={`layout-handle-${h}`} />)}
                   </div>
                 );
               })}
@@ -678,4 +1028,24 @@ export function LayoutView(p: {
       </div>
     </div>
   );
+}
+
+// A non-chart figure's face (shape, image, fill and outline) drawn on a canvas
+// the size of the card plus a margin for strokes and arrowheads.
+function FigFace({ it, b, r, zoom, pad }: { it: LayoutItem; b: Box; r: Rendered | undefined; zoom: number; pad: number }) {
+  const ref = useRef<HTMLCanvasElement | null>(null);
+  const w = Math.max(1, b.w) + 2 * pad, h = Math.max(1, b.h) + 2 * pad;
+  useEffect(() => {
+    const cv = ref.current;
+    if (!cv) return;
+    const k = zoom * (window.devicePixelRatio || 1);
+    cv.width = Math.ceil(w * k); cv.height = Math.ceil(h * k);
+    const ctx = cv.getContext('2d')!;
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    const box = { ...b, x: pad, y: pad };
+    if (it.text !== undefined || isPlotItem(it)) paintFigFrame(ctx, isPlotItem(it) ? { ...it, style: { ...it.style, fill: undefined } } : it, box);
+    else drawFig(ctx, it, box, r);
+  });
+  return <canvas ref={ref} className="layout-face" style={{ left: -pad * zoom, top: -pad * zoom, width: w * zoom, height: h * zoom }} />;
 }

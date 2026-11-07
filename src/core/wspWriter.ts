@@ -2,11 +2,12 @@
 // workspaces (see wsp.ts). NOT validated by opening in FlowJo: only
 // round-trip tested through this project's reader.
 import { writeFigList } from './wspLayout';
+import { currentLayout } from './layoutFigures';
 import { invert } from './compensation';
 import type { SpilloverMatrix } from './compensation';
 import { axesFromGate } from './ellipse';
 import { fail } from './errors';
-import type { Dimension, Gate, Group, GroupCriteria, Population, Workspace } from './model';
+import type { Dimension, Gate, Group, GroupCriteria, Population, SavedLayout, Workspace } from './model';
 import { connectorText, functionText, MAX_KEYWORD_CRITERIA, roleText } from './groupCriteria';
 import { makeTransform, type TransformSpec } from './transforms';
 import { kineticsNodeXml } from './kinetics';
@@ -287,15 +288,22 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
   if (!ws.samples.length) fail('WORKSPACE_INVALID', 'Workspace has no samples to export');
   // The layout (specs 25.4): page, iteration and figures in FlowJo's LayoutEditor element.
   const layoutXml = () => {
-    if (!ws.layout?.length && !ws.layoutPage && !ws.layoutIteration) return '';
-    const page = ws.layoutPage ?? { paper: 'letter', orientation: 'portrait' };
-    const [pw, ph] = page.paper === 'a4' ? [595.3, 841.9] : [612, 792];
-    const it = ws.layoutIteration ?? { type: 'OFF' as const };
-    const iter = `<Iteration iterationType="${it.type}"  iterationValue=""  iterationKeyword="${it.type === 'KEYWORD' ? esc(it.keyword) : ''}"  discriminator="${it.type === 'KEYWORD' && it.discriminator ? esc(it.discriminator) : ''}"  panelSize="${it.type === 'PANEL' ? it.size : 1}"  groupName="workspaceSelection" />`;
+    const others = ws.otherLayouts ?? [];
+    if (!ws.layout?.length && !ws.layoutPage && !ws.layoutIteration && !others.length) return '';
     const sid = (appId: string | undefined) => String(Math.max(0, ws.samples.findIndex((x) => x.id === appId)) + 1);
     const param = (appId: string | undefined, ch: string) => (appId && input.sampleMatrix(appId)?.channels.includes(ch) ? `${PREFIX}${ch}` : ch);
-    const figs = writeFigList(ws.layout ?? [], ws.layoutGrids ?? [], sid, param);
-    return `<LayoutEditor current="Layout"  showGrid="0"  showPageBreaks="1"  showGuides="0" ><Layout name="Layout"  isBatch="0"  showGrid="0"  showRulers="1"  showGuides="0"  showPageBreaks="1"  scale="1" ><PrintLayout rows="1"  columns="1"  padding="36"  scalingMode="fj.print.scale.none"  scaling="1"  orientation="${page.orientation === 'landscape' ? 0 : 1}"  width="${pw}"  height="${ph}" />${iter}${figs}</Layout></LayoutEditor>`;
+    // One <Layout> per layout (ui-gaps/layout.md); LayoutEditor@current names the current one.
+    const one = (l: SavedLayout) => {
+      const page = l.layoutPage ?? { paper: 'letter', orientation: 'portrait' };
+      const [pw, ph] = page.paper === 'a4' ? [595.3, 841.9] : [612, 792];
+      const it = l.layoutIteration ?? { type: 'OFF' as const };
+      const iter = `<Iteration iterationType="${it.type}"  iterationValue=""  iterationKeyword="${it.type === 'KEYWORD' ? esc(it.keyword) : ''}"  discriminator="${it.type === 'KEYWORD' && it.discriminator ? esc(it.discriminator) : ''}"  panelSize="${it.type === 'PANEL' ? it.size : 1}"  groupName="workspaceSelection" />`;
+      const figs = writeFigList(l.layout ?? [], l.layoutGrids ?? [], sid, param);
+      const scale = page.scale && page.scale > 0 ? page.scale : 1;
+      return `<Layout name="${esc(l.name)}"  isBatch="0"  showGrid="0"  showRulers="1"  showGuides="0"  showPageBreaks="1"  scale="1" ><PrintLayout rows="1"  columns="1"  padding="36"  scalingMode="${scale === 1 ? 'fj.print.scale.none' : 'fj.print.scale.custom'}"  scaling="${+scale.toFixed(10)}"  orientation="${page.orientation === 'landscape' ? 0 : 1}"  width="${pw}"  height="${ph}" />${iter}${figs}</Layout>`;
+    };
+    const cur = currentLayout(ws);
+    return `<LayoutEditor current="${esc(cur.name)}"  showGrid="0"  showPageBreaks="1"  showGuides="0" >${[cur, ...others].map(one).join('')}</LayoutEditor>`;
   };
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <Workspace version="20.0" flowJoVersion="flowjo-rea export (unvalidated)" xmlns:gating="http://www.isac-net.org/std/Gating-ML/v2.0/gating" xmlns:transforms="http://www.isac-net.org/std/Gating-ML/v2.0/transformations" xmlns:data-type="http://www.isac-net.org/std/Gating-ML/v2.0/datatypes">

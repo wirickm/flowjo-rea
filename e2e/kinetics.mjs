@@ -49,7 +49,7 @@ const idle = async () => {
 const rowsOf = async () => page.locator('[data-testid=kin-table] tbody tr td:first-child').allInnerTexts();
 const cell = async (name, col) => (await page.getByTestId(`kin-row-${name}`).locator('td').nth(col).innerText()).replace(/,/g, '');
 
-await page.goto(base);
+await page.goto(base + (base.includes('?') ? '&' : '?') + 'layout=classic');
 await page.getByTestId('add-fcs').setInputFiles([join(out, 'kin.fcs')]);
 await idle();
 await page.getByTestId('sample-kin.fcs').click();

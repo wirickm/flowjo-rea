@@ -60,7 +60,7 @@ const drag = async (fx0, fy0, fx1, fy1) => {
   await idle();
 };
 
-await page.goto(base);
+await page.goto(base + (base.includes('?') ? '&' : '?') + 'layout=classic');
 await page.getByTestId('add-fcs').setInputFiles([join(out, 'late.fcs'), join(out, 'early.fcs')]);
 await idle();
 await page.getByTestId('sample-late.fcs').click();

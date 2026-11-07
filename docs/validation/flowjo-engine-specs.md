@@ -1502,6 +1502,33 @@ read); expanding or collapsing is an undo step.
   binding). This app closes the topmost menu or dialog on Escape (comparison
   C17).
 
+## 23. Workspace window layout (FlowJo 10.6.2)
+
+FlowJo's main screen is one workspace window: a taskbar, a ribbon with tabs
+and bands, a group table above the sample tree-table, and one graph window per
+opened node (comparison C1, C3, C4; `WSRibbonFrame`, `WSRibbonStructure.loadDefaults`,
+`GroupTreeTable`, `SampleTreeTable`, `GWFrame`, bundle `ws.column.special.*`).
+This is now the default screen; the earlier four-panel screen stays available
+(Configure > Switch to classic layout, or `?layout=classic`). Implemented in
+`src/ui/App.tsx` (`uiLayout`, `sampleTableRows`, graph windows). E2E:
+`e2e/fjlayout.mjs`; the other e2e scripts run the classic layout.
+
+| Element | Behavior | Proven by |
+|---|---|---|
+| Taskbar | Undo, Redo, Add Samples, Create Group, Compensation, Table Editor, Layout Editor | `WSRibbonFrame.addTaskbarComponents` |
+| Ribbon | Tabs FlowJo, File, Edit, Workspace, Tools, Configure, each with its bands (22.5) | `WSRibbonStructure.loadDefaults` |
+| Group pane | A table: Group, Role, Size; double-click edits the group | `GroupTreeTable` |
+| Sample table | Default columns Name, Statistic, #Cells; samples expand to populations and statistic nodes; Statistic is the frequency of parent (22.1 format), #Cells the count | `SampleTreeTable`, `ws.column.special.name/statistic/ncells` |
+| Graph windows | Double-click a sample or population opens its graph window (one per node; again focuses it); Duplicate View opens another; windows move and close independently | `GWFrame`, `GWNavAction.duplicateGW` |
+
+Own rules: graph windows float inside the page (no OS windows); only the
+focused window is live, the others show a picture of their last view until
+clicked; a single click in the table selects without moving a window, while
+navigation inside the live window (gating path, double-click a gate, sample
+keys) moves it; statistics, group tools, the sample list with annotations and
+the log are in a side panel with tabs; populations are renamed from the
+right-click menu.
+
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 
 Source: static analysis of `libNativeEngine.dylib` from the public FlowJo

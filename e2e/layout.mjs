@@ -33,7 +33,7 @@ const card = (i) => page.getByTestId('layout-card').nth(i);
 // Selects a card even when another overlaps it (mousedown straight on the card).
 const pick = async (loc, shift = false) => { await loc.dispatchEvent('mousedown', { bubbles: true, shiftKey: shift }); await loc.dispatchEvent('mouseup', { bubbles: true }); await page.waitForTimeout(100); };
 
-await page.goto(base);
+await page.goto(base + (base.includes('?') ? '&' : '?') + 'layout=classic');
 await page.getByTestId('add-fcs').setInputFiles([fcs(F1)]);
 await idle();
 await page.getByTestId(`sample-${F1}`).click();

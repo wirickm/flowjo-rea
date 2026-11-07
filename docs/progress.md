@@ -1,5 +1,14 @@
 # Progress and handoff
 
+## State (2026-11-07, FlowJo-style workspace window)
+
+Specs 23: the default screen is now FlowJo's workspace window: taskbar, ribbon
+tabs and bands, group table (Group / Role / Size), sample tree-table (Name /
+Statistic / #Cells, populations and statistic nodes under each sample) and
+floating graph windows per node with Duplicate View. The four-panel screen is
+kept as the classic layout (`?layout=classic`; the older e2e scripts use it).
+`e2e/fjlayout.mjs` 18/18; every other e2e script passes; `npm test` 409 pass.
+
 ## State (2026-11-07, display menu, tree commands, ribbon, layout guides)
 
 Specs 21 additions: layout guides (30 pt snap), per-graph gate frequency /

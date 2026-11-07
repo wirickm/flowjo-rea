@@ -44,7 +44,7 @@ const idle = async () => {
   await page.waitForTimeout(250);
   await page.waitForFunction(() => document.querySelector('[data-testid=busy]')?.textContent === 'Ready', null, { timeout: 120000 });
 };
-await page.goto(base);
+await page.goto(base + (base.includes('?') ? '&' : '?') + 'layout=classic');
 await page.getByTestId('add-fcs').setInputFiles([join(out, 'dp.fcs')]);
 await idle();
 await page.getByTestId('sample-dp.fcs').click();

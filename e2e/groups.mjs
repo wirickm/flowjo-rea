@@ -65,7 +65,7 @@ const drag = async (fx0, fy0, fx1, fy1) => {
   await idle();
 };
 
-await page.goto(base);
+await page.goto(base + (base.includes('?') ? '&' : '?') + 'layout=classic');
 await page.getByTestId('add-fcs').setInputFiles([join(out, 'low.fcs'), join(out, 'high.fcs')]);
 await idle();
 const groupCount = async (name) => Number(await page.getByTestId(`group-${name}`).locator('.pcount').innerText());

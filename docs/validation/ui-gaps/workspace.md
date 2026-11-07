@@ -386,19 +386,166 @@ Tests: `tests/workspace-gaps.test.ts` (18 tests), `e2e/workspace-gaps.mjs`
 | BROWSESAMPLES "Search for FCS files..." | `WSDialogAction.doBrowseForSamples`: traverse local folders or the network for a filtered list of FCS files | **Own rule**: File tab "Search for FCS files..." opens the browser's folder picker; every `.fcs` / `.lmd` file under the folder is added (no network search) |
 | AUTOCC "Create Cell Cycle Gates" | Not wired (no action in `WSActionManager`); tooltip: 5 regions from DNA and S-phase markers | **Deferred**: unreachable in 10.6.2 and needs a bivariate DNA / BrdU model this app does not have; the cell cycle platform stays univariate |
 | CHECKSAMPLEQUALITY "Check Sample Quality" | `WSSampleQualityAction`: marks each sample of the current group; `SampleQualityControl` asks the native engine for rate / trend / kinetic consistency, shown in the sample badge | **Deferred**: the engine's quality metrics were not decoded |
-| IMPORT_CSV_CLR "Import Parameters from CSV/CLR..." | `WSDialogAction.importCsvClr` | **Deferred**: no CSV / CLR parameter file sample to define the format against (compatibility matrix own rule kept) |
-| CONSENSUS_DP "Consensus Gate", CLUSTER_FREQ_DP "Cluster Frequency" | `WorkspaceAction` -> `FlowCAPUtil.createClusterComparisonParameter`: derived parameters of per-event inclusion probability across populations (FlowCAP tooling) | **Deferred**: FlowCAP comparison tooling, outside the analysis workflow; formula not decoded |
+| IMPORT_CSV_CLR "Import Parameters from CSV/CLR..." | `WSDialogAction.importCsvClr` -> `FlowCAPUtil.importExternalParameter`; file read by the native engine (`Sample::CreateImportCsvParameter`, `Sample::CreateImportClrParameter`) | **Done** (rules in O1): File tab "Import Parameters from CSV/CLR..."; unit "Import Parameters from CSV/CLR", e2e "CSV import adds a parameter named from the header" |
+| CONSENSUS_DP "Consensus Gate", CLUSTER_FREQ_DP "Cluster Frequency" | `WorkspaceAction` -> `FlowCAPUtil.createClusterComparisonParameter` / `createClusterConsensusParameter` / `doClusterComparisonQuery`; values from the native engine (`Sample::CreateConsensusGateParameter`, `Sample::CreateClusterFrequencyParameter`) | **Done** (rules in O2): Workspace tab, Derived Parameters band; unit "Consensus Gate and Cluster Frequency", e2e "Consensus Gate creates ...", "Cluster Frequency uses the focused population as primary" |
 | MIFlowCyt "Annotate Experiment..." / MIFLOW | `WSAction` delegating to `WSController` (MIFlowCyt metadata dialog, bundle key `test.debug.miflowcyt`) | **Deferred**: the MIFlowCyt field list was not decoded; free annotations and keywords remain |
 | REPORTEDITOR "Report Editor" | `FJNavAction` to the report editor window | **Deferred**: a separate editor (report layout and export) |
 | SCRIPTEDITOR "Script Editor" | `WSScriptAction`: FlowJo scripting console | **Deferred**: needs FlowJo's scripting language |
-| EXPORT_DIVA / IMPORT_DIVA | `WSExportDivaAction` / `WSImportDivaAction`: gates and compensation to / from a FACSDiva experiment | **Deferred**: vendor format, no sample experiment file |
+| EXPORT_DIVA / IMPORT_DIVA | `ExportDivaCommand` / `ImportDivaCommand` -> `DivaXMLManipulator.ExportToDiva` / `DivaXMLImporter.ImportFromDivaXML` | **Done** (rules in O3, two own rules): File tab "Import from FACSDiva" / "Export to FACSDiva"; unit "FACSDiva import", "FACSDiva export ... and round trip", e2e "Export ...", "Import from FACSDiva adds the gates" |
 | RIBBONCONFIG "Customize Ribbon", RIBBONSETDEFAULT "Apply defaults", RIBBONCOMMITTOPREFS "Commit to Preferences" | `WSRibbonConfigDialog`, `WSRibbonSetDefaultAction`, `WSRibbonCommitToPrefsAction` | **Deferred**: cosmetic; the ribbon is fixed |
+
+## O1. IMPORT_CSV_CLR "Import Parameters from CSV/CLR..."
+
+Evidence: `WSDialogAction.importCsvClr` (one selected sample, a file chooser
+filtered to "Parameter Files (*.csv, *.clr)", `WSDialogAction$1`),
+`FlowCAPUtil.importExternalParameter` (three overloads),
+`FlowDxDerivedParameterRequest` (DerivedParameter name / importFile / type
+importCsv or importClr), and in the native engine 3.6.2
+`Sample::CreateImportCsvParameter` and `Sample::CreateImportClrParameter`
+(read with headless Ghidra; output kept out of the repo).
+
+- Name: the file name without its extension; if it starts with the sample's
+  file name without ".fcs", that prefix and the next character are removed
+  (`Tube1_CD4.csv` on `Tube1.fcs` gives `CD4`).
+- Delimiter: tab when the first line contains a tab, else comma.
+- Header: the first line is a header when any field holds a character other
+  than a digit, `.` or carriage return. Header fields are trimmed of blanks
+  (CSV also drops `"`); an empty header field, or every column when there is
+  no header, takes the file-derived name.
+- Data: each line is split on the delimiter and each field read as a number
+  (C++ stream: leading blanks skipped, a non-number gives 0). More fields than
+  columns is an error. Reading stops at the end of the file or once the event
+  count ($TOT) is reached; the number of data rows must equal $TOT, otherwise
+  no parameter is added.
+- CSV values are stored as read; the parameter's data range is the largest
+  value truncated to an integer. CLR (cluster membership) values: 0 becomes
+  0.001, then every value is multiplied by 9800; range 10000; the engine also
+  records whether every value was 0 or 1 (hard assignment).
+- The new parameter belongs to that sample only; importing again replaces it
+  (`Sample::CreateOrReplace`).
+- flowjo-rea: `src/core/paramImport.ts`; values are kept in the workspace as
+  base64 float32 per sample (`DerivedParameter.imported`) and other samples
+  see NaN. **Own rules**: (1) with several unnamed columns FlowJo appends the
+  column index as a raw control character; this app appends the 1-based
+  column number. (2) FlowJo then runs `doGateOnPeaks` (histogram peak finder,
+  range gates per peak) on imported parameters; the peak finder is not
+  decoded, so no gates are made automatically. (3) Imported parameters are
+  not written to .wsp (FlowJo re-reads the file by path).
+
+## O2. CONSENSUS_DP "Consensus Gate", CLUSTER_FREQ_DP "Cluster Frequency"
+
+Evidence: `WorkspaceAction$1` -> `FlowCAPUtil.createClusterComparisonParameter`,
+`createClusterConsensusParameter`, `getSampleToPopNodeMap`,
+`doClusterComparisonQuery`; `FlowDxDerivedParameterRequest` (type consensus
+or clusterFrequency, PrimaryGate, gate queries); native
+`Sample::CreateConsensusGateParameter`, `Sample::CreateClusterFrequencyParameter`
+(constants read from the engine's constant pool).
+
+- Populations: Consensus takes the selected populations per sample and needs
+  at least two. Cluster Frequency takes the focused (anchor) population as the
+  primary and the other selected populations of the same sample, and needs at
+  least one other.
+- Name: each population name followed by `.` (primary first), then
+  `Consensus` or `ClusterFreq` (`A.B.Consensus`).
+- Consensus value per event: (number of the populations containing the event)
+  / (number of populations); 0 is replaced by 0.001. Stored as float32.
+- Cluster Frequency value: 10 outside the primary population; inside it,
+  30 + 100 x (fraction of the other populations containing the event), or 30
+  with no others. A second pass multiplies every value by
+  float(3723.636282928721 / largest value).
+- The engine gives both a data range of 4096.
+- flowjo-rea: `src/core/clusterParams.ts`, evaluated live by the analysis
+  engine (`DerivedParameter.gateDerived`), so the values follow gate edits.
+  **Own rules**: the Consensus axis defaults to linear 0..1 (FlowJo's 4096
+  data range would squash the 0..1 values); FlowJo's follow-up
+  `doGateOnPeaks` is not run (see O1).
+
+## O3. EXPORT_DIVA / IMPORT_DIVA (FACSDiva experiment XML)
+
+Evidence: `com.flowjo.diva`: `ImportDivaDialog`, `DivaXMLImporter`
+(`ImportFromDivaXML`, `addDivaDataToFJSample`, `getWorksheetTemplate`,
+`getInstrumentSettingsNode`), `ExportDivaDialog`, `DivaXMLManipulator`
+(`ExportToDiva`, `CreateWorksheetTemplate`, `CreateGateNode`,
+`CreateRegionNodeForGate`, `CreateQuadGateParentNode`, `generateQuadID`,
+`SetParametersForExistingSampleNode`), `FJtoDivaGateMapper`,
+`DivaParamSetting`, `DivaParamSettingList` (`syncParameterScalingFromFJ`),
+`DivaCompensationMapper`, `DivaBiexCalculator`, `DivaConstants`.
+
+Import (one sample):
+- The user picks a worksheet template
+  (`/bdfacs/experiment/acquisition_worksheets/worksheet_template[@name]`) and
+  the tube whose `data_filename` is the sample's FCS file; options "Import
+  parameter settings only" (no gates) and "Correct height and width scatter
+  parameters" (swaps FSC-H/FSC-W and SSC-H/SSC-W names).
+- Parameters come from that tube's `instrument_settings/parameter`. Scale:
+  `is_log` false is linear; log scatter (FSC*, SSC*) is log; any other log
+  parameter is biex with width = -10^(log10(s / 262144) + 4.5), where s is
+  `comp_biexp_scale` (compensated parameters) or `biexp_scale` when
+  `use_auto_biexp_scale` is true, else `manual_biexp_scale`. FlowJo axes:
+  linear 0..262143, log 1..262144, biex (max 262144, 4.5 decades, no extra
+  negative decades); widths below -1000 are reset to -1000 with a warning.
+- Compensation: the `compensation_coefficient` rows of the parameters that
+  have them are the inverse of the spillover; FlowJo inverts them into a
+  matrix named `DivaCompMtx_<sample>` and applies it to the sample.
+- Gates (in order, `All Events` skipped): parent from the `parent` text (last
+  `\` segment, matched by name among gates already made; `All Events` is the
+  root). A gate's `is_x_parameter_log` / `_scaled` set the parameter's scale
+  (log and scaled: biex; log: log). Region types: RECTANGLE (bounds = point
+  extremes), POLYGON, INTERVAL (1-D range from the x extremes). Coordinates
+  are Diva scale units: linear values, log10 values, or biex channels of
+  FlowJo's 4096-channel table. `Composite_Classifier` (BINNER_REGION) is a
+  quadrant group: centre = first point, `bin` 0..3 = upper-left, upper-right,
+  lower-left, lower-right (`RectGate.quadFromPoint` with 2, 3, 0, 1), and the
+  four quadrant gate elements that follow are skipped.
+
+Export:
+- The result is a modified copy of an existing experiment that must contain
+  the sample's FCS file; not a Diva file: "The input XML file is not a valid
+  Diva experiment file." Options: experiment name, gates to export, "Apply
+  compensation and scaling to all files in experiment", "Correct height and
+  width scatter parameters", plot style.
+- `experiment@name` and the prefix of each `list_data` become the new name;
+  `date` / `export_time` the current time (`yyyy-MM-ddTHH:mm:ss`).
+- The tube's parameters take FlowJo's scales (Linear 0, Logarithmic 1, Biex 2
+  with `manual_biexp_scale` = round(262144 x 10^(log10(-w) - (log10(262144) -
+  1))) = round(-10 w)); other scale types leave Diva unchanged with a message.
+  FSC-A/H and SSC-A/H must share log scaling; -W cannot be log. `is_log`,
+  `min`/`max` follow the scale (linear 0..262143, else 0..5.4185380935668945),
+  `use_auto_biexp_scale` becomes false. Compensation: for the compensated
+  parameters (not FSC, SSC, Time, -W), separately for -A and -H, the inverse
+  of the sample's spillover submatrix is written as each parameter's
+  coefficient row. "Apply to all" copies these parameters to every tube with
+  the same parameter list.
+- A worksheet template named "FlowJo Exported Gates" (copy of the first
+  template, its gates and sort layouts removed) gets an `All Events` gate
+  (`EventSource_Classifier`, total count) and one `Region_Classifier` gate
+  per exported population: `fullname` = `All Events\path`, children name,
+  colour (`DIVA_COLORS[i % 12]`), visible, dotsize 0, enabled (false for
+  quadrant gates), num_events, parent, `region` (name, xparm, yparm, type
+  RECTANGLE_REGION, POLYGON_REGION or INTERVAL_REGION, `points` in Diva
+  scale units as Java doubles, clamped to 0..262143 linear and 0..4095
+  log / biex), `is_x/y_parameter_scaled` (biex), `is_x/y_parameter_log` (not
+  linear), `x/y_parameter_scale_value`, `input` (parent full name). Ellipses
+  become a 20-point polygon from their four axis end points
+  (`calcEllipsePointsFromAxes`); a 1-D range has y = 100. Quadrant groups
+  under the root and the exported populations become a
+  `Composite_Classifier` named `$` + 13 random digits (BINNER_REGION centre
+  point repeated three times, four `bin` full names) followed by the four
+  quadrant gates (open sides at the scale limits, `input` = the group).
+- flowjo-rea: `src/core/diva.ts`, `src/ui/FormatTools.tsx`. **Own rules**:
+  (1) the browser downloads the modified experiment as `<name>.xml`; FlowJo
+  writes a folder with the XML and copies of the FCS files, and adds an
+  analysis worksheet with plots (`AddNewWorksheet`), which is not written.
+  (2) Biex coordinates with widths beyond -1000 use FlowJo's -1000 table
+  instead of `DivaBiexCalculator`. Imported Diva polygons are gated exactly
+  (no gate grid). Uncertain: the colour index FlowJo gives quadrant gates.
 
 ## Counts
 
-Of the 51 gap rows: Done 25, Own rule 12 (CLOSE, REVERT, EXCEL, ACS,
+Of the 51 gap rows: Done 30, Own rule 12 (CLOSE, REVERT, EXCEL, ACS,
 BROWSESAMPLES, ADDKEYTOGROUP, BOOLEANCREATE, BOOLEANEDIT, SORT1-3,
-TREEREMOVECOLUMN), Deferred 14 (REPORTEDITOR, SCRIPTEDITOR, AUTOCC,
-CHECKSAMPLEQUALITY, IMPORT_CSV_CLR, CONSENSUS_DP, CLUSTER_FREQ_DP, MIFlowCyt,
-MIFLOW, EXPORT_DIVA, IMPORT_DIVA, RIBBONCONFIG, RIBBONSETDEFAULT,
-RIBBONCOMMITTOPREFS). Some Done rows carry small own-rule notes, stated above.
+TREEREMOVECOLUMN), Deferred 9 (REPORTEDITOR, SCRIPTEDITOR, AUTOCC,
+CHECKSAMPLEQUALITY, MIFlowCyt, MIFLOW, RIBBONCONFIG, RIBBONSETDEFAULT,
+RIBBONCOMMITTOPREFS). IMPORT_CSV_CLR, CONSENSUS_DP, CLUSTER_FREQ_DP,
+EXPORT_DIVA and IMPORT_DIVA were closed in the follow-up round (O1-O3, with
+own-rule notes). Some Done rows carry small own-rule notes, stated above.

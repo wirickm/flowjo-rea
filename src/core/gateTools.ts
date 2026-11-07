@@ -511,9 +511,11 @@ export function smoothHistogram1D(counts: Float64Array): Float64Array {
   return out.map(roundHalfEven);
 }
 
-export interface HistPeak { count: number; position: number; height: number }
-// PeakFinder.findPeaks(0) on integer counts y (length n).
-export function findPeaks(y0: Float64Array, maxPeaks = 100): HistPeak[] {
+export interface HistPeak { count: number; position: number; height: number; min: number; max: number }
+// PeakFinder.findPeaks(0) on integer counts y (length n). acceptAll: flag 32
+// of findPeaks (Create Gates On Peaks), which keeps every peak found instead
+// of rejecting small ones. min / max: the peak's edges (PeakInfo bounds).
+export function findPeaks(y0: Float64Array, maxPeaks = 100, acceptAll = false): HistPeak[] {
   const n = y0.length;
   const y = Float64Array.from(y0);
   let N = 0;
@@ -571,11 +573,11 @@ export function findPeaks(y0: Float64Array, maxPeaks = 100): HistPeak[] {
       for (let k = outer[0]; k <= outer[1]; k++) { removed += y[k]; y[k] = 0; }
       const minCount = Math.min(100, N / 100);
       const heightThr = sumHeights / nCounted / 10;
-      if (count < minCount || peakVal < heightThr) {
+      if (!acceptAll && (count < minCount || peakVal < heightThr)) {
         done = removed / N > 0.95;
         continue;
       }
-      peaks.push({ count, position, height: peakVal });
+      peaks.push({ count, position, height: peakVal, min: edge[0], max: edge[1] });
       if (position > 2 && position <= n - 2) { sumHeights += peakVal; nCounted++; }
     }
   } catch {

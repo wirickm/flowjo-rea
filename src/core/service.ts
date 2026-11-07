@@ -229,11 +229,12 @@ export class AnalysisService {
         if (cs) { const c = cs[i]; if (Number.isFinite(c)) { csum![by * B + bx] += c; if (c < c0) c0 = c; if (c > c1) c1 = c; } }
       } else density[bx]++;
     }
-    // maxPoints is an upper bound on the sampled events returned.
-    const step = Math.max(1, Math.ceil(count / r.maxPoints));
+    // min(count, maxPoints) events, evenly spaced through the population
+    // (a dot plot's "# Dots").
+    const want = Math.min(count, Math.max(0, Math.trunc(r.maxPoints)));
     const pts: number[] = [];
-    let k = 0;
-    if (ys) for (let i = 0; i < mask.length; i++) if (mask[i] && k++ % step === 0) pts.push(xs[i], ys[i]);
+    let k = 0, next = 0, taken = 0;
+    if (ys && want > 0) for (let i = 0; i < mask.length && taken < want; i++) if (mask[i]) { if (k === next) { pts.push(xs[i], ys[i]); taken++; next = Math.floor((taken * count) / want); } k++; }
     return {
       count,
       bins: B,

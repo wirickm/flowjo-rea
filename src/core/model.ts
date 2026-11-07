@@ -91,6 +91,10 @@ export interface Population {
   magnetic?: boolean;
   // Tree expansion (FlowJo expanded="0|1"; specs 22.4); undefined = expanded.
   collapsed?: boolean;
+  // FlowJo gate colour (Gate.setTint) and Tint (Gate.setTinted): a tinted gate
+  // is drawn in its colour with a 40% fill.
+  tint?: string;
+  tinted?: boolean;
 }
 
 export interface SampleState {
@@ -219,6 +223,13 @@ export interface PlotSettings {
   hideGateFreq?: boolean;
   hideGateNames?: boolean;
   colorBy?: string; // colour axis parameter (specs 24.1)
+  // Graph window options (docs/validation/ui-gaps/graph.md, src/core/graphDisplay.ts).
+  smoothing?: number; // 0 off, 6..208 on; undefined = the plot type's default
+  resolution?: number; // 256 .. 4096
+  nDots?: number; // dot plot: events drawn (default 8000)
+  yMax?: number; // histogram Y axis top; undefined = Auto
+  foreColor?: string; // #rrggbb dots / curves / contour lines
+  backColor?: string; // #rrggbb plot background
 }
 
 // A layout cell: a plot rendered for whichever sample is chosen, or a text block.

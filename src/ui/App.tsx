@@ -16,6 +16,7 @@ import { readMtx } from '../core/compFlowjo';
 import { EVENT_NUMBER } from '../core/formula';
 import { AddKeywordDialog, CompensationDialog, DerivedDialog, FindDialog, GateNamerDialog, KeywordsDialog, TransformDialog } from './Dialogs';
 import { MATRIX_DRAG_TYPE } from './CompEditor';
+import { ClusterParamButtons, FormatFileButtons } from './FormatTools';
 import { GroupDialog } from './GroupDialog';
 import { ContextMenu, GateActions, ManualGateDialog, type MenuItem } from './GateActions';
 import { everyNth, FLOWJO_FUNCTIONS, removeFromGroup, stainSet } from '../core/groupCriteria';
@@ -519,6 +520,8 @@ export function App() {
   const wsRib = useRibbon(WS_RIBBON);
   const rb = (band: string) => wsRib.has(ribbonTab, band);
   const rs = (band: string) => wsRib.style(ribbonTab, band);
+  // Follow-up formats (FACSDiva, CSV/CLR, consensus / cluster frequency): src/ui/FormatTools.tsx.
+  const formatProps = { ws, updateWs: (f: (w: Workspace) => void) => updateWs((w) => f(w)), sample, counts: sample ? Object.fromEntries((analysis[sample.id]?.results ?? []).filter(Boolean).map((r) => [r.id, r.count])) : undefined, download, note };
   const [drawer, setDrawer] = useState<'stats' | 'groups' | 'samples' | 'log' | null>('stats');
   const [collapsedSamples, setCollapsedSamples] = useState<string[]>([]);
   // Workspace table: multi-row selection ("<sampleId>|<popId>"), view toggles
@@ -2403,6 +2406,7 @@ export function App() {
               <label className="file-btn">Import Gating-ML<input type="file" accept=".xml" data-testid="import-gml" onChange={(e) => { const f = e.target.files?.[0]; if (f) importGatingMl(f); e.target.value = ''; }} /></label>
               <button disabled={!sample} onClick={() => setDialog({ kind: 'export' })} data-testid="open-export">Export / Concatenate</button>
               <label className="file-btn" title="Search for FCS files: choose a folder; every FCS file under it is added">Search for FCS files...<input type="file" multiple {...{ webkitdirectory: '', directory: '' }} data-testid="add-folder" onChange={(e) => { if (e.target.files) addFolder(e.target.files); e.target.value = ''; }} /></label>
+              <FormatFileButtons {...formatProps} />
               <button disabled={!ws.samples.length} onClick={exportExcel} data-testid="export-excel" title="Export to Excel: the workspace table as shown (.xlsx)">Export to Excel</button>
               <button onClick={exportTemplate} data-testid="export-template" title="Export as Template (WSPT): groups and their analysis, no samples">Export as Template</button>
               <button disabled={!ws.samples.length} onClick={() => void saveArchive()} data-testid="save-archive" title="Save as Archive: workspace and FCS files in one ZIP">Save as Archive</button>
@@ -2432,6 +2436,9 @@ export function App() {
           </>
           <>
             {rb('populations') && <div style={rs('populations')} className="fj-band wide"><div className="fj-band-body column">{popActionsBlock ?? <span className="muted">Select a sample or population in the table.</span>}</div><div className="fj-band-title">Populations / Groups / Boolean</div></div>}
+            {rb('derived') && <div style={rs('derived')} className="fj-band"><div className="fj-band-body column">
+              <ClusterParamButtons {...formatProps} focused={selPopValid ? sel.popId : null} selected={multi} />
+            </div><div className="fj-band-title">Derived Parameters</div></div>}
             {rb('statistics') && <div style={rs('statistics')} className="fj-band"><div className="fj-band-body column">
               <button disabled={!sample} onClick={() => setDialog({ kind: 'addStat' })} data-testid="open-add-stat" title="Add Statistic... (several statistics and parameters for the selected populations)">Add Statistic...</button>
               <button onClick={recalcStats} data-testid="recalc-stats" title="Recalculate Statistics: refresh all statistics in this workspace">Recalculate</button>

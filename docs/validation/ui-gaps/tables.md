@@ -171,8 +171,24 @@ the editor (`table-window`) with live values. **Done** (e2e "Create Table
 - flowjo-rea: File Type CSV, TAB, HTML, XML Excel (`tableExcelXml`, `.xml`,
   opens in Excel). **Own rule** for Excel: the SpreadsheetML format is
   written instead of binary .xls (no new dependency; it is FlowJo's own XML
-  Excel output). FlowJo XML and SQL: **Deferred** (no sample of either
-  output to match). HTML output now follows `createTableAsHTML` (grey
+  Excel output). FlowJo XML and SQL: **Done** (follow-up round, decoded
+  from `TableGenerator.createTableAsFlowJoXML` / `createTableAsSQL`; unit
+  "table output FlowJo XML and SQL", e2e followup-formats "To File, FlowJo
+  XML", "To File, SQL"):
+  - XML (`.xml`, label "XML"): `<Table name>` with `<Columns>`, one
+    `<Column id>` per column (`customRename` when the header differs from the
+    automatic one; `keyword`; or `analysisPath`, `statistic`, `population`,
+    `parameterName`, `stain` looked up on the first row's sample; or
+    `formula`), then one `<Row sample workspaceTitle>` per table row with an
+    `<Entry colId>` per column. Printed as `SElement.toWriter` does: no XML
+    declaration, two spaces per level, empty elements as `/>`.
+  - SQL (`.sql`): per row `INSERT INTO '<name>' ('<h1>',...) VALUES
+    ('<v1>',...)` and a line break; single quotes in the name become double
+    quotes, values are not escaped, empty headers are left out, nothing is
+    written without rows or headers, summary rows count as rows. FlowJo
+    pairs header i with TableData cell i, whose cell 0 is the sample name,
+    so the values are (sample, columns 1..n-1) and the last column is not
+    written; kept as FlowJo does. HTML output now follows `createTableAsHTML` (grey
   header, white header text, format colours, bold / italic). **Done** (unit
   "XML Excel", e2e "To File, XML Excel").
 

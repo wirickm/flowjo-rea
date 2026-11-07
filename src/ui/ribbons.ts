@@ -17,14 +17,14 @@ export const WS_RIBBON: RibbonSpec = {
   canCommit: true,
   bands: {
     navigate: 'Navigate / Experiment', document: 'Document', find: 'Find', clipboard: 'Clipboard', select: 'Select', expand: 'Expand',
-    populations: 'Populations / Groups / Boolean', statistics: 'Statistics', keywords: 'Keywords', columns: 'Columns / Sort', view: 'View',
+    populations: 'Populations / Groups / Boolean', derived: 'Derived Parameters', statistics: 'Statistics', keywords: 'Keywords', columns: 'Columns / Sort', view: 'View',
     cytometry: 'Cytometry', biology: 'Experiment / Biology', settings: 'Settings',
   },
   defaults: {
     FlowJo: ['navigate'],
     File: ['document', 'find'],
     Edit: ['clipboard', 'select', 'expand'],
-    Workspace: ['populations', 'statistics', 'keywords', 'columns', 'view'],
+    Workspace: ['populations', 'derived', 'statistics', 'keywords', 'columns', 'view'],
     Tools: ['cytometry', 'biology'],
     Configure: ['settings'],
   },

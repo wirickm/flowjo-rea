@@ -215,11 +215,21 @@ export interface TableColumn { key: string; width?: number }
 // compensated values; "Event #" alone is the event number. Without a
 // formula: this app's earlier ratio A*(num-B)/(den-C), kept so older
 // workspaces open unchanged.
+// imported: FlowJo "Import Parameters from CSV/CLR..." (src/core/paramImport.ts):
+// per-event values read from a file, base64 float32 per sample id; other
+// samples see NaN. gateDerived: FlowJo Consensus Gate / Cluster Frequency
+// (src/core/clusterParams.ts), recomputed from the populations of one sample
+// (clusterFrequency: populations[0] is the primary population).
 export type DerivedParameter =
   | { name: string; formula: string }
-  | { name: string; formula?: undefined; num: string; den: string; A: number; B: number; C: number };
-// The formula FlowJo would store for a derived parameter.
-export const derivedFormula = (d: DerivedParameter) => (d.formula !== undefined ? d.formula : `${d.A}*(${d.num}-${d.B})/(${d.den}-${d.C})`);
+  | { name: string; formula?: undefined; num: string; den: string; A: number; B: number; C: number }
+  | { name: string; formula?: undefined; imported: { source: 'csv' | 'clr'; file: string; range: number; data: Record<string, string> } }
+  | { name: string; formula?: undefined; gateDerived: { type: 'consensus' | 'clusterFrequency'; sampleId: string; populations: string[] } };
+// The ratio form of an older derived parameter, if it is one.
+export const isRatioDerived = (d: DerivedParameter): d is Extract<DerivedParameter, { num: string }> => 'num' in d && d.formula === undefined;
+// The formula FlowJo would store for a derived parameter ('' for imported and
+// gate-derived parameters, which have none).
+export const derivedFormula = (d: DerivedParameter) => (d.formula !== undefined ? d.formula : isRatioDerived(d) ? `${d.A}*(${d.num}-${d.B})/(${d.den}-${d.C})` : '');
 
 export interface PlotSettings {
   x: string;

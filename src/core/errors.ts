@@ -16,7 +16,8 @@ export type ErrorCode =
   | 'WORKSPACE_INVALID'
   | 'XML_INVALID'
   | 'UNSUPPORTED_FEATURE'
-  | 'FIT_INVALID';
+  | 'FIT_INVALID'
+  | 'IMPORT_INVALID';
 
 export class AppError extends Error {
   constructor(

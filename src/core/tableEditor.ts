@@ -5,6 +5,7 @@
 // layout (BatchSettings). Read with javap / headless Ghidra; implemented
 // independently. This module is the one owner of these rules.
 import { compileFormula } from './formula';
+import { STAT_LABELS } from './stats';
 
 // A statistic column names its statistic itself (stat: population path,
 // statistic, parameter, ancestor; ColumnSpec in FlowJo); older tables point
@@ -19,7 +20,7 @@ export type TableColumn =
 // range by name from its preferences).
 export interface ColumnFormat { heatMap?: boolean; stdDev?: boolean; expectedRange?: { min: number; max: number }; bold?: boolean }
 export type TableDestination = 'DISPLAY' | 'CLIPBOARD' | 'FILE' | 'LAYOUT' | 'PRINT';
-export type OutputFormat = 'CSV' | 'TAB' | 'HTML' | 'XML_EXCEL';
+export type OutputFormat = 'CSV' | 'TAB' | 'HTML' | 'XML_EXCEL' | 'XML_FLOWJO' | 'SQL';
 export type IterationType = 'SAMPLE' | 'KEYWORD' | 'PANEL';
 export interface Iteration { type: IterationType; keyword?: string; panelSize?: number }
 export interface TableTemplate {
@@ -125,15 +126,69 @@ export function tableExcelXml(t: TableTemplate, rows: Rows): string {
   const body = rows.map((r) => `<Row>${cell(r.sample)}${r.cells.map(cell).join('')}</Row>`).join('\n');
   return `<?xml version="1.0"?>\n<?mso-application progid="Excel.Sheet"?>\n<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:html="http://www.w3.org/TR/REC-html40">\n<DocumentProperties xmlns="urn:schemas-microsoft-com:office:office"/>\n<ExcelWorkbook xmlns="urn:schemas-microsoft-com:office:excel"><ProtectStructure>False</ProtectStructure><ProtectWindows>False</ProtectWindows></ExcelWorkbook>\n<Styles/>\n<Worksheet ss:Name="${xesc(t.name.slice(0, 31))}"><Table>\n${head}\n${body}\n</Table></Worksheet>\n</Workbook>\n`;
 }
+// FlowJo XML (createTableAsFlowJoXML): a <Table name> element holding
+// <Columns> (one <Column id> per column: customRename when the header was
+// renamed; keyword; or analysisPath, statistic, population, parameterName and
+// stain; or formula) and one <Row sample workspaceTitle> per row with an
+// <Entry colId> per column. Written as FlowJo's SElement prints it: no XML
+// declaration, two spaces of indent per level, empty elements as "/>".
+// Summary rows are included like any other row (TableData holds them).
+export interface FlowJoXmlContext { workspaceTitle: string; autoHeader?: (c: TableColumn) => string; stainOf?: (sample: string, channel: string) => string | undefined }
+export function tableFlowJoXml(t: TableTemplate, rows: Rows, ctx: FlowJoXmlContext): string {
+  const a = (k: string, v: string) => ` ${k}="${xesc(v)}"`;
+  const cols = t.columns.map((c, i) => {
+    let at = a('id', String(i));
+    if (ctx.autoHeader && c.header && c.header !== ctx.autoHeader(c)) at += a('customRename', c.header);
+    if (c.kind === 'keyword') at += a('keyword', c.keyword);
+    else if (c.kind === 'formula') at += a('formula', c.formula);
+    else if (c.stat) {
+      at += a('analysisPath', c.stat.populationPath) + a('statistic', (STAT_LABELS[c.stat.stat] ?? c.stat.stat).replace(/ \(%\)$/, ''));
+      const pop = c.stat.populationPath.split('/').pop() ?? '';
+      if (pop) at += a('population', pop);
+      if (c.stat.channel) {
+        at += a('parameterName', c.stat.channel);
+        at += a('stain', (rows[0] && ctx.stainOf?.(rows[0].sample, c.stat.channel)) ?? '');
+      }
+    }
+    return `    <Column${at}/>\n`;
+  }).join('');
+  const body = rows.map((r) => {
+    const entries = r.cells.slice(0, t.columns.length).map((v, k) => `    <Entry colId="${k}">${hesc(fmt(v))}</Entry>\n`).join('');
+    return entries ? `  <Row${a('sample', r.sample)}${a('workspaceTitle', ctx.workspaceTitle)}>\n${entries}  </Row>\n` : `  <Row${a('sample', r.sample)}${a('workspaceTitle', ctx.workspaceTitle)}/>\n`;
+  }).join('');
+  return `<Table${a('name', t.name)}>\n  ${cols ? `<Columns>\n${cols}  </Columns>` : '<Columns/>'}\n${body}</Table>\n`;
+}
+
+// SQL (createTableAsSQL): one statement per row,
+//   INSERT INTO '<name>' ('<h1>','<h2>',...) VALUES ('<v1>','<v2>',...)
+// with single quotes in the table name changed to double quotes, no escaping
+// of values, no semicolon, one line each. FlowJo pairs the i-th column header
+// with the i-th cell of TableData, whose first cell is the sample name, so the
+// values are (sample, column 1 .. column n-1) under the n column headers and
+// the last column's values are not written (kept as FlowJo does). Columns
+// with an empty header are left out; nothing is written when every header is
+// empty or there are no rows.
+export function tableSql(t: TableTemplate, rows: Rows): string {
+  const heads = t.columns.map((c) => headerText(c.header).trim());
+  if (!rows.length || !heads.some((h) => h.length)) return '';
+  const prefix = `INSERT INTO '${t.name.replace(/'/g, '"')}' (${heads.filter((h) => h.length).map((h) => `'${h}'`).join(',')}) VALUES (`;
+  return rows.map((r) => {
+    const data = [r.sample, ...r.cells.map(fmt)];
+    return `${prefix}${heads.map((h, i) => (h.length ? `'${data[i] ?? ''}'` : null)).filter((x) => x !== null).join(',')})\n`;
+  }).join('');
+}
+
 // One output (createTableByFileType): text, file extension and media type.
 export const OUTPUT_FORMATS: Record<OutputFormat, { label: string; ext: string; type: string }> = {
   CSV: { label: 'CSV (comma separated)', ext: 'csv', type: 'text/csv' },
   TAB: { label: 'TXT (tab delimited)', ext: 'txt', type: 'text/plain' },
   HTML: { label: 'HTML', ext: 'html', type: 'text/html' },
   XML_EXCEL: { label: 'XML Excel (SpreadsheetML)', ext: 'xml', type: 'application/vnd.ms-excel' },
+  XML_FLOWJO: { label: 'XML', ext: 'xml', type: 'application/xml' },
+  SQL: { label: 'SQL', ext: 'sql', type: 'application/sql' },
 };
-export function tableOutput(t: TableTemplate, rows: Rows, f: OutputFormat, data?: number): string {
-  return f === 'CSV' ? tableCsv(t, rows) : f === 'TAB' ? tableTab(t, rows) : f === 'HTML' ? tableHtml(t, rows, { data }) : tableExcelXml(t, rows);
+export function tableOutput(t: TableTemplate, rows: Rows, f: OutputFormat, data?: number, ctx: FlowJoXmlContext = { workspaceTitle: '' }): string {
+  return f === 'CSV' ? tableCsv(t, rows) : f === 'TAB' ? tableTab(t, rows) : f === 'HTML' ? tableHtml(t, rows, { data }) : f === 'XML_FLOWJO' ? tableFlowJoXml(t, rows, ctx) : f === 'SQL' ? tableSql(t, rows) : tableExcelXml(t, rows);
 }
 
 // Cell formats (ColumnSpec.getFontOptions, CalculatedTable.getHeatMapColoring):

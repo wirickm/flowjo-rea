@@ -164,6 +164,8 @@ export interface Workspace {
   provenance: { importedFrom?: string; warnings: string[] };
   // Plot layout per population path ('' = ungated), shared across samples.
   plots?: Record<string, PlotSettings>;
+  layoutPage?: import('./layoutArrange').PageSetup;
+  layoutIteration?: import('./layoutArrange').LayoutIteration;
   // FlowJo Kinetics node settings and timeslices per population path (specs 11).
   kinetics?: Record<string, import('./kinetics').KineticsSettings>;
   layout?: LayoutItem[];
@@ -196,12 +198,25 @@ export interface PlotSettings {
 
 // A layout cell: a plot rendered for whichever sample is chosen, or a text block.
 export type LayoutItem = LayoutPlot | LayoutText;
-export interface LayoutPlot extends PlotSettings {
+// Position, size and z-order (list order) in points, as in FlowJo 10's layout
+// editor (specs 21); items without a position get one from their index.
+export interface LayoutPlace {
+  left?: number;
+  top?: number;
+  width?: number;
+  height?: number;
+  locked?: boolean; // position lock (le.lock.position)
+  groupId?: string; // grouped items move, align and order together
+}
+export interface LayoutPlot extends PlotSettings, LayoutPlace {
   id: string;
   populationPath: string; // '' = all events
+  sampleId?: string; // the sample the graph came from (iteration binding, specs 21.3)
+  showGates?: boolean; // Show Gates (default on)
+  showAnnotation?: boolean; // Show Annotation: the title line (default off)
   text?: undefined;
 }
-export interface LayoutText {
+export interface LayoutText extends LayoutPlace {
   id: string;
   text: string;
 }

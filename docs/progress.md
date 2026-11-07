@@ -1,5 +1,19 @@
 # Progress and handoff
 
+## State (2026-11-07, remaining interaction gaps and layout logic)
+
+Specs 20: text paste into sample keyword columns, drag and drop (files,
+populations, matrices), right-click menus, Copy Histogram Function / Copy
+Statistics. Specs 21: FlowJo 10 layout logic decoded
+(`docs/validation/flowjo-layout-model.md`, 78 rules) and implemented: point
+positions on Letter / A4 pages with breaks, (200, 200) placement, align /
+spacing / grid / z-order / group / lock / nudge / avoid page breaks / grid
+layout, iteration binding (off, sample, panel, keyword with discriminator),
+multi-page PDF. `npm test` 402 pass; e2e: gaps 13/13, layout 13/13, workflow
+47/47, every other script passes. Not done (own scope): layout guides,
+grid figures with border axes, ancestry / adjunct / multigraph annotations,
+.wsp layout import.
+
 ## State (2026-11-07, interaction model)
 
 FlowJo 10.6.2 interaction model decoded with javap

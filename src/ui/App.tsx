@@ -18,7 +18,8 @@ import { GroupDialog } from './GroupDialog';
 import { ContextMenu, GateActions, ManualGateDialog, type MenuItem } from './GateActions';
 import { everyNth, FLOWJO_FUNCTIONS, removeFromGroup, stainSet } from '../core/groupCriteria';
 import { concatGroups, type ConcatMode, type HeaderFormat } from '../core/exportRules';
-import { LayoutView } from './Layout';
+import { GRAPH_H, GRAPH_W, LayoutView } from './Layout';
+import { COPY_TO_LAYOUT_POINT, placeRow } from '../core/layoutArrange';
 import { PlatformsDialog } from './Platforms';
 import { KineticsPanel } from './Kinetics';
 import { defaultKinetics, KIN_KEYS, KIN_LABELS } from '../core/kinetics';
@@ -1364,7 +1365,7 @@ export function App() {
                 } : undefined}
               />
               <div className="row">
-                <button data-testid="add-to-layout" onClick={() => { updateWs((w) => { w.layout = [...(w.layout ?? []), { id: newId('lay'), populationPath: popPath, ...plotSettings }]; }); note('info', `Added ${popPath || 'All events'} (${plotSettings.x}${kind === 'histogram' ? '' : ` vs ${plotSettings.y}`}) to the layout`); }}>Add to layout</button>
+                <button data-testid="add-to-layout" title="Copy to Layout Editor: placed centred on (200, 200) pt (GWAction.copyToLayout)" onClick={() => { const [at] = placeRow([{ w: GRAPH_W, h: GRAPH_H }], COPY_TO_LAYOUT_POINT); updateWs((w) => { w.layout = [...(w.layout ?? []), { id: newId('lay'), populationPath: popPath, ...plotSettings, sampleId: sample.id, left: at.x, top: at.y, width: GRAPH_W, height: GRAPH_H }]; }); note('info', `Added ${popPath || 'All events'} (${plotSettings.x}${kind === 'histogram' ? '' : ` vs ${plotSettings.y}`}) to the layout`); }}>Add to layout</button>
               </div>
               <div className="muted" data-testid="plot-caption">
                 {popPath || 'All events'}: {plotData ? plotData.count.toLocaleString() : '-'} events shown
@@ -1498,6 +1499,7 @@ export function App() {
           samples={groupSamples}
           client={client}
           onChange={(items) => updateWs((w) => { w.layout = items; })}
+          onSettings={(patch) => updateWs((w) => { Object.assign(w, patch); })}
           onDownload={(name, blob) => download(name, blob, 'image/png')}
           onClose={() => setDialog(null)}
         />

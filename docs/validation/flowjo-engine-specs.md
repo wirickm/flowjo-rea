@@ -1357,6 +1357,79 @@ Own rules (FlowJo's text forms were not read): the histogram is a header
 units and its count; statistics are "column label<TAB>value" lines for the
 statistics-table columns of the selected population.
 
+## 21. Layout editor logic (FlowJo 10.6.2)
+
+Full rule set (78 rules with citations): `docs/validation/flowjo-layout-model.md`
+(javap on the FlowJo 10.6.2 jar and fjlib; FlowJo was not run). Implemented in
+`src/core/layoutArrange.ts` (geometry; tests `tests/layout-arrange.test.ts`)
+and `src/ui/Layout.tsx` (editor, rendering, export). Spec 17.2 (iteration by
+sample / keyword / panel, batch tiles) still applies; 21.3 refines it. E2E:
+`e2e/layout.mjs` (13 checks) and the layout checks in `e2e/workflow.mjs`.
+
+### 21.1 Page and placement (matches; graph footprint own)
+
+| Rule | Behavior | Proven by |
+|---|---|---|
+| P1 | Positions and sizes are points (1/72 in); 100% zoom is print size | `CustomPaper.create`, `le.nav.showat100.tooltip` |
+| P2-P4 | US Letter (A4 offered), portrait, 1 inch margins: Letter page 468 x 648 pt | `PrintLayout.getDefaultPageFormat`, `CustomPaper.DEFAULT_INSETS` |
+| P6 | Page breaks every page size; a point is on page floor(c / page) + 1 | `LayoutEditorController.getPageDimension`, `pointToPage` |
+| P10 | "Copy to Layout Editor" centres the graph on (200, 200) pt, no cascade | `GWAction.copyToLayout` |
+| P11 | Duplicate copies the selection at (+8, +8); a new text figure goes to (30, 50) | `AbstractLayerDiagram.duplicateSelection`, `LEPasteAction.doAction` |
+| P12 | New figures go on top of the z-order | `AbstractLayerDiagram.add` |
+| P13 | A graph's plot frame is 256 x 256 pt | `FigLightweightChartBox.getFrameWidth` |
+
+Own rules: a graph is one box (the 256 pt frame plus this app's axes, 308 x 281
+pt), and align uses that box (FlowJo aligns the frame and moves the axes as
+dependents); items saved before positions existed are laid out two across;
+the PDF draws each page as an image inside the margins.
+
+### 21.2 Arrange (matches)
+
+| Rule | Behavior | Proven by |
+|---|---|---|
+| A2-A5 | Align Left / Top / Right / Bottom use the selection's extent | `AlignableLayerDiagram.setX/setY/setRight/setBottom` |
+| A6-A7 | Center / Middle: the integer mean of the centres, x = mean - floor(w / 2) | `AlignableLayerDiagram.setHCenter/setVCenter` |
+| A8-A9 | Spacing: sort by leading edge; first and last stay; step = floor((last centre - first centre) / (n - 1)) | `AlignableLayerDiagram.setSpacing` |
+| A11 | To grid: top-left to trunc((v + 18) / 36) x 36 | `AlignableLayerDiagram.alignToGrid`, `GuideGrid.snapPt` |
+| A12 | Ctrl/Cmd + L T R B M align; K vertical, J horizontal spacing | `AlignableLayerDiagram.processAlignKey` |
+| A15-A17 | Front keeps the selection order; Back reverses it; Forward / Backward step one place | `AbstractLayerDiagram.bringToFront/sendToBack/bringForward/sendBackward` |
+| A20/A22 | Group: the members act as one figure (union bounds) and go on top; Ungroup releases them | `LEGroupAction.doGroup`, `FigGroup.ungroup` |
+| A23 | Avoid page breaks: a figure crossing a break moves to the next page start, the push carrying to later figures; figures larger than a page stay | `LayerDiagram.avoidPageBreaks` |
+| A24 | Locked figures are skipped by drag and nudge; align still moves them | `AbstractLayerDiagram.okToMove/getFigsToNudge` |
+| S1 | Arrows nudge 1 pt; Alt x2, Ctrl/Cmd x2, Shift x3, multiplied | `EditorKeys.nudge` |
+| G1-G3 | Grid layout: 3 x 4 cells, 4 pt padding, filled row by row; extras left out | `FigGridLayout.<init>`, `FJLayoutGrid.getNextCell` |
+
+Own rules: there is no Spread (A10, a no-op in FlowJo) and no Same Size (A14,
+absent); a group keeps its members as items (no scaling on resize, A21); the
+grid layout sets positions (cells sized to the largest item) instead of
+creating a grid figure with border axes (G5-G9); guides and guide snapping
+(S4-S5) are not offered; every move, including a nudge, is an undo step in
+the workspace history (FlowJo: one history per layout, nudges not recorded,
+S2 / U1).
+
+### 21.3 Iteration (matches; I7 discriminator included)
+
+| Rule | Behavior | Proven by |
+|---|---|---|
+| I1 | A graph finds its population by path in the bound sample; missing shows nothing | `PopModel.bind`, `Iteration.getCurrentNode` |
+| I3/P14 | Iteration off (default): each graph shows the sample it came from | `PopModel.bind`, `FJPrefsFJML$Layouts.iterationType` |
+| I4 | Sample iteration: every graph shows the value's sample | `Iteration.getCurrentSample` |
+| I5 | Panel iteration keeps the graph's position within its panel | `Iteration.getSampleByPanel` |
+| I6/I7 | Keyword iteration maps the k-th sample of a value to the k-th of the next, or matches a discriminator keyword | `Iteration.getSampleByKey/findSampleByKey` |
+| I9 | PageDown / PageUp / Home / End step the iteration value | `LayoutEditor.dispatchKeyEvent` |
+| I10 | Batch tiles step by whole pages | `Batch.getLayoutOffset` |
+
+Own rules: graphs added before this change have no source sample and follow
+the chosen value; keyword values are in first-seen order (I8 order not read);
+control layers (I2) are not modelled.
+
+### 21.4 Annotations
+
+- Show Gates per graph (default on; `AnnotationPanel` `showGates`); Show
+  Annotation draws the title line above the graph (default off).
+- Not implemented: frequencies / names toggles, ancestry, backgating rows,
+  adjunct histograms, multigraph, the axes string (N3-N8).
+
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 
 Source: static analysis of `libNativeEngine.dylib` from the public FlowJo

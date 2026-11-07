@@ -93,8 +93,8 @@ export class SvgContext {
   }
 
   // Place another SVG document's content at (x, y), for composing layouts.
-  embed(svgBody: string, x: number, y: number) {
-    this.out.push(`<g transform="translate(${n(x)} ${n(y)})">${svgBody}</g>`);
+  embed(svgBody: string, x: number, y: number, scale = 1) {
+    this.out.push(`<g transform="translate(${n(x)} ${n(y)})${scale !== 1 ? ` scale(${n(scale)})` : ''}">${svgBody}</g>`);
   }
 
   body() { return this.out.join('\n'); }

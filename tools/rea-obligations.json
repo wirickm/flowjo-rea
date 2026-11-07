@@ -1039,6 +1039,44 @@
         "test_file": "tests/stains.test.ts",
         "command": "npx vitest run tests/stains.test.ts"
       }
+    },
+    {
+      "obligation_id": "layout.arrange-iteration",
+      "obligation_version": 1,
+      "title": "Layout align, spacing, z-order, nudge and iteration binding follow FlowJo 10",
+      "family": "layout",
+      "target_location": "AlignableLayerDiagram; AbstractLayerDiagram; Iteration",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "layout-editor-logic", "location": "centres use the integer mean; spacing steps leading edges" },
+        { "kind": "negative", "observation": "layout-editor-logic", "location": "figures larger than a page are not moved by avoid page breaks" }
+      ],
+      "supporting_observations": [],
+      "owner": {
+        "module_path": "src/core/layoutArrange.ts",
+        "symbol": "align",
+        "files": ["src/core/layoutArrange.ts", "src/ui/Layout.tsx"]
+      },
+      "fixtures": [
+        {
+          "fixture_id": "layout.arrange-iteration.pos",
+          "case_kind": "positive",
+          "test_file": "tests/layout-arrange.test.ts",
+          "test_name": "centres use the integer mean of the centres, not the middle of the extent"
+        },
+        {
+          "fixture_id": "layout.arrange-iteration.neg",
+          "case_kind": "negative",
+          "test_file": "tests/layout-arrange.test.ts",
+          "test_name": "avoid page breaks pushes a crossing figure to the next page and later figures with it"
+        }
+      ],
+      "verifier": {
+        "verifier_id": "layout.flowjo",
+        "claim_id": "layout.arrange-iteration.v1",
+        "test_file": "tests/layout-arrange.test.ts",
+        "command": "npx vitest run tests/layout-arrange.test.ts"
+      }
     }
   ]
 }

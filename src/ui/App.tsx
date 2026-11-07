@@ -22,6 +22,7 @@ import { concatGroups, type ConcatMode, type HeaderFormat } from '../core/export
 import { GRAPH_H, GRAPH_W, LayoutView } from './Layout';
 import { COPY_TO_LAYOUT_POINT, placeRow } from '../core/layoutArrange';
 import { PlatformsDialog } from './Platforms';
+import { PlatformToolHost, type PlatformTool } from './PlatformTools';
 import { KineticsPanel } from './Kinetics';
 import { defaultKinetics, KIN_KEYS, KIN_LABELS } from '../core/kinetics';
 import type { Axis } from './gateGeometry';
@@ -39,7 +40,7 @@ import { PrefsDialog, TablesDialog } from './Editors';
 const client = createAnalysisClient();
 
 type Analysis = { results: PopulationResult[]; total: number; compError?: string };
-type Dialog = null | { kind: 'addKeyword' } | { kind: 'find' } | { kind: 'group'; id: string | null } | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export' } | { kind: 'layout' } | { kind: 'derived' } | { kind: 'platforms' } | { kind: 'manual' } | { kind: 'prefs' } | { kind: 'tables' };
+type Dialog = null | { kind: 'addKeyword' } | { kind: 'find' } | { kind: 'group'; id: string | null } | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export' } | { kind: 'layout' } | { kind: 'derived' } | { kind: 'platforms' } | { kind: 'tool'; tool: PlatformTool } | { kind: 'manual' } | { kind: 'prefs' } | { kind: 'tables' };
 
 function download(name: string, data: BlobPart, type = 'application/octet-stream') {
   const url = URL.createObjectURL(new Blob([data], { type }));
@@ -1672,6 +1673,8 @@ export function App() {
           </div>
   </>);
 
+  // Experiment platforms (ui-gaps/platforms.md): Plate Editor, Compare Populations, 3D Viewer, Calibration, FCS Scan.
+  const platformButtons = (<>{([['plate', 'Plate Editor', false], ['compare', 'Compare Populations...', true], ['threeD', '3D Viewer', true], ['calibration', 'Create Calibration Parameter...', true], ['fcsScan', 'FCS Scan', false]] as const).map(([t, l, needs]) => <button key={t} disabled={needs && !sMeta} onClick={() => setDialog({ kind: 'tool', tool: t })} data-testid={`open-${t}`}>{l}</button>)}</>);
   return (
     <div className={`app ${uiLayout}`} onMouseMove={(e) => { const d = winDrag.current; if (d) setWins((ws0) => ws0.map((w) => (w.id === d.id ? { ...w, x: Math.max(0, e.clientX - d.dx), y: Math.max(0, e.clientY - d.dy) } : w))); }} onMouseUp={() => { winDrag.current = null; }} onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); }} onDrop={(e) => { if (e.dataTransfer.files.length) { e.preventDefault(); void dropFiles(e.dataTransfer.files); } }}>
       {uiLayout === 'classic' ? (<>
@@ -1708,6 +1711,7 @@ export function App() {
         <span className="band" aria-label="Cytometry"><span className="band-label">Cytometry</span>
           <button disabled={!sMeta} onClick={() => setDialog({ kind: 'derived' })} data-testid="open-derived">Derived ({ws.derivedParameters?.length ?? 0})</button>
           <button disabled={!sMeta} onClick={() => setDialog({ kind: 'platforms' })} data-testid="open-platforms">Platforms</button>
+          {platformButtons}
         </span>
         <span className="band" aria-label="Settings"><span className="band-label">Settings</span>
           <button data-testid="open-prefs" onClick={() => setDialog({ kind: 'prefs' })} title="Preferences (Ctrl/Cmd+Y)">Preferences</button>
@@ -1797,6 +1801,7 @@ export function App() {
               <button disabled={!sMeta} onClick={() => setDialog({ kind: 'derived' })} data-testid="open-derived">Derive Parameters ({ws.derivedParameters?.length ?? 0})</button>
               <button disabled={!sMeta} onClick={() => setDialog({ kind: 'keywords' })} data-testid="open-keywords" title="Inspect (Ctrl/Cmd+I)">Inspect (Keywords)</button>
             </div><div className="fj-band-title">Cytometry</div></div>
+            <div className="fj-band"><div className="fj-band-body">{platformButtons}</div><div className="fj-band-title">Experiment / Biology</div></div>
           </>}
           {ribbonTab === 'Configure' && <>
             <div className="fj-band"><div className="fj-band-body">
@@ -1903,6 +1908,7 @@ export function App() {
           onClose={() => setDialog(null)}
         />
       )}
+      {dialog?.kind === 'tool' && <PlatformToolHost tool={dialog.tool} ws={ws} meta={meta} client={client} sample={sample} popId={selPopValid ? sel.popId : null} groupId={group?.id ?? ''} updateWs={updateWs} download={(n, d, t) => download(n, d, t)} downloadBlob={(n, b) => download(n, b, b.type)} addFiles={(f) => void addFiles(f)} onClose={() => setDialog(null)} />}
       {dialog?.kind === 'platforms' && sample && sMeta && (() => {
         const base = { sampleId: sample.id, compensation: sample.compensation, populations: sample.populations, matrices: ws.matrices, derived: ws.derivedParameters, popId: selPopValid ? sel.popId : null };
         return (

@@ -179,6 +179,8 @@ export interface Workspace {
   // FlowJo table editor templates (specs 17).
   tables?: import('./tableEditor').TableTemplate[];
   derivedParameters?: DerivedParameter[];
+  // FlowJo Plate Editor definitions (src/core/plate.ts, ui-gaps/platforms.md).
+  plateEditor?: import('./plate').PlateEditorState;
 }
 
 // A user-defined channel. formula: a FlowJo 10 algebraic derived parameter

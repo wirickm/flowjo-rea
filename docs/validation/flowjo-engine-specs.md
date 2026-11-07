@@ -1519,11 +1519,20 @@ This is now the default screen; the earlier four-panel screen stays available
 | Ribbon | Tabs FlowJo, File, Edit, Workspace, Tools, Configure, each with its bands (22.5) | `WSRibbonStructure.loadDefaults` |
 | Group pane | A table: Group, Role, Size; double-click edits the group | `GroupTreeTable` |
 | Sample table | Default columns Name, Statistic, #Cells; samples expand to populations and statistic nodes; Statistic is the frequency of parent (22.1 format), #Cells the count | `SampleTreeTable`, `ws.column.special.name/statistic/ncells` |
-| Graph windows | Double-click a sample or population opens its graph window (one per node; again focuses it); Duplicate View opens another; windows move and close independently | `GWFrame`, `GWNavAction.duplicateGW` |
+| Graph windows | Double-click a sample or population opens its graph window, a separate window (one per node; again focuses it); Duplicate View opens another; windows move and close independently | `GWFrame`, `GWNavAction.duplicateGW` |
 
-Own rules: graph windows float inside the page (no OS windows); only the
-focused window is live, the others show a picture of their last view until
-clicked; a single click in the table selects without moving a window, while
+Graph windows are real separate windows (matches): browser child windows, and
+child BrowserWindows in the Electron app (its window-open handler allows only
+blank `gw-*` windows). The page renders into each one through a React portal
+with the page's styles; keys pressed there reach the same shortcuts; closing
+the window closes the graph window; a dialog opened from a graph window
+brings the workspace window forward (dialogs belong to the workspace window).
+Configure > "Graph windows as separate windows" (on by default) switches to
+windows inside the page, which are also the fallback when pop-ups are blocked
+(`src/ui/Popout.tsx`; E2E `e2e/fjlayout.mjs`).
+
+Own rules: only the focused window is live, the others show a picture of
+their last view until clicked; a single click in the table selects without moving a window, while
 navigation inside the live window (gating path, double-click a gate, sample
 keys) moves it; statistics, group tools, the sample list with annotations and
 the log are in a side panel with tabs; populations are renamed from the
@@ -1584,10 +1593,21 @@ Tests: `tests/uncomp.test.ts`, `tests/wsp-layout.test.ts`; E2E
 | G6/G7 | Axes are shown on the grid border: X under the bottom row, Y at the left column | `FigGridLayout.addChartAxesToBorder`, `clearBorderLabels` |
 | G9 | Extract Cells leaves each figure where it is | `FigBaseGrid.stripGridFromFigs` |
 
-Own model: the grid is a group of positioned graphs: bottom-row cells keep the
-X axis, left-column cells the Y axis, other cells none (per-graph axes
-string); Ungroup extracts the cells. Not implemented: insert / delete rows,
-make rows even, cell padding and autofit commands, drops onto filled cells.
+| G9 | Insert Rows or Columns, Delete Rows or Columns (with their contents), Set Grid Dimensions, Set Cell Padding, Make Rows or Columns Even, Autofit Cells, Clear Cells, Extract Cells from Grid; grid lines drawn | `FigGridLayout$ActionHandler`, `GridUtil.makeRowsEven/makeColsEven`, `FigBaseGrid.stripGridFromFigs` |
+
+The grid is an object (`ws.layoutGrids`: position, rows, columns, padding,
+cell size, bare charts) and each cell item records its row and column
+(`src/core/layoutArrange.ts` `gridInsert`, `gridDelete`, `gridResize`,
+`cellOrigin`, `borderAxes`; `src/ui/Layout.tsx`; tests in
+`tests/layout-arrange.test.ts`; E2E `e2e/grid.mjs`). Insert shifts the later
+rows (columns); Delete removes that row's (column's) cells with their contents
+and closes the gap, never below one row or column; a smaller size releases
+the cells outside as free items; moving a cell moves the whole grid; border
+axes are recomputed after every change. Own rules: all cells share one size
+(FlowJo keeps a size per row and per column; imported sizes take the
+largest); dropping a population onto a filled cell (overlay or replace, G4)
+and the "Scale Figs on Cell Resize" / "Autofit to Dropped Figures" toggles
+are not offered.
 
 ### 25.3 Show Multigraph (matches the types offered)
 
@@ -1598,14 +1618,39 @@ make rows even, cell padding and autofit commands, drops onto filled cells.
   the diagonal); not offered: all-by, half N x N, slinky, dot / contour cell
   types.
 
-### 25.4 .wsp layout settings (observed)
+### 25.4 .wsp layouts: page, iteration and figures
 
-- The current layout's PrintLayout (width, height, orientation: 1 portrait,
-  0 landscape) sets the paper and orientation; its Iteration
-  (iterationType OFF / SAMPLE / KEYWORD / PANEL, iterationKeyword,
-  discriminator, panelSize) sets the layout iteration. Every fixture layout has
-  an empty FigList, so figures are not imported; a layout with figures is
-  reported. Not written back to .wsp.
+Page and iteration (observed in every fixture): the current layout's
+PrintLayout (width, height, orientation: 1 portrait, 0 landscape) sets the
+paper and orientation; its Iteration (iterationType OFF / SAMPLE / KEYWORD /
+PANEL, iterationKeyword, discriminator, panelSize) sets the layout iteration.
+
+Figures (decoded, not observed: every fixture's FigList is empty). The format
+was read from FlowJo's figure writers and readers; full notes in
+`docs/validation/flowjo-figlist-format.md`. Implemented in
+`src/core/wspLayout.ts` (`parseFigList`, `writeFigList`), wired into
+`src/core/wsp.ts` (import) and `src/core/wspWriter.ts` (export as a
+`LayoutEditor` element); tests `tests/wsp-figures.test.ts`.
+
+| Rule | Behavior | Proven by |
+|---|---|---|
+| F1 | The element name is the figure kind (ChartData / Chart, StyledText, FigList / Group, GridLayout, Image, ...); document order is the z-order | `FigFactory.makeFig`, `Fig.getElementName` |
+| F2 | Common bounds `x y width height` in integer points | `Fig.getElement`, `Fig.setElementSelf`, `SElement.setRect` |
+| F3 | A chart refers to its sample by workspace sampleID and to its population by path (node names joined with "/"); the first DataLayer is the population, later ones overlays | `ChartAttributes.extract/install`, `PopModel`, `DataLayer` |
+| F4 | A chart's plot frame is 256 pt x scaleH / scaleV (a value over 50 is a percent); the final WindowPosition, when not empty, gives its position | `LEChartController.setElement`, `FigFactory.makeFigChartBox` |
+| F5 | Graph type and X / Y parameter names in `<Graph>`; GraphEnvironment showGates, showFreqOnPlots, showGateNameOnPlots, showAxes, showGrid; GraphSettings drawLargeDots, showOutliers | `GraphDef` reader |
+| F6 | Annotation, Ancestry (backgating), Multigraph (type, Parameters) are saved inside the chart, shown when their WindowPosition is displayed; showAdjunctHistograms on the chart | `LEChartController.setElement` |
+| F7 | StyledText `<Content>` is Swing HTML escaped twice on disk; live values are `<input type="fjml" value="URL-encoded statistic">` | `FigBaseText.getElement/setElement`, `SElement.toWriter` |
+| F8 | A group is a nested FigList of its members | `FigGroup.getElement`, `FigGroup.<init>` |
+| F9 | GridLayout: rows, columns, RowSizes / ColSizes, Content / Cell row col with one figure, Labels Row / Column for the border axes; cell padding is not saved | `FigBaseGrid.getElement`, `FigGridLayout.restoreBorderLabels` |
+
+Own rules: the app's graph box is the plot frame plus its axis margins
+(`frameToBox` / `boxToFrame`, exact both ways); text figures import as plain
+text (styling dropped; FJML statistics become "{name: path}") and export as a
+simple Swing HTML body; a chart whose sample is not in the workspace follows
+the chosen sample; Image, statistic tables, shapes and other figure kinds are
+reported and skipped; export writes the attributes listed above (FlowJo
+fills its own defaults for the rest); imported grids use a 4 pt padding.
 
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 

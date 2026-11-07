@@ -519,6 +519,16 @@
       ],
       "behavior": "Layout coordinates are points on US Letter with 1 inch margins; align left/top/right/bottom use the selection extent and centres the integer mean of centres; spacing keeps first and last and steps leading edges by floor(centre span / (n-1)); align to grid snaps to 36 pt; bring to front keeps selection order and send to back reverses it; nudge steps multiply Alt 2, Ctrl 2, Shift 3; panel iteration keeps a graph's position in its panel and keyword iteration maps the k-th sample by value.",
       "spec_section": "21"
+    },
+    {
+      "key": "layout-figlist",
+      "subject": "jar",
+      "symbols": ["layout.FigFactory", "application.leditor.LEChartController", "layout.presentation.FigStyledText", "application.leditor.FigGridLayout"],
+      "locations": [
+        { "kind": "artifact-path", "path": "com/treestar/flowjo/application/leditor/LEChartController.class" }
+      ],
+      "behavior": "Layout figures are written as FigList children named by kind (ChartData, StyledText, FigList group, GridLayout) in z-order; a chart refers to its sample by sampleID and its population by path, its plot frame is 256 pt x scaleH / scaleV, and its Graph, Annotation, Ancestry, Multigraph and PopModelList children carry the graph and overlays; text content is Swing HTML escaped twice; unsupported kinds are skipped.",
+      "spec_section": "25.4"
     }
   ]
 }

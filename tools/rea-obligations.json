@@ -1077,6 +1077,44 @@
         "test_file": "tests/layout-arrange.test.ts",
         "command": "npx vitest run tests/layout-arrange.test.ts"
       }
+    },
+    {
+      "obligation_id": "wsp.layout-figures",
+      "obligation_version": 1,
+      "title": ".wsp layout figures (charts, text, groups, grids) import and export in FlowJo 10's FigList format",
+      "family": "wsp",
+      "target_location": "FigFactory.makeFig; LEChartController.setElement; FigGridLayout",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "layout-figlist", "location": "ChartData sample, path, scale, graph flags and overlays" },
+        { "kind": "negative", "observation": "layout-figlist", "location": "unsupported figure kinds are skipped and reported" }
+      ],
+      "supporting_observations": [],
+      "owner": {
+        "module_path": "src/core/wspLayout.ts",
+        "symbol": "parseFigList",
+        "files": ["src/core/wspLayout.ts", "src/core/wsp.ts", "src/core/wspWriter.ts"]
+      },
+      "fixtures": [
+        {
+          "fixture_id": "wsp.layout-figures.pos",
+          "case_kind": "positive",
+          "test_file": "tests/wsp-figures.test.ts",
+          "test_name": "a ChartData becomes a graph of its sample and population, sized from scaleH / scaleV, with its flags and overlays"
+        },
+        {
+          "fixture_id": "wsp.layout-figures.neg",
+          "case_kind": "negative",
+          "test_file": "tests/wsp-figures.test.ts",
+          "test_name": "unsupported figures are reported"
+        }
+      ],
+      "verifier": {
+        "verifier_id": "wsp.flowjo",
+        "claim_id": "wsp.layout-figures.v1",
+        "test_file": "tests/wsp-figures.test.ts",
+        "command": "npx vitest run tests/wsp-figures.test.ts"
+      }
     }
   ]
 }

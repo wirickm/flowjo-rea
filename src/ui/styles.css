@@ -131,3 +131,8 @@ body.gw-popout { margin: 0; background: #fff; font: 13px system-ui, sans-serif; 
 .gw-popout .fj-gw.popped .fj-gw-title { cursor: default; border-radius: 0; }
 .layout-page .layout-gridlines { position: absolute; pointer-events: none; border: 1px solid #b9c3d6; box-sizing: border-box; background-image: linear-gradient(90deg, #d4dbe8 1px, transparent 1px), linear-gradient(#d4dbe8 1px, transparent 1px); z-index: 0; }
 .layout-gridbar { background: #f3f6fc; padding: 3px 6px; border-radius: 4px; }
+
+/* Workspace table: resizable, sortable column headers (Edit Columns, Sort). */
+.fj-table th { user-select: none; }
+.fj-table th .col-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 5px; cursor: col-resize; }
+.fj-row.comp td, .fj-row.dp td, .fj-row.platform td { color: #666; font-style: italic; }

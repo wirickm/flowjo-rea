@@ -29,6 +29,8 @@ export function GroupDialog(p: {
   groupNames: string[];
   takenNames: string[];
   onSave: (d: GroupDraft) => void;
+  // Multiple (GroupDlog.createMultipleGroups): one group per selected stain set.
+  onMultiple?: (d: GroupDraft) => void;
   onClose: () => void;
 }) {
   const init = p.initial;
@@ -48,7 +50,7 @@ export function GroupDialog(p: {
   const [refFn, setRefFn] = useState(init?.criteria.refGroup?.fn ?? 'also');
   const setRule = (i: number, patch: Partial<KeywordRule>) => setRules((rs) => rs.map((r, k) => (k === i ? { ...r, ...patch } : r)));
   const trimmed = name.trim();
-  const error = !trimmed ? 'Enter a name' : p.takenNames.includes(trimmed) ? 'Name must be unique.' : '';
+  const saveError = !trimmed ? 'Enter a name' : p.takenNames.includes(trimmed) ? 'Name must be unique.' : '';
   return (
     <Modal title={init ? 'Modify Group' : 'Create Group'} onClose={p.onClose} wide>
       <div className="row">
@@ -94,14 +96,18 @@ export function GroupDialog(p: {
           <option value="only">only (both)</option>
         </select>
       </div>
-      {error && <p className="error">{error}</p>}
+      {saveError && !(!trimmed && stains.length >= 2 && p.onMultiple) && <p className="error">{saveError}</p>}
       <div className="row">
-        <button disabled={!!error} data-testid="gd-save" onClick={() => {
+        <button disabled={!!saveError} data-testid="gd-save" onClick={() => {
           const criteria: GroupCriteria = { rules: rules.filter((r) => r.keyword || r.value) };
           if (stains.length) criteria.stains = stains;
           if (refName) criteria.refGroup = { name: refName, fn: refFn };
           p.onSave({ name: trimmed, role, live, synchronized: sync, color, fontStyle, criteria });
         }}>Save</button>
+        {p.onMultiple && !init && <button disabled={stains.length < 2} data-testid="gd-multiple" title="Make a new group for each of the selected stain combinations." onClick={() => {
+          const criteria: GroupCriteria = { rules: rules.filter((r) => r.keyword || r.value), stains };
+          p.onMultiple!({ name: trimmed, role, live, synchronized: sync, color, fontStyle, criteria });
+        }}>Multiple</button>}
         <button onClick={p.onClose}>Cancel</button>
       </div>
     </Modal>

@@ -124,7 +124,7 @@ check('a2-08 taken default name gets a -N suffix', (await pops()).includes('Rect
 await page.getByTestId('pop-Rect 2').click();
 await page.getByTestId('bool-not').click();
 await idle();
-check('a2-09 NOT on the normal selection', (await pops()).includes('[not] NOT Rect 2'), (await pops()).join(','));
+check('a2-09 NOT on the normal selection', (await pops()).includes('[not] Rect 2-'), (await pops()).join(','));
 
 // a1-04/a5-03: re-importing exported Gating-ML twice adds nothing and logs no React errors.
 await page.getByTestId('pop-root').click();

@@ -35,11 +35,17 @@ import { initHistory, pushHistory, redo, undo, type History } from './history';
 import { createAnalysisClient } from './workerClient';
 import { autoSaveMessage, CONFIRM, edgeWarning, loadPrefs, rememberDontAsk, savePrefs, shouldAutoSave, skipConfirm, type Prefs } from '../core/prefs';
 import { PrefsDialog, TablesDialog } from './Editors';
+import { AddStatDialog, BooleanExprDialog, EditColumnsDialog, NamingDialog, ValueSeriesDialog } from './WorkspaceTools';
+import { compileBoolExpr, exprOfGate, makeAndOr, makeCombination, makeIdentities, makeNots, MAX_COMBINATION, parseBoolExpr, BoolExprError } from '../core/booleanExpr';
+import { columnLabel, excelRows, isKeywordColumn, keywordEditable, keywordName, NAME, NCELLS, populationCell, sampleCell, setKeyword, sortSamples, STATISTIC, tableColumns, type TableRow } from '../core/workspaceTable';
+import { applyGroupTemplates, buildArchive, makeTemplate, readArchive } from '../core/template';
+import { xlsxBytes } from '../core/xlsx';
+import { writeZip } from '../core/zip';
 
 const client = createAnalysisClient();
 
 type Analysis = { results: PopulationResult[]; total: number; compError?: string };
-type Dialog = null | { kind: 'addKeyword' } | { kind: 'find' } | { kind: 'group'; id: string | null } | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export' } | { kind: 'layout' } | { kind: 'derived' } | { kind: 'platforms' } | { kind: 'manual' } | { kind: 'prefs' } | { kind: 'tables' };
+type Dialog = null | { kind: 'addKeyword' } | { kind: 'find' } | { kind: 'group'; id: string | null } | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export'; mode?: 'group' } | { kind: 'layout' } | { kind: 'derived' } | { kind: 'platforms' } | { kind: 'manual' } | { kind: 'prefs' } | { kind: 'tables' } | { kind: 'boolExpr'; editId?: string } | { kind: 'naming'; op: 'and' | 'or' | 'combo'; ids: string[] } | { kind: 'columns' } | { kind: 'addStat' } | { kind: 'series' } | { kind: 'addKeywordGroup' };
 
 function download(name: string, data: BlobPart, type = 'application/octet-stream') {
   const url = URL.createObjectURL(new Blob([data], { type }));
@@ -71,7 +77,8 @@ export function App() {
     setHist((h) => {
       let w = typeof next === 'function' ? next(h.present) : next;
       const copy = structuredClone(w);
-      if (syncLiveGroups(copy)) w = copy;
+      const synced = syncLiveGroups(copy);
+      if (applyGroupTemplates(copy) || synced) w = copy;
       // Preference "Disable Undo": edits replace the present state.
       return undoOffRef.current ? { ...h, present: w } : pushHistory(h, w);
     });
@@ -318,6 +325,71 @@ export function App() {
     }
   };
 
+  // Revert (WSDocument.revert): back to the workspace as last opened or saved.
+  const baselineRef = useRef<Workspace>(hist.present);
+  // Files of an opened archive, added once the opened workspace is current.
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+  useEffect(() => {
+    if (!pendingFiles) return;
+    setPendingFiles(null);
+    void addFiles(pendingFiles);
+  }, [pendingFiles]); // eslint-disable-line react-hooks/exhaustive-deps
+  const resetTo = (w: Workspace) => {
+    void (async () => {
+      for (const id of Object.keys(meta)) await client.unload(id);
+      setMeta({}); setAnalysis({}); setStats({});
+      undoOffRef.current = prefsRef.current.noUndo;
+      setHist(initHistory(w));
+      baselineRef.current = w;
+      setGroupId('all'); setRowSel([]); setChecked([]); setMulti([]);
+      setSel({ sampleId: w.samples[0]?.id ?? null, popId: null });
+    })();
+  };
+  const revertWs = async () => {
+    if (!hist.past.length && ws === baselineRef.current) return note('info', 'Nothing to revert');
+    const a = await ask('Are you sure you want to discard changes made to this workspace?', ['Revert']);
+    if (a !== 'Revert') return;
+    const back = baselineRef.current;
+    const keep = Object.keys(meta).filter((id) => back.samples.some((s) => s.id === id));
+    for (const id of Object.keys(meta)) if (!keep.includes(id)) await client.unload(id);
+    setMeta((m) => Object.fromEntries(Object.entries(m).filter(([id]) => keep.includes(id))));
+    setHist(initHistory(back));
+    setRowSel([]); setMulti([]);
+    if (!back.samples.some((s) => s.id === sel.sampleId)) setSel({ sampleId: back.samples[0]?.id ?? null, popId: null });
+    note('info', 'Reverted to the workspace as last opened or saved');
+  };
+  // Close (WSCloseAction -> SWorkspace.close): the workspace closes; here an
+  // empty workspace takes its place (a browser page cannot close itself).
+  const closeWs = async () => {
+    if (ws.samples.length || hist.past.length) {
+      const a = await ask('Close this workspace? Unsaved changes are lost.', ['Close']);
+      if (a !== 'Close') return;
+    }
+    resetTo(emptyWorkspace());
+    note('info', 'Workspace closed');
+  };
+  // Export as Template (WSDocument.saveTemplate): no samples; groups keep their analysis.
+  const exportTemplate = () => {
+    const t = makeTemplate(ws);
+    download(`${(ws.name || 'workspace').replace(/\.(wsp|json|wspt)$/i, '').replace(/\.frea$/i, '')}.wspt`, serializeWorkspace(t), 'application/json');
+    note('info', `Saved template: ${t.groups.length} group(s), ${t.groups.filter((g) => g.analysis?.length).length} with group analysis`);
+  };
+  // Save as Archive (own rule for WSDocument.doSaveACS): workspace + FCS files in one ZIP.
+  const saveArchive = async () => {
+    const files: { name: string; bytes: Uint8Array }[] = [];
+    for (const s of ws.samples) {
+      const b = meta[s.id] ? await run(() => client.rawBytes(s.id)) : null;
+      if (b) files.push({ name: s.fileName, bytes: b });
+    }
+    const missing = ws.samples.length - files.length;
+    download(`${(ws.name || 'workspace').replace(/\.(wsp|json|wspt)$/i, '').replace(/\.frea$/i, '')}.zip`, buildArchive(serializeWorkspace(ws), files) as BlobPart, 'application/zip');
+    setSavedOnce(true); baselineRef.current = ws;
+    note(missing ? 'warn' : 'info', `Saved archive with ${files.length} FCS file(s)${missing ? `; ${missing} sample(s) without data not included` : ''}`);
+  };
+  // Recalculate Statistics (WSRecalcAction -> WSSampleMgr.touchAll).
+  const [recalc, setRecalc] = useState(0);
+  const recalcStats = () => { analysedKey.current = {}; setRecalc((r) => r + 1); note('info', 'Recalculating all statistics'); };
+
   const openWorkspace = async (file: File) => {
     // FlowJo 10 opens a .wsp in a new window; here it replaces the open
     // workspace, so ask first when there is work to lose (specs 6.7).
@@ -326,9 +398,17 @@ export function App() {
       if (a !== 'Open') return;
     }
     await run(async () => {
-      const text = await file.text();
+      const lower = file.name.toLowerCase();
+      let archived: File[] = [];
+      let text: string;
+      if (lower.endsWith('.zip') || lower.endsWith('.acs')) {
+        // Save as Archive (own rule): the workspace plus its FCS files.
+        const arc = readArchive(new Uint8Array(await file.arrayBuffer()));
+        text = arc.workspace;
+        archived = arc.files.map((f) => new File([f.bytes as BlobPart], f.name));
+      } else text = await file.text();
       let next: Workspace;
-      if (file.name.toLowerCase().endsWith('.wsp')) {
+      if (lower.endsWith('.wsp') || (lower.endsWith('.wspt') && text.trimStart().startsWith('<'))) {
         const imp = parseWsp(text);
         next = imp.workspace;
         next.name = file.name;
@@ -336,7 +416,8 @@ export function App() {
         note('info', `Imported FlowJo workspace (${imp.flowjoVersion}): ${next.samples.length} samples. Add the FCS files to relink data.`);
       } else {
         next = deserializeWorkspace(text);
-        note('info', `Opened workspace ${next.name}: ${next.samples.length} samples. Add the FCS files to relink data.`);
+        if (lower.endsWith('.wspt')) next.name = file.name.replace(/\.wspt$/i, '.wsp'); // a template opens as a new workspace (WSDocument.convertTemplateToWorkspace)
+        note('info', lower.endsWith('.wspt') ? `Opened template ${file.name}: add samples; they join its groups and receive the group analysis.` : `Opened workspace ${next.name}: ${next.samples.length} samples.${archived.length ? '' : ' Add the FCS files to relink data.'}`);
       }
       for (const id of Object.keys(meta)) await client.unload(id);
       setMeta({});
@@ -344,6 +425,8 @@ export function App() {
       setStats({});
       undoOffRef.current = prefsRef.current.noUndo;
       setHist(initHistory(next)); // opening a workspace resets history
+      baselineRef.current = next;
+      if (archived.length) setPendingFiles(archived);
       setGroupId('all');
       setSel({ sampleId: next.samples[0]?.id ?? null, popId: null });
     });
@@ -413,7 +496,7 @@ export function App() {
       for (const r of a.results) if (r.error) note('error', `${sample.fileName} / ${r.name}: ${r.error}`);
     });
     return () => { live = false; };
-  }, [sample?.id, sample?.compensation, sample?.populations, ws.matrices, meta, run, note]);
+  }, [sample?.id, sample?.compensation, sample?.populations, ws.matrices, meta, run, note, recalc]);
 
   // --- FlowJo-style window layout (specs 23) -------------------------------------
   // Default; "?layout=classic" or the Configure tab switches to the four-panel layout.
@@ -424,6 +507,11 @@ export function App() {
   const [ribbonTab, setRibbonTab] = useState('Workspace');
   const [drawer, setDrawer] = useState<'stats' | 'groups' | 'samples' | 'log' | null>('stats');
   const [collapsedSamples, setCollapsedSamples] = useState<string[]>([]);
+  // Workspace table: multi-row selection ("<sampleId>|<popId>"), view toggles
+  // (not saved, as in FlowJo: PopTreeTableModel defaults) and the keyword cell being edited.
+  const [rowSel, setRowSel] = useState<string[]>([]);
+  const [viewOpts, setViewOpts] = useState({ stats: true, comp: false, platforms: true, dp: true });
+  const [editCell, setEditCell] = useState<{ sid: string; key: string } | null>(null);
   // The sample table shows every group sample's counts: analyse the others in the background.
   const analysedKey = useRef<Record<string, string>>({});
   useEffect(() => {
@@ -441,7 +529,7 @@ export function App() {
       }
     })().catch(() => { /* counts stay blank; the selected sample reports errors */ });
     return () => { live = false; };
-  }, [uiLayout, groupSamples, meta, ws.matrices, ws.derivedParameters, sample?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [uiLayout, groupSamples, meta, ws.matrices, ws.derivedParameters, sample?.id, recalc]); // eslint-disable-line react-hooks/exhaustive-deps
   // Graph windows: one per opened node (GWFrame); the active one hosts the live
   // plot, the others keep a picture of their last view (own rule).
   type GraphWin = { id: string; sampleId: string; popId: string | null; x: number; y: number; snap?: string; inPage?: boolean };
@@ -484,7 +572,12 @@ export function App() {
   }, [sel, activeWin]);
   // A single click in the sample table selects without moving a graph window.
   const selectInTable = (sampleId: string, popId: string | null, e?: React.MouseEvent) => {
-    if (e && (e.ctrlKey || e.metaKey || e.shiftKey) && popId && sampleId === sample?.id) { setMulti((m) => (m.includes(popId) ? m.filter((x) => x !== popId) : [...m, popId])); return; }
+    const key = `${sampleId}|${popId ?? ''}`;
+    if (e && (e.ctrlKey || e.metaKey || e.shiftKey)) setRowSel((r) => { const base = r.length ? r : sel.sampleId ? [`${sel.sampleId}|${sel.popId ?? ''}`] : []; return base.includes(key) ? base.filter((x) => x !== key) : [...base, key]; });
+    else setRowSel([key]);
+    // The table's multi-selection starts from the selected row, as in FlowJo's tree table.
+    if (e && (e.ctrlKey || e.metaKey || e.shiftKey) && popId && sampleId === sample?.id) { setMulti((m0) => { const m = m0.length || !sel.popId || sel.popId === popId ? m0 : [sel.popId]; return m.includes(popId) ? m.filter((x) => x !== popId) : [...m, popId]; }); return; }
+    if (e && (e.ctrlKey || e.metaKey || e.shiftKey) && sel.sampleId) return; // other rows join the table selection
     if (activeWin) { snapActive(); setActiveWin(null); }
     setSel({ sampleId, popId });
     setMulti([]);
@@ -610,7 +703,7 @@ export function App() {
       }
     }, 150);
     return () => { live = false; clearTimeout(t); };
-  }, [ws.statColumns, ws.samples, ws.matrices, ws.derivedParameters, ws.channelTransforms, groupId, meta]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ws.statColumns, ws.samples, ws.matrices, ws.derivedParameters, ws.channelTransforms, groupId, meta, recalc]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- gate editing ------------------------------------------------------------
   const counts = useMemo(() => {
@@ -681,16 +774,64 @@ export function App() {
   // AND/OR take the Ctrl-click multi-selection; NOT takes the multi-selection
   // of one or, as in FlowJo 10, the normally selected population (specs 6.7).
   const notOperand = multi.length === 1 ? multi[0] : multi.length === 0 && selPopValid ? sel.popId : null;
+  // AND / OR / Combination first ask for abbreviations (Boolean Gate Naming
+  // Dialog); NOT names "<name>-", AND "A+ & B+", OR "A+ or B+" (WSBoolGateAction;
+  // docs/validation/ui-gaps/workspace.md, section B).
   const makeBoolean = (op: 'and' | 'or' | 'not') => {
-    const operands = op === 'not' ? (notOperand ? [notOperand] : []) : multi;
-    if (!sample || !operands.length) return;
-    const first = sample.populations.find((p) => p.id === operands[0])!;
-    const name = uniqueName(op === 'not' ? `NOT ${first.name}` : operands.map((id) => sample.populations.find((p) => p.id === id)!.name).join(op === 'and' ? ' & ' : ' | '), siblingNames(first.parentId));
-    const id = newId('pop');
-    updateWs((w) => {
-      w.samples.find((x) => x.id === sample.id)!.populations.push({ id, name, parentId: first.parentId, gate: { type: 'boolean', op, operands: operands.map((ref) => ({ ref })) } });
-    });
+    if (!sample) return;
+    if (op === 'not') {
+      if (!notOperand) return;
+      const made = makeNots(sample, multi.length ? multi : [notOperand]);
+      updateWs((w) => { w.samples.find((x) => x.id === sample.id)!.populations.push(...made); });
+      setMulti([]);
+      return;
+    }
+    if (multi.length < 2) return;
+    setDialog({ kind: 'naming', op, ids: [...multi] });
+  };
+  const finishNaming = (op: 'and' | 'or' | 'combo', ids: string[], abbr: Record<string, string>) => {
+    if (!sample) return;
+    const made = op === 'combo' ? makeCombination(sample, ids, abbr) : (() => { const p = makeAndOr(sample, op, ids, abbr); return p ? [p] : null; })();
+    if (!made) return note('warn', `Create Combination Gates takes 2 to ${MAX_COMBINATION} populations`);
+    updateWs((w) => { w.samples.find((x) => x.id === sample.id)!.populations.push(...made); });
+    note('info', `Created ${made.map((m) => m.name).join(', ')}`);
     setMulti([]);
+  };
+  const boolTargets = () => (multi.length ? multi : sel.popId ? [sel.popId] : []);
+  const makeCombo = () => {
+    const ids = boolTargets();
+    if (ids.length < 2 || ids.length > MAX_COMBINATION) return note('warn', `Create Combination Gates takes 2 to ${MAX_COMBINATION} selected populations (Ctrl-click to select)`);
+    setDialog({ kind: 'naming', op: 'combo', ids });
+  };
+  const makeIdentity = () => {
+    if (!sample) return;
+    const made = makeIdentities(sample, boolTargets());
+    if (!made.length) return;
+    updateWs((w) => { w.samples.find((x) => x.id === sample.id)!.populations.push(...made); });
+    setMulti([]);
+  };
+  // Boolean Expression / edit (own rule): compiled into AND / OR / NOT nodes.
+  const applyBoolExpr = (text: string, editId?: string): string | null => {
+    if (!sample) return 'No sample';
+    try {
+      const target = editId ? sample.populations.find((p) => p.id === editId) : undefined;
+      const anchor = target ?? (sel.popId ? sample.populations.find((p) => p.id === sel.popId) : undefined);
+      const parentId = anchor ? anchor.parentId : null;
+      const r = compileBoolExpr(sample, parentId, parseBoolExpr(text), editId);
+      if (editId && subtreeIds(sample.populations, [editId]).size > 1 && r.gate.operands.some((o) => subtreeIds(sample.populations, [editId]).has(o.ref))) return 'An operand cannot be the gate itself or one of its children';
+      const name = uniqueName(r.name, sample.populations.filter((p) => p.parentId === parentId && p.id !== editId).map((p) => p.name));
+      updateWs((w) => {
+        const sw = w.samples.find((x) => x.id === sample.id)!;
+        sw.populations.push(...r.added);
+        if (editId) sw.populations.find((p) => p.id === editId)!.gate = r.gate;
+        else sw.populations.push({ id: newId('pop'), name, parentId, gate: r.gate });
+      });
+      setDialog(null);
+      note('info', editId ? `Changed "${target?.name}" to ${text}` : `Created ${name}`);
+      return null;
+    } catch (e) {
+      return e instanceof BoolExprError ? e.message : String((e as Error).message ?? e);
+    }
   };
 
   const deletePop = async (id: string) => {
@@ -786,6 +927,26 @@ export function App() {
       if (!bytes) return;
       download(`${safe(`${sample.fileName.replace(/\.fcs$/i, '')}_${popPath || 'All events'}`)}.${ext}`, bytes as BlobPart, type);
       note('info', `Exported ${o.format} for ${popPath || 'All events'}${o.maxEvents !== undefined ? ` (no more than ${o.maxEvents} events)` : ''}`);
+      return;
+    }
+    // Several populations, or each group sample's equivalent population: one
+    // file each (ExportNodesPopsModel / ExportNodesGroupModel), downloaded in
+    // one ZIP when there is more than one (own rule: a browser writes no folder).
+    if (o.mode === 'populations' || o.mode === 'group') {
+      const targets = exportTargets(o.mode);
+      if (!targets.length) { note('warn', 'No population with loaded data to export'); return; }
+      const files: { name: string; data: Uint8Array }[] = [];
+      for (const t of targets) {
+        const s = ws.samples.find((x) => x.id === t.sid)!;
+        const bytes = await run(() => client.exportEvents(base(t.sid, t.popId)));
+        if (!bytes) return;
+        let name = `${safe(`${s.fileName.replace(/\.fcs$/i, '')}_${t.popId ? populationPath(s.populations, t.popId) : 'All events'}`)}.${ext}`;
+        for (let k = 1; files.some((f) => f.name === name); k++) name = name.replace(/(\.\w+)$/, `-${k}$1`);
+        files.push({ name, data: bytes as Uint8Array });
+      }
+      if (files.length === 1) download(files[0].name, files[0].data as BlobPart, type);
+      else download(`${safe(o.mode === 'group' ? `${group?.name ?? 'group'}_${popPath || 'All events'}` : 'populations')}.zip`, writeZip(files) as BlobPart, 'application/zip');
+      note('info', `Exported ${files.length} file(s)`);
       return;
     }
     // Concatenate: the group's samples that have this population and data.
@@ -1054,6 +1215,8 @@ export function App() {
     if (k === 'e' && e.shiftKey) { selectEquivalent(); return true; } // Select Equivalent Nodes
     if (k === 'i' && e.shiftKey) { setDialog({ kind: 'addKeyword' }); return true; } // Add Keyword
     if (k === 'f' && !e.shiftKey) { setDialog({ kind: 'find' }); return true; } // Find
+    if (k === 'a' && !e.shiftKey) { selectAllNodes(); return true; } // Select All (ws.select.allnodes)
+    if (k === 'x' && e.shiftKey) { setDialog({ kind: 'export', mode: 'group' }); return true; } // Export / Concatenate Group (ws.dlog.export.group)
     return false;
   };
 
@@ -1111,6 +1274,67 @@ export function App() {
     if (!statReady) return note('warn', 'Choose the statistic (and its parameter) in the Statistics panel first');
     updateWs((w) => { w.statColumns.push({ id: newId('col'), populationPath: path, stat: newStat.stat, channel: STAT_NEEDS_CHANNEL(newStat.stat) ? newStat.channel : undefined, percentile: newStat.percentile, ...(newStat.stat === 'freqOf' ? { ancestor: newStat.ancestor } : {}), ...(newStat.stat === 'correlation' ? { correlate: newStat.correlate } : {}) }); });
   };
+  // Add Statistic dialog targets: the selected populations' paths (table selection, else the selection).
+  const statTargets = (): string[] => {
+    const fromRows = rowSel.map((k) => k.split('|')).map(([sid, pid]) => { const s = ws.samples.find((x) => x.id === sid); return s ? (pid ? populationPath(s.populations, pid) : '') : null; }).filter((x): x is string => x !== null);
+    const fromMulti = sample ? multi.map((id) => populationPath(sample.populations, id)) : [];
+    const all = [...new Set([...fromRows, ...fromMulti])];
+    return all.length ? all : [popPath];
+  };
+  const addStats = (choices: import('./WorkspaceTools').StatChoice[]) => {
+    const targets = statTargets();
+    let n = 0;
+    updateWs((w) => {
+      for (const path of targets) for (const c of choices) {
+        if (w.statColumns.some((x) => x.populationPath === path && x.stat === c.stat && x.channel === c.channel && (c.stat !== 'percentile' || x.percentile === c.percentile))) continue;
+        w.statColumns.push({ id: newId('col'), populationPath: path, stat: c.stat, channel: c.channel, percentile: c.percentile ?? 50 });
+        n++;
+      }
+    });
+    setDialog(null);
+    note('info', `Added ${n} statistic(s)`);
+  };
+  // Keywords for the current group (Add Keyword to Group, Paste keyword to
+  // group, Create keyword value series; docs/validation/ui-gaps/workspace.md, K).
+  const tableKeywords = tableColumns(ws).filter((c) => isKeywordColumn(c.key)).map((c) => c.key.slice(3));
+  const pasteKeywordToGroup = async () => {
+    let text = '';
+    try { text = await navigator.clipboard.readText(); } catch { return note('warn', 'The browser did not allow reading the clipboard; paste with Ctrl/Cmd+V in the table instead'); }
+    const ordered = sortSamples(ws, groupSamples);
+    const start = Math.max(0, ordered.findIndex((s) => s.id === sel.sampleId));
+    let n = 0;
+    updateWs((w) => { n = pasteAnnotations(ordered.map((s) => w.samples.find((x) => x.id === s.id)!), start, text, tableKeywords.length ? tableKeywords : annotationKeys, ordered.map((s) => s.id)); });
+    note(n ? 'info' : 'warn', n ? `Pasted keyword values into ${n} sample(s) of group ${group?.name}` : 'Nothing pasted: copy keyword values (one value, or rows) first');
+  };
+  const applySeries = (spec: import('./WorkspaceTools').SeriesSpec) => {
+    const name = keywordName(spec.keyword);
+    if (!name) return;
+    const ordered = sortSamples(ws, groupSamples);
+    const start = Math.max(0, ordered.findIndex((s) => s.id === sel.sampleId));
+    const targets = ordered.slice(start, start + spec.values.length);
+    updateWs((w) => {
+      setKeyword(targets.map((s) => w.samples.find((x) => x.id === s.id)!), name, spec.values);
+      if (!tableColumns(w).some((c) => c.key === `kw:${name}`)) w.tableColumns = [...tableColumns(w), { key: `kw:${name}` }];
+    });
+    setDialog(null);
+    note('info', `${name}: ${spec.values.slice(0, targets.length).join(', ')} in ${targets.length} sample(s)`);
+  };
+  // Search for FCS files (own rule for SampleFindingThread): a folder chosen in
+  // the browser; every .fcs / .lmd file under it is added.
+  const addFolder = (files: FileList) => {
+    const fcs = Array.from(files).filter((f) => /\.(fcs|lmd)$/i.test(f.name));
+    note('info', `Found ${fcs.length} FCS file(s) in ${files.length} file(s)`);
+    if (fcs.length) void addFiles(fcs);
+  };
+  // Export / Concatenate Populations (several) and Group: (sample, population) pairs.
+  const exportTargets = (mode: 'populations' | 'group'): { sid: string; popId: string | null }[] => {
+    if (mode === 'group') return groupSamples.filter((s) => meta[s.id]).map((s) => ({ sid: s.id, popId: popPath ? s.populations.find((p) => populationPath(s.populations, p.id) === popPath)?.id ?? 'missing' : null })).filter((t) => t.popId !== 'missing');
+    const keys = selectedRowKeys();
+    const out = keys.map((k) => k.split('|')).filter(([sid, pid]) => meta[sid] && (pid === '' || ws.samples.find((s) => s.id === sid)?.populations.some((p) => p.id === pid))).map(([sid, pid]) => ({ sid, popId: pid || null }));
+    if (sample && multi.length) for (const id of multi) if (!out.some((t) => t.sid === sample.id && t.popId === id)) out.push({ sid: sample.id, popId: id });
+    return out;
+  };
+
   // Right-click menus (SampleTreeTable.buildPopup, GatePanel.makeGatePopupMenu; specs 20.3).
   const [ctx, setCtx] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
   const popMenu = (s: typeof ws.samples[number], popId: string | null, x: number, y: number) => {
@@ -1127,9 +1351,13 @@ export function App() {
       null,
       { label: 'Add Keyword...', onClick: () => setDialog({ kind: 'addKeyword' }) },
       { label: 'Add Statistic', onClick: () => addStatFor(path) },
+      { label: 'Add Statistic...', onClick: () => setDialog({ kind: 'addStat' }) },
       null,
       { label: 'Inspect...', onClick: () => setDialog({ kind: 'keywords' }) },
+      { label: 'Edit Boolean Gate...', disabled: pop?.gate.type !== 'boolean', onClick: () => setDialog({ kind: 'boolExpr', editId: popId }) },
+      { label: 'Identical Gate', onClick: () => updateWs((w) => { const sw = w.samples.find((x) => x.id === s.id)!; sw.populations.push(...makeIdentities(sw, [popId])); }) },
       null,
+      { label: 'Remove Group Analysis', disabled: !pop?.owningGroup, onClick: () => void deletePop(popId) },
       { label: 'Copy analysis to group', disabled: pop?.owningGroup === groupId, onClick: () => { updateWs((w, say) => copyAnalysisToGroup(w, s.id, popId, groupId).forEach((m) => say('warn', m))); note('info', `Applied "${path}" and its children to group ${group?.name}`); } },
       null,
       { label: 'Select Equivalent Nodes', onClick: selectEquivalent },
@@ -1148,60 +1376,179 @@ export function App() {
   };
 
   // Sample tree-table rows (SampleTreeTable): samples, their populations and
-  // statistic nodes; Statistic = frequency of parent, #Cells = count.
-  const sampleTableRows = (): React.ReactNode[] => {
-    const rows: React.ReactNode[] = [];
-    for (const s of groupSamples) {
-      const isSel = sel.sampleId === s.id;
+  // statistic nodes; Statistic = frequency of parent, #Cells = count. Columns
+  // from Edit Columns, samples sorted by the sort keys, and the view toggles
+  // Hide Stats / Show Compensation Nodes / Hide Platforms / Hide Derived
+  // Parameters (PopTreeTableModel.shouldShowNode; docs/validation/ui-gaps/workspace.md, T).
+  type TRow = TableRow & { key: string; kind: 'sample' | 'pop' | 'stat' | 'comp' | 'dp' | 'platform'; label?: string; kids?: boolean; open?: boolean };
+  const tableModel = (): TRow[] => {
+    const cols = tableColumns(ws);
+    const rows: TRow[] = [];
+    for (const s of sortSamples(ws, groupSamples)) {
       const open = !collapsedSamples.includes(s.id);
       const res = analysis[s.id]?.results ?? [];
-      const hasPops = s.populations.length > 0;
-      rows.push(
-        <tr key={s.id} className={`fj-row sample ${isSel && !sel.popId ? 'sel' : ''}`} data-testid={`row-${s.fileName}`}
-          onClick={(e) => selectInTable(s.id, null, e)} onDoubleClick={() => openWin(s.id, null)}
-          onContextMenu={(e) => { e.preventDefault(); popMenu(s, null, e.clientX, e.clientY); }}
-          onDragOver={(e) => accepts(e) && e.preventDefault()} onDrop={onDropOn({ sampleId: s.id, popId: null })}>
-          <td><span className="twisty" onClick={(e) => { e.stopPropagation(); setCollapsedSamples((c) => (c.includes(s.id) ? c.filter((x) => x !== s.id) : [...c, s.id])); }}>{hasPops ? (open ? '-' : '+') : ''}</span>{meta[s.id] ? s.fileName : <i className="missing">{s.fileName} (data missing)</i>}</td>
-          <td />
-          <td className="num">{meta[s.id] ? s.eventCount.toLocaleString() : ''}</td>
-        </tr>,
-      );
+      const sampleCells = cols.map((c) => c.key === NAME ? s.fileName : c.key === STATISTIC ? '' : c.key === NCELLS ? (meta[s.id] ? s.eventCount.toLocaleString() : '') : sampleCell(ws, s, c.key) ?? '');
+      rows.push({ key: `${s.id}|`, kind: 'sample', depth: 1, sample: s, popId: null, cells: sampleCells, kids: s.populations.length > 0, open });
       if (!open) continue;
+      if (viewOpts.comp && s.compensation !== 'none') rows.push({ key: `${s.id}|comp`, kind: 'comp', depth: 2, sample: s, popId: null, statLabel: `Compensation: ${sampleCell(ws, s, 'fj.appnode.prop.matrix')}`, cells: cols.map(() => '') });
+      if (viewOpts.dp) for (const d of ws.derivedParameters ?? []) rows.push({ key: `${s.id}|dp:${d.name}`, kind: 'dp', depth: 2, sample: s, popId: null, statLabel: `Derived: ${d.name}`, cells: cols.map(() => '') });
       const walk = (parentId: string | null, depth: number) => {
         for (const p of s.populations.filter((q) => q.parentId === parentId)) {
           const r = res.find((x) => x?.id === p.id);
           const path = populationPath(s.populations, p.id);
-          const kids = s.populations.some((q) => q.parentId === p.id);
-          const statCols = ws.statColumns.map((c, i) => [c, i] as const).filter(([c]) => c.populationPath === path);
-          rows.push(
-            <tr key={`${s.id}:${p.id}`} className={`fj-row ${isSel && sel.popId === p.id ? 'sel' : ''} ${isSel && multi.includes(p.id) ? 'multi' : ''}`} data-testid={`row-${s.fileName}/${path}`}
-              onClick={(e) => selectInTable(s.id, p.id, e)} onDoubleClick={() => openWin(s.id, p.id)}
-              onContextMenu={(e) => { e.preventDefault(); popMenu(s, p.id, e.clientX, e.clientY); }}
-              onDragOver={(e) => accepts(e) && e.preventDefault()} onDrop={onDropOn({ sampleId: s.id, popId: p.id })}>
-              <td style={{ paddingLeft: 6 + depth * 16 }}>
-                <span className="twisty" onClick={(e) => { e.stopPropagation(); if (kids || statCols.length) setCollapsed([p.id], !p.collapsed, s.id); }}>{kids || statCols.length ? (p.collapsed ? '+' : '-') : ''}</span>
-                {renaming === p.id && isSel ? (
-                  <input autoFocus defaultValue={p.name} aria-label="Population name" onBlur={(e) => { renamePop(p.id, e.target.value.trim()); setRenaming(null); }} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />
-                ) : <span onDoubleClick={(e) => { if (isSel && sel.popId === p.id && e.altKey) { e.stopPropagation(); setRenaming(p.id); } }}>{p.gate.type === 'boolean' ? `[${p.gate.op}] ` : ''}{p.exclude ? '[excl] ' : ''}{p.name}{p.owningGroup ? ' (G)' : ''}</span>}
-              </td>
-              <td className="num">{r && r.parentCount > 0 ? formatFreq((100 * r.count) / r.parentCount) : ''}</td>
-              <td className="num">{r?.error ? 'error' : r ? r.count.toLocaleString() : ''}</td>
-            </tr>,
-          );
+          const statCols = viewOpts.stats ? ws.statColumns.map((c, i) => [c, i] as const).filter(([c]) => c.populationPath === path) : [];
+          const platform = viewOpts.platforms && ws.kinetics?.[path];
+          const kids = s.populations.some((q) => q.parentId === p.id) || statCols.length > 0 || !!platform;
+          const cells = cols.map((c) => c.key === NAME ? p.name : c.key === STATISTIC ? (r && r.parentCount > 0 ? formatFreq((100 * r.count) / r.parentCount) : '') : c.key === NCELLS ? (r?.error ? 'error' : r ? r.count.toLocaleString() : '') : populationCell(ws, s, p.id, c.key) ?? '');
+          rows.push({ key: `${s.id}|${p.id}`, kind: 'pop', depth, sample: s, popId: p.id, cells, kids, open: !p.collapsed });
           if (p.collapsed) continue;
-          for (const [c, i] of statCols) rows.push(
-            <tr key={`${s.id}:${p.id}:${c.id}`} className="fj-row stat" data-testid={`row-${s.fileName}/${path}#${colLabel(c)}`}>
-              <td style={{ paddingLeft: 22 + (depth + 1) * 16 }}>{colLabel(c).replace(`${path}: `, '')}</td>
-              <td className="num">{meta[s.id] ? fmtStat(stats[s.id]?.[i] ?? '') : ''}</td>
-              <td />
-            </tr>,
-          );
+          if (platform) rows.push({ key: `${s.id}|${p.id}|kin`, kind: 'platform', depth: depth + 1, sample: s, popId: p.id, statLabel: 'Kinetics', cells: cols.map(() => '') });
+          for (const [c, i] of statCols) {
+            const label = colLabel(c).replace(`${path}: `, '');
+            rows.push({ key: `${s.id}|${p.id}#${c.id}`, kind: 'stat', depth: depth + 1, sample: s, popId: p.id, statLabel: label, label: `${s.fileName}/${path}#${colLabel(c)}`, cells: cols.map((k) => k.key === NAME ? label : k.key === STATISTIC ? (meta[s.id] ? fmtStat(stats[s.id]?.[i] ?? '') : '') : '') });
+          }
           walk(p.id, depth + 1);
         }
       };
-      walk(null, 1);
+      walk(null, 2);
     }
     return rows;
+  };
+  const rowKey = (sid: string, popId: string | null) => `${sid}|${popId ?? ''}`;
+  const sampleTableRows = (): React.ReactNode[] => {
+    const cols = tableColumns(ws);
+    return tableModel().map((row) => {
+      const s = row.sample;
+      const isSel = sel.sampleId === s.id;
+      if (row.kind !== 'sample' && row.kind !== 'pop') {
+        return (
+          <tr key={row.key} className={`fj-row ${row.kind}`} data-testid={row.kind === 'stat' ? `row-${row.label}` : `row-${s.fileName}/${row.statLabel}`}>
+            <td style={{ paddingLeft: 22 + row.depth * 16 - 16 }}>{row.statLabel}</td>
+            {cols.slice(1).map((c, i) => <td key={c.key} className="num">{row.kind === 'stat' ? row.cells[i + 1] : ''}</td>)}
+          </tr>
+        );
+      }
+      const p = row.popId ? s.populations.find((q) => q.id === row.popId) : undefined;
+      const path = p ? populationPath(s.populations, p.id) : '';
+      const selected = isSel && (sel.popId ?? null) === (row.popId ?? null);
+      const marked = rowSel.includes(row.key) || (isSel && !!row.popId && multi.includes(row.popId));
+      return (
+        <tr key={row.key} className={`fj-row ${row.kind === 'sample' ? 'sample' : ''} ${selected ? 'sel' : ''} ${marked && !selected ? 'multi' : ''}`} data-testid={row.kind === 'sample' ? `row-${s.fileName}` : `row-${s.fileName}/${path}`}
+          onClick={(e) => selectInTable(s.id, row.popId, e)} onDoubleClick={() => openWin(s.id, row.popId)}
+          onContextMenu={(e) => { e.preventDefault(); popMenu(s, row.popId, e.clientX, e.clientY); }}
+          onDragOver={(e) => accepts(e) && e.preventDefault()} onDrop={onDropOn({ sampleId: s.id, popId: row.popId })}>
+          {cols.map((c, ci) => {
+            if (c.key === NAME) return (
+              <td key={c.key} style={{ paddingLeft: row.kind === 'sample' ? undefined : 6 + (row.depth - 1) * 16 }}>
+                <span className="twisty" onClick={(e) => { e.stopPropagation(); if (!row.kids) return; if (row.kind === 'sample') setCollapsedSamples((cs) => (cs.includes(s.id) ? cs.filter((x) => x !== s.id) : [...cs, s.id])); else setCollapsed([p!.id], !p!.collapsed, s.id); }}>{row.kids ? (row.open ? '-' : '+') : ''}</span>
+                {row.kind === 'sample' ? (meta[s.id] ? s.fileName : <i className="missing">{s.fileName} (data missing)</i>)
+                  : renaming === p!.id && isSel ? <input autoFocus defaultValue={p!.name} aria-label="Population name" onBlur={(e) => { renamePop(p!.id, e.target.value.trim()); setRenaming(null); }} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />
+                  : <span onDoubleClick={(e) => { if (isSel && sel.popId === p!.id && e.altKey) { e.stopPropagation(); setRenaming(p!.id); } }}>{p!.gate.type === 'boolean' ? `[${p!.gate.op}] ` : ''}{p!.exclude ? '[excl] ' : ''}{p!.name}{p!.owningGroup ? ' (G)' : ''}</span>}
+              </td>
+            );
+            const kw = isKeywordColumn(c.key) ? c.key.slice(3) : null;
+            if (kw && row.kind === 'sample') {
+              const editing = editCell?.sid === s.id && editCell.key === c.key;
+              return (
+                <td key={c.key} data-testid={`cell-${s.fileName}-${kw}`} title={keywordEditable(kw) ? 'Double-click to edit; right-click: Copy value to group' : undefined}
+                  onDoubleClick={(e) => { if (!keywordEditable(kw)) return; e.stopPropagation(); setEditCell({ sid: s.id, key: c.key }); }}
+                  onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); keywordMenu(s.id, kw, e.clientX, e.clientY); }}>
+                  {editing ? <input autoFocus defaultValue={row.cells[ci]} aria-label={`${kw} value`} data-testid="cell-editor"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setEditCell(null); }}
+                    onBlur={(e) => { const v = e.target.value; setEditCell(null); if (v !== row.cells[ci]) updateWs((w) => { setKeyword([w.samples.find((x) => x.id === s.id)!], kw, v); }); }} /> : row.cells[ci]}
+                </td>
+              );
+            }
+            return <td key={c.key} className={c.key === STATISTIC || c.key === NCELLS ? 'num' : undefined}>{row.cells[ci]}</td>;
+          })}
+        </tr>
+      );
+    });
+  };
+  // Keyword cell menu: Copy value to group (WSGroupAction COPYTOGROUP while a
+  // keyword cell is edited: Group.setKeyValue for every member).
+  const keywordMenu = (sid: string, kw: string, x: number, y: number) => {
+    const s = ws.samples.find((q) => q.id === sid);
+    const v = s ? sampleValue(s, kw) ?? '' : '';
+    setCtx({ x, y, items: [
+      { label: 'Edit value', disabled: !keywordEditable(kw), onClick: () => setEditCell({ sid, key: `kw:${kw}` }) },
+      { label: `Copy value to group ("${v}" to ${groupSamples.length} samples)`, disabled: !keywordEditable(kw), onClick: () => { updateWs((w) => { setKeyword(w.samples.filter((q) => groupSamples.some((g) => g.id === q.id)), kw, v); }); note('info', `${kw} = "${v}" in every sample of group ${group?.name}`); } },
+    ] });
+  };
+  // Header: double-click sorts (again: reverse; Shift: descending), a
+  // double-click on the right edge resets the widths, right-click opens Sort
+  // Ascending / Sort Descending / Remove Column / Edit Columns
+  // (STreeMgr.handleColumnHeadClick, WSActionManager.getTableHeaderActions).
+  const sortBy = (key: string, ascending: boolean) => {
+    if (key === STATISTIC) return note('warn', 'The Statistic column cannot be sorted');
+    updateWs((w) => { w.tableSort = [{ key, ascending }, ...(w.tableSort ?? []).filter((k) => k.key !== key)].slice(0, 3); });
+  };
+  const headerMenu = (key: string, x: number, y: number) => setCtx({ x, y, items: [
+    { label: 'Sort Ascending', disabled: key === STATISTIC, onClick: () => sortBy(key, true) },
+    { label: 'Sort Descending', disabled: key === STATISTIC, onClick: () => sortBy(key, false) },
+    null,
+    { label: 'Remove Column', disabled: key === NAME, onClick: () => updateWs((w) => { w.tableColumns = tableColumns(w).filter((c) => c.key !== key); w.tableSort = w.tableSort?.filter((k) => k.key !== key); }) },
+    { label: 'Edit Columns...', onClick: () => setDialog({ kind: 'columns' }) },
+  ] });
+  const resetWidths = () => updateWs((w) => { w.tableColumns = tableColumns(w).map((c) => ({ key: c.key })); });
+  const startResize = (key: string, e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    const th = (e.currentTarget as HTMLElement).parentElement!;
+    const x0 = e.clientX, w0 = th.getBoundingClientRect().width;
+    const move = (ev: MouseEvent) => { th.style.width = `${Math.max(40, w0 + ev.clientX - x0)}px`; };
+    const up = (ev: MouseEvent) => {
+      window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up);
+      const width = Math.round(Math.max(40, w0 + ev.clientX - x0));
+      if (Math.abs(ev.clientX - x0) > 2) updateWs((w) => { w.tableColumns = tableColumns(w).map((c) => (c.key === key ? { ...c, width } : c)); });
+    };
+    window.addEventListener('mousemove', move); window.addEventListener('mouseup', up);
+  };
+  const tableHead = () => (
+    <thead><tr>{tableColumns(ws).map((c) => {
+      const sk = ws.tableSort?.[0]?.key === c.key ? ws.tableSort[0] : undefined;
+      return (
+        <th key={c.key} style={c.width ? { width: c.width } : undefined} data-testid={`col-${columnLabel(c.key)}`}
+          onDoubleClick={(e) => sortBy(c.key, sk ? !sk.ascending : !e.shiftKey)}
+          onContextMenu={(e) => { e.preventDefault(); headerMenu(c.key, e.clientX, e.clientY); }} title="Double-click to sort; right-click for column commands">
+          {columnLabel(c.key)}{sk ? (sk.ascending ? ' ▲' : ' ▼') : ''}
+          <span className="col-resize" onMouseDown={(e) => startResize(c.key, e)} onDoubleClick={(e) => { e.stopPropagation(); resetWidths(); }} />
+        </th>
+      );
+    })}</tr></thead>
+  );
+  // Expand / Collapse Selection (WSTreeTableAction TREEEXPANDLEVEL /
+  // TREECOLLAPSELEVEL -> STreeTable.collapseLevel): every selected row and its subtree.
+  const selectedRowKeys = () => (rowSel.length ? rowSel : sel.sampleId ? [rowKey(sel.sampleId, sel.popId)] : []);
+  const expandSelection = (collapse: boolean) => {
+    const keys = selectedRowKeys();
+    const sampleRows = keys.filter((k) => k.endsWith('|')).map((k) => k.slice(0, -1));
+    if (sampleRows.length) setCollapsedSamples((cs) => (collapse ? [...new Set([...cs, ...sampleRows])] : cs.filter((x) => !sampleRows.includes(x))));
+    updateWs((w) => {
+      for (const k of keys) {
+        const [sid, pid] = k.split('|');
+        const sw = w.samples.find((x) => x.id === sid);
+        if (!sw) continue;
+        const roots = pid ? [pid] : sw.populations.filter((p) => p.parentId === null).map((p) => p.id);
+        for (const id of subtreeIds(sw.populations, roots)) { const p = sw.populations.find((q) => q.id === id)!; if (collapse) p.collapsed = true; else delete p.collapsed; }
+      }
+    });
+  };
+  // Select All (Ctrl/Cmd+A, NodeSelectionAction SELECTALLNODES -> selectAll):
+  // every row of the table; the samples are also checked (cross-sample selection).
+  const selectAllNodes = () => {
+    const rows = tableModel().filter((r) => r.kind === 'sample' || r.kind === 'pop');
+    setRowSel(rows.map((r) => r.key));
+    setChecked(groupSamples.map((s) => s.id));
+    if (sample) setMulti(sample.populations.map((p) => p.id));
+    note('info', `Selected ${rows.length} node(s)`);
+  };
+  // Export to Excel (SampleTreeTable.writeExcel): the visible table with a Depth column.
+  const exportExcel = () => {
+    const cols = tableColumns(ws);
+    const rows = excelRows(cols.map((c) => columnLabel(c.key)), tableModel());
+    download(`${(ws.name || 'workspace').replace(/\.(wsp|json|wspt)$/i, '')}.xlsx`, xlsxBytes(ws.name || 'Workspace', rows) as BlobPart, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    note('info', `Exported ${rows.length - 1} table row(s) to Excel`);
   };
 
   // Panel contents, shared by the classic layout and the FlowJo-style layout.
@@ -1375,6 +1722,10 @@ export function App() {
                 <button disabled={multi.length < 2} onClick={() => makeBoolean('and')} title="Ctrl-click populations to multi-select">AND</button>
                 <button disabled={multi.length < 2} onClick={() => makeBoolean('or')}>OR</button>
                 <button disabled={!notOperand} onClick={() => makeBoolean('not')} data-testid="bool-not" title="NOT of the selected population">NOT</button>
+                <button disabled={boolTargets().length < 2 || boolTargets().length > MAX_COMBINATION} onClick={makeCombo} data-testid="bool-combo" title="Create Combination Gates: mix the positive and negative gates of all selected populations (2 to 12)">Combination</button>
+                <button disabled={!boolTargets().length} onClick={makeIdentity} data-testid="bool-identity" title="Identical Gate: a reference to each selected gate, to place elsewhere in the tree">Identical</button>
+                <button onClick={() => setDialog({ kind: 'boolExpr' })} data-testid="bool-expr-open" title="Boolean Expression... (mixed and / or / not; own rule)">Expression...</button>
+                <button disabled={sample.populations.find((p) => p.id === sel.popId)?.gate.type !== 'boolean'} onClick={() => setDialog({ kind: 'boolExpr', editId: sel.popId! })} data-testid="bool-edit" title="Edit the selected boolean gate's expression">Edit boolean...</button>
                 <button disabled={!sel.popId} onClick={() => deletePop(sel.popId!)} data-testid="delete-pop">Delete</button>
                 <button
                   disabled={!sel.popId || sample.populations.find((p) => p.id === sel.popId)?.gate.type === 'boolean'}
@@ -1689,8 +2040,8 @@ export function App() {
           <button onClick={() => setDialog({ kind: 'layout' })} data-testid="open-layout" title="Layout Editor (Ctrl/Cmd+L)">Layout ({ws.layout?.length ?? 0})</button>
         </span>
         <span className="band" aria-label="Document"><span className="band-label">Document</span>
-          <label className="file-btn">Open workspace / FlowJo .wsp<input type="file" accept=".json,.wsp,.frea" data-testid="open-ws" onChange={(e) => { const f = e.target.files?.[0]; if (f) openWorkspace(f); e.target.value = ''; }} /></label>
-          <button data-testid="save-ws" title="Save (Ctrl/Cmd+S)" onClick={() => { setSavedOnce(true); download(`${ws.name.replace(/\.(wsp|json)$/i, '') || 'workspace'}.frea.json`, serializeWorkspace(ws), 'application/json'); }}>Save workspace</button>
+          <label className="file-btn">Open workspace / FlowJo .wsp<input type="file" accept=".json,.wsp,.frea,.wspt,.zip,.acs" data-testid="open-ws" onChange={(e) => { const f = e.target.files?.[0]; if (f) openWorkspace(f); e.target.value = ''; }} /></label>
+          <button data-testid="save-ws" title="Save (Ctrl/Cmd+S)" onClick={() => { setSavedOnce(true); baselineRef.current = ws; download(`${ws.name.replace(/\.(wsp|json)$/i, '') || 'workspace'}.frea.json`, serializeWorkspace(ws), 'application/json'); }}>Save workspace</button>
           <label className="file-btn">Import Gating-ML<input type="file" accept=".xml" data-testid="import-gml" onChange={(e) => { const f = e.target.files?.[0]; if (f) importGatingMl(f); e.target.value = ''; }} /></label>
           <button disabled={!sample} onClick={() => setDialog({ kind: 'export' })} data-testid="open-export" title="Export / Concatenate (Ctrl/Cmd+E)">Export</button>
         </span>
@@ -1768,10 +2119,16 @@ export function App() {
           </>}
           {ribbonTab === 'File' && <>
             <div className="fj-band"><div className="fj-band-body">
-              <label className="file-btn">Open...<input type="file" accept=".json,.wsp,.frea" data-testid="open-ws" onChange={(e) => { const f = e.target.files?.[0]; if (f) openWorkspace(f); e.target.value = ''; }} /></label>
-              <button data-testid="save-ws" title="Save (Ctrl/Cmd+S)" onClick={() => { setSavedOnce(true); download(`${ws.name.replace(/\.(wsp|json)$/i, '') || 'workspace'}.frea.json`, serializeWorkspace(ws), 'application/json'); }}>Save</button>
+              <label className="file-btn">Open...<input type="file" accept=".json,.wsp,.frea,.wspt,.zip,.acs" data-testid="open-ws" onChange={(e) => { const f = e.target.files?.[0]; if (f) openWorkspace(f); e.target.value = ''; }} /></label>
+              <button data-testid="save-ws" title="Save (Ctrl/Cmd+S)" onClick={() => { setSavedOnce(true); baselineRef.current = ws; download(`${ws.name.replace(/\.(wsp|json)$/i, '') || 'workspace'}.frea.json`, serializeWorkspace(ws), 'application/json'); }}>Save</button>
               <label className="file-btn">Import Gating-ML<input type="file" accept=".xml" data-testid="import-gml" onChange={(e) => { const f = e.target.files?.[0]; if (f) importGatingMl(f); e.target.value = ''; }} /></label>
               <button disabled={!sample} onClick={() => setDialog({ kind: 'export' })} data-testid="open-export">Export / Concatenate</button>
+              <label className="file-btn" title="Search for FCS files: choose a folder; every FCS file under it is added">Search for FCS files...<input type="file" multiple {...{ webkitdirectory: '', directory: '' }} data-testid="add-folder" onChange={(e) => { if (e.target.files) addFolder(e.target.files); e.target.value = ''; }} /></label>
+              <button disabled={!ws.samples.length} onClick={exportExcel} data-testid="export-excel" title="Export to Excel: the workspace table as shown (.xlsx)">Export to Excel</button>
+              <button onClick={exportTemplate} data-testid="export-template" title="Export as Template (WSPT): groups and their analysis, no samples">Export as Template</button>
+              <button disabled={!ws.samples.length} onClick={() => void saveArchive()} data-testid="save-archive" title="Save as Archive: workspace and FCS files in one ZIP">Save as Archive</button>
+              <button onClick={() => void revertWs()} data-testid="revert-ws" title="Revert workspace to original state">Revert</button>
+              <button onClick={() => void closeWs()} data-testid="close-ws" title="Closes this current workspace">Close</button>
             </div><div className="fj-band-title">Document</div></div>
             <div className="fj-band"><div className="fj-band-body">
               <button disabled={!ws.samples.length} onClick={() => setDialog({ kind: 'find' })} data-testid="open-find">Find</button>
@@ -1785,13 +2142,44 @@ export function App() {
             </div><div className="fj-band-title">Clipboard</div></div>
             <div className="fj-band"><div className="fj-band-body">
               <button disabled={!sample} onClick={selectEquivalent} data-testid="ribbon-select-equivalent">Select Equivalent Nodes</button>
+              <button disabled={!groupSamples.length} onClick={selectAllNodes} data-testid="ribbon-select-all" title="Select All (Ctrl/Cmd+A): all nodes in the workspace">Select All</button>
             </div><div className="fj-band-title">Select</div></div>
             <div className="fj-band"><div className="fj-band-body">
               <button disabled={!ws.samples.length} onClick={() => { setCollapsed('all', false); setCollapsedSamples([]); }} data-testid="expand-all">Expand All</button>
               <button disabled={!ws.samples.length} onClick={() => { setCollapsed('all', true); setCollapsedSamples(groupSamples.map((x) => x.id)); }} data-testid="collapse-all">Collapse All</button>
+              <button disabled={!sel.sampleId} onClick={() => expandSelection(false)} data-testid="expand-selection" title="Expand all selected tree nodes">Expand Selection</button>
+              <button disabled={!sel.sampleId} onClick={() => expandSelection(true)} data-testid="collapse-selection" title="Collapse all selected tree nodes">Collapse Selection</button>
             </div><div className="fj-band-title">Expand</div></div>
           </>}
-          {ribbonTab === 'Workspace' && <div className="fj-band wide"><div className="fj-band-body column">{popActionsBlock ?? <span className="muted">Select a sample or population in the table.</span>}</div><div className="fj-band-title">Populations / Groups / Boolean</div></div>}
+          {ribbonTab === 'Workspace' && <>
+            <div className="fj-band wide"><div className="fj-band-body column">{popActionsBlock ?? <span className="muted">Select a sample or population in the table.</span>}</div><div className="fj-band-title">Populations / Groups / Boolean</div></div>
+            <div className="fj-band"><div className="fj-band-body column">
+              <button disabled={!sample} onClick={() => setDialog({ kind: 'addStat' })} data-testid="open-add-stat" title="Add Statistic... (several statistics and parameters for the selected populations)">Add Statistic...</button>
+              <button onClick={recalcStats} data-testid="recalc-stats" title="Recalculate Statistics: refresh all statistics in this workspace">Recalculate</button>
+            </div><div className="fj-band-title">Statistics</div></div>
+            <div className="fj-band"><div className="fj-band-body column">
+              <button disabled={!groupSamples.length} onClick={() => setDialog({ kind: 'addKeywordGroup' })} data-testid="add-key-group" title="Add Keyword to Group: a new keyword for the samples of the current group">Add Keyword to Group</button>
+              <button disabled={!groupSamples.length} onClick={() => void pasteKeywordToGroup()} data-testid="paste-key-group" title="Paste keyword to group: the clipboard's keyword value(s) into the current group">Paste keyword to group</button>
+              <button disabled={!sel.sampleId} onClick={() => setDialog({ kind: 'series' })} data-testid="open-series" title="Create keyword value series...">Keyword value series...</button>
+            </div><div className="fj-band-title">Keywords</div></div>
+            <div className="fj-band"><div className="fj-band-body column">
+              <button onClick={() => setDialog({ kind: 'columns' })} data-testid="edit-columns" title="Edit Columns...: the keyword columns shown in the workspace window">Edit Columns...</button>
+              <button onClick={resetWidths} data-testid="reset-widths" title="Reset Column Widths">Reset Column Widths</button>
+              {[0, 1, 2].map((i) => (
+                <label key={i} title="Sort 1 / 2 / 3: samples sorted by these columns in turn">Sort {i + 1} <select value={ws.tableSort?.[i]?.key ?? ''} data-testid={`sort-${i + 1}`} disabled={i > (ws.tableSort?.length ?? 0)}
+                  onChange={(e) => updateWs((w) => { const ks = [...(w.tableSort ?? [])]; if (e.target.value) ks[i] = { key: e.target.value, ascending: ks[i]?.ascending ?? true }; else ks.splice(i); w.tableSort = ks.filter(Boolean); })}>
+                  <option value="">(none)</option>
+                  {[NAME, ...groupKeys.map((k) => `kw:${k}`)].map((k) => <option key={k} value={k}>{columnLabel(k)}</option>)}
+                </select>{ws.tableSort?.[i] && <button className="link" data-testid={`sort-dir-${i + 1}`} onClick={() => updateWs((w) => { w.tableSort![i].ascending = !w.tableSort![i].ascending; })}>{ws.tableSort[i].ascending ? 'asc' : 'desc'}</button>}</label>
+              ))}
+            </div><div className="fj-band-title">Columns / Sort</div></div>
+            <div className="fj-band"><div className="fj-band-body column">
+              <button onClick={() => setViewOpts((v) => ({ ...v, stats: !v.stats }))} data-testid="toggle-stats" title="Show/hide the display of statistics in the workspace">{viewOpts.stats ? 'Hide Stats' : 'Show Stats'}</button>
+              <button onClick={() => setViewOpts((v) => ({ ...v, comp: !v.comp }))} data-testid="toggle-comp" title="Show/hide the display of compensation nodes in the workspace">{viewOpts.comp ? 'Hide Compensation Nodes' : 'Show Compensation Nodes'}</button>
+              <button onClick={() => setViewOpts((v) => ({ ...v, platforms: !v.platforms }))} data-testid="toggle-platforms" title="Show/hide the display of platform analyses in the workspace">{viewOpts.platforms ? 'Hide Platforms' : 'Show Platforms'}</button>
+              <button onClick={() => setViewOpts((v) => ({ ...v, dp: !v.dp }))} data-testid="toggle-dp" title="Show/hide the display of derived parameters in the workspace">{viewOpts.dp ? 'Hide Derived Parameters' : 'Show Derived Parameters'}</button>
+            </div><div className="fj-band-title">View</div></div>
+          </>}
           {ribbonTab === 'Tools' && <>
             <div className="fj-band"><div className="fj-band-body">
               <button disabled={!sMeta} onClick={() => setDialog({ kind: 'derived' })} data-testid="open-derived">Derive Parameters ({ws.derivedParameters?.length ?? 0})</button>
@@ -1825,7 +2213,7 @@ export function App() {
           </div>
           <div className="fj-table-wrap">
             <table className="fj-table" data-testid="sample-table">
-              <thead><tr><th>Name</th><th>Statistic</th><th>#Cells</th></tr></thead>
+              {tableHead()}
               <tbody>{sampleTableRows()}</tbody>
             </table>
             {!groupSamples.length && <p className="muted">Add samples (or drop FCS files here), then double-click a sample to open its graph window.</p>}
@@ -1956,6 +2344,23 @@ export function App() {
             groupNames={ws.groups.filter((x) => x.id !== g?.id).map((x) => x.name)}
             takenNames={ws.groups.filter((x) => x.id !== g?.id).map((x) => x.name)}
             onClose={() => setDialog(null)}
+            onMultiple={(d) => {
+              // GroupDlog.createMultipleGroups: the criteria plus one stain set each, named by the stain set.
+              const made: string[] = [];
+              updateWs((w) => {
+                for (const st of d.criteria.stains ?? []) {
+                  const name = uniqueName(st, w.groups.map((x) => x.name));
+                  const n: Group = { id: newId('grp'), name, sampleIds: [], criteria: { ...d.criteria, stains: [st] } };
+                  if (d.role !== 'undefined') n.role = d.role;
+                  if (d.synchronized) n.synchronized = true;
+                  if (d.fontStyle && d.fontStyle !== 'plain') n.fontStyle = d.fontStyle;
+                  w.groups.push(n);
+                  made.push(name);
+                }
+              });
+              setDialog(null);
+              note('info', `Created ${made.length} group(s): ${made.join(', ')}`);
+            }}
             onSave={(d) => {
               updateWs((w) => {
                 const target = g ? w.groups.find((x) => x.id === g.id)! : (() => { const n: Group = { id: newId('grp'), name: d.name, sampleIds: [...checked] }; w.groups.push(n); return n; })();
@@ -2001,6 +2406,30 @@ export function App() {
           onClose={() => setDialog(null)}
         />
       )}
+      {dialog?.kind === 'naming' && sample && (
+        <NamingDialog names={dialog.ids.map((id) => sample.populations.find((p) => p.id === id)?.name ?? id)} onClose={() => setDialog(null)} onOk={(abbr) => { const d = dialog; setDialog(null); finishNaming(d.op, d.ids, abbr); }} />
+      )}
+      {dialog?.kind === 'boolExpr' && sample && (() => {
+        const target = dialog.editId ? sample.populations.find((p) => p.id === dialog.editId) : undefined;
+        const parentId = target ? target.parentId : sel.popId ? sample.populations.find((p) => p.id === sel.popId)?.parentId ?? null : null;
+        return <BooleanExprDialog title={target ? `Edit Boolean Gate: ${target.name}` : 'Boolean Expression'} initial={target ? exprOfGate(sample, target.id) : ''}
+          names={sample.populations.filter((p) => p.parentId === parentId && p.id !== target?.id).map((p) => p.name)}
+          onOk={(text) => applyBoolExpr(text, target?.id)} onClose={() => setDialog(null)} />;
+      })()}
+      {dialog?.kind === 'columns' && <EditColumnsDialog columns={tableColumns(ws)} keywords={groupKeys} onClose={() => setDialog(null)} onOk={(c) => { updateWs((w) => { w.tableColumns = c; w.tableSort = w.tableSort?.filter((k) => c.some((x) => x.key === k.key)); }); setDialog(null); }} />}
+      {dialog?.kind === 'addStat' && <AddStatDialog targets={statTargets()} channels={channels.map((c) => c.name)} onOk={addStats} onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'series' && (() => {
+        const ordered = sortSamples(ws, groupSamples);
+        const start = Math.max(0, ordered.findIndex((s) => s.id === sel.sampleId));
+        return <ValueSeriesDialog keywords={[...new Set([...tableKeywords, ...annotationKeys])]} startName={ordered[start]?.fileName ?? ''} available={ordered.length - start} onOk={applySeries} onClose={() => setDialog(null)} />;
+      })()}
+      {dialog?.kind === 'addKeywordGroup' && <AddKeywordDialog onClose={() => setDialog(null)} onOk={(raw) => {
+        const name = keywordName(raw);
+        if (!name) return;
+        updateWs((w) => { setKeyword(w.samples.filter((s) => groupSamples.some((g) => g.id === s.id)), name, '', true); if (!tableColumns(w).some((c) => c.key === `kw:${name}`)) w.tableColumns = [...tableColumns(w), { key: `kw:${name}` }]; });
+        note('info', `Keyword "${name}" added to the ${groupSamples.length} sample(s) of group ${group?.name}`);
+        setDialog(null);
+      }} />}
       {ctx && <ContextMenu x={ctx.x} y={ctx.y} items={ctx.items} onClose={() => setCtx(null)} />}
       {naming && sample && (
         <GateNamerDialog
@@ -2094,6 +2523,9 @@ export function App() {
         <ExportDialog
           popLabel={popPath || 'All events'}
           hasData={!!sMeta}
+          initialMode={dialog.mode}
+          selectedCount={exportTargets('populations').length}
+          groupCount={exportTargets('group').length}
           onClose={() => setDialog(null)}
           params={channels.map((c) => c.name)}
           keywords={groupKeys}
@@ -2148,11 +2580,11 @@ export interface EventExportOptions {
   maxEvents?: number;
   header: HeaderFormat;
   writeHeader: boolean;
-  mode: 'export' | 'concatenate';
+  mode: 'export' | 'concatenate' | 'populations' | 'group';
   concat: ConcatMode;
 }
 
-function ExportDialog(p: { popLabel: string; hasData: boolean; params: string[]; keywords: string[]; onClose: () => void; onEvents: (o: EventExportOptions) => void; onPng: () => void; onSvg: () => void; onGatingMl: () => void; onWsp: () => void }) {
+function ExportDialog(p: { popLabel: string; hasData: boolean; initialMode?: 'group'; selectedCount: number; groupCount: number; params: string[]; keywords: string[]; onClose: () => void; onEvents: (o: EventExportOptions) => void; onPng: () => void; onSvg: () => void; onGatingMl: () => void; onWsp: () => void }) {
   // FlowJo 10's "Export or Concatenate" options (specs 9).
   const [params, setParams] = useState<EventExportOptions['params']>('compensated');
   const [custom, setCustom] = useState<string[]>(p.params);
@@ -2160,7 +2592,7 @@ function ExportDialog(p: { popLabel: string; hasData: boolean; params: string[];
   const [cap, setCap] = useState(10000);
   const [header, setHeader] = useState<HeaderFormat>('p');
   const [writeHeader, setWriteHeader] = useState(true);
-  const [mode, setMode] = useState<EventExportOptions['mode']>('export');
+  const [mode, setMode] = useState<EventExportOptions['mode']>(p.initialMode ?? 'export');
   const [concatKind, setConcatKind] = useState<'all' | 'everyN' | 'equalKeyword'>('all');
   const [everyN, setEveryN] = useState(2);
   const [concatKey, setConcatKey] = useState('');
@@ -2178,6 +2610,8 @@ function ExportDialog(p: { popLabel: string; hasData: boolean; params: string[];
           <div className="row">
             <label><input type="radio" checked={mode === 'export'} onChange={() => setMode('export')} data-testid="exp-mode-export" /> Export this population</label>
             <label><input type="radio" checked={mode === 'concatenate'} onChange={() => setMode('concatenate')} data-testid="exp-mode-concat" /> Concatenate the group</label>
+            <label title="Export / Concatenate Populations: every selected population (Ctrl-click rows in the table), one file each"><input type="radio" checked={mode === 'populations'} onChange={() => setMode('populations')} data-testid="exp-mode-pops" /> Selected populations ({p.selectedCount}), one file each</label>
+            <label title="Export / Concatenate Group: this population in each sample of the group, one file each"><input type="radio" checked={mode === 'group'} onChange={() => setMode('group')} data-testid="exp-mode-group" /> Each sample of the group ({p.groupCount}), one file each</label>
           </div>
           {mode === 'concatenate' && (
             <div className="row">

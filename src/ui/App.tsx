@@ -15,6 +15,7 @@ import { channelDisplayName } from '../core/fcs';
 import { readMtx } from '../core/compFlowjo';
 import { EVENT_NUMBER } from '../core/formula';
 import { AddKeywordDialog, CompensationDialog, DerivedDialog, FindDialog, GateNamerDialog, KeywordsDialog, TransformDialog } from './Dialogs';
+import { MATRIX_DRAG_TYPE } from './CompEditor';
 import { GroupDialog } from './GroupDialog';
 import { ContextMenu, GateActions, ManualGateDialog, type MenuItem } from './GateActions';
 import { everyNth, FLOWJO_FUNCTIONS, removeFromGroup, stainSet } from '../core/groupCriteria';
@@ -915,11 +916,19 @@ export function App() {
     e.dataTransfer.setData(POP_TYPE, JSON.stringify({ sampleId: sample.id, popId }));
     e.dataTransfer.effectAllowed = 'copy';
   };
-  const accepts = (e: React.DragEvent) => e.dataTransfer.types.includes(POP_TYPE) || e.dataTransfer.types.includes('Files');
+  const accepts = (e: React.DragEvent) => e.dataTransfer.types.includes(POP_TYPE) || e.dataTransfer.types.includes('Files') || e.dataTransfer.types.includes(MATRIX_DRAG_TYPE);
   const onDropOn = (target: { sampleId?: string; popId?: string | null; groupId?: string }) => (e: React.DragEvent) => {
     if (!accepts(e)) return;
     e.preventDefault();
     e.stopPropagation();
+    // The compensation editor's Matrix Icon applies its matrix to the sample
+    // or group it is dropped on (plat.comp.apply.drag).
+    const matrixId = e.dataTransfer.getData(MATRIX_DRAG_TYPE);
+    if (matrixId) {
+      const ids = target.groupId ? ws.groups.find((g) => g.id === target.groupId)?.sampleIds ?? [] : [target.sampleId ?? sample?.id ?? ''];
+      updateWs((w) => { for (const s of w.samples) if (ids.includes(s.id)) s.compensation = matrixId; });
+      return note('info', `Compensation set to ${matrixId} for ${ids.length} sample(s)`);
+    }
     if (e.dataTransfer.files.length) return void dropFiles(e.dataTransfer.files, target);
     const raw = e.dataTransfer.getData(POP_TYPE);
     if (!raw) return;
@@ -2051,6 +2060,15 @@ export function App() {
             return res;
           }}
           pathsBySample={Object.fromEntries(groupSamples.map((s) => [s.id, s.populations.map((q) => populationPath(s.populations, q.id))]))}
+          samples={ws.samples.map((s) => ({ id: s.id, fileName: s.fileName, loaded: !!meta[s.id], paths: s.populations.map((q) => populationPath(s.populations, q.id)) }))}
+          preview={{ sampleId: sample.id, path: popPath }}
+          groups={ws.groups.map((g) => ({ id: g.id, name: g.name }))}
+          transformFor={(ch) => { const c = sMeta?.channels.find((x) => x.name === ch); return ws.channelTransforms[ch] ?? (c && sMeta ? defaultTransform(c, sMeta.keywords) : undefined); }}
+          onPreview={(sampleId, path, chans) => {
+            const s = ws.samples.find((x) => x.id === sampleId)!;
+            const pop = path ? s.populations.find((q) => populationPath(s.populations, q.id) === path) : null;
+            return client.compPreview({ sampleId, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters, popId: pop?.id ?? null, channels: chans, maxEvents: 3000 });
+          }}
           onFlowjoWizard={async (entries) => {
             const sm = (id: string) => ws.samples.find((x) => x.id === id)!;
             const controls = entries.map((e) => { const s = sm(e.sampleId), n = sm(e.negSampleId || e.sampleId); return { sampleId: s.id, compensation: s.compensation, populations: s.populations, primary: e.primary, posPath: e.posPath, negPath: e.negPath, neg: { sampleId: n.id, compensation: n.compensation, populations: n.populations } }; });
@@ -2067,10 +2085,11 @@ export function App() {
           }}
           onAssign={(ref, scope) => {
             updateWs((w) => {
-              const ids = scope === 'sample' ? [sample.id] : w.groups.find((g) => g.id === groupId)!.sampleIds;
+              const gid = scope.startsWith('group:') ? scope.slice(6) : groupId;
+              const ids = scope === 'sample' ? [sample.id] : scope === 'workspace' ? w.samples.map((s) => s.id) : w.groups.find((g) => g.id === gid)?.sampleIds ?? [];
               for (const s of w.samples) if (ids.includes(s.id)) s.compensation = ref;
             });
-            note('info', `Compensation set to ${ref} for ${scope === 'sample' ? sample.fileName : `group ${group?.name}`}`);
+            note('info', `Compensation set to ${ref} for ${scope === 'sample' ? sample.fileName : scope === 'workspace' ? 'all samples' : `group ${ws.groups.find((g) => g.id === (scope.startsWith('group:') ? scope.slice(6) : groupId))?.name}`}`);
           }}
         />
       )}

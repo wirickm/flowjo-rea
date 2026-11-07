@@ -424,7 +424,8 @@ await page.getByTestId('wizard').locator('summary').click();
 for (const [f, pr] of ctrlFiles) await page.getByTestId(`wizard-role-${f}`).selectOption(pr ?? 'unstained');
 await page.getByTestId('wizard-run').click();
 await page.getByTestId('wizard-diagnostics').waitFor({ timeout: 30000 });
-const cells = await page.locator('table.matrix tbody tr').evaluateAll((rows) => rows.map((r) => [...r.querySelectorAll('input')].map((i) => Number(i.value))));
+// Matrix cells show percent (FlowJo "Use Percent for spillover", default on).
+const cells = await page.locator('table.matrix tbody tr').evaluateAll((rows) => rows.map((r) => [...r.querySelectorAll('input')].map((i) => Number(i.value) / 100)));
 const worst = Math.max(...cells.flatMap((row, i) => row.map((v, j) => Math.abs(v - TRUE[i][j]))));
 await page.getByRole('button', { name: 'Save and apply to sample' }).click();
 const applied = await page.getByTestId('comp-current').textContent();

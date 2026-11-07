@@ -2077,6 +2077,22 @@ export function App() {
             note('info', `FlowJo compensation wizard: ${res.status}`);
             return res;
           }}
+          onOptimizeWeights={async (matrix, picks, onProgress, cancelled) => {
+            // FlowJo statistics of an unmixed fluorochrome use its scale; a
+            // fluorochrome without one gets the default logicle display scale.
+            const fluors = matrix.outputNames ?? [];
+            const sc = statScales(ws.channelTransforms, sample.flowjoLinearRanges, fluors);
+            const scales = fluors.map((f) => sc[f] ?? ({ kind: 'logicle', T: 262144, W: 0.5, M: 4.5, A: 0 } as const));
+            const ref = (q: { sampleId: string; path: string }) => { const s = ws.samples.find((x) => x.id === q.sampleId)!; return { sampleId: s.id, compensation: s.compensation, populations: s.populations, path: q.path }; };
+            const start = await client.weightOptStart({ matrix, controls: picks.map((c) => ({ pos: ref(c.pos), neg: ref(c.neg) })), scales, matrices: ws.matrices });
+            onProgress(start);
+            for (;;) {
+              if (cancelled()) { await client.weightOptCancel(start.id); note('info', 'Weight optimization canceled'); return null; }
+              const r = await client.weightOptStep(start.id);
+              onProgress(r);
+              if (r.done) { note('info', `Optimized weights for ${matrix.name} in ${r.iterations} iterations`); return { weights: r.weights!, ssm: r.ssm!, iterations: r.iterations! }; }
+            }
+          }}
           onEstimateAf={async (sampleId, detectors, gatePath) => {
             const s = ws.samples.find((x) => x.id === sampleId)!;
             const spectrum = await client.estimateAf({ sampleId, detectors, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, gatePath });

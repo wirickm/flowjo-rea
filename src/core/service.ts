@@ -13,6 +13,7 @@ import { populationPath } from './model';
 import { fingerprint } from './project';
 import { channelOf, valueOf, type ChannelScale } from './flowjoStats';
 import { flowjoWizard, spilloverSpreading, type FlowjoWizardResult, type WizardEntry, type WizardPopulation } from './compFlowjo';
+import { createWeightSearch, ssmForWeights, type WeightOptProgress, type WeightSearch, type WeightOptInput } from './weightOptimizer';
 import { BIFUR_BINS, bifurValley, smoothHistogram1D } from './gateTools';
 import { computeStat, gather, validPercentile } from './stats';
 import { makeTransform, type TransformSpec } from './transforms';
@@ -106,10 +107,14 @@ export interface PlatformRequest extends AnalyzeRequest {
   channel: string;
 }
 
+export interface WeightOptPopRef { sampleId: string; compensation: string; populations: Population[]; path: string }
+
 export class AnalysisService {
   private files = new Map<string, FcsFile>();
   private bytes = new Map<string, { fileName: string; bytes: Uint8Array }>();
   private engines = new Map<string, { key: string; engine: SampleEngine }>();
+  private weightOpts = new Map<number, { input: WeightOptInput; search: WeightSearch }>();
+  private weightOptSeq = 0;
 
   async load(sampleId: string, fileName: string, bytes: Uint8Array, datasetIndex = 0): Promise<SampleMeta> {
     const f = parseFcs(bytes, { datasetIndex });
@@ -338,6 +343,48 @@ export class AnalysisService {
     });
     const res = flowjoWizard(entries, r.detectors, r.scales, r.name);
     return { ...res, ssm: spilloverSpreading(entries, r.detectors, r.scales) };
+  }
+
+  // Optimize Weights (CompCommand.OPTIMIZEWT, SSM-based): one control per
+  // fluorochrome of the spectral matrix, with its positive and negative
+  // populations; raw detector values are gathered once, then the search runs
+  // in short slices (weightOptStep) so the editor can show progress.
+  weightOptStart(r: { matrix: SpilloverMatrix; controls: { pos: WeightOptPopRef; neg: WeightOptPopRef }[]; scales: ChannelScale[]; matrices: SpilloverMatrix[] }): { id: number } & WeightOptProgress {
+    const pops: Float64Array[][] = [];
+    const keys = new Map<string, number>();
+    const ref = (p: WeightOptPopRef): number => {
+      const k = `${p.sampleId}|${p.path}`;
+      const have = keys.get(k);
+      if (have !== undefined) return have;
+      const f = this.files.get(p.sampleId);
+      if (!f) throw new AppError('WORKSPACE_INVALID', 'Control sample data is not loaded');
+      const pop = p.populations.find((x) => populationPath(p.populations, x.id) === p.path);
+      if (!pop) throw new AppError('GATE_INVALID', `Population "${p.path}" is missing in ${f.keywords['$FIL'] ?? p.sampleId}`);
+      const eng = this.engine({ sampleId: p.sampleId, compensation: p.compensation, populations: p.populations, matrices: r.matrices });
+      const mask = eng.masks.get(pop.id)!;
+      pops.push(r.matrix.channels.map((d) => gather(eng.column(d, 'uncompensated'), mask)));
+      keys.set(k, pops.length - 1);
+      return pops.length - 1;
+    };
+    const input: WeightOptInput = { matrix: r.matrix, populations: pops, controls: r.controls.map((c) => ({ pos: ref(c.pos), neg: ref(c.neg) })), scales: r.scales };
+    const search = createWeightSearch(input);
+    const id = ++this.weightOptSeq;
+    this.weightOpts.set(id, { input, search });
+    return { id, ...search.progress };
+  }
+  // Runs detector steps for about `ms` milliseconds; when the search is done
+  // returns the weights and the SSM at those weights.
+  weightOptStep(id: number, ms = 150): WeightOptProgress & { done: boolean; weights?: number[]; ssm?: number[][]; iterations?: number } {
+    const o = this.weightOpts.get(id);
+    if (!o) throw new AppError('COMP_INVALID', 'No weight optimisation is running');
+    const t0 = Date.now();
+    while (o.search.step() && Date.now() - t0 < ms) { /* next detector */ }
+    if (!o.search.done) return { done: false, ...o.search.progress };
+    this.weightOpts.delete(id);
+    return { done: true, ...o.search.progress, weights: o.search.weights, ssm: ssmForWeights(o.input, o.search.weights), iterations: o.search.iteration };
+  }
+  weightOptCancel(id: number): void {
+    this.weightOpts.delete(id);
   }
 
   // Population values for export, with FlowJo's event cap applied.

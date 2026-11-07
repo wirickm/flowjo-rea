@@ -12,7 +12,9 @@ Code: `src/core/compEditor.ts` (rules), `src/ui/CompEditor.tsx` (plot grid,
 weights panel), `src/ui/Dialogs.tsx` `CompensationDialog` (editor UI),
 `src/core/service.ts` `compPreview` (preview events), `src/core/compensation.ts`
 (weights, SSM fields). Tests: `tests/comp-editor.test.ts` (unit),
-`e2e/comp-gaps.mjs` (31 checks).
+`e2e/comp-gaps.mjs` (38 checks). Optimize Weights: `src/core/weightOptimizer.ts`
+(rules), `src/ui/CompEditor.tsx` `OptimizeWeightsPanel`, `src/core/service.ts`
+`weightOptStart` / `weightOptStep` (worker), `tests/weight-optimizer.test.ts`.
 
 Which action handles which command: `MatrixActionManager.createActions`
 builds `MatrixAction` for APPLYWORKSPACE, APPLYGROUP, SHOWHTML, MAKEMOVIE,
@@ -263,19 +265,109 @@ Status legend: Done (test), Own rule (deliberate difference), Deferred
   Weights ... weighted least squares", "a weights file with other detectors
   is refused"). For a spectral matrix a Weights button opens the panel; Close
   stores the weights on the matrix (`SpilloverMatrix.weights`) and unmixing
-  becomes weighted least squares, M = W S^T (S W S^T)^-1. Own rule: default
-  weights are 1 (ordinary least squares); FlowJo's defaults come from its
-  native engine and were not decoded. S_WEIGHTS_OK: Not in 10.6.2 UI.
+  becomes weighted least squares, M = W S^T (S W S^T)^-1. Default weights:
+  Done (matches). In libNativeEngine 3.6.2 `CompensationSpec::FromXML`
+  creates one weight per detector set to 1.0 and overrides only the detectors
+  named in the matrix's `weights` element (attribute `weight`, default 1.0),
+  and `EigenSolver` (built by `Compensator::PreCompensate` for a spectral
+  matrix) solves (S W S^T) M = S W with a column-pivoting Householder QR, so
+  with no stored weights FlowJo unmixes by ordinary least squares, as this
+  app does. S_WEIGHTS_OK: Not in 10.6.2 UI.
 
 ### CompCommand.OPTIMIZEWT "Optimize Weights"
-- FlowJo (`CompensationAction` OPTIMIZEWT, `OptimizeWeightDialog`,
-  `WeightIOptimizationAttributeModel`, `WeightOptimizationThread`): a dialog
-  chooses NoOptimization, SSM-based or event-based optimisation (event-based
-  only when enabled in preferences); the request goes to the native engine,
-  up to 50 iterations ("typically converges in about 10-15 iterations").
-- flowjo-rea: Deferred. The optimisation runs in libNativeEngine, its
-  objective and update rule were not decoded and there are no reference
-  outputs to check against.
+Evidence: Java `CompensationAction` (OPTIMIZEWT branch,
+`runSSMBasedOptimization`, `isEventOptimizationEnabledInPrefs`),
+`CompPerspective.shouldOptimize`, `OptimizeWeightDialog` (+ `$1`..`$4`),
+`WeightIOptimizationAttributeModel`, `CompController.calculateOptimizedWeightAndApply`
+/ `createWeightOptRequests`, `WeightOptimizationThread.setOptimizedWeights`;
+native libNativeEngine 3.6.2 `WeightOptimizer::ProcessQuery`,
+`OptimizeWeights(double)`, `CalculateSSM`, `CalculateSSMCoefficient`,
+`EvaluateSSM`, `SetCurrentBestWeights`, `setProgress`, constants
+`MAX_ITERATIONS` = 50, `TOTALSTEPSCOUNT` = 100 (decompiled with headless
+Ghidra outside the repo).
+
+Java side (what the user sees):
+- Before anything, `shouldOptimize`: when any stored detector weight lies
+  strictly between 0 and 1 ("customized weights") FlowJo asks "Optimizing
+  weights take some time to finish. You already have customized weights for
+  this workspace. Do you want to overwrite them?". Anything but Yes aborts;
+  Yes clears the stored weights first. Weights of 1 or above do not count.
+- The request type defaults to SSMBasedOptimizationProcessing and no dialog
+  is shown. Only when the preference WeightOptimization type is
+  EventBasedOptimizationProcessing with show on does `OptimizeWeightDialog`
+  ("Weight Optimization Selection", modal) open: a method combo with "Sample
+  Based Weight Optimization" (SSM based) and "Event Based Weight
+  Optimization", a Lambda field (0 to float max, default 0, "Lambda = 0
+  means use variance based lambda"), OK and Close; Close sets NoOptimization
+  (nothing runs). The model's own default lambda is 0.001.
+- The SSM-based request (`createWeightOptRequests`) sends the wizard's
+  compensation matrix and one CompControl per parameter entry with its
+  positive and negative population (gate queries), and runs on a progress
+  thread with the note "The progress bar is based on the maximum of 50
+  iterations, however, the weight optimization typically converges in about
+  10-15 iterations."
+- The result (`setOptimizedWeights`) stores the returned detector weights on
+  the workspace and the wizard matrix (`setWeightsElement`), and the returned
+  SSM on the matrix (`setSSM`), so Display SSM shows it.
+
+Engine (SSM-based processing):
+- Unmixing is weighted least squares with the trial weights (see the default
+  weights rule above). The objective is the sum of all entries of the SSM of
+  the controls: for control j and fluorochrome i, with percentiles 50 and 84
+  of the unmixed populations (positive P, negative N),
+  SSM = sqrt((P84_P,i - P50_P,i)^2 - (P84_N,i - P50_N,i)^2) /
+  sqrt(|P50_P,j - P50_N,j|), only when P50_P,j - P50_N,j > 0, else 0; NaN
+  (negative radicand) is 0; the diagonal is 0. Statistics are the engine's
+  population percentiles of the unmixed parameter (4096-channel histogram
+  on the parameter's scale).
+- Progress messages: 0.5% "Compensating.", 1% "Compensation Completed.", 1%
+  "Calculating SSM.", 2% "Evaluating SSM ", then before each detector
+  "Iteration N : Optimizing detector K, current best SSM sum is X. " at 3%
+  plus 1.94% / (number of detectors) per detector visited, and "Done." at
+  100% (progress is clamped to 0..1). Cancel ends the search.
+- Search (`OptimizeWeights`): all weights start at 1.0 and the best sum is
+  the initial SSM sum (float32). A factor pair (f, 1/f) starts at f = 0.6667.
+  A sweep visits every detector in order: with the other weights fixed it
+  evaluates f x w_d and (1/f) x w_d (both from the current w_d) and keeps the
+  trial whose sum (cast to float32) is lower than the best so far, updating
+  the best; the kept weight is used for the following detectors. After a
+  sweep: if best >= 0.99 x (best at the start of the sweep), and the 0-based
+  sweep index is 5 or more, the stall count rises; the third stall stops the
+  search, the first switches the factor to 0.3333 and the damping from 0.9 to
+  0.5 (permanently). A sweep improving by 1% or more resets the stall count.
+  The search also stops after sweep index 50 (so at most 52 sweeps; the
+  progress bar is full near sweep 50). Then f becomes (f - 1) x damping + 1
+  (float32) and 1/f is recomputed. Weights are unbounded positive numbers
+  (multiplicative updates).
+- Event-based processing (`RunVariableLambdaProcessing`, a per-event
+  regularised unmixing with a fixed or variance-based lambda) is only
+  reachable through the hidden preference.
+
+flowjo-rea: Done (unit `tests/weight-optimizer.test.ts`: stall rule, factor
+pairs and damping, 52-sweep limit, progress, SSM formula on unmixed
+populations, synthetic optimisation and determinism; e2e "customized weights
+(0.5) ask before overwriting", "Optimize Weights finishes with Done. and
+stores new weights", "progress messages", "stores the SSM", "deterministic").
+For a spectral matrix the editor shows Optimize Weights; its panel asks for
+the positive and negative population of each fluorochrome's control (any
+loaded sample, so a universal negative works), asks the overwrite question
+inline when weights are customized, and runs the search in the analysis
+worker in short slices with a progress bar, the engine's messages and the
+progress note. The result sets the matrix weights (unmixing becomes weighted
+least squares) and its SSM (Display SSM). Own rules and uncertainty:
+- The engine returns the SSM of its last evaluated trial; flowjo-rea stores
+  the SSM at the final (best) weights, which is what the weights produce
+  (uncertain whether FlowJo recalculates it before display).
+- Cancel discards the run (the matrix keeps its weights); the engine on
+  cancel returns its current trial vector, and it is not known whether the
+  Java side applies it.
+- Population membership is taken once from the current analysis; the engine
+  recompensates the control samples for each trial, which only matters for
+  gates drawn on unmixed parameters.
+- An unmixed fluorochrome without a display transform uses the default
+  logicle scale (T 262144, W 0.5, M 4.5) for its percentiles.
+- Event-based optimisation and its dialog: Deferred (preference-gated in
+  10.6.2, default off; its regularised per-event unmixing was not decoded).
 
 ### CompCommand.MAKEMOVIE "Animate"
 - FlowJo (`MatrixAction.makeWebMovie`, `CompAnimationBatch(controller, 15,
@@ -309,9 +401,9 @@ ADDFCS2, ADDFCS3: Not in 10.6.2 UI.
 | REMOVE, REMOVEUNUSED, PARAMETERS (wizard row menu equivalents) | Done |
 | SSM, SSM_VIEW | Done |
 | PREFS | Done (Confirm Edit omitted, own rule) |
-| S_WEIGHTS_IMPORT, S_WEIGHTS_EXPORT, S_WEIGHTS_CLOSE | Done (default weights: own rule) |
+| S_WEIGHTS_IMPORT, S_WEIGHTS_EXPORT, S_WEIGHTS_CLOSE | Done (default weights 1: matches) |
 | RESET | Own rule (no-op in 10.6.2) |
 | MAKEMOVIE | Own rule (in-place animation) |
 | ADDTOLAYOUT | Deferred |
-| OPTIMIZEWT | Deferred |
+| OPTIMIZEWT | Done (SSM-based; event-based dialog deferred) |
 | REMOVEUNEG, S_WEIGHTS_OK | Not in 10.6.2 UI |

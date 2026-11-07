@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SpilloverMatrix } from '../core/compensation';
 import { compensateEvents, gridCells, parseWeightsCsv, PLOT_SIZE, weightsCsv, WEIGHTS_FILE, type CompView } from '../core/compEditor';
 import { makeTransform, type TransformSpec } from '../core/transforms';
+import { hasCustomWeights, OVERWRITE_PROMPT, PROGRESS_NOTE } from '../core/weightOptimizer';
 
 // Drag type of the Matrix Icon (plat.comp.apply.drag): drop it on a sample or
 // group to apply the matrix there.
@@ -156,6 +157,80 @@ export function WeightsPanel(p: { matrix: SpilloverMatrix; onClose: (weights: nu
         </label>
         <button data-testid="comp-weights-export" onClick={() => p.save(WEIGHTS_FILE, weightsCsv(p.matrix.channels, w))}>Export Weights</button>
         <button data-testid="comp-weights-close" onClick={() => p.onClose(w)}>Close</button>
+      </div>
+    </div>
+  );
+}
+
+// Optimize Weights (CompCommand.OPTIMIZEWT, SSM-based processing): one
+// single-stain control per fluorochrome with its positive and negative
+// populations; asks before overwriting customized weights, shows the
+// engine's progress, then stores the weights and the SSM on the matrix.
+export type PopPick = { sampleId: string; path: string };
+export interface WeightOptResult { weights: number[]; ssm: number[][]; iterations: number }
+export function OptimizeWeightsPanel(p: {
+  matrix: SpilloverMatrix;
+  samples: { id: string; fileName: string; loaded: boolean; paths: string[] }[];
+  onRun: (controls: { pos: PopPick; neg: PopPick }[], onProgress: (pr: { fraction: number; message: string }) => void, cancelled: () => boolean) => Promise<WeightOptResult | null>;
+  onDone: (r: WeightOptResult) => void;
+  onClose: () => void;
+}) {
+  const fluors = p.matrix.outputNames ?? p.matrix.values.map((_, k) => `Fluor ${k + 1}`);
+  const [picks, setPicks] = useState<Record<string, { pos: string; neg: string }>>({});
+  const [ask, setAsk] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [prog, setProg] = useState<{ fraction: number; message: string } | null>(null);
+  const [err, setErr] = useState('');
+  const [done, setDone] = useState('');
+  const cancel = useRef(false);
+  const options = p.samples.filter((s) => s.loaded).flatMap((s) => s.paths.map((path) => ({ v: `${s.id}|${path}`, label: `${s.fileName}: ${path}` })));
+  const split = (v: string): PopPick => ({ sampleId: v.slice(0, v.indexOf('|')), path: v.slice(v.indexOf('|') + 1) });
+  const ready = fluors.every((f) => picks[f]?.pos && picks[f]?.neg);
+  const run = async () => {
+    setAsk(false); setErr(''); setDone(''); setRunning(true); cancel.current = false;
+    try {
+      const r = await p.onRun(fluors.map((f) => ({ pos: split(picks[f].pos), neg: split(picks[f].neg) })), setProg, () => cancel.current);
+      if (r) { p.onDone(r); setDone(`Done. ${r.iterations} iterations; SSM sum ${r.ssm.flat().reduce((s, v) => s + v, 0).toFixed(3)}.`); }
+    } catch (e) { setErr((e as Error).message); }
+    setRunning(false); setProg(null);
+  };
+  return (
+    <div data-testid="comp-optimize-panel" style={{ border: '1px solid #c7cfdc', padding: 6, margin: '6px 0' }}>
+      <b>Optimize Weights</b>
+      <p className="muted">Sample Based Weight Optimization: detector weights that minimise the sum of the spillover spreading matrix of these single-stain controls.</p>
+      <table className="grid">
+        <thead><tr><th>Fluorochrome</th><th>Positive</th><th>Negative</th></tr></thead>
+        <tbody>{fluors.map((f) => {
+          const r = picks[f] ?? { pos: '', neg: '' };
+          const set = (patch: Partial<typeof r>) => setPicks({ ...picks, [f]: { ...r, ...patch } });
+          return (
+            <tr key={f}>
+              <td>{f}</td>
+              <td><select data-testid={`comp-opt-pos-${f}`} value={r.pos} onChange={(e) => set({ pos: e.target.value })}><option value="">-</option>{options.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}</select></td>
+              <td><select data-testid={`comp-opt-neg-${f}`} value={r.neg} onChange={(e) => set({ neg: e.target.value })}><option value="">-</option>{options.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}</select></td>
+            </tr>
+          );
+        })}</tbody>
+      </table>
+      {ask && (
+        <div className="row" data-testid="comp-opt-confirm">
+          <span>{OVERWRITE_PROMPT}</span>
+          <button data-testid="comp-opt-yes" onClick={run}>Yes</button>
+          <button data-testid="comp-opt-no" onClick={() => setAsk(false)}>No</button>
+        </div>
+      )}
+      {running && prog && (
+        <div data-testid="comp-opt-progress">
+          <progress max={1} value={prog.fraction} style={{ width: 240 }} /> <span data-testid="comp-opt-message">{prog.message}</span>
+          <p className="muted">{PROGRESS_NOTE}</p>
+        </div>
+      )}
+      {err && <p className="error" data-testid="comp-opt-error">{err}</p>}
+      {done && <p data-testid="comp-opt-done">{done}</p>}
+      <div className="row">
+        <button disabled={!ready || running} data-testid="comp-opt-run" title={ready ? '' : 'Choose a positive and a negative population for every fluorochrome'} onClick={() => (hasCustomWeights(p.matrix.weights) ? setAsk(true) : run())}>Optimize</button>
+        {running && <button data-testid="comp-opt-cancel" onClick={() => { cancel.current = true; }}>Cancel</button>}
+        <button disabled={running} data-testid="comp-opt-close" onClick={p.onClose}>Close</button>
       </div>
     </div>
   );

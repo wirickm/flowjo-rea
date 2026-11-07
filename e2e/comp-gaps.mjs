@@ -1,7 +1,8 @@
 // Compensation editor gaps (docs/validation/ui-gaps/compensation.md): live
 // N x N / All By / Histograms preview with overlay and zoom, matrix
 // management (identity, duplicate, reset, compare, visibility), SSM view of a
-// saved wizard matrix, wizard parameter set, spectral weights, animation,
+// saved wizard matrix, wizard parameter set, spectral weights, Optimize
+// Weights, animation,
 // Apply To Workspace / group and the Matrix Icon drop.
 // Usage: node e2e/comp-gaps.mjs [baseUrl]
 import { createRequire } from 'node:module';
@@ -33,7 +34,8 @@ const writeControl = (file, primary, seed) => {
   const p = DYES.indexOf(primary);
   for (let e = 0; e < n; e++) {
     const dye = p >= 0 && e < n * 0.3 ? 20000 * (1 + 0.2 * nrm()) : 0;
-    const row = [50000 + 2000 * nrm(), 30000 + 2000 * nrm(), ...DYES.map((_, j) => 200 + (p >= 0 ? dye * TRUE[p][j] : 0) + 50 * nrm())];
+    // Photon-like noise grows with the signal, so the controls have spillover spreading.
+    const row = [50000 + 2000 * nrm(), 30000 + 2000 * nrm(), ...DYES.map((_, j) => { const sig = p >= 0 ? dye * TRUE[p][j] : 0; return 200 + sig + 50 * nrm() + (j === 2 ? 8 : 2) * Math.sqrt(sig) * nrm(); })];
     row.forEach((v, c) => buf.writeFloatLE(v, (e * names.length + c) * 4));
   }
   const kw = { $BYTEORD: '1,2,3,4', $DATATYPE: 'F', $MODE: 'L', $PAR: String(names.length), $TOT: String(n), $FIL: file.split('/').pop() };
@@ -228,6 +230,54 @@ await page.getByTestId('comp-weights-import').setInputFiles(spec);
 await page.getByTestId('comp-weights-error').waitFor({ timeout: 5000 }).catch(() => {});
 check('a weights file with other detectors is refused', (await page.getByTestId('comp-weights-error').count()) === 1);
 await page.getByTestId('comp-weights-close').click();
+
+// Optimize Weights (OPTIMIZEWT) on a spectral matrix with the controls' spectra: Dye1 = FITC control, Dye2 = PE control.
+const spec2 = join(dir, 'spectral2.csv');
+writeFileSync(spec2, ',FITC-A,PE-A,APC-A\nDye1,1,0.25,0.01\nDye2,0.02,1,0.08\n');
+await dlg().locator('label:has-text("Import matrix CSV") input[type=file]').setInputFiles(spec2);
+await page.getByTestId('comp-weights').click();
+await page.getByTestId('comp-weights-import').setInputFiles(wIn);
+await page.waitForFunction(() => document.querySelector('[data-testid=comp-weights-table] tbody')?.textContent?.includes('0.5'), null, { timeout: 5000 }).catch(() => {});
+await page.getByTestId('comp-weights-close').click();
+await page.getByTestId('comp-optimize-weights').click();
+check('Optimize is disabled until every fluorochrome has a positive and a negative population', await page.getByTestId('comp-opt-run').isDisabled());
+await page.getByTestId('comp-opt-pos-Dye1').selectOption({ label: 'fitc.fcs: FITC-A subset' });
+await page.getByTestId('comp-opt-neg-Dye1').selectOption({ label: 'unstained.fcs: FITC-A subset' });
+await page.getByTestId('comp-opt-pos-Dye2').selectOption({ label: 'pe.fcs: PE-A subset' });
+await page.getByTestId('comp-opt-neg-Dye2').selectOption({ label: 'unstained.fcs: FITC-A subset' });
+await page.getByTestId('comp-opt-run').click();
+const askText = (await page.getByTestId('comp-opt-confirm').textContent()) ?? '';
+await page.getByTestId('comp-opt-no').click();
+check('customized weights (0.5) ask before overwriting; No leaves them', askText.includes('You already have customized weights') && (await page.getByTestId('comp-opt-done').count()) === 0);
+const weightsRead = async () => {
+  await page.getByTestId('comp-weights').click();
+  const t = await page.getByTestId('comp-weights-table').locator('tbody tr td:nth-child(3)').allInnerTexts();
+  await page.getByTestId('comp-weights-close').click();
+  return t.map(Number);
+};
+const optimize = async () => {
+  await page.getByTestId('comp-opt-run').click();
+  if (await page.getByTestId('comp-opt-confirm').count()) await page.getByTestId('comp-opt-yes').click();
+  let msg = '';
+  for (let i = 0; i < 600 && !(await page.getByTestId('comp-opt-done').count()); i++) {
+    if (!msg && (await page.getByTestId('comp-opt-message').count())) msg = (await page.getByTestId('comp-opt-message').textContent().catch(() => '')) ?? '';
+    await page.waitForTimeout(50);
+  }
+  return { msg, done: (await page.getByTestId('comp-opt-done').textContent()) ?? '' };
+};
+const o1 = await optimize();
+const w1 = await weightsRead();
+check('Optimize Weights finishes with "Done." and stores new weights on the matrix', o1.done.startsWith('Done.') && w1.length === 3 && w1.every((v) => v > 0) && JSON.stringify(w1) !== JSON.stringify([2, 1, 0.5]), `${o1.done} ${JSON.stringify(w1)} ${o1.msg}`);
+check('progress messages name the iteration and detector (when caught)', o1.msg === '' || /^Iteration \d+ : Optimizing detector \d+, current best SSM sum is /.test(o1.msg), o1.msg);
+check('the optimisation stores the SSM of the controls (Display SSM)', await page.getByTestId('comp-ssm-view').isEnabled());
+await page.getByTestId('comp-ssm-view').click();
+const optSsm = await page.getByTestId('comp-ssm-table').locator('tbody tr').allInnerTexts();
+check('SSM after optimisation has one row per fluorochrome plus Sum, with spreading > 0', optSsm.length === 3 && optSsm[0].startsWith('Dye1') && Number(optSsm[2].trim().split(/\s+/).pop()) > 0, optSsm.join(' | '));
+await page.getByTestId('comp-ssm-view').click();
+await optimize();
+const w2 = await weightsRead();
+check('Optimize Weights is deterministic (same weights on a second run)', JSON.stringify(w1) === JSON.stringify(w2), JSON.stringify(w2));
+await page.getByTestId('comp-opt-close').click();
 
 // Apply To Workspace and the Matrix Icon.
 await page.getByTestId('matrix-select').selectOption({ label: wizName });

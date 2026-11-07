@@ -1214,11 +1214,13 @@ and `src/ui/App.tsx`. E2E: `e2e/uiparity.mjs`.
 ### 18.5 Gating path and Next / Previous Sample (matches; wrap own)
 
 - Breadcrumb "Gating Path" (`gw.breadcrumbbar.path.prompt`; "Ungated" at the
-  sample). Next Sample: accelerator 33 (PageUp); Previous Sample: 34
-  (PageDown) (`gw.nav.nextsibling/prevsibling`, "View the next population at
-  this level").
-- This app: each path element selects that population. PageUp / PageDown and
-  the < > buttons move within the current group, keeping the population path;
+  sample). Plain keys (`EditorController.doPageUpDown`): PageDown is Next
+  Sample, PageUp is Previous Sample. Menu accelerators
+  (`gw.nav.nextsibling/prevsibling` = 33 / 34, with the menu key per
+  `FJAction.lookupAccelerator`): Menu+PageUp next, Menu+PageDown previous
+  ("View the next population at this level").
+- This app: each path element selects that population. PageDown / PageUp,
+  Ctrl/Cmd+PageUp / PageDown and the < > buttons move within the current group, keeping the population path;
   a sample without it shows All events. Own rule: no wrap at either end.
 
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)

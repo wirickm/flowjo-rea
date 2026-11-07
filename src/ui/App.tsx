@@ -138,8 +138,15 @@ export function App() {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-      // Graph window Next / Previous Sample: PageUp / PageDown (gw.nav; specs 18.5).
-      if ((e.key === 'PageUp' || e.key === 'PageDown') && !(e.ctrlKey || e.metaKey || e.altKey)) { e.preventDefault(); navRef.current(e.key === 'PageUp' ? 1 : -1); return; }
+      // Graph window Next / Previous Sample (specs 18.5): plain PageDown next,
+      // PageUp previous (EditorController.doPageUpDown); with Ctrl/Cmd the menu
+      // accelerators are reversed: PageUp next, PageDown previous (gw.nav).
+      if ((e.key === 'PageUp' || e.key === 'PageDown') && !e.altKey) {
+        e.preventDefault();
+        const menu = e.ctrlKey || e.metaKey;
+        navRef.current((e.key === 'PageDown') !== menu ? 1 : -1);
+        return;
+      }
       if (!(e.ctrlKey || e.metaKey)) return;
       const k = e.key.toLowerCase();
       if (k === 'g') { e.preventDefault(); setDialog({ kind: 'manual' }); } // Manually Enter Gate... (FlowJo menu shortcut G)
@@ -983,8 +990,8 @@ export function App() {
           {sample && sMeta && xAxis ? (
             <>
               <div className="row breadcrumb" data-testid="gating-path">
-                <button onClick={() => navSample(-1)} title="Previous Sample (PageDown): view the previous population at this level" data-testid="prev-sample">&lt;</button>
-                <button onClick={() => navSample(1)} title="Next Sample (PageUp): view the next population at this level" data-testid="next-sample">&gt;</button>
+                <button onClick={() => navSample(-1)} title="Previous Sample (PageUp, or Ctrl/Cmd+PageDown): view the previous population at this level" data-testid="prev-sample">&lt;</button>
+                <button onClick={() => navSample(1)} title="Next Sample (PageDown, or Ctrl/Cmd+PageUp): view the next population at this level" data-testid="next-sample">&gt;</button>
                 <span className="muted">Gating Path:</span>
                 <a href="#" onClick={(e) => { e.preventDefault(); setSel({ sampleId: sample.id, popId: null }); }} data-testid="crumb-root">{sample.fileName}</a>
                 {gatingPath.map((q) => (

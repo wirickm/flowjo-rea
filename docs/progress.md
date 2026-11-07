@@ -5,7 +5,7 @@
 Decoded with javap on FlowJo 10.6.2 (specs 18): stain editing and
 "name :: stain" axis titles, Subpopulation Identification after drawing,
 double-click to open a gate, child plots inherit the parent's axes, gating
-path and PageUp / PageDown sample navigation. All implemented. `npm test`
+path and PageDown / PageUp sample navigation. All implemented. `npm test`
 377 pass; `e2e/uiparity.mjs` 16/16, `npm run e2e` 46/46, `e2e/step2.mjs`
 19/19, groups, gatetools, prefs 0 failures (e2e helpers accept the gate
 namer's default). REA ledger regenerated: new obligation

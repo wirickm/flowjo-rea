@@ -92,14 +92,14 @@ await page.getByTestId('crumb-root').click();
 await page.getByTestId('pop-Lymphocytes').click();
 await idle();
 await page.locator('body').focus();
-await page.keyboard.press('PageUp');
-await idle();
-const onF2 = await page.getByTestId(`sample-${F2}`).evaluate((n) => n.classList.contains('sel'));
-check('PageUp shows the next sample (All events when it lacks the population)', onF2 && (await caption()).startsWith('All events:'), await caption());
 await page.keyboard.press('PageDown');
 await idle();
+const onF2 = await page.getByTestId(`sample-${F2}`).evaluate((n) => n.classList.contains('sel'));
+check('PageDown shows the next sample (All events when it lacks the population)', onF2 && (await caption()).startsWith('All events:'), await caption());
+await page.keyboard.press('PageUp');
+await idle();
 const onF1 = await page.getByTestId(`sample-${F1}`).evaluate((n) => n.classList.contains('sel'));
-check('PageDown returns to the previous sample', onF1 && (await caption()).startsWith('All events:'), await caption());
+check('PageUp returns to the previous sample', onF1 && (await caption()).startsWith('All events:'), await caption());
 // The same population is kept when the next sample has it.
 await page.getByTestId('pop-Lymphocytes').click();
 await page.getByTestId('gate-copy').click();
@@ -110,10 +110,15 @@ await page.getByTestId(`sample-${F1}`).click();
 await page.getByTestId('pop-Lymphocytes').click();
 await idle();
 await page.locator('body').focus();
+await page.keyboard.press('PageDown');
+await idle();
+check('PageDown keeps the population when the next sample has it', (await page.getByTestId(`sample-${F2}`).evaluate((n) => n.classList.contains('sel'))) && (await caption()).startsWith('Lymphocytes:'), await caption());
 await page.keyboard.press('PageUp');
 await idle();
-check('PageUp keeps the population when the next sample has it', (await page.getByTestId(`sample-${F2}`).evaluate((n) => n.classList.contains('sel'))) && (await caption()).startsWith('Lymphocytes:'), await caption());
-await page.keyboard.press('PageDown');
+await page.keyboard.press('Control+PageUp');
+await idle();
+check('Ctrl+PageUp is the Next Sample menu accelerator', await page.getByTestId(`sample-${F2}`).evaluate((n) => n.classList.contains('sel')));
+await page.keyboard.press('Control+PageDown');
 await idle();
 
 // 6. Stain editing renames the axis ("name :: stain")

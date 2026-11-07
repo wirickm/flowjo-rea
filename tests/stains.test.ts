@@ -3,7 +3,7 @@ import { withStains } from '../src/ui/axes';
 import { channelDisplayName } from '../src/core/fcs';
 
 const ch = (index: number, name: string, label: string) => ({ index, name, label, bits: 32, range: 262144, logDecades: 0, logOffset: 0, gain: 1 });
-const meta = { channels: [ch(1, 'FSC-A', ''), ch(2, 'FL1-A', 'CD3 FITC')], keywords: { $P1N: 'FSC-A', $P2N: 'FL1-A', $P2S: 'CD3 FITC' } };
+const meta = { channels: [ch(1, 'FSC-A', ''), ch(2, 'FL1-A', 'CD3 FITC')], keywords: { $P1N: 'FSC-A', $P2N: 'FL1-A', $P2S: 'CD3 FITC' } as Record<string, string> };
 
 describe('edited stains (specs 18.1)', () => {
   it('returns the same metadata when nothing is edited', () => {

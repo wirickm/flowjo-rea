@@ -1287,10 +1287,10 @@ sample-owned copies (FlowJo's group paste with nothing selected); the content
 is captured at Copy time (FlowJo builds it at paste time, C3, medium
 confidence); the image is PNG with transparency only.
 
-Not implemented (see the interaction model's top gaps): pasting tab/CSV text
-into keyword columns (C10), drag and drop (C11), Copy Histogram Function and
-Copy Statistics (C13), context menus (D7), gate size and duplicate view, the
-layout editor's own keys and undo history.
+Later sections add pasting tab/CSV text into keyword columns, drag and drop,
+Copy Histogram Function / Copy Statistics and context menus (20), gate size
+(22.2), Duplicate View (23) and the layout editor's keys (21). Still not
+implemented: the layout editor's own undo history (one history per layout).
 
 ## 20. Text paste, drag and drop, right-click menus, text copies (FlowJo 10.6.2)
 
@@ -1340,9 +1340,10 @@ workspaces do not apply (one workspace per page).
   Clear, -, Convert to Polygon / Rectangle / Ellipse (`makeGateConversionMenu`,
   disabled when not possible), -; always Add Statistic, Copy Image, Copy
   Histogram Function (1-D only), Copy Statistics, Copy to Layout Editor.
-- Not offered (no app feature): Duplicate, Add Keyword, Select Equivalent
-  Nodes, DIVA export, line thickness, smoothing, colour, Duplicate View,
-  Copy Image Without Transparency. Add Statistic uses the statistic chosen in
+- Duplicate, Add Keyword, Select Equivalent Nodes, Expand / Collapse were
+  added in 22.4, and Increase / Decrease Size in 22.2. Not offered (no app
+  feature): DIVA export, line thickness, smoothing, colour, Copy Image Without
+  Transparency. Add Statistic uses the statistic chosen in
   the Statistics panel (FlowJo opens its dialog).
 
 ### 20.4 Text copies from the graph (matches the commands; text layout own)
@@ -1400,10 +1401,10 @@ the PDF draws each page as an image inside the margins.
 | G1-G3 | Grid layout: 3 x 4 cells, 4 pt padding, filled row by row; extras left out | `FigGridLayout.<init>`, `FJLayoutGrid.getNextCell` |
 
 Own rules: there is no Spread (A10, a no-op in FlowJo) and no Same Size (A14,
-absent); a group keeps its members as items (no scaling on resize, A21); the
-grid layout sets positions (cells sized to the largest item) instead of
-creating a grid figure with border axes (G5-G9); guides and guide snapping
-(S4-S5) are not offered; every move, including a nudge, is an undo step in
+absent); a group keeps its members as items (no scaling on resize, A21); grid
+figures are covered in 25.2; guides and guide snapping (S4-S5) are added and
+removed with buttons and by dragging off the page (there are no rulers to drag
+them from); every move, including a nudge, is an undo step in
 the workspace history (FlowJo: one history per layout, nudges not recorded,
 S2 / U1).
 
@@ -1427,8 +1428,9 @@ control layers (I2) are not modelled.
 
 - Show Gates per graph (default on; `AnnotationPanel` `showGates`); Show
   Annotation draws the title line above the graph (default off).
-- Not implemented: frequencies / names toggles, ancestry, backgating rows,
-  adjunct histograms, multigraph, the axes string (N3-N8).
+- Later added: with Frequencies / with Names and the axes string (21,
+  layout guides batch), ancestry with backgating and adjunct histograms (24),
+  multigraph (25.3). Not implemented: custom axis label text (N8).
 
 ## 22. Graph display, gate size, tree commands, ribbon (FlowJo 10.6.2)
 
@@ -1454,8 +1456,8 @@ E2E `e2e/display.mjs` (14 checks).
 Own rules: frequencies are capped at 2 decimals to match FlowJo's examples
 (45.678 -> 45.7, 0.5 -> 0.50); medians are taken from the display bins; large
 dots are 3 px (FlowJo's native size was not read) and offered on dot plots;
-Show Uncompensated Parameters and Show Event # Parameter are not offered (the
-app has no raw twins of compensated parameters and no event-number axis).
+Show Event # Parameter was added in 24 and Show Uncompensated Parameters in
+25.1.
 
 ### 22.2 Gate size (matches)
 
@@ -1469,8 +1471,7 @@ app has no raw twins of compensated parameters and no event-number axis).
 
 - Next / Previous X and Y stop at either end of the parameter list (no wrap;
   `GWNavAction.doAction`).
-  Not implemented: the colour axis (Ctrl/Cmd+] / [) and Duplicate View (a
-  second graph window).
+  The colour axis (Ctrl/Cmd+] / [) was added in 24 and Duplicate View in 23.
 
 ### 22.4 Workspace tree (matches; selection model own)
 
@@ -1562,8 +1563,7 @@ colouring rule was not read); the colour axis is a per-population graph
 setting and applies to pseudocolor plots; Show Event # Parameter is
 workspace-wide; ancestry charts use each ancestor's saved plot axes (else the
 graph's) and show only the gate leading to the next level; adjunct strips are
-40 px; Show Uncompensated Parameters is not offered (the app compensates in
-place; raw twins would need a per-axis compensation choice on every gate).
+40 px; Show Uncompensated Parameters followed in 25.1.
 
 ## 25. Uncompensated parameters, grid figures, multigraph, .wsp layout settings (FlowJo 10.6.2)
 

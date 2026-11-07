@@ -203,6 +203,8 @@ export interface Workspace {
   // (src/core/workspaceTable.ts); absent = Name, Statistic, #Cells, unsorted.
   tableColumns?: TableColumn[];
   tableSort?: { key: string; ascending: boolean }[];
+  // FlowJo scripts (<Scripts>, Script Editor; src/core/fjScript.ts).
+  scripts?: import('./fjScript').FJScript[];
 }
 
 // key: a FlowJo property key ("fj.appnode.prop.name") or "kw:<keyword>".

@@ -14,6 +14,7 @@ import { kineticsNodeXml } from './kinetics';
 import { derivedFormula } from './model';
 import { FLOWJO_STAT_NAMES } from './stats';
 import { esc } from './xml';
+import { scriptsXml } from './fjScript';
 
 export interface WspExportInput {
   ws: Workspace;
@@ -310,7 +311,7 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
 ${columnsXml(ws)}<Groups>${groups}</Groups>
 <SampleList>${sampleXml.join('\n')}</SampleList>
 ${layoutXml()}
-</Workspace>
+${scriptsXml(ws.scripts)}</Workspace>
 `;
   return { xml, warnings };
 }

@@ -19,6 +19,7 @@ import { makeTransform, type TransformSpec } from './transforms';
 import { KIN_BY_NAME, kineticsFromAttrs } from './kinetics';
 import { attr, descendants, kid, kids, local, numAttr, parseXml, type El } from './xml';
 import { parseFigList } from './wspLayout';
+import { parseScriptElements } from './fjScript';
 
 export interface WspImport {
   workspace: Workspace;
@@ -502,6 +503,12 @@ export function parseWsp(xml: string): WspImport {
     }).filter((c): c is { key: string; width?: number } => !!c);
     const plain = cols.map((c) => c.key).join() === 'fj.appnode.prop.name,fj.appnode.prop.statistic,fj.appnode.prop.ncells';
     if (cols.length && !plain) ws.tableColumns = cols;
+  }
+  // Scripts (ScriptEditorController.setElement; ui-gaps/workspace.md SCRIPTEDITOR).
+  const scriptsEl = kid(root, 'Scripts');
+  if (scriptsEl) {
+    const scripts = parseScriptElements(kids(scriptsEl, 'Script').map((e) => ({ lang: attr(e, 'lang'), name: attr(e, 'name'), text: (e as unknown as Element).textContent ?? '' })));
+    if (scripts.length) ws.scripts = scripts;
   }
   const groupsEl = kid(root, 'Groups');
   for (const g of groupsEl ? kids(groupsEl, 'GroupNode') : []) {

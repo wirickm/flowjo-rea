@@ -816,6 +816,191 @@
         { "fixture_id": "prolif.divided", "case_kind": "negative", "test_file": "tests/proliferation.test.ts", "test_name": "recovers per-generation percentages and the standard indices" }
       ],
       "verifier": { "verifier_id": "platforms.flowjo", "claim_id": "platforms.proliferation-indices.v1", "test_file": "tests/proliferation.test.ts", "command": "npx vitest run tests/proliferation.test.ts" }
+    },
+    {
+      "obligation_id": "workspace.dont-ask-again",
+      "obligation_version": 1,
+      "title": "Delete confirmations offer Don't Ask Again, remembered per message and reset from Preferences",
+      "family": "workspace",
+      "target_location": "STreeMgr; PrefsWSResetDontAskAction",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "prefs-dontask-autosave", "location": "remembered key answers Yes" },
+        { "kind": "negative", "observation": "prefs-dontask-autosave", "location": "other keys still ask; reset empties" }
+      ],
+      "supporting_observations": [],
+      "owner": {
+        "module_path": "src/core/prefs.ts",
+        "symbol": "skipConfirm",
+        "files": ["src/core/prefs.ts", "src/ui/App.tsx", "src/ui/Editors.tsx"]
+      },
+      "fixtures": [
+        {
+          "fixture_id": "workspace.dont-ask-again.pos",
+          "case_kind": "positive",
+          "test_file": "tests/prefs-tables.test.ts",
+          "test_name": "Don't Ask Again"
+        },
+        {
+          "fixture_id": "workspace.dont-ask-again.neg",
+          "case_kind": "negative",
+          "test_file": "tests/prefs-tables.test.ts",
+          "test_name": "Don't Ask Again"
+        }
+      ],
+      "verifier": {
+        "verifier_id": "workspace.flowjo",
+        "claim_id": "workspace.dont-ask-again.v1",
+        "test_file": "tests/prefs-tables.test.ts",
+        "command": "npx vitest run tests/prefs-tables.test.ts"
+      }
+    },
+    {
+      "obligation_id": "workspace.autosave",
+      "obligation_version": 1,
+      "title": "Auto-save every N minutes, only for a saved workspace with samples, with FlowJo's status text",
+      "family": "workspace",
+      "target_location": "AutoSaveTask",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "prefs-dontask-autosave", "location": "saved workspace with samples" },
+        { "kind": "negative", "observation": "prefs-dontask-autosave", "location": "unsaved or empty workspace, or auto-save off" }
+      ],
+      "supporting_observations": [],
+      "owner": {
+        "module_path": "src/core/prefs.ts",
+        "symbol": "shouldAutoSave",
+        "files": ["src/core/prefs.ts", "src/ui/App.tsx"]
+      },
+      "fixtures": [
+        {
+          "fixture_id": "workspace.autosave.pos",
+          "case_kind": "positive",
+          "test_file": "tests/prefs-tables.test.ts",
+          "test_name": "auto-save only for a saved workspace"
+        },
+        {
+          "fixture_id": "workspace.autosave.neg",
+          "case_kind": "negative",
+          "test_file": "tests/prefs-tables.test.ts",
+          "test_name": "auto-save only for a saved workspace"
+        }
+      ],
+      "verifier": {
+        "verifier_id": "workspace.flowjo",
+        "claim_id": "workspace.autosave.v1",
+        "test_file": "tests/prefs-tables.test.ts",
+        "command": "npx vitest run tests/prefs-tables.test.ts"
+      }
+    },
+    {
+      "obligation_id": "graphs.edge-warning",
+      "obligation_version": 1,
+      "title": "Edge-event warning follows FlowJo 10's threshold and message",
+      "family": "graphs",
+      "target_location": "GateWinController.updateEventsOnAxis",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "edge-warning", "location": "axis above threshold flagged, percent message" },
+        { "kind": "negative", "observation": "edge-warning", "location": "at threshold not flagged; off in preferences" }
+      ],
+      "supporting_observations": [],
+      "owner": {
+        "module_path": "src/core/prefs.ts",
+        "symbol": "edgeWarning",
+        "files": ["src/core/prefs.ts", "src/ui/App.tsx"]
+      },
+      "fixtures": [
+        {
+          "fixture_id": "graphs.edge-warning.pos",
+          "case_kind": "positive",
+          "test_file": "tests/prefs-tables.test.ts",
+          "test_name": "flags an axis above the threshold"
+        },
+        {
+          "fixture_id": "graphs.edge-warning.neg",
+          "case_kind": "negative",
+          "test_file": "tests/prefs-tables.test.ts",
+          "test_name": "flags an axis above the threshold"
+        }
+      ],
+      "verifier": {
+        "verifier_id": "graphs.flowjo",
+        "claim_id": "graphs.edge-warning.v1",
+        "test_file": "tests/prefs-tables.test.ts",
+        "command": "npx vitest run tests/prefs-tables.test.ts"
+      }
+    },
+    {
+      "obligation_id": "tables.editor",
+      "obligation_version": 1,
+      "title": "Table editor columns, outputs and summary follow FlowJo 10",
+      "family": "tables",
+      "target_location": "TableTemplate",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "table-layout-editors", "location": "statistic, keyword, formula columns; CSV/TAB" },
+        { "kind": "negative", "observation": "table-layout-editors", "location": "quoting of ',' cells; Freq. header suffix" }
+      ],
+      "supporting_observations": [],
+      "owner": {
+        "module_path": "src/core/tableEditor.ts",
+        "symbol": "tableRows",
+        "files": ["src/core/tableEditor.ts", "src/ui/Editors.tsx"]
+      },
+      "fixtures": [
+        {
+          "fixture_id": "tables.editor.pos",
+          "case_kind": "positive",
+          "test_file": "tests/prefs-tables.test.ts",
+          "test_name": "statistic, keyword and formula columns"
+        },
+        { "fixture_id": "tables.editor.neg", "case_kind": "negative", "test_file": "tests/prefs-tables.test.ts", "test_name": "CSV:" }
+      ],
+      "verifier": {
+        "verifier_id": "tables.flowjo",
+        "claim_id": "tables.editor.v1",
+        "test_file": "tests/prefs-tables.test.ts",
+        "command": "npx vitest run tests/prefs-tables.test.ts"
+      }
+    },
+    {
+      "obligation_id": "tables.iteration-batch",
+      "obligation_version": 1,
+      "title": "Iteration by sample, keyword or panel and batch tiles follow FlowJo 10",
+      "family": "tables",
+      "target_location": "Iteration; LEBatchBand",
+      "required_case_kinds": ["positive", "negative"],
+      "original_cases": [
+        { "kind": "positive", "observation": "table-layout-editors", "location": "keyword groups and panels" },
+        { "kind": "negative", "observation": "table-layout-editors", "location": "empty keyword values left out; one tile per page" }
+      ],
+      "supporting_observations": [],
+      "owner": {
+        "module_path": "src/core/tableEditor.ts",
+        "symbol": "iterate",
+        "files": ["src/core/tableEditor.ts", "src/ui/Layout.tsx"]
+      },
+      "fixtures": [
+        {
+          "fixture_id": "tables.iteration-batch.pos",
+          "case_kind": "positive",
+          "test_file": "tests/prefs-tables.test.ts",
+          "test_name": "by keyword value"
+        },
+        {
+          "fixture_id": "tables.iteration-batch.neg",
+          "case_kind": "negative",
+          "test_file": "tests/prefs-tables.test.ts",
+          "test_name": "tiles across"
+        }
+      ],
+      "verifier": {
+        "verifier_id": "tables.flowjo",
+        "claim_id": "tables.iteration-batch.v1",
+        "test_file": "tests/prefs-tables.test.ts",
+        "command": "npx vitest run tests/prefs-tables.test.ts"
+      }
     }
   ]
 }

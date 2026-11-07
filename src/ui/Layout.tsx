@@ -1,5 +1,6 @@
 // Layout editor: an ordered list of plots rendered for any sample, with
 // single-sample and batch (every sample in the group) PNG export.
+import { iterate, type Iteration } from '../core/tableEditor';
 import { useEffect, useState } from 'react';
 import { populationPath, type LayoutItem, type SampleState, type Workspace } from '../core/model';
 import type { PlotResult, SampleMeta } from '../core/service';
@@ -158,6 +159,9 @@ export function LayoutView(p: {
   const [rendered, setRendered] = useState<Rendered[]>([]);
   const [busy, setBusy] = useState(false);
   const [batchFormat, setBatchFormat] = useState<'png' | 'svg' | 'pdf'>('png');
+  // Batch iteration (SIteration) and tiles (BatchSettings), specs 17.
+  const [iter, setIter] = useState<Iteration>({ type: 'SAMPLE' });
+  const [tileCols, setTileCols] = useState(0); // 0: one file per iteration
   const [error, setError] = useState('');
   const sample = p.samples.find((s) => s.id === sampleId);
 
@@ -201,13 +205,23 @@ export function LayoutView(p: {
               onClick={async () => {
                 setBusy(true);
                 try {
-                  for (const s of loaded) {
-                    const r = await renderLayout(p.client, p.ws, s, p.meta[s.id], items);
-                    const blob = batchFormat === 'svg' ? new Blob([composeSvg(r)], { type: 'image/svg+xml' })
-                      : batchFormat === 'pdf' ? new Blob([await canvasToPdf(compose(r))], { type: 'application/pdf' })
-                      : await toBlob(compose(r));
-                    p.onDownload(`layout_${safe(s.fileName)}.${batchFormat}`, blob);
+                  const groups = iterate(loaded, iter, (s, k) => s.keywordsSnapshot[k.toUpperCase()] ?? s.keywordsSnapshot[k]);
+                  const per = Math.max(1, items.length);
+                  const out = async (name: string, r: Rendered[], cols: number) => {
+                    const blob = batchFormat === 'svg' ? new Blob([composeSvg(r, cols)], { type: 'image/svg+xml' })
+                      : batchFormat === 'pdf' ? new Blob([await canvasToPdf(compose(r, cols))], { type: 'application/pdf' })
+                      : await toBlob(compose(r, cols));
+                    p.onDownload(`${name}.${batchFormat}`, blob);
+                  };
+                  const all: Rendered[] = [];
+                  for (const g of groups) {
+                    const r: Rendered[] = [];
+                    for (const s of g.items) r.push(...(await renderLayout(p.client, p.ws, s, p.meta[s.id], items)));
+                    if (tileCols > 0) all.push(...r);
+                    else await out(`layout_${safe(iter.type === 'SAMPLE' ? g.items[0].fileName : g.label)}`, r, iter.type === 'SAMPLE' ? 2 : per);
                   }
+                  // Tiles: each sample's layout is one tile, tileCols tiles across.
+                  if (tileCols > 0) await out('layout_batch', all, tileCols * per);
                 } catch (e) {
                   setError((e as Error).message);
                 } finally {
@@ -222,6 +236,12 @@ export function LayoutView(p: {
               <option value="svg">SVG</option>
               <option value="pdf">PDF</option>
             </select>
+            Iterate by <select value={iter.type} onChange={(e) => setIter({ ...iter, type: e.target.value as Iteration['type'] })} data-testid="layout-iter">
+              <option value="SAMPLE">Sample</option><option value="KEYWORD">Keyword</option><option value="PANEL">Panel</option>
+            </select>
+            {iter.type === 'KEYWORD' && <input data-testid="layout-iter-kw" placeholder="keyword" value={iter.keyword ?? ''} onChange={(e) => setIter({ ...iter, keyword: e.target.value })} />}
+            {iter.type === 'PANEL' && <input type="number" min={1} style={{ width: 50 }} data-testid="layout-iter-panel" value={iter.panelSize ?? 1} onChange={(e) => setIter({ ...iter, panelSize: Number(e.target.value) || 1 })} />}
+            Tiles across <input type="number" min={0} style={{ width: 50 }} data-testid="layout-tiles" title="0: one file per iteration" value={tileCols} onChange={(e) => setTileCols(Math.max(0, Number(e.target.value) || 0))} />
             {busy && <span className="muted">exporting...</span>}
           </div>
           {loaded.length < p.samples.length && <p className="muted">{p.samples.length - loaded.length} sample(s) without loaded data are skipped.</p>}

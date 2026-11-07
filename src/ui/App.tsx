@@ -28,11 +28,13 @@ import { asCanvas, SvgContext } from './svgContext';
 import { drawableGates } from './gateGeometry';
 import { initHistory, pushHistory, redo, undo, type History } from './history';
 import { createAnalysisClient } from './workerClient';
+import { autoSaveMessage, CONFIRM, edgeWarning, loadPrefs, rememberDontAsk, savePrefs, shouldAutoSave, skipConfirm, type Prefs } from '../core/prefs';
+import { PrefsDialog, TablesDialog } from './Editors';
 
 const client = createAnalysisClient();
 
 type Analysis = { results: PopulationResult[]; total: number; compError?: string };
-type Dialog = null | { kind: 'group'; id: string | null } | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export' } | { kind: 'layout' } | { kind: 'derived' } | { kind: 'platforms' } | { kind: 'manual' };
+type Dialog = null | { kind: 'group'; id: string | null } | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export' } | { kind: 'layout' } | { kind: 'derived' } | { kind: 'platforms' } | { kind: 'manual' } | { kind: 'prefs' } | { kind: 'tables' };
 
 function download(name: string, data: BlobPart, type = 'application/octet-stream') {
   const url = URL.createObjectURL(new Blob([data], { type }));
@@ -51,13 +53,19 @@ export function App() {
   // Workspace with undo/redo history; every edit goes through setWs.
   const [hist, setHist] = useState<History<Workspace>>(() => initHistory(emptyWorkspace()));
   const ws = hist.present;
+  // FlowJo preferences (specs 16), kept in this browser.
+  const [prefs, setPrefsState] = useState<Prefs>(() => loadPrefs());
+  const setPrefs = (p: Prefs) => { setPrefsState(p); savePrefs(p); };
+  const prefsRef = useRef(prefs);
+  prefsRef.current = prefs;
   // Live groups are re-synchronised after every edit.
   const setWs = (next: Workspace | ((w: Workspace) => Workspace)) =>
     setHist((h) => {
       let w = typeof next === 'function' ? next(h.present) : next;
       const copy = structuredClone(w);
       if (syncLiveGroups(copy)) w = copy;
-      return pushHistory(h, w);
+      // Preference "Disable Undo": edits replace the present state.
+      return prefsRef.current.noUndo ? { ...h, present: w, past: [], future: [] } : pushHistory(h, w);
     });
   const [meta, setMeta] = useState<Record<string, SampleMeta>>({});
   const [analysis, setAnalysis] = useState<Record<string, Analysis>>({});
@@ -66,6 +74,16 @@ export function App() {
   const [groupId, setGroupId] = useState('all');
   const [tool, setTool] = useState<Tool>('select');
   const [plotData, setPlotData] = useState<PlotResult | null>(null);
+  // Edge-event warning (GateWinController.updateEventsOnAxis): events in the
+  // first or last display bin of each axis stand for events on the bound.
+  const edge = (() => {
+    const d = plotData;
+    if (!d || !d.count) return null;
+    const B = d.bins, c = { n: d.count, xLow: 0, xHigh: 0, yLow: 0, yHigh: 0 };
+    if (d.density.length === B) { c.xLow = d.density[0]; c.xHigh = d.density[B - 1]; }
+    else for (let i = 0; i < B; i++) { c.xLow += d.density[i * B]; c.xHigh += d.density[i * B + B - 1]; c.yLow += d.density[i]; c.yHigh += d.density[(B - 1) * B + i]; }
+    return edgeWarning(prefs, c);
+  })();
   const [overlayData, setOverlayData] = useState<{ label: string; data: PlotResult }[]>([]);
   const [log, setLog] = useState<{ level: 'info' | 'warn' | 'error'; text: string }[]>([]);
   const [busy, setBusy] = useState(0);
@@ -87,8 +105,30 @@ export function App() {
   // Workspace gate clipboard (FlowJo WSClipboard).
   const [clip, setClip] = useState<Population[] | null>(null);
   // In-app question with labelled answers; resolves to the chosen label or null (cancel).
-  const [question, setQuestion] = useState<{ text: string; choices: string[]; resolve: (c: string | null) => void } | null>(null);
-  const ask = (text: string, choices: string[]) => new Promise<string | null>((resolve) => setQuestion({ text, choices, resolve }));
+  const [question, setQuestion] = useState<{ text: string; choices: string[]; resolve: (c: string | null) => void; dontAskKey?: string } | null>(null);
+  const [dontAskTick, setDontAskTick] = useState(false);
+  // dontAskKey: FlowJo's confirmations that offer "Don't ask again"; a
+  // remembered key answers with the first choice without asking.
+  const ask = (text: string, choices: string[], dontAskKey?: string) => {
+    if (dontAskKey && skipConfirm(prefsRef.current, dontAskKey)) return Promise.resolve<string | null>(choices[0]);
+    setDontAskTick(false);
+    return new Promise<string | null>((resolve) => setQuestion({ text, choices, resolve, dontAskKey }));
+  };
+
+  // Auto-save (AutoSaveTask): every N minutes, a workspace already saved once
+  // that has samples. Own rule: a browser cannot overwrite the saved file, so
+  // the copy goes to this browser's storage for recovery.
+  const [savedOnce, setSavedOnce] = useState(false);
+  const wsRef = useRef(ws);
+  wsRef.current = ws;
+  useEffect(() => {
+    const id = setInterval(() => {
+      const w = wsRef.current;
+      if (!shouldAutoSave(prefsRef.current, savedOnce, w.samples.length)) return;
+      try { localStorage.setItem('flowjo-rea.autosave', serializeWorkspace(w)); setLog((l) => [{ level: 'info' as const, text: autoSaveMessage(w.name, new Date()) }, ...l].slice(0, 200)); } catch { /* retried next time */ }
+    }, Math.max(1, prefs.autoSaveMinutes) * 60000);
+    return () => clearInterval(id);
+  }, [savedOnce, prefs.autoSaveMinutes]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -97,8 +137,15 @@ export function App() {
       if (!(e.ctrlKey || e.metaKey)) return;
       const k = e.key.toLowerCase();
       if (k === 'g') { e.preventDefault(); setDialog({ kind: 'manual' }); } // Manually Enter Gate... (FlowJo menu shortcut G)
+      // FlowJo accelerators (specs 16.4): S save, Y preferences, E export,
+      // L layout editor, T table editor.
+      else if (k === 's' && !e.shiftKey) { e.preventDefault(); document.querySelector<HTMLButtonElement>('[data-testid=save-ws]')?.click(); }
+      else if (k === 'y' && !e.shiftKey) { e.preventDefault(); setDialog({ kind: 'prefs' }); }
+      else if (k === 'e') { e.preventDefault(); setDialog({ kind: 'export' }); }
+      else if (k === 'l') { e.preventDefault(); setDialog({ kind: 'layout' }); }
+      else if (k === 't') { e.preventDefault(); setDialog({ kind: 'tables' }); }
       else if (k === 'z' && !e.shiftKey) { e.preventDefault(); setHist(undo); }
-      else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); setHist(redo); }
+      else if ((k === 'z' && e.shiftKey) || (k === 'y' && e.shiftKey)) { e.preventDefault(); setHist(redo); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -507,7 +554,7 @@ export function App() {
     // FlowJo 10 always confirms a tree delete (specs 6.7).
     const what = roots.map((r) => `"${populationPath(pops, r)}"`).join(', ');
     const below = doomed.size - roots.length;
-    const a = await ask(`Delete ${what}${roots.length > 1 ? ' (sibling quadrants are deleted together, as in FlowJo)' : ''}${below ? ` and the ${below} population(s) below` : ''}? Undo restores it.`, ['Delete']);
+    const a = await ask(`Delete ${what}${roots.length > 1 ? ' (sibling quadrants are deleted together, as in FlowJo)' : ''}${below ? ` and the ${below} population(s) below` : ''}? Undo restores it.`, ['Delete'], CONFIRM.populations.key);
     if (a !== 'Delete') return;
     updateWs((w) => { const s = w.samples.find((x) => x.id === sample.id)!; for (const r of roots) removePopulation(s, r); });
     if (sel.popId && doomed.has(sel.popId)) setSel({ sampleId: sample.id, popId: null });
@@ -641,7 +688,9 @@ export function App() {
         <label className="file-btn">Add FCS files<input type="file" multiple accept=".fcs,.lmd,*" data-testid="add-fcs" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ''; }} /></label>
         <label className="file-btn">Open workspace / FlowJo .wsp<input type="file" accept=".json,.wsp,.frea" data-testid="open-ws" onChange={(e) => { const f = e.target.files?.[0]; if (f) openWorkspace(f); e.target.value = ''; }} /></label>
         <label className="file-btn">Import Gating-ML<input type="file" accept=".xml" data-testid="import-gml" onChange={(e) => { const f = e.target.files?.[0]; if (f) importGatingMl(f); e.target.value = ''; }} /></label>
-        <button data-testid="save-ws" onClick={() => download(`${ws.name.replace(/\.(wsp|json)$/i, '') || 'workspace'}.frea.json`, serializeWorkspace(ws), 'application/json')}>Save workspace</button>
+        <button data-testid="open-prefs" onClick={() => setDialog({ kind: 'prefs' })} title="Preferences (Ctrl/Cmd+Y)">Preferences</button>
+        <button data-testid="open-tables" onClick={() => setDialog({ kind: 'tables' })} title="Table editor (Ctrl/Cmd+T)">Tables ({ws.tables?.length ?? 0})</button>
+        <button data-testid="save-ws" onClick={() => { setSavedOnce(true); download(`${ws.name.replace(/\.(wsp|json)$/i, '') || 'workspace'}.frea.json`, serializeWorkspace(ws), 'application/json'); }}>Save workspace</button>
         <button disabled={!hist.past.length} onClick={() => setHist(undo)} data-testid="undo" title="Undo (Ctrl+Z)">Undo</button>
         <button disabled={!hist.future.length} onClick={() => setHist(redo)} data-testid="redo" title="Redo (Ctrl+Shift+Z)">Redo</button>
         <span className="sep" />
@@ -996,6 +1045,7 @@ export function App() {
                   </label>
                 ))}
               </details>
+              {edge?.text && <p className="warn" data-testid="edge-warning">{edge.text}</p>}
             </>
           ) : (
             <p className="muted">{sample ? 'Sample data not loaded: add the FCS file to relink it.' : 'Select a sample.'}</p>
@@ -1088,14 +1138,15 @@ export function App() {
       </main>
 
       {question && (
-        <div className="modal-bg">
+        <div className="modal-bg" style={{ zIndex: 1000 }}>
           <div className="modal" role="alertdialog" aria-label="Question" data-testid="question">
             <div className="modal-body">
               <p>{question.text}</p>
               <div className="row">
-                {question.choices.map((c) => <button key={c} data-testid={`answer-${c}`} onClick={() => { question.resolve(c); setQuestion(null); }}>{c}</button>)}
+                {question.choices.map((c) => <button key={c} data-testid={`answer-${c}`} onClick={() => { if (question.dontAskKey && dontAskTick) setPrefs(rememberDontAsk(prefsRef.current, question.dontAskKey)); question.resolve(c); setQuestion(null); }}>{c}</button>)}
                 <button data-testid="answer-cancel" onClick={() => { question.resolve(null); setQuestion(null); }}>Cancel</button>
               </div>
+              {question.dontAskKey && <label><input type="checkbox" data-testid="dont-ask" checked={dontAskTick} onChange={(e) => setDontAskTick(e.target.checked)} /> Don't ask again</label>}
             </div>
           </div>
         </div>
@@ -1261,6 +1312,8 @@ export function App() {
           onClose={() => setDialog(null)}
         />
       )}
+      {dialog?.kind === 'prefs' && <PrefsDialog prefs={prefs} onChange={setPrefs} onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'tables' && <TablesDialog ws={ws} updateWs={updateWs} stats={stats} colLabel={colLabel} ask={ask} download={download} onClose={() => setDialog(null)} />}
       {dialog?.kind === 'export' && sample && (
         <ExportDialog
           popLabel={popPath || 'All events'}

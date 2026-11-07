@@ -56,7 +56,7 @@ hand-computed expectations; **E2E** = `e2e/workflow.mjs` through the real UI.
 | 6 | Empty populations | - | Done | unit tests | Frequencies and channel stats give NaN, never 0 |
 | 7 | Apply a gate tree to a group; sync edits to group | observed (FlowJo group gating) | Done | unit tests; E2E | Copies by population path; not FlowJo's live group-owned gates |
 | 7 | Statistics table across samples of a group, CSV export | - | Done | E2E; CSV quoting unit test | - |
-| 7 | Statistic templates (named; save, apply, delete column sets; saved in the workspace file) and all-groups CSV (Group column, one row per group membership) | - | Implemented, tested | E2E (template restores identical table; all-groups row count) | Not FlowJo's table editor: no per-column formatting, iteration over keywords or formula columns |
+| 7 | Statistic templates (named; save, apply, delete column sets; saved in the workspace file) and all-groups CSV (Group column, one row per group membership) | - | Implemented, tested | E2E (template restores identical table; all-groups row count) | FlowJo's table editor (specs 17) is separate: Tables button |
 | 7 | Layout editor: ordered plots and text blocks rendered for any sample, reorder/remove, PNG/SVG/PDF export for one sample and batch export per sample in the group; saved in the workspace, undoable | - | Implemented, tested | E2E (2-up PNG; SVG with text; PDF validated strictly by pypdf; batch); unit test of the PDF writer | PDF is one page embedding the composed image as JPEG (not vector text); no free positioning |
 | 8 | Save and reopen native workspace (`.frea.json`), relink FCS to a sample without data by FlowJo 10's keyword test (`$TOT`, then `$DATE`/`$BTIM`/`$BEGINDATA`, then `$FIL`; any file name; no match: new sample), SHA-256 mismatch warning; a file already loaded is not added again; samples can be removed (asks; undoable); opening a workspace over current work asks first | - | Done | unit round trip; E2E (tree, counts, stats identical after reload) | FCS data is not embedded; files must be re-added |
 | 9 | Export stats CSV; events as CSV scale values, CSV channel values or FCS 3.1, with FlowJo's parameter sets, "no more than N" (FlowJo's step decimation) and concatenation (all / every n / equal keyword, $ETIM order, SampleID); plot PNG; Gating-ML | observed (FlowJo 10.6.2, specs 9) | Done | Unit (tests/export-rules); E2E + re-read of exported FCS; REA obligations export.* verified | FCS values are written in scale units with $TIMESTEP = 1 (own rule; FlowJo writes raw units); keyword-derived extra parameters and naming patterns not implemented |
@@ -150,8 +150,8 @@ count matches FlowJo except 7 rows where FlowJo versions disagree.
 
 ## Backlog for broader parity (not implemented)
 
-Plugins; FlowJo's table editor (per-column formatting, keyword iteration,
-formulas); free layout positioning and vector PDF; derived-parameter types
+Plugins; table editor Excel / SQL outputs (statistic, keyword and formula
+columns, iteration and CSV / TAB / HTML are in, specs 17); free layout positioning and vector PDF; derived-parameter types
 other than ratio; WLS unmixing; FlowJo statistic conventions
 (median/percentile/robust CV) verified against FlowJo output; every
 "Not compared with FlowJo" item above (each needs FlowJo-side output).

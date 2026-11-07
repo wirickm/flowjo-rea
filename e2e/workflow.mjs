@@ -109,7 +109,7 @@ check('dragging a polygon vertex re-gates', polyEdited !== polyCount, `${polyCou
 await page.keyboard.press('Control+Z');
 await idle();
 const undoneEdit = Number(await count('Polygon 1'));
-await page.keyboard.press('Control+Y');
+await page.keyboard.press('Control+Shift+Z');
 await idle();
 check('undo/redo a vertex edit', undoneEdit === polyCount && Number(await count('Polygon 1')) === polyEdited, `${undoneEdit} / ${await count('Polygon 1')}`);
 // quadrant + histogram range on Cells

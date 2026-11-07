@@ -241,3 +241,47 @@ export function snapToGuides(rect: Box, dx: number, dy: number, g: Guides, radiu
   const sy = best([rect.y + dy, rect.y + dy + rect.h], g.h);
   return { dx: dx + (sx ?? 0), dy: dy + (sy ?? 0) };
 }
+
+// Grid figures (FigGridLayout / FJLayoutGrid / GridUtil; specs 25.2): a grid of
+// rows x cols cells of one size with a padding; each cell holds at most one
+// item, addressed by (row, col).
+export interface GridDef { id: string; x: number; y: number; rows: number; cols: number; pad: number; cellW: number; cellH: number; bare: boolean }
+export interface CellRef { id: string; row: number; col: number }
+// Cell position of an item (top-left inside the padding).
+export const cellOrigin = (g: GridDef, row: number, col: number) => ({ x: g.x + col * (g.cellW + 2 * g.pad) + g.pad, y: g.y + row * (g.cellH + 2 * g.pad) + g.pad });
+// The grid's own bounds.
+export const gridBounds = (g: GridDef): Box => ({ id: g.id, x: g.x, y: g.y, w: g.cols * (g.cellW + 2 * g.pad), h: g.rows * (g.cellH + 2 * g.pad) });
+// Bare charts with axes on the border (G5-G7): bottom row X, left column Y.
+export const borderAxes = (g: GridDef, c: CellRef, cells: CellRef[]) => {
+  if (!g.bare) return 'tnlTNL';
+  const lastRow = Math.max(...cells.filter((x) => x.col === c.col).map((x) => x.row));
+  const firstCol = Math.min(...cells.filter((x) => x.row === c.row).map((x) => x.col));
+  return `${c.row === lastRow ? 'tnl' : ''}${c.col === firstCol ? 'TNL' : ''}`;
+};
+// Insert Rows or Columns: a row (column) inserted at index `at`; later cells move down (right).
+export function gridInsert(g: GridDef, cells: CellRef[], axis: 'row' | 'col', at: number): { grid: GridDef; cells: CellRef[] } {
+  const k = axis === 'row' ? 'row' : 'col';
+  return { grid: axis === 'row' ? { ...g, rows: g.rows + 1 } : { ...g, cols: g.cols + 1 }, cells: cells.map((c) => (c[k] >= at ? { ...c, [k]: c[k] + 1 } : c)) };
+}
+// Delete Rows or Columns: the cells in that row (column) are removed with their
+// contents; later cells move up (left). Returns the removed item ids.
+export function gridDelete(g: GridDef, cells: CellRef[], axis: 'row' | 'col', at: number): { grid: GridDef; cells: CellRef[]; removed: string[] } {
+  const k = axis === 'row' ? 'row' : 'col';
+  const n = axis === 'row' ? g.rows : g.cols;
+  if (n <= 1) return { grid: g, cells, removed: [] };
+  return {
+    grid: axis === 'row' ? { ...g, rows: g.rows - 1 } : { ...g, cols: g.cols - 1 },
+    cells: cells.filter((c) => c[k] !== at).map((c) => (c[k] > at ? { ...c, [k]: c[k] - 1 } : c)),
+    removed: cells.filter((c) => c[k] === at).map((c) => c.id),
+  };
+}
+// Set Grid Dimensions: cells outside the new size leave the grid (kept as free items).
+export function gridResize(g: GridDef, cells: CellRef[], rows: number, cols: number): { grid: GridDef; cells: CellRef[]; released: string[] } {
+  const r = Math.max(1, Math.floor(rows)), c = Math.max(1, Math.floor(cols));
+  return { grid: { ...g, rows: r, cols: c }, cells: cells.filter((x) => x.row < r && x.col < c), released: cells.filter((x) => x.row >= r || x.col >= c).map((x) => x.id) };
+}
+// The next free cell, row by row (FJLayoutGrid.getNextCell), or null when full.
+export function nextFreeCell(g: GridDef, cells: CellRef[]): { row: number; col: number } | null {
+  for (let r = 0; r < g.rows; r++) for (let c = 0; c < g.cols; c++) if (!cells.some((x) => x.row === r && x.col === c)) return { row: r, col: c };
+  return null;
+}

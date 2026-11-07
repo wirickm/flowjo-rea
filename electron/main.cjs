@@ -14,7 +14,11 @@ function createWindow() {
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
   // Links open in the default browser; the window never navigates away.
-  win.webContents.setWindowOpenHandler(({ url }) => {
+  win.webContents.setWindowOpenHandler(({ url, frameName }) => {
+    // Graph windows (specs 23): blank child windows the page renders into.
+    if (url === 'about:blank' && frameName.startsWith('gw-')) {
+      return { action: 'allow', overrideBrowserWindowOptions: { width: 600, height: 720, title: 'Graph window', autoHideMenuBar: true, webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true } } };
+    }
     if (/^https?:/.test(url)) shell.openExternal(url);
     return { action: 'deny' };
   });

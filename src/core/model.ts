@@ -169,6 +169,7 @@ export interface Workspace {
   layoutPage?: import('./layoutArrange').PageSetup;
   layoutIteration?: import('./layoutArrange').LayoutIteration;
   layoutGuides?: import('./layoutArrange').Guides;
+  layoutGrids?: import('./layoutArrange').GridDef[];
   showEventNumber?: boolean; // Display > Show Event # Parameter (specs 24.2)
   showUncompensated?: boolean; // Display > Show Uncompensated Parameters (specs 25.1)
   // FlowJo Kinetics node settings and timeslices per population path (specs 11).
@@ -219,6 +220,7 @@ export interface LayoutPlace {
   height?: number;
   locked?: boolean; // position lock (le.lock.position)
   groupId?: string; // grouped items move, align and order together
+  cell?: { grid: string; row: number; col: number }; // cell of a grid figure (specs 25.2)
 }
 export interface LayoutPlot extends PlotSettings, LayoutPlace {
   id: string;

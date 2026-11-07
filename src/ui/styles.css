@@ -125,3 +125,9 @@ table.matrix input { width: 72px; }
 .fj-status { padding: 2px 10px; font-size: 11px; color: #4a5568; background: #dfe4ee; border-top: 1px solid #c9d0dc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .app.flowjo .modal-bg { z-index: 200; } .app.flowjo .ctx-bg { z-index: 300; }
 .color-legend { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; } .color-legend .ramp { display: inline-block; width: 60px; height: 8px; background: linear-gradient(90deg, rgb(20,40,160), rgb(0,150,220), rgb(40,190,90), rgb(240,220,40), rgb(230,60,30)); }
+/* Graph window in its own browser / OS window */
+body.gw-popout { margin: 0; background: #fff; font: 13px system-ui, sans-serif; }
+.gw-popout .fj-gw.popped { position: static; width: auto; max-height: none; border: 0; box-shadow: none; border-radius: 0; }
+.gw-popout .fj-gw.popped .fj-gw-title { cursor: default; border-radius: 0; }
+.layout-page .layout-gridlines { position: absolute; pointer-events: none; border: 1px solid #b9c3d6; box-sizing: border-box; background-image: linear-gradient(90deg, #d4dbe8 1px, transparent 1px), linear-gradient(#d4dbe8 1px, transparent 1px); z-index: 0; }
+.layout-gridbar { background: #f3f6fc; padding: 3px 6px; border-radius: 4px; }

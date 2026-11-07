@@ -2,7 +2,7 @@
 reimplementation; no FlowJo code, disassembly or decompiled text. Implemented
 subset and own rules: flowjo-engine-specs.md section 19. The accelerator
 table's App column is current; the "App:" notes inside numbered rules were
-written before the batch, and section 19 supersedes them. -->
+written before the batch, and sections 19 and 20 supersede them. -->
 
 # FlowJo 10.6.2 interaction model (keyboard, dispatch, undo, clipboard)
 
@@ -192,7 +192,7 @@ differs / missing. 168 entries (bundle order; `plat.*` from
 | `gw.add.statistic` | `66` | Menu+B | Add Statistic... | graph window | GWCommand (GWActionManager, menu items) | missing |
 | `gw.close.all` | `W` | Menu+Shift+W | Close All Graph Windows | graph window | GWCommand (GWActionManager, menu items) | missing |
 | `gw.close.this` | `87` | Menu+W | Close Window | graph window | GWCommand (GWActionManager, menu items) | missing |
-| `gw.copy.histogram` | `70` | Menu+F | Copy Histogram Function | graph window | GWCommand (GWActionManager, menu items) | missing |
+| `gw.copy.histogram` | `70` | Menu+F | Copy Histogram Function | graph window | GWCommand (GWActionManager, menu items) | match (plot focused; specs 20.4) |
 | `gw.copy.layout` | `76` | Menu+L | Copy to Layout Editor | graph window | GWCommand (GWActionManager, menu items) | missing |
 | `gw.copy.picturetransparency` | `67` | Menu+C | Copy Image | graph window | GWCommand (GWActionManager, menu items) | match (Ctrl/Cmd+C with the plot focused; specs 19.4) |
 | `gw.doc.saveas` | `69` | Menu+E | Export Graphic As... | graph window | GWCommand (GWActionManager, menu items) | differs (app Ctrl/Cmd+E opens data export, not graphic export) |

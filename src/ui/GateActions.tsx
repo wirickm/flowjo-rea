@@ -121,3 +121,17 @@ export function ManualGateDialog(p: { x: Axis; y: Axis | null; xRange: [number, 
   );
 }
 
+
+// Right-click menu (FJPopupMenu): items in FlowJo's order, separators as null.
+export type MenuItem = { label: string; onClick: () => void; disabled?: boolean; testId?: string } | null;
+export function ContextMenu(p: { x: number; y: number; items: MenuItem[]; onClose: () => void }) {
+  return (
+    <div className="ctx-bg" onMouseDown={p.onClose} onContextMenu={(e) => { e.preventDefault(); p.onClose(); }}>
+      <div className="ctx-menu" role="menu" data-testid="context-menu" style={{ left: Math.min(p.x, window.innerWidth - 220), top: Math.min(p.y, window.innerHeight - 24 * p.items.length - 10) }} onMouseDown={(e) => e.stopPropagation()}>
+        {p.items.map((it, i) => it === null
+          ? <hr key={i} />
+          : <button key={i} role="menuitem" disabled={it.disabled} data-testid={it.testId ?? `ctx-${it.label}`} onClick={() => { p.onClose(); it.onClick(); }}>{it.label}</button>)}
+      </div>
+    </div>
+  );
+}

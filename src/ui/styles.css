@@ -50,3 +50,11 @@ table.matrix input { width: 72px; }
 .layout-card { border: 1px solid #d3d9e3; border-radius: 4px; padding: 4px; }
 .overlay-picker { margin: 4px 0; max-height: 160px; overflow: auto; }
 .overlay-picker summary { cursor: pointer; }
+
+/* Right-click menus */
+.ctx-bg { position: fixed; inset: 0; z-index: 50; }
+.ctx-menu { position: fixed; min-width: 200px; background: #fff; border: 1px solid #bbb; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18); padding: 4px 0; display: flex; flex-direction: column; }
+.ctx-menu button { border: 0; background: none; text-align: left; padding: 4px 14px; font: inherit; cursor: pointer; }
+.ctx-menu button:hover:not(:disabled) { background: #e8eefc; }
+.ctx-menu button:disabled { color: #aaa; cursor: default; }
+.ctx-menu hr { border: 0; border-top: 1px solid #e2e2e2; margin: 3px 0; }

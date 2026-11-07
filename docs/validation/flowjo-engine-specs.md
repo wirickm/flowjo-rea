@@ -1292,6 +1292,71 @@ into keyword columns (C10), drag and drop (C11), Copy Histogram Function and
 Copy Statistics (C13), context menus (D7), gate size and duplicate view, the
 layout editor's own keys and undo history.
 
+## 20. Text paste, drag and drop, right-click menus, text copies (FlowJo 10.6.2)
+
+Rules from `docs/validation/flowjo-interaction-model.md` (C6, C10, C11, C13,
+D7) plus a javap read of `KTreeTable.addPastedHeaderKeywords` and
+`GatePanel.makeGatePopupMenu`. Implemented in `src/core/project.ts`
+(`parseTabOrCsv`, `pasteAnnotations`; tests `tests/paste-annotations.test.ts`),
+`src/ui/App.tsx` (`pasteTextRef`, `dropFiles`, `onDropOn`, `popMenu`,
+`plotMenu`, `copyHistogram`, `copyStatistics`), `src/ui/Plot.tsx`
+(`onContext`) and `src/ui/GateActions.tsx` (`ContextMenu`). E2E:
+`e2e/gaps.mjs` (13 checks).
+
+### 20.1 Text paste into the sample table (matches; column choice own)
+
+| Rule | Behavior | Proven by |
+|---|---|---|
+| C6 | Paste pastes copied populations first; only with none does the system clipboard's text go to the table | `WSClipboard.paste`, `WSClipboard.pastable`, `WSViewMgr.pasteText` |
+| C10 | Rows split on line breaks, cells on tabs (else commas, CSV quoting) | `StringUtil.parseTabOrCsvString` |
+| C10 | With no editable keyword column yet, the first row names the keyword columns | `KTreeTable.addPastedHeaderKeywords`, `WSKeywordMgr.addKeyword` |
+| C10 | Values fill from the selected row down; a single value fills every selected row; the paste is one undo step | `KTreeTable.pasteFromSystemClipboard` (`FJCompoundEdit`) |
+
+Own rules: the keyword columns are the sample annotations; data fills them in
+column order from the first (the app has no column selection); the first row
+is also a header when all its cells are existing keywords; "selected rows" are
+the checked samples.
+
+### 20.2 Drag and drop (matches the implemented targets)
+
+| Rule | Behavior | Proven by |
+|---|---|---|
+| C11 | Files dropped on the workspace open by type: FCS, workspace, Gating-ML XML, `.mtx` matrices | `TreeTableDropListener.processDropFile` |
+| C11 | A matrix dropped on a sample or group is applied to it (also added to the matrices) | `TreeTableDropListener.compDrop` |
+| C11 | A population dropped on a sample or population is copied under it (undoable); dropped on a group, it becomes the group's analysis | `TreeTableDropListener.initiateNodeDrop`, `GroupTableDropListener.drop` |
+
+Own rules: a population cannot be dropped onto itself or its children; zip,
+image and CSV/CLR matrix files are reported as not openable; drops between
+workspaces do not apply (one workspace per page).
+
+### 20.3 Right-click menus (matches the supported items, FlowJo order)
+
+- Population (`SampleTreeTable.buildPopup`): Copy, Paste, Rename, Delete, -,
+  Add Statistic, -, Inspect..., -, Copy analysis to group (disabled when the
+  analysis already belongs to the group), -, Export / Concatenate....
+- Sample or All events: Paste, Add Statistic, -, Inspect..., -, Export /
+  Concatenate....
+- Plot (`GatePanel.maybeDoPopup`, `makeGatePopupMenu`): on a gate, Rename...,
+  Clear, -, Convert to Polygon / Rectangle / Ellipse (`makeGateConversionMenu`,
+  disabled when not possible), -; always Add Statistic, Copy Image, Copy
+  Histogram Function (1-D only), Copy Statistics, Copy to Layout Editor.
+- Not offered (no app feature): Duplicate, Add Keyword, Select Equivalent
+  Nodes, DIVA export, line thickness, smoothing, colour, Duplicate View,
+  Copy Image Without Transparency. Add Statistic uses the statistic chosen in
+  the Statistics panel (FlowJo opens its dialog).
+
+### 20.4 Text copies from the graph (matches the commands; text layout own)
+
+| Rule | Behavior | Proven by |
+|---|---|---|
+| C13 | Copy Histogram Function (Ctrl/Cmd+F, 1-D only) puts the X histogram on the clipboard as text | `GWAction.copyText`, `Histogram.toString(CoordinateTransformer)`, `gw.copy.histogram` |
+| C13 | Copy Statistics puts the population's statistic values on the clipboard as text | `GWAction.copyStatistics`, `PopNode.collectStatNodeString` |
+
+Own rules (FlowJo's text forms were not read): the histogram is a header
+("parameter<TAB>Count") then one row per display bin, the bin centre in scale
+units and its count; statistics are "column label<TAB>value" lines for the
+statistics-table columns of the selected population.
+
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 
 Source: static analysis of `libNativeEngine.dylib` from the public FlowJo

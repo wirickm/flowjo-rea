@@ -562,6 +562,8 @@ export function parseWsp(xml: string): WspImport {
       else if (type === 'KEYWORD' && attr(it!, 'iterationKeyword')) out.layoutIteration = { type: 'KEYWORD', keyword: attr(it!, 'iterationKeyword')!, ...(attr(it!, 'discriminator') ? { discriminator: attr(it!, 'discriminator') } : {}) };
       else if (type === 'PANEL') out.layoutIteration = { type: 'PANEL', size: Number(attr(it!, 'panelSize')) || 1 };
       else if (type === 'OFF') out.layoutIteration = { type: 'OFF' };
+      const gn = it ? attr(it, 'groupName') : undefined;
+      if (gn && gn !== 'workspaceSelection') out.layoutGroup = gn;
       // Figures (specs 25.4): charts, text, shapes, images, groups, grids.
       const fl = kids(lay, 'FigList')[0];
       if (fl && kids(fl).length) {
@@ -578,6 +580,7 @@ export function parseWsp(xml: string): WspImport {
       if (c.layoutIteration) ws.layoutIteration = c.layoutIteration;
       if (c.layout) ws.layout = c.layout;
       if (c.layoutGrids) ws.layoutGrids = c.layoutGrids;
+      if (c.layoutGroup) ws.layoutGroup = c.layoutGroup;
       if (c.name !== 'Layout') ws.layoutName = c.name;
       const others = layouts.filter((l) => l !== cur).map(readLayout);
       if (others.length) ws.otherLayouts = others;

@@ -179,8 +179,13 @@ export interface Workspace {
   // current layout, named layoutName (default "Layout"); the others are kept here.
   layoutName?: string;
   otherLayouts?: SavedLayout[];
+  // Iteration Group of the current layout (Iteration groupName): a group name;
+  // absent = the workspace's selected group ("workspaceSelection").
+  layoutGroup?: string;
   // Header / footer of printed layout pages (workspace-wide, as FlowJo's prefs).
   layoutHeaderFooter?: import('./layoutFigures').HeaderFooter;
+  // Figure presets (FigPreset): named figure properties to apply to figures.
+  layoutFigPresets?: import('./layoutFigures').FigPreset[];
   statTemplates?: { id: string; name: string; columns: StatColumn[] }[];
   // FlowJo table editor templates (specs 17).
   tables?: import('./tableEditor').TableTemplate[];
@@ -223,6 +228,7 @@ export interface SavedLayout {
   layoutIteration?: import('./layoutArrange').LayoutIteration;
   layoutGuides?: import('./layoutArrange').Guides;
   layoutGrids?: import('./layoutArrange').GridDef[];
+  layoutGroup?: string;
 }
 
 // A layout cell: a plot rendered for whichever sample is chosen, a text block,

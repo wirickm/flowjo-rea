@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { autoPageScale, handleAt, invertSelection, pasteOffset, resizeBox, scaledPage, sortNames, uniqueName, zoomFit, zoomIn, zoomOut, type Box } from '../src/core/layoutArrange';
-import { addLayout, annoToken, arrowHead, deleteLayout, duplicateLayout, headerText, keywordToken, layoutNames, lineFromPoints, liveText, renameLayout, selectLayout, snapLineAngle, styleOf } from '../src/core/layoutFigures';
+import { addLayout, applyPreset, makePreset, annoToken, arrowHead, deleteLayout, duplicateLayout, headerText, keywordToken, layoutNames, lineFromPoints, liveText, renameLayout, selectLayout, snapLineAngle, styleOf } from '../src/core/layoutFigures';
 import { emptyWorkspace, type LayoutItem, type Workspace } from '../src/core/model';
 import { parseFigList, writeFigList } from '../src/core/wspLayout';
 import { parseXml } from '../src/core/xml';
@@ -114,6 +114,12 @@ describe('figures: styles, lines, live text, header / footer', () => {
     const t = `Sample ${keywordToken('$FIL')} on page ${annoToken('page')} (${annoToken('samplename')})`;
     expect(liveText(t, { keyword: (k) => (k === '$FIL' ? 'a.fcs' : undefined), page: 3, sampleName: 'A' })).toBe('Sample a.fcs on page 3 (A)');
   });
+  it('figure presets copy the properties and text font', () => {
+    const pr = makePreset({ id: 't', text: 'a', bold: true, size: 14, style: { fill: '#ff0000' } }, ['New Preset']);
+    expect(pr).toMatchObject({ name: 'New Preset-1', style: { fill: '#ff0000' }, text: { bold: true, size: 14 } });
+    expect(applyPreset({ id: 'u', text: 'b' }, pr)).toMatchObject({ text: 'b', bold: true, size: 14, style: { fill: '#ff0000' } });
+    expect(applyPreset({ id: 's', shape: 'rect', style: { fill: '#000000' } }, { name: 'x' }).style).toBeUndefined();
+  });
   it('header tags', () => {
     expect(headerText('<DocumentName/> - Page <PageNumber/> <Version/>', { document: 'Layout', page: 2, version: 'v' })).toBe('Layout - Page 2 v');
   });
@@ -153,6 +159,7 @@ describe('.wsp figures: shapes, images, text styles and live fields; several lay
     Object.assign(ws, addLayout(ws));
     ws.layout = [{ id: 't2', text: 'second' }];
     ws.layoutPage = { paper: 'a4', orientation: 'landscape', scale: 1.5 };
+    ws.layoutGroup = 'Panel B';
     const { xml: wsp } = writeWsp({ ws, sampleMatrix: () => null });
     expect(wsp).toContain('<LayoutEditor current="Layout-1"');
     expect(wsp).toContain('scaling="1.5"');
@@ -160,6 +167,9 @@ describe('.wsp figures: shapes, images, text styles and live fields; several lay
     expect(r.layoutName).toBe('Layout-1');
     expect(r.layout?.map((x) => x.text)).toEqual(['second']);
     expect(r.layoutPage).toEqual({ paper: 'a4', orientation: 'landscape', scale: 1.5 });
+    expect(wsp).toContain('groupName="Panel B"');
+    expect(r.layoutGroup).toBe('Panel B');
+    expect(r.otherLayouts?.[0].layoutGroup).toBeUndefined();
     expect(r.otherLayouts?.map((l) => [l.name, l.layout?.map((x) => x.text).join()])).toEqual([['Layout', 'first']]);
     // a workspace saved before several layouts: one layout array, named "Layout"
     const old = { ...emptyWorkspace(), layout: [{ id: 'x', text: 'old' }] } as Workspace;

@@ -6,12 +6,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   align, alignToGrid, avoidPageBreaks, bindSample, bringToFront, DEFAULT_PAGE, DUPLICATE_OFFSET, FRAME_PT, GRID_PT, gridPositions, iterationValues, MARGIN, nudge, nudgeStep,
   pageGrid, PAPERS, sendToBack, spacing, stepOrder, tilePitch, unionBox, DEFAULT_GUIDES, MAX_GUIDES, snapToGuides, borderAxes, cellOrigin, gridBounds, gridDelete, gridInsert, gridResize, type AlignMode, type Box, type CellRef, type GridDef, type Guides, type LayoutIteration, type PageSetup,
-  scaledPage, handleAt, isCornerHandle, resizeBox, ZOOM_STEPS, zoomIn, zoomOut, zoomFit, autoPageScale, pasteOffset, PASTE_TEXT_POINT, invertSelection, DROP_GAP, type ScaleType,
+  scaledPage, handleAt, isCornerHandle, resizeBox, ZOOM_STEPS, zoomIn, zoomOut, zoomFit, autoPageScale, pasteOffset, PASTE_TEXT_POINT, invertSelection,
 } from '../core/layoutArrange';
 import { isPlotItem, populationPath, type LayoutItem, type LayoutPlot, type LayoutShape, type LayoutText, type SampleState, type Workspace } from '../core/model';
 import {
   ANNOTATIONS, annoToken, DEFAULT_HEADER_FOOTER, GRADIENTS, headerText, keywordToken, LINE_STYLES, LINE_WEIGHTS, liveText, paintFigFrame, SPECIAL_CHARS, styleOf,
-  addLayout, deleteLayout, duplicateLayout, layoutNames, renameLayout, selectLayout, DEFAULT_LAYOUT_NAME, type FigStyle, type GradientType, type HeaderFooter, type LineStyle, type LineWeight,
+  addLayout, applyPreset, makePreset, deleteLayout, duplicateLayout, layoutNames, renameLayout, selectLayout, DEFAULT_LAYOUT_NAME, type FigStyle, type GradientType, type HeaderFooter, type LineStyle, type LineWeight,
 } from '../core/layoutFigures';
 import type { PlotResult, SampleMeta } from '../core/service';
 import { makeAxis, sampleChannels, withStains, withUncompTwins } from './axes';
@@ -398,7 +398,9 @@ export function LayoutView(p: {
   const page = scaledPage(setup);
   const pageScale = setup.scale && setup.scale > 0 ? setup.scale : 1;
   const iter: LayoutIteration = p.ws.layoutIteration ?? { type: 'OFF' };
-  const loaded = p.samples.filter((s) => p.meta[s.id]);
+  // Iteration Group (LECommand.ITERATIONGROUPNAME): the layout's own group, or the workspace's selected group.
+  const iterGroup = p.ws.layoutGroup ? p.ws.groups.find((g) => g.name === p.ws.layoutGroup) : undefined;
+  const loaded = (iterGroup ? p.ws.samples.filter((s) => iterGroup.sampleIds.includes(s.id)) : p.samples).filter((s) => p.meta[s.id]);
   const kw = (s: SampleState, k: string) => s.keywordsSnapshot[k.toUpperCase()] ?? s.keywordsSnapshot[k] ?? s.annotations?.[k];
   const values = iter.type === 'OFF' ? loaded.map((s) => s.id) : iterationValues(iter, loaded, kw);
   const [value, setValue] = useState(values[0] ?? '');
@@ -429,6 +431,7 @@ export function LayoutView(p: {
   const [showChars, setShowChars] = useState(false);
   const [showHF, setShowHF] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [preset, setPreset] = useState('');
   const pageRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textRef = useRef<HTMLTextAreaElement | null>(null);
@@ -732,7 +735,8 @@ export function LayoutView(p: {
   const names = layoutNames(p.ws);
   // Batch tile placement (I10, LEGeometryAction): tile k at (col, row) for
   // Across / Down with a fixed number of columns or rows; tiles step by whole
-  // pages with Separate Pages, else by the layout's extent plus 30 pt.
+  // pages with Separate Pages, else by the figures' width (height) + 1 + 10 pt
+  // (Batch.getLayoutOffset).
   const tileAt = (k: number, n: number) => {
     const fixed = Math.max(1, tileCols);
     const cols = tileFixed === 'cols' ? fixed : Math.ceil(n / fixed), rows = tileFixed === 'rows' ? fixed : Math.ceil(n / fixed);
@@ -770,6 +774,7 @@ export function LayoutView(p: {
             <span className="muted" data-testid="layout-scale">{Math.round(100 / pageScale)}%</span>
           </div>
           <div className="row">
+            Group <select value={p.ws.layoutGroup ?? ''} onChange={(e) => p.onSettings({ layoutGroup: e.target.value || undefined })} data-testid="layout-iter-group" title="Iteration Group: the samples of batches and browsing"><option value="">Workspace selection</option>{p.ws.groups.map((g) => <option key={g.id} value={g.name}>{g.name}</option>)}</select>
             Iterate <select value={iter.type} onChange={(e) => p.onSettings({ layoutIteration: e.target.value === 'KEYWORD' ? { type: 'KEYWORD', keyword: '$FIL' } : e.target.value === 'PANEL' ? { type: 'PANEL', size: 2 } : { type: e.target.value as 'OFF' | 'SAMPLE' } })} data-testid="layout-iter">
               <option value="OFF">Off</option><option value="SAMPLE">Sample</option><option value="KEYWORD">Keyword</option><option value="PANEL">Panel</option>
             </select>
@@ -857,6 +862,10 @@ export function LayoutView(p: {
               <select value={st?.gradientType} onChange={(e) => setStyle({ gradientType: e.target.value as GradientType, ...(e.target.value !== 'none' && !st?.fill ? { fill: '#ffffff' } : {}), ...(e.target.value !== 'none' && !st?.gradient ? { gradient: '#808080' } : {}) })} data-testid="layout-gradient-type" title="Gradient Type">{GRADIENTS.map((g) => <option key={g} value={g}>{g[0].toUpperCase() + g.slice(1)}</option>)}</select>
               {selected.shape === 'line' && <>Arrow <select value={selected.arrow ?? 'none'} onChange={(e) => p.onChange(items.map((i) => (sel.includes(i.id) && i.shape === 'line' ? { ...i, arrow: e.target.value as LayoutShape['arrow'] } : i)))} data-testid="layout-arrowhead"><option value="none">None</option><option value="forward">Forward</option><option value="backward">Backward</option><option value="double">Double-headed</option></select></>}
               <label title="Resizing keeps the aspect ratio (Shift while dragging does too)"><input type="checkbox" checked={!!selected.aspectLock} onChange={(e) => p.onChange(items.map((i) => (sel.includes(i.id) ? ({ ...i, aspectLock: e.target.checked || undefined } as LayoutItem) : i)))} data-testid="layout-aspect-lock" /> Keep aspect</label>
+              | Preset <select value={preset} onChange={(e) => setPreset(e.target.value)} data-testid="layout-preset">{!(p.ws.layoutFigPresets ?? []).length && <option value="">(none)</option>}{(p.ws.layoutFigPresets ?? []).map((q) => <option key={q.name} value={q.name}>{q.name}</option>)}</select>
+              <button data-testid="layout-preset-apply" disabled={!(p.ws.layoutFigPresets ?? []).length} title="Apply this preset to the selected figure(s)" onClick={() => { const pr = (p.ws.layoutFigPresets ?? []).find((q) => q.name === preset) ?? p.ws.layoutFigPresets?.[0]; if (pr) p.onChange(items.map((i) => (sel.includes(i.id) ? applyPreset(i, pr) : i))); }}>Apply</button>
+              <button data-testid="layout-preset-add" title="Create a preset from the selected figure" onClick={() => { const list = p.ws.layoutFigPresets ?? []; const pr = makePreset(selected, list.map((q) => q.name)); p.onSettings({ layoutFigPresets: [pr, ...list] }); setPreset(pr.name); }}>Add</button>
+              <button data-testid="layout-preset-delete" disabled={!(p.ws.layoutFigPresets ?? []).length} onClick={() => { const name = preset || p.ws.layoutFigPresets?.[0]?.name; const rest = (p.ws.layoutFigPresets ?? []).filter((q) => q.name !== name); p.onSettings({ layoutFigPresets: rest.length ? rest : undefined }); setPreset(rest[0]?.name ?? ''); }}>Delete</button>
               <span className="muted" data-testid="layout-sel-box">{selBoxes[0] ? `${selBoxes[0].w} x ${selBoxes[0].h} pt` : ''}</span>
             </div>
           )}
@@ -888,6 +897,7 @@ export function LayoutView(p: {
                   <label title="Only while Show Gates is on (AnnotationPanel.adjust)"><input type="checkbox" disabled={locked || selPlot.showGates === false} checked={selPlot.gateFreq !== false} onChange={(e) => setPlot({ gateFreq: e.target.checked ? undefined : false })} data-testid="layout-gate-freq" /> with Frequencies</label>
                   <label><input type="checkbox" disabled={locked || selPlot.showGates === false} checked={selPlot.gateNames !== false} onChange={(e) => setPlot({ gateNames: e.target.checked ? undefined : false })} data-testid="layout-gate-names" /> with Names</label>
                   <label><input type="checkbox" disabled={locked} checked={!!selPlot.showAnnotation} onChange={(e) => setPlot({ showAnnotation: e.target.checked || undefined })} data-testid="layout-show-annotation" /> Show Annotation</label>
+                  {!!selPlot.overlays?.length && <select value="" disabled={locked} onChange={(e) => e.target.value && setPlot({ overlays: selPlot.overlays!.filter((o) => o !== e.target.value) })} data-testid="layout-remove-layer" title="Remove Layer: take an overlaid population off the chart"><option value="">Remove layer...</option>{selPlot.overlays.map((o) => <option key={o} value={o}>{o || 'All events'}</option>)}</select>}
                   <label title="Legend of the overlaid populations"><input type="checkbox" disabled={locked || !selPlot.overlays?.length} checked={selPlot.legend !== false} onChange={(e) => setPlot({ legend: e.target.checked ? undefined : false })} data-testid="layout-legend" /> Legend</label>
                   <label title="1-D distributions of X and Y along the edges of a 2-D plot"><input type="checkbox" disabled={locked || selPlot.kind === 'histogram'} checked={!!selPlot.adjunct} onChange={(e) => setPlot({ adjunct: e.target.checked || undefined })} data-testid="layout-adjunct" /> Show Adjunct Histograms</label>
                   <label title="One chart per ancestor level, 140 pt"><input type="checkbox" disabled={locked || !selPlot.populationPath} checked={!!selPlot.ancestry} onChange={(e) => setPlot({ ancestry: e.target.checked || undefined, backgating: e.target.checked ? selPlot.backgating : undefined })} data-testid="layout-ancestry" /> Show Ancestry</label>
@@ -943,7 +953,7 @@ export function LayoutView(p: {
                     // I10: each value is one tile; tiles step by whole pages (Separate Pages) or by the extent.
                     const ext = pageGrid(boxes, page);
                     const u = unionBox(boxes.length ? boxes : [{ id: 'z', x: 0, y: 0, w: 1, h: 1 }]);
-                    const pitchX = separatePages ? tilePitch(ext.cols * page.w - 1, page.w) : u.x + u.w + DROP_GAP, pitchY = separatePages ? tilePitch(ext.rows * page.h - 1, page.h) : u.y + u.h + DROP_GAP;
+                    const pitchX = separatePages ? tilePitch(ext.cols * page.w - 1, page.w) : u.w + 11, pitchY = separatePages ? tilePitch(ext.rows * page.h - 1, page.h) : u.h + 11;
                     const allItems: LayoutItem[] = [], allR: Rendered[] = [];
                     for (const [k, v] of values.entries()) {
                       const r = await renderLayout(p.client, p.ws, p.meta, items, bindFor(v), extrasFor(v));

@@ -39,6 +39,21 @@ export interface FigStyle {
   weight?: LineWeight;
   lineStyle?: LineStyle;
 }
+// P1-P3 (LEFigTemplateAction; LEditor.doCreateFigPreset / doApplyFigPreset /
+// doDeleteFigPreset, Fig.makePreset): Add makes a preset named "New Preset"
+// (made unique) from the focused figure, Apply copies it to every selected
+// figure, Delete removes the chosen preset. Own scope: the figure properties
+// and text font (FlowJo's chart and statistic-table presets also carry their
+// chart settings).
+export interface FigPreset { name: string; style?: FigStyle; text?: { font?: string; size?: number; bold?: boolean; italic?: boolean; color?: string } }
+export function makePreset(it: LayoutItem, taken: string[]): FigPreset {
+  const t = it.text !== undefined ? { font: it.font, size: it.size, bold: it.bold, italic: it.italic, color: it.color } : undefined;
+  return { name: uniqueName('New Preset', taken), ...(it.style ? { style: { ...it.style } } : {}), ...(t ? { text: JSON.parse(JSON.stringify(t)) } : {}) };
+}
+export function applyPreset(it: LayoutItem, p: FigPreset): LayoutItem {
+  const out = { ...it, style: p.style ? { ...p.style } : undefined } as LayoutItem;
+  return out.text !== undefined && p.text ? ({ ...out, ...p.text } as LayoutItem) : out;
+}
 // Defaults per figure kind: shapes draw a Normal black line, unfilled; charts,
 // text and images have no line (NoLine) and no fill.
 export function styleOf(it: LayoutItem): Required<Pick<FigStyle, 'weight' | 'lineStyle' | 'gradientType'>> & FigStyle {
@@ -188,12 +203,12 @@ export function headerText(s: string, c: { document: string; page: number; versi
 // deleteSelectedTemplates). The current layout lives in the workspace's
 // top-level layout fields; the others in otherLayouts.
 export const DEFAULT_LAYOUT_NAME = 'Layout';
-const KEYS = ['layout', 'layoutPage', 'layoutIteration', 'layoutGuides', 'layoutGrids'] as const;
-type LayoutPatch = Partial<Pick<Workspace, 'layout' | 'layoutPage' | 'layoutIteration' | 'layoutGuides' | 'layoutGrids' | 'layoutName' | 'otherLayouts'>>;
-export const currentLayout = (ws: Workspace): SavedLayout => ({ name: ws.layoutName ?? DEFAULT_LAYOUT_NAME, layout: ws.layout, layoutPage: ws.layoutPage, layoutIteration: ws.layoutIteration, layoutGuides: ws.layoutGuides, layoutGrids: ws.layoutGrids });
+const KEYS = ['layout', 'layoutPage', 'layoutIteration', 'layoutGuides', 'layoutGrids', 'layoutGroup'] as const;
+type LayoutPatch = Partial<Pick<Workspace, 'layout' | 'layoutPage' | 'layoutIteration' | 'layoutGuides' | 'layoutGrids' | 'layoutGroup' | 'layoutName' | 'otherLayouts'>>;
+export const currentLayout = (ws: Workspace): SavedLayout => ({ name: ws.layoutName ?? DEFAULT_LAYOUT_NAME, layout: ws.layout, layoutPage: ws.layoutPage, layoutIteration: ws.layoutIteration, layoutGuides: ws.layoutGuides, layoutGrids: ws.layoutGrids, layoutGroup: ws.layoutGroup });
 // Names in list order (by name, ignoring case).
 export const layoutNames = (ws: Workspace) => sortNames([ws.layoutName ?? DEFAULT_LAYOUT_NAME, ...(ws.otherLayouts ?? []).map((l) => l.name)]);
-const asCurrent = (l: SavedLayout, others: SavedLayout[]): LayoutPatch => ({ layoutName: l.name, layout: l.layout, layoutPage: l.layoutPage, layoutIteration: l.layoutIteration, layoutGuides: l.layoutGuides, layoutGrids: l.layoutGrids, otherLayouts: others.length ? others : undefined });
+const asCurrent = (l: SavedLayout, others: SavedLayout[]): LayoutPatch => ({ layoutName: l.name, layout: l.layout, layoutPage: l.layoutPage, layoutIteration: l.layoutIteration, layoutGuides: l.layoutGuides, layoutGrids: l.layoutGrids, layoutGroup: l.layoutGroup, otherLayouts: others.length ? others : undefined });
 export function selectLayout(ws: Workspace, name: string): LayoutPatch {
   const others = ws.otherLayouts ?? [];
   const next = others.find((l) => l.name === name);
@@ -218,7 +233,7 @@ export function deleteLayout(ws: Workspace): LayoutPatch {
   const names = layoutNames(ws);
   const at = names.indexOf(ws.layoutName ?? DEFAULT_LAYOUT_NAME);
   const others = ws.otherLayouts ?? [];
-  if (!others.length) return { layoutName: undefined, layout: undefined, layoutGrids: undefined, layoutGuides: undefined, layoutIteration: undefined, layoutPage: ws.layoutPage, otherLayouts: undefined };
+  if (!others.length) return { layoutName: undefined, layout: undefined, layoutGrids: undefined, layoutGuides: undefined, layoutIteration: undefined, layoutGroup: undefined, layoutPage: ws.layoutPage, otherLayouts: undefined };
   const rest = sortNames(others.map((l) => l.name));
   const pick = rest[Math.min(at, rest.length - 1)];
   const next = others.find((l) => l.name === pick)!;

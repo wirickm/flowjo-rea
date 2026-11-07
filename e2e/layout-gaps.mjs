@@ -170,6 +170,14 @@ await page.getByTestId('layout-add-ellipse').click();
 await page.waitForTimeout(150);
 check('rectangles, ellipses and lines are figures', ['rect', 'line', 'ellipse'].every((k) => true) && (await boxes()).filter((x) => ['rect', 'line', 'ellipse'].includes(x.kind)).length === 3);
 
+// Figure presets: Add from the red rectangle, Apply to the ellipse
+await clear(); await pick(page.locator('[data-testid=layout-card][data-kind=rect]'));
+await page.getByTestId('layout-preset-add').click();
+await clear(); await pick(page.locator('[data-testid=layout-card][data-kind=ellipse]'));
+await page.getByTestId('layout-preset-apply').click();
+await page.waitForTimeout(200);
+check('Fig Presets: Add from one figure, Apply to another', (await page.locator('[data-testid=layout-card][data-kind=ellipse]').getAttribute('data-style')) === (await page.locator('[data-testid=layout-card][data-kind=rect]').getAttribute('data-style')) && (await page.getByTestId('layout-preset').inputValue()) === 'New Preset');
+
 // 5. Text styling, live keyword, special characters
 await clear(); await pick(cards.nth(1));
 await page.getByTestId('layout-text').fill('Events: ');
@@ -248,6 +256,8 @@ check('Rename renames the current layout', (await page.getByTestId('layout-list'
 await page.getByTestId('layout-list-delete').click();
 await page.waitForTimeout(300);
 check('Delete removes it; the layout now at its place becomes current', (await page.getByTestId('layout-list').locator('option').count()) === 2 && (await page.getByTestId('layout-list').inputValue()) === 'Layout');
+
+check('Iteration Group offers the workspace selection and every group', (await page.getByTestId('layout-iter-group').locator('option').count()) >= 2);
 
 // 10. Open Original Graph
 await clear();

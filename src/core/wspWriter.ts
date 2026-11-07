@@ -297,7 +297,7 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
       const page = l.layoutPage ?? { paper: 'letter', orientation: 'portrait' };
       const [pw, ph] = page.paper === 'a4' ? [595.3, 841.9] : [612, 792];
       const it = l.layoutIteration ?? { type: 'OFF' as const };
-      const iter = `<Iteration iterationType="${it.type}"  iterationValue=""  iterationKeyword="${it.type === 'KEYWORD' ? esc(it.keyword) : ''}"  discriminator="${it.type === 'KEYWORD' && it.discriminator ? esc(it.discriminator) : ''}"  panelSize="${it.type === 'PANEL' ? it.size : 1}"  groupName="workspaceSelection" />`;
+      const iter = `<Iteration iterationType="${it.type}"  iterationValue=""  iterationKeyword="${it.type === 'KEYWORD' ? esc(it.keyword) : ''}"  discriminator="${it.type === 'KEYWORD' && it.discriminator ? esc(it.discriminator) : ''}"  panelSize="${it.type === 'PANEL' ? it.size : 1}"  groupName="${l.layoutGroup ? esc(l.layoutGroup) : 'workspaceSelection'}" />`;
       const figs = writeFigList(l.layout ?? [], l.layoutGrids ?? [], sid, param);
       const scale = page.scale && page.scale > 0 ? page.scale : 1;
       return `<Layout name="${esc(l.name)}"  isBatch="0"  showGrid="0"  showRulers="1"  showGuides="0"  showPageBreaks="1"  scale="1" ><PrintLayout rows="1"  columns="1"  padding="36"  scalingMode="${scale === 1 ? 'fj.print.scale.none' : 'fj.print.scale.custom'}"  scaling="${+scale.toFixed(10)}"  orientation="${page.orientation === 'landscape' ? 0 : 1}"  width="${pw}"  height="${ph}" />${iter}${figs}</Layout>`;

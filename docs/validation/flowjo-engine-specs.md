@@ -1405,7 +1405,8 @@ the PDF draws each page as an image inside the margins.
 | G1-G3 | Grid layout: 3 x 4 cells, 4 pt padding, filled row by row; extras left out | `FigGridLayout.<init>`, `FJLayoutGrid.getNextCell` |
 
 Own rules: there is no Spread (A10, a no-op in FlowJo) and no Same Size (A14,
-absent); a group keeps its members as items (no scaling on resize, A21); grid
+absent) (resize handles, copy / paste, figure properties, shapes and several
+layouts were added later: `docs/validation/ui-gaps/layout.md`); a group keeps its members as items (no scaling on resize, A21); grid
 figures are covered in 25.2; guides and guide snapping (S4-S5) are added and
 removed with buttons and by dragging off the page (there are no rulers to drag
 them from); every move, including a nudge, is an undo step in
@@ -1620,7 +1621,8 @@ are not offered.
   `le.chart.nxn`, `FJPrefsFJML$Layouts.multiGraphLimit`). This app offers
   Histograms (one per parameter) and N x N (pseudocolor pairs, histograms on
   the diagonal); not offered: all-by, half N x N, slinky, dot / contour cell
-  types.
+  types. (Later added: half N x N, All by Y, Slinky and dot / contour cells;
+  see `docs/validation/ui-gaps/layout.md` 3.4.)
 
 ### 25.4 .wsp layouts: page, iteration and figures
 
@@ -1652,8 +1654,10 @@ Own rules: the app's graph box is the plot frame plus its axis margins
 (`frameToBox` / `boxToFrame`, exact both ways); text figures import as plain
 text (styling dropped; FJML statistics become "{name: path}") and export as a
 simple Swing HTML body; a chart whose sample is not in the workspace follows
-the chosen sample; Image, statistic tables, shapes and other figure kinds are
-reported and skipped; export writes the attributes listed above (FlowJo
+the chosen sample; statistic tables and other figure kinds are reported and
+skipped (later added: shapes, lines with arrowheads, Image figures, text
+styling, Key / Anno live fields, several Layout elements and PrintLayout
+scaling, see `docs/validation/ui-gaps/layout.md`); export writes the attributes listed above (FlowJo
 fills its own defaults for the rest); imported grids use a 4 pt padding.
 
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)

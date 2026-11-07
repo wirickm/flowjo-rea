@@ -182,6 +182,17 @@ export interface Workspace {
   // FlowJo Kinetics node settings and timeslices per population path (specs 11).
   kinetics?: Record<string, import('./kinetics').KineticsSettings>;
   layout?: LayoutItem[];
+  // Several layouts (FlowJo's layout list, ui-gaps/layout.md): the fields above are the
+  // current layout, named layoutName (default "Layout"); the others are kept here.
+  layoutName?: string;
+  otherLayouts?: SavedLayout[];
+  // Iteration Group of the current layout (Iteration groupName): a group name;
+  // absent = the workspace's selected group ("workspaceSelection").
+  layoutGroup?: string;
+  // Header / footer of printed layout pages (workspace-wide, as FlowJo's prefs).
+  layoutHeaderFooter?: import('./layoutFigures').HeaderFooter;
+  // Figure presets (FigPreset): named figure properties to apply to figures.
+  layoutFigPresets?: import('./layoutFigures').FigPreset[];
   statTemplates?: { id: string; name: string; columns: StatColumn[] }[];
   // FlowJo table editor templates (specs 17).
   tables?: import('./tableEditor').TableTemplate[];
@@ -232,8 +243,21 @@ export interface PlotSettings {
   backColor?: string; // #rrggbb plot background
 }
 
-// A layout cell: a plot rendered for whichever sample is chosen, or a text block.
-export type LayoutItem = LayoutPlot | LayoutText;
+// A layout that is not the current one.
+export interface SavedLayout {
+  name: string;
+  layout?: LayoutItem[];
+  layoutPage?: import('./layoutArrange').PageSetup;
+  layoutIteration?: import('./layoutArrange').LayoutIteration;
+  layoutGuides?: import('./layoutArrange').Guides;
+  layoutGrids?: import('./layoutArrange').GridDef[];
+  layoutGroup?: string;
+}
+
+// A layout cell: a plot rendered for whichever sample is chosen, a text block,
+// a drawn shape (rectangle, ellipse, line) or an inserted image.
+export type LayoutItem = LayoutPlot | LayoutText | LayoutShape | LayoutImage;
+export const isPlotItem = (it: LayoutItem): it is LayoutPlot => it.text === undefined && it.shape === undefined && it.image === undefined;
 // Position, size and z-order (list order) in points, as in FlowJo 10's layout
 // editor (specs 21); items without a position get one from their index.
 export interface LayoutPlace {
@@ -244,6 +268,10 @@ export interface LayoutPlace {
   locked?: boolean; // position lock (le.lock.position)
   groupId?: string; // grouped items move, align and order together
   cell?: { grid: string; row: number; col: number }; // cell of a grid figure (specs 25.2)
+  sizeLock?: boolean; // Lock Size (le.lock.size): no resizing
+  contentLock?: boolean; // Lock Content (le.lock.content): settings and text fixed
+  aspectLock?: boolean; // aspectRatioLock: resizing keeps the aspect ratio
+  style?: import('./layoutFigures').FigStyle; // Figure Properties: fill, line, gradient
 }
 export interface LayoutPlot extends PlotSettings, LayoutPlace {
   id: string;
@@ -257,13 +285,47 @@ export interface LayoutPlot extends PlotSettings, LayoutPlace {
   adjunct?: boolean; // Show Adjunct Histograms (N5)
   ancestry?: boolean; // Show Ancestry (N3)
   backgating?: boolean; // with Backgating (N4; needs ancestry)
-  multigraph?: 'histograms' | 'nxn'; // Show Multigraph (N6)
+  multigraph?: 'histograms' | 'nxn' | 'halfnxn' | 'allby' | 'slinky'; // Show Multigraph (N6)
   multiParams?: string[]; // its parameters (at most 10)
+  multiKind?: 'pseudocolor' | 'dot' | 'contour'; // Make NxN Dot / Contour / Pseudocolor Plots
+  legend?: boolean; // Legend toggle (ChartCommand.SHOWLEGEND); default on
+  ancestryVertical?: boolean; // ancestry charts in a column (BACKGATINGVERT)
+  backgateLarge?: boolean; // backgated population as large dots (BACKGATELARGE)
+  backgateContours?: boolean; // backgated population as contours (BACKGATECONTOURS)
+  empty?: boolean; // Remove Data from Chart: an empty drop box
   text?: undefined;
+  shape?: undefined;
+  image?: undefined;
 }
 export interface LayoutText extends LayoutPlace {
   id: string;
+  // Live fields: {{keyword:NAME}} and {{anno:KEY}} (Insert Keyword / Annotation).
   text: string;
+  font?: string; // font family (default SansSerif)
+  size?: number; // pt (default 11)
+  bold?: boolean;
+  italic?: boolean;
+  color?: string;
+  shape?: undefined;
+  image?: undefined;
+}
+// Drawing tools (FigRect, FigEllipse, FigRoundRect, FigLine). A line runs
+// between two corners of its box: ends = [x1, y1, x2, y2], each 0 (left / top)
+// or 1 (right / bottom).
+export interface LayoutShape extends LayoutPlace {
+  id: string;
+  shape: 'rect' | 'ellipse' | 'roundrect' | 'line';
+  ends?: [number, number, number, number];
+  arrow?: 'none' | 'forward' | 'backward' | 'double';
+  text?: undefined;
+  image?: undefined;
+}
+// Insert Graphic (FigImage): image is a data: or http(s) URL.
+export interface LayoutImage extends LayoutPlace {
+  id: string;
+  image: string;
+  text?: undefined;
+  shape?: undefined;
 }
 
 export type StatKind =

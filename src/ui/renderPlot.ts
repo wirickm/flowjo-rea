@@ -81,6 +81,8 @@ export interface RenderOptions {
   // Populations drawn on top (backgating): dots on 2-D plots, curves on
   // histograms. Histograms share one count axis unless normalize is set.
   overlays?: { label: string; data: PlotResult }[];
+  overlayLarge?: boolean; // overlay dots drawn large (layout BACKGATELARGE)
+  noLegend?: boolean; // hide the overlay legend (layout Legend toggle)
   // Histograms: FlowJo's "Normalized To Mode": every curve scaled so its mode is
   // 100; the axis is relabelled. Off by default, as in FlowJo 10 (specs 6.7).
   normalize?: boolean;
@@ -271,7 +273,7 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
           for (let i = 0; i < P.length; i += 2) {
             const X = sx(Math.min(Math.max(P[i], o.x.range[0]), o.x.range[1]));
             const Y = sy(Math.min(Math.max(P[i + 1], yAxis.range[0]), yAxis.range[1]));
-            ctx.fillRect(X - 0.75, Y - 0.75, 1.6, 1.6);
+            if (o.overlayLarge) ctx.fillRect(X - 1.5, Y - 1.5, 3, 3); else ctx.fillRect(X - 0.75, Y - 0.75, 1.6, 1.6);
           }
         } else {
           const D = curve(ov.data.density);
@@ -293,7 +295,7 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
       // legend
       ctx.font = '11px sans-serif';
       ctx.textAlign = 'right';
-      o.overlays.forEach((ov, k) => {
+      if (!o.noLegend) o.overlays.forEach((ov, k) => {
         ctx.fillStyle = OVERLAY_COLORS[k % OVERLAY_COLORS.length];
         ctx.fillText(`${ov.label} (${ov.data.count.toLocaleString()})`, PLOT.ml + pw - 4, PLOT.mt + 26 + k * 13);
       });

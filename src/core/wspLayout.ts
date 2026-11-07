@@ -5,7 +5,8 @@
 // FigStyledText, FigGroup, FigGridLayout). No fixture holds figures, so this
 // is checked against the decoded format, not against FlowJo-saved files.
 import type { CellRef, GridDef } from './layoutArrange';
-import type { LayoutItem, LayoutPlot, PlotSettings } from './model';
+import { isPlotItem, type LayoutItem, type LayoutPlot, type LayoutShape, type LayoutText, type PlotSettings } from './model';
+import { GRADIENTS, LINE_STYLES, LINE_WEIGHTS, type FigStyle, type GradientType, type LineStyle, type LineWeight } from './layoutFigures';
 import { attr, esc, kid, kids, local, type El } from './xml';
 
 // The app's graph canvas around the plot frame (renderPlot PLOT); FlowJo's
@@ -87,19 +88,60 @@ export function parseFigList(figList: El, sample: (wspId: string) => string | un
     const html = unescapeXml(raw);
     const withStats = html.replace(/<input[^>]*type="fjml"[^>]*value="([^"]*)"[^>]*>/gi, (_m, v: string) => {
       const x = decodeURIComponent(v.replace(/\+/g, ' '));
+      if (/^<Key\b/.test(x)) return `{{keyword:${unescapeXml(/name="([^"]*)"/.exec(x)?.[1] ?? '')}}}`;
+      if (/^<Anno\b/.test(x)) return `{{anno:${(/name="([^"]*)"/.exec(x)?.[1] ?? '').replace(/^fj\.anno\./, '')}}}`;
       const name = /name="([^"]*)"/.exec(x)?.[1] ?? 'value', path = /path="([^"]*)"/.exec(x)?.[1] ?? '';
       return `{${name}${path ? `: ${unescapeXml(path)}` : ''}}`;
     });
     const plain = unescapeXml(withStats.replace(/<head[\s\S]*?<\/head>/i, '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n').replace(/<[^>]+>/g, '')).split('\n').map((l) => l.trim()).filter((l, i, a) => l || (i > 0 && a[i - 1])).join('\n').trim();
     const r = rect(e);
-    return { id: id('txt'), text: plain, left: r.x, top: r.y, width: Math.max(20, r.w), height: Math.max(14, r.h) };
+    const span = /<body[^>]*>\s*(?:<p[^>]*>\s*)?<span style="([^"]*)"/i.exec(html)?.[1] ?? '';
+    const css = (k: string) => new RegExp(`${k}:\\s*([^;]+)`, 'i').exec(span)?.[1].trim();
+    const font = css('font-family'), size = parseFloat(css('font-size') ?? ''), color = css('color');
+    return { id: id('txt'), text: plain, left: r.x, top: r.y, width: Math.max(20, r.w), height: Math.max(14, r.h), ...style(e),
+      ...(font ? { font } : {}), ...(Number.isFinite(size) ? { size } : {}), ...(color ? { color } : {}), ...(/bold/i.test(css('font-weight') ?? '') ? { bold: true } : {}), ...(/italic/i.test(css('font-style') ?? '') ? { italic: true } : {}) } as LayoutText;
   };
+  // Common Fig attributes (Fig.setElementSelf): colours, line weight and style,
+  // gradient, aspect ratio lock. lock / sizeLock / contentLock are not read by
+  // FlowJo 10.6.2 and are not read here either.
+  const style = (e: El): { style?: FigStyle; aspectLock?: boolean } => {
+    const st: FigStyle = {};
+    const fill = attr(e, 'fill');
+    if (fill && !(fill.length === 9 && /^#00/i.test(fill))) st.fill = fill;
+    if (attr(e, 'stroke')) st.line = attr(e, 'stroke');
+    const lw = (attr(e, 'lineWeight') ?? '').toUpperCase();
+    const w = (Object.keys(LINE_WEIGHTS) as LineWeight[]).find((k) => LINE_WEIGHTS[k].fj.toUpperCase() === lw || (k === 'veryheavy' && lw === 'VERY HEAVY'));
+    if (lw) st.weight = w ?? 'hairline';
+    const ls = (attr(e, 'lineStyle') ?? '').toUpperCase();
+    const l = (Object.keys(LINE_STYLES) as LineStyle[]).find((k) => LINE_STYLES[k].fj.toUpperCase() === ls);
+    if (l && l !== 'solid') st.lineStyle = l;
+    const g = (attr(e, 'gradientStyle') ?? '').replace('le.gradientstyle.', '') as GradientType;
+    if (GRADIENTS.includes(g) && g !== 'none') { st.gradientType = g; if (attr(e, 'gradientColor')) st.gradient = attr(e, 'gradientColor'); }
+    return { ...(Object.keys(st).length ? { style: st } : {}), ...(bool(e, 'aspectRatioLock') ? { aspectLock: true } : {}) };
+  };
+  const SHAPES: Record<string, LayoutShape['shape']> = { Rectangle: 'rect', RoundRect: 'roundrect', Oval: 'ellipse', Ellipse: 'ellipse', Line: 'line' };
+  const shape = (e: El): LayoutItem => {
+    const k = SHAPES[local(e)];
+    if (k === 'line') {
+      const x1 = num(e, 'x1'), y1 = num(e, 'y1'), x2 = num(e, 'x2'), y2 = num(e, 'y2');
+      const a = (attr(e, 'arrow') ?? '').toLowerCase();
+      const arrow: LayoutShape['arrow'] = a === 'forward' ? 'forward' : a === 'backward' ? 'backward' : a.startsWith('double') ? 'double' : undefined;
+      return { id: id('shp'), shape: 'line', left: Math.min(x1, x2), top: Math.min(y1, y2), width: Math.abs(x2 - x1), height: Math.abs(y2 - y1), ends: [x1 <= x2 ? 0 : 1, y1 <= y2 ? 0 : 1, x1 <= x2 ? 1 : 0, y1 <= y2 ? 1 : 0], ...(arrow ? { arrow } : {}), ...style(e) };
+    }
+    const r = rect(e);
+    return { id: id('shp'), shape: k, left: r.x, top: r.y, width: r.w, height: r.h, ...style(e) };
+  };
+  // Image (FigImage): only the URL is saved; a data: or http(s) URL is shown,
+  // a file URL cannot be read by the browser and shows as a placeholder.
+  const image = (e: El): LayoutItem => { const r = rect(e); return { id: id('img'), image: attr(e, 'url') ?? '', left: r.x, top: r.y, width: Math.max(4, r.w), height: Math.max(4, r.h), ...style(e) }; };
 
   const walk = (parent: El, groupId?: string) => {
     for (const e of kids(parent)) {
       const k = local(e);
       if (k === 'ChartData' || k === 'Chart') { const c = chart(e); if (c) items.push({ ...c, ...(groupId ? { groupId } : {}) }); }
       else if (k === 'StyledText' || k === 'SimpleText') items.push({ ...text(e), ...(groupId ? { groupId } : {}) } as LayoutItem);
+      else if (SHAPES[k]) items.push({ ...shape(e), ...(groupId ? { groupId } : {}) } as LayoutItem);
+      else if (k === 'Image') items.push({ ...image(e), ...(groupId ? { groupId } : {}) } as LayoutItem);
       else if (k === 'FigList' || k === 'Group') walk(e, groupId ?? id('grp'));
       else if (k === 'GridLayout') {
         const r = rect(e), rows = Math.max(1, num(e, 'rows', 3)), cols = Math.max(1, num(e, 'columns', 4));
@@ -148,12 +190,31 @@ export function writeFigList(items: LayoutItem[], grids: GridDef[], sampleId: (a
       + dep('Multigraph', !!it.multigraph, `  type="${mgType}"`, `<Parameters>${(it.multiParams ?? []).map((n) => `<Parameter name="${p(n)}" />`).join('')}</Parameters>`)
       + `<PopModelList>${layers}</PopModelList>${abs ? `<WindowPosition x="${f.x}"  y="${f.y}"  width="${f.w}"  height="${f.h}"  displayed="1" />` : ''}</ChartData>`;
   };
-  const textXml = (it: Extract<LayoutItem, { text: string }>) => {
-    const html = `<html><head></head><body>${it.text.split('\n').map((l) => `<p style="margin-top: 0">${esc(l)}</p>`).join('')}</body></html>`;
-    // Escaped once for the HTML-in-text and once more by the workspace writer.
-    return `<StyledText x="${it.left ?? 0}"  y="${it.top ?? 0}"  width="${it.width ?? 216}"  height="${it.height ?? 72}"  lineWeight="NoLine"  autoFitContents="0"  autoMinimumSize="1"  padding="2,2,2,2" ><Content>${esc(esc(html))}</Content></StyledText>`;
+  // Common Fig attributes (Fig.getElement).
+  const figAttrs = (it: LayoutItem, defWeight: LineWeight) => {
+    const st = it.style ?? {};
+    return `lineWeight="${LINE_WEIGHTS[st.weight ?? defWeight].fj}"  fill="${esc(st.fill ?? '#00ffffff')}"  stroke="${esc(st.line ?? '#000000')}"  lineStyle="${LINE_STYLES[st.lineStyle ?? 'solid'].fj}"  gradientColor="${esc(st.gradient ?? '#ffffff')}"  gradientStyle="le.gradientstyle.${st.gradientType ?? 'none'}"  aspectRatioLock="${b(!!it.aspectLock)}"  lock="${b(!!it.locked)}"  sizeLock="${b(!!it.sizeLock)}"  contentLock="${b(!!it.contentLock)}"`;
   };
-  const one = (it: LayoutItem) => (it.text !== undefined ? textXml(it) : chartXml(it));
+  // Live fields become FJML input tags (FJTextPane.makeFjmlTag).
+  const fjml = (cmd: string) => `<input type="fjml" value="${encodeURIComponent(cmd).replace(/%20/g, '+')}">`;
+  const textHtml = (l: string) => esc(l).replace(/\{\{(keyword|anno):([^}]*)\}\}/g, (_m, k: string, n: string) => (k === 'keyword' ? fjml(`<Key name="${n}"/>`) : fjml(`<Anno name="fj.anno.${n}"/>`)));
+  const textXml = (it: LayoutText) => {
+    const css = [it.font ? `font-family: ${it.font}` : '', it.size ? `font-size: ${it.size}pt` : '', it.color ? `color: ${it.color}` : '', it.bold ? 'font-weight: bold' : '', it.italic ? 'font-style: italic' : ''].filter(Boolean).join('; ');
+    const html = `<html><head></head><body>${it.text.split('\n').map((l) => `<p style="margin-top: 0">${css ? `<span style="${css}">${textHtml(l)}</span>` : textHtml(l)}</p>`).join('')}</body></html>`;
+    // Escaped once for the HTML-in-text and once more by the workspace writer.
+    return `<StyledText x="${it.left ?? 0}"  y="${it.top ?? 0}"  width="${it.width ?? 216}"  height="${it.height ?? 72}"  ${figAttrs(it, 'none')}  autoFitContents="0"  autoMinimumSize="1"  padding="2,2,2,2" ><Content>${esc(esc(html))}</Content></StyledText>`;
+  };
+  const NAMES: Record<LayoutShape['shape'], string> = { rect: 'Rectangle', roundrect: 'RoundRect', ellipse: 'Ellipse', line: 'Line' };
+  const shapeXml = (it: LayoutShape) => {
+    const r = { x: it.left ?? 0, y: it.top ?? 0, w: it.width ?? 0, h: it.height ?? 0 };
+    if (it.shape === 'line') {
+      const e = it.ends ?? [0, 0, 1, 1];
+      const arrow = { none: 'None', forward: 'Forward', backward: 'Backward', double: 'Double-headed' }[it.arrow ?? 'none'];
+      return `<Line x1="${r.x + e[0] * r.w}"  y1="${r.y + e[1] * r.h}"  x2="${r.x + e[2] * r.w}"  y2="${r.y + e[3] * r.h}"  arrow="${arrow}"  ${figAttrs(it, 'normal')} />`;
+    }
+    return `<${NAMES[it.shape]} x="${r.x}"  y="${r.y}"  width="${r.w}"  height="${r.h}"  ${figAttrs(it, 'normal')} />`;
+  };
+  const one = (it: LayoutItem): string => (it.text !== undefined ? textXml(it) : it.shape !== undefined ? shapeXml(it) : it.image !== undefined ? `<Image x="${it.left ?? 0}"  y="${it.top ?? 0}"  width="${it.width ?? 100}"  height="${it.height ?? 100}"  ${figAttrs(it, 'none')}  url="${esc(it.image)}" />` : isPlotItem(it) ? chartXml(it) : '');
   const out: string[] = [];
   const doneGroups = new Set<string>();
   for (const it of items) {

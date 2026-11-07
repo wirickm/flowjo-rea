@@ -299,10 +299,18 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
   };
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <Workspace version="20.0" flowJoVersion="flowjo-rea export (unvalidated)" xmlns:gating="http://www.isac-net.org/std/Gating-ML/v2.0/gating" xmlns:transforms="http://www.isac-net.org/std/Gating-ML/v2.0/transformations" xmlns:data-type="http://www.isac-net.org/std/Gating-ML/v2.0/datatypes">
-<Groups>${groups}</Groups>
+${columnsXml(ws)}<Groups>${groups}</Groups>
 <SampleList>${sampleXml.join('\n')}</SampleList>
 ${layoutXml()}
 </Workspace>
 `;
   return { xml, warnings };
+}
+
+// Workspace table columns (FlowJo <Columns>: TColumn width, Property key or
+// Keyword name; docs/validation/ui-gaps/workspace.md, T1). Written only when
+// the columns differ from the default.
+function columnsXml(ws: Workspace): string {
+  if (!ws.tableColumns?.length) return '';
+  return `<Columns>${ws.tableColumns.map((c) => `<TColumn${c.width ? ` width="${Math.round(c.width)}"` : ''} >${c.key.startsWith('kw:') ? `<Keyword name="${esc(c.key.slice(3))}" />` : `<Property key="${esc(c.key)}" />`}</TColumn>`).join('')}</Columns>\n`;
 }

@@ -491,6 +491,18 @@ export function parseWsp(xml: string): WspImport {
 
   // Groups and their sample membership.
   const groups: Group[] = [];
+  // Workspace table columns (FlowJo <Columns>): kept when they differ from Name, Statistic, #Cells.
+  const colsEl = kid(root, 'Columns');
+  if (colsEl) {
+    const cols = kids(colsEl, 'TColumn').map((t) => {
+      const kw = kid(t, 'Keyword'), prop = kid(t, 'Property');
+      const key = kw && attr(kw, 'name') ? `kw:${attr(kw, 'name')}` : prop ? attr(prop, 'key') : undefined;
+      const width = Number(attr(t, 'width'));
+      return key ? { key, ...(width > 0 ? { width } : {}) } : null;
+    }).filter((c): c is { key: string; width?: number } => !!c);
+    const plain = cols.map((c) => c.key).join() === 'fj.appnode.prop.name,fj.appnode.prop.statistic,fj.appnode.prop.ncells';
+    if (cols.length && !plain) ws.tableColumns = cols;
+  }
   const groupsEl = kid(root, 'Groups');
   for (const g of groupsEl ? kids(groupsEl, 'GroupNode') : []) {
     const gname = attr(g, 'name') ?? 'Group';

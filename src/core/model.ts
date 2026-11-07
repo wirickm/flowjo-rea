@@ -129,6 +129,9 @@ export interface Group {
   // FlowJo group display: text colour (#rrggbb) and font style.
   color?: string;
   fontStyle?: 'plain' | 'bold' | 'italic';
+  // Template analysis (Export as Template, src/core/template.ts): the
+  // group-owned populations a workspace template gives to new members.
+  analysis?: Population[];
 }
 
 export type GroupRole = 'undefined' | 'test' | 'controls' | 'replicate' | 'compensation' | 'instrumentation' | 'baseline' | 'gatingLevel';
@@ -179,7 +182,14 @@ export interface Workspace {
   // FlowJo table editor templates (specs 17).
   tables?: import('./tableEditor').TableTemplate[];
   derivedParameters?: DerivedParameter[];
+  // Workspace table columns (FlowJo <Columns>, Edit Columns) and sort keys
+  // (src/core/workspaceTable.ts); absent = Name, Statistic, #Cells, unsorted.
+  tableColumns?: TableColumn[];
+  tableSort?: { key: string; ascending: boolean }[];
 }
+
+// key: a FlowJo property key ("fj.appnode.prop.name") or "kw:<keyword>".
+export interface TableColumn { key: string; width?: number }
 
 // A user-defined channel. formula: a FlowJo 10 algebraic derived parameter
 // (src/core/formula.ts, specs 12), evaluated per event on the sample's

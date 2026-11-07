@@ -165,6 +165,11 @@ export class AnalysisService {
     this.engines.delete(sampleId);
   }
 
+  // The loaded file's bytes (a copy: the worker transfers results), for Save as Archive.
+  rawBytes(sampleId: string): Uint8Array | null {
+    return this.bytes.get(sampleId)?.bytes.slice() ?? null;
+  }
+
   has(sampleId: string) {
     return this.files.has(sampleId);
   }

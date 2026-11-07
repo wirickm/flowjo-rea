@@ -1151,8 +1151,12 @@ and `src/ui/Layout.tsx`.
   with "," quoted and quotes doubled. TAB: first header "Sample:". HTML: grey
   header, right-aligned cells. Show Summary Stats adds Mean and Std.
   Deviation rows. Heat map: blue (column minimum) to yellow (maximum).
-- Not implemented: Excel, XML Excel and SQL formats, printer and clipboard
-  destinations, PowerPoint and animation batch destinations.
+- Added later (docs/validation/ui-gaps/tables.md): XML Excel
+  (SpreadsheetML), output targets Display / Clipboard / File / Layout /
+  Printer, the generated table window, column editing, Create Column Names,
+  Standard Deviation and Expected Range formats, table plots.
+- Not implemented: binary Excel (.xls), FlowJo XML and SQL formats,
+  PowerPoint and animation batch destinations, 3D plot, figures.
 
 ### 17.4 Delete
 

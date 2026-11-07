@@ -1,5 +1,12 @@
 # Progress and handoff
 
+## State (2026-11-07, Mac app)
+
+Electron shell (`electron/main.cjs`) around the single-file build; packages
+an unsigned macOS app (`npm run app:mac`). Network blocked, page sandboxed,
+menu leaves FlowJo shortcuts to the page. Smoke test `e2e/electron.mjs` 6/6.
+Not done: code signing / notarization, app icon, native file dialogs.
+
 ## State (2026-11-07, parity areas 10-11: table / layout editors and preferences)
 
 Preferences dialog (Disable Undo, auto-save, edge warning, Reset All Don't

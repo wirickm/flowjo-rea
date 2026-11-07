@@ -145,6 +145,9 @@
     "comp-apply": ["0x1f5520",  "0x1f6550",  "0x1f5bc0"],
     "comp-files-wizard": ["jar"],
     "cc-models": ["0x82d070",  "0x82d200",  "0x82f5d0",  "0x830dc0",  "0x832830",  "0x834380"],
-    "prolif-indices": ["0x834e80",  "0x8365a0",  "0x837a80"]
+    "prolif-indices": ["0x834e80",  "0x8365a0",  "0x837a80"],
+    "prefs-dontask-autosave": ["jar"],
+    "edge-warning": ["jar"],
+    "table-layout-editors": ["jar"]
   }
 }

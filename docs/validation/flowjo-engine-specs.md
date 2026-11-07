@@ -1078,6 +1078,87 @@ Read with REA 6.8.0's Ghidra provider on the native engine (`CCModel`,
   Own rule: this app fits halving generations on a log10 axis (ratio 0.5,
   no offset), which coincides when FlowJo's offset is 0 and its ratio 0.5.
 
+## 16. Preferences, Don't Ask Again, auto-save, edge warning, shortcuts (FlowJo 10.6.2)
+
+Read with headless Ghidra and javap on the FlowJo 10.6.2 jar (`FJPrefsFJML`,
+`PrefsWSResetDontAskAction`, `STreeMgr`, `AutoSaveTask`,
+`GateWinController`); all Java. Implemented in `src/core/prefs.ts`, wired in
+`src/ui/App.tsx` and `src/ui/Editors.tsx`.
+
+### 16.1 Preferences (matches the honoured subset)
+
+- Defaults: Disable Undo off, auto-save off every 10 minutes, edge warning on
+  at 5%. Disable Undo: edits replace the present state and leave nothing to
+  undo or redo.
+- Own rule: preferences are kept in this browser (FlowJo keeps them in its
+  preferences file). Preferences without an effect in this app are not shown.
+
+### 16.2 Don't Ask Again (matches)
+
+- The memory is a set of message keys. A confirmation whose key is in the set
+  is answered Yes without asking (whatever was answered when it was stored,
+  as in FlowJo). The checkbox is offered on statistic delete
+  ("Are you sure you want to delete statistic(s)?"), population delete
+  ("Are you sure you want to delete this population(s)?") and sample removal
+  ("Are you sure you want to remove sample(s) from the %s ?"); group delete
+  ("Do you want to delete group(s)?") always asks. This app also offers it on
+  table delete (17.4).
+- "Reset All Don't Show Memory" empties the set.
+
+### 16.3 Auto-save and the edge-event warning
+
+- Auto-save (matches the rule, destination own): every N minutes, only when
+  auto-save is on, the workspace was saved once and it has samples. Status
+  text "Auto-Saved <name> on EEE, d MMM yyyy HH:mm:ss". Own rule: a browser
+  cannot overwrite the saved file, so the copy goes to this browser's
+  storage.
+- Edge warning (matches the rule, counting approximated): an axis is flagged
+  when the fraction of displayed events on its lower or upper bound is greater
+  than threshold / 100 (strict). The message gives int(100 x (sum of the four
+  fractions + 0.005)): below 98 "Warning: %d% of events are on the chart
+  edges!", otherwise "Warning: Nearly all events are on the chart edges!".
+  Own rule: events in the first or last display bin stand for events on the
+  bound.
+
+### 16.4 Shortcuts (matches the implemented menu items)
+
+- Ctrl/Cmd with: S save, Y preferences, E export, L layout editor, T table
+  editor, G manual gate, Z undo, Shift+Z redo. Ctrl/Cmd+Y was redo in this app
+  before; it is now Preferences, as in FlowJo.
+
+## 17. Table and layout editors (FlowJo 10.6.2)
+
+Read with headless Ghidra and javap (`TableTemplate`, `Iteration`, `Layout`,
+`LEBatchBand`). Implemented in `src/core/tableEditor.ts`, `src/ui/Editors.tsx`
+and `src/ui/Layout.tsx`.
+
+### 17.1 Table columns (matches)
+
+- A column is a statistic, a keyword value or a formula over the other
+  columns of the same row (referenced by header). Tables are saved in the
+  workspace file (own JSON, not the .wsp `Table` element).
+
+### 17.2 Iteration (matches)
+
+- By sample, by keyword value (groups in first-seen order, samples without
+  the keyword left out) or by panel of N consecutive tubes. Layout batch
+  exports one file per iteration; "Tiles across" N puts each sample's layout
+  as one tile, N tiles per row, in a single file.
+
+### 17.3 Outputs (matches CSV / TAB / HTML)
+
+- CSV: an empty corner cell, " (%)" after headers containing "Freq.", cells
+  with "," quoted and quotes doubled. TAB: first header "Sample:". HTML: grey
+  header, right-aligned cells. Show Summary Stats adds Mean and Std.
+  Deviation rows. Heat map: blue (column minimum) to yellow (maximum).
+- Not implemented: Excel, XML Excel and SQL formats, printer and clipboard
+  destinations, PowerPoint and animation batch destinations.
+
+### 17.4 Delete
+
+- "Are you sure you want to delete this table? " (with Don't Ask Again);
+  layouts: "Are you sure you want to delete this layout? ".
+
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
 
 Source: static analysis of `libNativeEngine.dylib` from the public FlowJo

@@ -1,5 +1,15 @@
 # Progress and handoff
 
+## State (2026-11-07, parity areas 10-11: table / layout editors and preferences)
+
+Preferences dialog (Disable Undo, auto-save, edge warning, Reset All Don't
+Show Memory), Don't ask again on delete confirmations, FlowJo's edge-event
+warning, shortcuts (Ctrl/Cmd+Y is now Preferences, redo is Ctrl/Cmd+Shift+Z),
+table editor (statistic / keyword / formula columns, iteration, summary, heat
+map, CSV / TAB / HTML) and layout batch iteration with tiles (specs 16, 17).
+REA ledger 44 of 44 verified. Every comparison area is High. Next: mac app
+shell.
+
 ## State (2026-11-06, parity area 9: cell cycle and proliferation)
 
 Cell cycle uses FlowJo 10.6.2's models (Dean-Jett-Fox quadratic S, Watson

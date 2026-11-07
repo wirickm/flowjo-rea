@@ -1138,7 +1138,7 @@ export function App() {
       </main>
 
       {question && (
-        <div className="modal-bg">
+        <div className="modal-bg" style={{ zIndex: 1000 }}>
           <div className="modal" role="alertdialog" aria-label="Question" data-testid="question">
             <div className="modal-body">
               <p>{question.text}</p>

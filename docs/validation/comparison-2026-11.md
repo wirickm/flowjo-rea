@@ -187,9 +187,9 @@ statistics 39, platforms 29, transforms 19, export 15, compensation 9).
 | # | Area | FlowJo 10.6.2 behavior | This app | Status | FlowJo evidence | Conf. |
 |---|---|---|---|---|---|---|
 | A1 | Workspace | Undo keeps 100 user actions (each action's edits are one compound edit); new edit drops redo | 100 snapshots, same | Match | `WSUndoManager` / `FJUndoManager` (decompiled: `startNewEdit` adds each compound edit through Swing `UndoManager.addEdit`, no `setLimit`; checked with `javap -c`); specs 6.8 | high |
-| A2 | Workspace | Preference "Disable Undo" | none | Missing | `prefs.ws.noundo` | high |
-| A3 | Workspace | Optional auto-save every N minutes (saved workspaces with samples; not ACS/Envoy) | none | Missing | `AutoSaveTask`, `prefs.ws.autosave*` | high |
-| A4 | Workspace | Delete confirmations with "Don't Ask Again", reset in Preferences | asks every time | Missing (known open item) | specs 6.7; `prefs.ws.resetdontask` | high |
+| A2 | Workspace | Preference "Disable Undo" | Preferences dialog, Disable Undo (2026-11-07) | Match (specs 16.1) | `FJPrefsFJML` | high |
+| A3 | Workspace | Optional auto-save every N minutes (saved workspaces with samples; not ACS/Envoy) | same rule and status text (2026-11-07) | Match (rule; specs 16.3); own rule: copy in browser storage | `AutoSaveTask`; obligation workspace.autosave | high |
+| A4 | Workspace | Delete confirmations with "Don't Ask Again", reset in Preferences | Don't ask again on population and table delete; Reset All Don't Show Memory (2026-11-07) | Match (specs 16.2) | `STreeMgr`, `PrefsWSResetDontAskAction`; obligation workspace.dont-ask-again | high |
 | A5 | Samples | Remove from workspace or from current group only | asks workspace or current group; removes from the group only (2026-11-06) | Match (specs 7.1) | `ws.deletesample.ws/group` | high |
 | A6 | Groups | Group-owned analysis; delete asks "everywhere or copy to each sample"; synchronized groups | group-owned populations; Synchronized groups; Allocate To Samples / First Sample / Delete Entirely; Rename for all (2026-11-06) | Match (specs 7.2) | `fj.string.groupdelprompt`, `ws.group.dlog.sync` | high |
 | A7 | Groups | Live criteria (decoded, specs 7.1): =, ≠, >, >=, <, <=, Contains, Lacks, Exists; And / Or / & Not from a true start; stain sets; reference group | FlowJo functions and connectors, numeric comparisons, stain sets, reference groups (2026-11-06) | Match (specs 7.1) | `CriteriaTest`, `fj.criterion.contains`, `fj.keyword.criterion.*` | medium |
@@ -225,10 +225,10 @@ statistics 39, platforms 29, transforms 19, export 15, compensation 9).
 | A37 | Platforms | Proliferation (peaks, indices) | FlowJo's Division, Proliferation, Expansion, Replication indices and % Divided; default 4 peaks (2026-11-06) | Match (indices; specs 15.2); own rule: log-axis halving model | REA Ghidra `CCProlif::GetStatsElement`, `CCProlif::ComputeModel` | high |
 | A38 | Platforms | Kinetics: nine statistics (median, mean, geometric mean, percentile, % over T and the four above-T variants), smoothing (Gaussian, moving average), threshold (absolute or percentile of a timeslice), timeslices (drag, multiple, auto) with peak, peak t, mean Y, AUC, slope, dt; KineticsNode and plat.kin.* statistics | FlowJo's engine binning, statistics, smoothing (including its positive-exponent Gaussian) and threshold; the Kinetics window with timeslices, their table and statistics columns; .wsp KineticsNode (2026-11-06) | Match (specs 11); own rules: settings per population path, yAuto/yMin/yMax written as defaults | REA Ghidra `Kinetics::MakeTimeSeries`, `GTimeSeries::Compute*`, `GVector::Smooth`, `Kinetics::ComputeThreshold`; `TimesliceStatistics`, `KinToggleAutoSlice`, `MultiTimesliceDlog`, `KineticsNode` | high (geometric mean channels, Time scale medium) |
 | A39 | Platforms | Compare populations, 3D viewer, Q&B, sample quality, calibration, plate editor, FCS Scan, tSNE, scripting (Rhino), plugins | none | Missing (matrix backlog: plugins) | `PlatformNavCommand`, `com.flowjo.native_tsne`, `PluginManager` | high |
-| A40 | Graphs | Edge-event warning at axis bounds | none | Missing | `gw.gates.panel.warn1/2`, `prefs.graphs.threshold` | high |
+| A40 | Graphs | Edge-event warning at axis bounds | FlowJo's threshold and messages (2026-11-07) | Match (rule; specs 16.3); own rule: edge bins stand for the bound | `GateWinController`; obligation graphs.edge-warning | high |
 | A41 | Graphs | Dot, pseudocolor, contour, density, zebra, histogram, CDF | all but CDF | Match / Missing (CDF) | `DisplayType`, `fj.graph.*` | high |
-| A42 | Layout | Free positioning, iteration (sample / keyword / panel), batch to PDF, PowerPoint, web | ordered list, per-sample batch, raster PDF | Differs (matrix backlog) | `leditor.*`, `Batch$BatchDestination` | high |
-| A43 | Tables | Table editor (formulas, formatting, iteration, outputs) | stat columns + named templates | Differs (matrix backlog) | `teditor.*` | high |
+| A42 | Layout | Free positioning, iteration (sample / keyword / panel), batch to PDF, PowerPoint, web | ordered list, per-sample batch, raster PDF | Match (iteration sample / keyword / panel, tiles; specs 17.2, 2026-11-07); differs: free positioning, PowerPoint / web batch | `leditor.*`, `Batch$BatchDestination` | high |
+| A43 | Tables | Table editor (formulas, formatting, iteration, outputs) | statistic / keyword / formula columns, iteration, summary, heat map, CSV / TAB / HTML (2026-11-07) | Match (specs 17.1-17.3); missing: Excel / SQL formats, clipboard, printer | `TableTemplate`, `Iteration`; obligations tables.* | high |
 | A44 | Open | Missing data files searched for and status shown per file | relink by keywords when files are added | Differs (browser cannot search disks) | `ws.sample.file.*` | high |
 
 Bounded negative searches (P4): "Missing" for a FlowJo feature means its
@@ -374,6 +374,6 @@ rows above: High = every row Match or a documented own rule.
 | **Statistics list** | **High** | 2026-11-06 (specs 8; obligations stats.histogram-moments, stats.mode-mad-correlation, stats.wsp-names) |
 | **Kinetics** | **High** | 2026-11-06 (specs 11; obligations kinetics.*) |
 | **Derived parameters** | **High** | 2026-11-06 (specs 12; obligations derived.*) |
-| Layout and table editors | Low | |
-| Preferences, autosave, shortcuts | Low | |
+| **Layout and table editors** | **High** | 2026-11-07 (specs 17; obligations tables.*) |
+| **Preferences, autosave, shortcuts** | **High** | 2026-11-07 (specs 16; obligations workspace.dont-ask-again, workspace.autosave, graphs.edge-warning) |
 

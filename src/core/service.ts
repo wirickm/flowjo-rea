@@ -54,6 +54,9 @@ export interface PlotRequest extends AnalyzeRequest {
   xRange: [number, number];
   yRange: [number, number] | null;
   maxPoints: number;
+  // Colour axis (ColorMapAxisPanel; specs 24.1): a third parameter whose mean
+  // per 2-D bin colours the plot.
+  color?: Dimension;
 }
 
 export interface PlotResult {
@@ -63,6 +66,8 @@ export interface PlotResult {
   points: Float32Array; // interleaved x,y display coordinates (subsample)
   xExtent: [number, number]; // finite data extent in display units
   yExtent: [number, number] | null;
+  colorMean?: Float32Array; // bins x bins mean of the colour parameter (display units); NaN when empty
+  colorExtent?: [number, number];
 }
 
 export interface StatsRequest extends AnalyzeRequest {
@@ -197,6 +202,9 @@ export class AnalysisService {
     const [x0, x1] = r.xRange;
     const [y0, y1] = r.yRange ?? [0, 1];
     const density = new Float32Array(ys ? B * B : B);
+    const cs = ys && r.color ? eng.dimension(r.color) : null;
+    const csum = cs ? new Float64Array(B * B) : null;
+    let c0 = Infinity, c1 = -Infinity;
     let count = 0;
     let ex0 = Infinity, ex1 = -Infinity, ey0 = Infinity, ey1 = -Infinity;
     for (let i = 0; i < mask.length; i++) {
@@ -213,6 +221,7 @@ export class AnalysisService {
         const by = Math.min(B - 1, Math.max(0, Math.floor(((y - y0) / (y1 - y0)) * B)));
         if (!Number.isFinite(by)) continue;
         density[by * B + bx]++;
+        if (cs) { const c = cs[i]; if (Number.isFinite(c)) { csum![by * B + bx] += c; if (c < c0) c0 = c; if (c > c1) c1 = c; } }
       } else density[bx]++;
     }
     // maxPoints is an upper bound on the sampled events returned.
@@ -227,6 +236,7 @@ export class AnalysisService {
       points: Float32Array.from(pts),
       xExtent: [ex0, ex1],
       yExtent: ys ? [ey0, ey1] : null,
+      ...(csum ? { colorMean: Float32Array.from(csum, (v, k) => (density[k] ? v / density[k] : NaN)), colorExtent: [c0, c1] as [number, number] } : {}),
     };
   }
 

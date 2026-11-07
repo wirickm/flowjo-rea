@@ -11,6 +11,7 @@ import { populationPath, type LayoutItem, type SampleState, type Workspace } fro
 import type { PlotResult, SampleMeta } from '../core/service';
 import { makeAxis, sampleChannels, withStains } from './axes';
 import { channelDisplayName } from '../core/fcs';
+import { EVENT_NUMBER } from '../core/formula';
 import { drawableGates } from './gateGeometry';
 import { PLOT, pw as PLOT_PW, renderPlot, type RenderOptions } from './renderPlot';
 import { asCanvas, SvgContext } from './svgContext';
@@ -25,6 +26,17 @@ export const GRAPH_W = Math.round(PLOT.w * GRAPH_SCALE);
 export const GRAPH_H = Math.round(PLOT.h * GRAPH_SCALE);
 const TEXT_W = 216, TEXT_H = 72;
 const ANNOT_H = 14; // the annotation line drawn above a graph (Show Annotation)
+// Ancestry charts are 140 pt, 8 pt apart, to the right of the graph (FigChartRow);
+// adjunct histograms are strips along the top and right edges (own size 40 px).
+const ANC_PX = Math.round(140 / GRAPH_SCALE), ANC_GAP = Math.round(8 / GRAPH_SCALE), ADJ_PX = 40;
+const ancestorCount = (path: string) => (path ? path.split('/').length : 0);
+// Footprint of a graph with its ancestry row and adjunct histograms (pixels of the composite).
+export function graphCanvasSize(it: { populationPath: string; ancestry?: boolean; adjunct?: boolean; kind: string }): { w: number; h: number } {
+  const n = it.ancestry ? ancestorCount(it.populationPath) : 0;
+  const adj = it.adjunct && it.kind !== 'histogram' ? ADJ_PX : 0;
+  return { w: Math.ceil(PLOT.w + adj + n * (ANC_GAP + ANC_PX * (PLOT.w / PLOT.h)) + ANC_GAP), h: PLOT.h + adj };
+}
+export const graphBoxSize = (it: Parameters<typeof graphCanvasSize>[0]) => { const c = graphCanvasSize(it); return { w: Math.round(c.w * GRAPH_SCALE), h: Math.round(c.h * GRAPH_SCALE) }; };
 
 // Position of an item; items saved before positions existed are laid out two
 // across in list order (own migration rule).
@@ -81,23 +93,72 @@ export async function renderLayout(client: Client, ws: Workspace, meta: Record<s
     const pop = item.populationPath ? s.populations.find((p) => populationPath(s.populations, p.id) === item.populationPath) : null;
     if (item.populationPath && !pop) { out.push({ item, canvas: null, title: `${s.fileName} / ${label}`, error: 'population not present in this sample' }); continue; }
     const m = withStains(meta[s.id], s.stains);
-    const chans = sampleChannels(m, s.compensation, ws.matrices, ws.derivedParameters);
+    const base0 = sampleChannels(m, s.compensation, ws.matrices, ws.derivedParameters);
+    const chans = ws.showEventNumber ? [...base0, { index: base0.length + 1, name: EVENT_NUMBER, label: '', bits: 32, range: Math.max(1, s.eventCount), logDecades: 0, logOffset: 0, gain: 1 }] : base0;
     const x = makeAxis(chans, m.keywords, ws.channelTransforms, item.x);
     const y = item.kind === 'histogram' ? null : makeAxis(chans, m.keywords, ws.channelTransforms, item.y ?? '');
     if (!x || (item.kind !== 'histogram' && !y)) { out.push({ item, canvas: null, title: `${s.fileName} / ${label}`, error: `channel ${!x ? item.x : item.y} not in this sample` }); continue; }
-    const req = (popId: string | null, maxPoints: number) => client.plot({ ...base, popId, x: { kind: 'channel', channel: x.channel, transform: x.spec }, y: y ? { kind: 'channel', channel: y.channel, transform: y.spec } : null, bins: y ? 200 : 256, xRange: x.range, yRange: y ? y.range : null, maxPoints });
-    const data: PlotResult = await req(pop?.id ?? null, 20000);
+    const cAxis = item.kind === 'pseudocolor' && item.colorBy && y ? makeAxis(chans, m.keywords, ws.channelTransforms, item.colorBy) : null;
+    const req = (popId: string | null, maxPoints: number, withColor = false) => client.plot({ ...base, popId, ...(withColor && cAxis ? { color: { kind: 'channel' as const, channel: cAxis.channel, transform: cAxis.spec } } : {}), x: { kind: 'channel', channel: x.channel, transform: x.spec }, y: y ? { kind: 'channel', channel: y.channel, transform: y.spec } : null, bins: y ? 200 : 256, xRange: x.range, yRange: y ? y.range : null, maxPoints });
+    const data: PlotResult = await req(pop?.id ?? null, 20000, true);
     const overlays: { label: string; data: PlotResult }[] = [];
     for (const path of item.overlays ?? []) {
       const op = s.populations.find((q) => populationPath(s.populations, q.id) === path);
       if (op) overlays.push({ label: path, data: await req(op.id, 5000) });
     }
     const title = (ch: string) => { const c = chans.find((q) => q.name === ch); return c ? channelDisplayName(c) : ch; };
-    const options: RenderOptions = { kind: item.kind, x, y, data, gates: item.showGates === false ? [] : drawableGates(s.populations, pop?.id ?? null, x, y), counts: counts.get(s.id)!, contourLevel: item.contourLevel, showOutliers: item.showOutliers, overlays, normalize: item.normalize, xTitle: title(x.channel), yTitle: y ? title(y.channel) : undefined, gateNames: item.gateNames !== false && !item.hideGateNames, gateFreq: item.gateFreq !== false && !item.hideGateFreq, axes: item.axes, grid: item.grid, largeDots: item.largeDots, medians: item.medians };
-    const cv = document.createElement('canvas');
+    const options: RenderOptions = { kind: item.kind, x, y, data, gates: item.showGates === false ? [] : drawableGates(s.populations, pop?.id ?? null, x, y), counts: counts.get(s.id)!, contourLevel: item.contourLevel, showOutliers: item.showOutliers, overlays, normalize: item.normalize, xTitle: title(x.channel), yTitle: y ? title(y.channel) : undefined, gateNames: item.gateNames !== false && !item.hideGateNames, gateFreq: item.gateFreq !== false && !item.hideGateFreq, axes: item.axes, grid: item.grid, largeDots: item.largeDots, medians: item.medians, ...(cAxis && data.colorMean ? { colorBy: { values: data.colorMean, range: cAxis.range, label: cAxis.channel } } : {}) };
+    let cv = document.createElement('canvas');
     cv.width = PLOT.w;
     cv.height = PLOT.h;
     renderPlot(cv.getContext('2d')!, options);
+    if ((item.adjunct && y) || (item.ancestry && item.populationPath)) {
+      const size = graphCanvasSize(item);
+      const comp = document.createElement('canvas');
+      comp.width = size.w; comp.height = size.h;
+      const ctx = comp.getContext('2d')!;
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size.w, size.h);
+      const adj = item.adjunct && y ? ADJ_PX : 0;
+      ctx.drawImage(cv, 0, adj);
+      if (adj && y) {
+        // Show Adjunct Histograms (FigChartAdjunctHistogram): X distribution above, Y to the right.
+        const strip = async (dim: typeof x, along: 'x' | 'y') => {
+          const h = await client.plot({ ...base, popId: pop?.id ?? null, x: { kind: 'channel', channel: dim.channel, transform: dim.spec }, y: null, bins: 128, xRange: dim.range, yRange: null, maxPoints: 0 });
+          const mx = Math.max(1, ...Array.from(h.density));
+          ctx.fillStyle = '#7d8fb3';
+          for (let i = 0; i < h.bins; i++) {
+            const v = (h.density[i] / mx) * (ADJ_PX - 6);
+            if (along === 'x') { const px = PLOT.ml + (i / h.bins) * (PLOT.w - PLOT.ml - PLOT.mr); ctx.fillRect(px, adj - 3 - v, (PLOT.w - PLOT.ml - PLOT.mr) / h.bins + 0.5, v); }
+            else { const py = adj + PLOT.mt + (PLOT.h - PLOT.mt - PLOT.mb) * (1 - (i + 1) / h.bins); ctx.fillRect(PLOT.w + 3, py, v, (PLOT.h - PLOT.mt - PLOT.mb) / h.bins + 0.5); }
+          }
+        };
+        await strip(x, 'x');
+        await strip(y, 'y');
+      }
+      if (item.ancestry && item.populationPath) {
+        // Show Ancestry (FigChartRow): one chart per ancestor level, each showing the
+        // gate that leads to the next level; with Backgating the graph's population is overlaid.
+        const chain: (typeof s.populations[number] | null)[] = [null];
+        for (let q = pop; q && q.parentId; q = s.populations.find((z) => z.id === q!.parentId)) chain.splice(1, 0, s.populations.find((z) => z.id === q!.parentId) ?? null);
+        let ox = PLOT.w + adj + ANC_GAP;
+        for (const anc of chain) {
+          const path = anc ? populationPath(s.populations, anc.id) : '';
+          const saved = ws.plots?.[path];
+          const ax = makeAxis(chans, m.keywords, ws.channelTransforms, saved?.x ?? item.x);
+          const ay = makeAxis(chans, m.keywords, ws.channelTransforms, saved?.y ?? item.y ?? '');
+          if (!ax || !ay) { ox += ANC_PX + ANC_GAP; continue; }
+          const reqA = (pid: string | null, mp: number) => client.plot({ ...base, popId: pid, x: { kind: 'channel', channel: ax.channel, transform: ax.spec }, y: { kind: 'channel', channel: ay.channel, transform: ay.spec }, bins: 160, xRange: ax.range, yRange: ay.range, maxPoints: mp });
+          const ad = await reqA(anc?.id ?? null, 5000);
+          const ov = item.backgating ? [{ label: label, data: await reqA(pop?.id ?? null, 3000) }] : [];
+          const mini = document.createElement('canvas');
+          mini.width = PLOT.w; mini.height = PLOT.h;
+          renderPlot(mini.getContext('2d')!, { kind: 'pseudocolor', x: ax, y: ay, data: ad, gates: drawableGates(s.populations, anc?.id ?? null, ax, ay).filter((g) => { const gp = populationPath(s.populations, g.pop.id); return item.populationPath === gp || item.populationPath.startsWith(`${gp}/`); }), counts: counts.get(s.id)!, overlays: ov, xTitle: title(ax.channel), yTitle: title(ay.channel), axes: 'lL' });
+          ctx.drawImage(mini, ox, adj + (PLOT.h - ANC_PX) / 2, ANC_PX * (PLOT.w / PLOT.h), ANC_PX);
+          ox += ANC_PX * (PLOT.w / PLOT.h) + ANC_GAP;
+        }
+      }
+      cv = comp;
+    }
     out.push({ item, canvas: cv, options, title: `${s.fileName} / ${label} (${data.count.toLocaleString()} events)` });
   }
   return out;
@@ -405,6 +466,9 @@ export function LayoutView(p: {
                   <label title="Only while Show Gates is on (AnnotationPanel.adjust)"><input type="checkbox" disabled={selected.showGates === false} checked={selected.gateFreq !== false} onChange={(e) => setItem(selected.id, { gateFreq: e.target.checked ? undefined : false })} data-testid="layout-gate-freq" /> with Frequencies</label>
                   <label><input type="checkbox" disabled={selected.showGates === false} checked={selected.gateNames !== false} onChange={(e) => setItem(selected.id, { gateNames: e.target.checked ? undefined : false })} data-testid="layout-gate-names" /> with Names</label>
                   <label><input type="checkbox" checked={!!selected.showAnnotation} onChange={(e) => setItem(selected.id, { showAnnotation: e.target.checked || undefined })} data-testid="layout-show-annotation" /> Show Annotation</label>
+                  <label title="1-D distributions of X and Y along the edges of a 2-D plot"><input type="checkbox" disabled={selected.kind === 'histogram'} checked={!!selected.adjunct} onChange={(e) => { const next = { ...selected, adjunct: e.target.checked || undefined }; const sz = graphBoxSize(next); setItem(selected.id, { adjunct: next.adjunct, width: sz.w, height: sz.h }); }} data-testid="layout-adjunct" /> Show Adjunct Histograms</label>
+                  <label title="One chart per ancestor level, 140 pt, to the right"><input type="checkbox" disabled={!selected.populationPath} checked={!!selected.ancestry} onChange={(e) => { const next = { ...selected, ancestry: e.target.checked || undefined }; const sz = graphBoxSize(next); setItem(selected.id, { ancestry: next.ancestry, backgating: next.ancestry ? selected.backgating : undefined, width: sz.w, height: sz.h }); }} data-testid="layout-ancestry" /> Show Ancestry</label>
+                  <label><input type="checkbox" disabled={!selected.ancestry} checked={!!selected.backgating} onChange={(e) => setItem(selected.id, { backgating: e.target.checked || undefined })} data-testid="layout-backgating" /> with Backgating</label>
                   {(['x', 'y'] as const).map((axis) => (['ticks', 'numbers', 'label'] as const).map((part) => {
                     const ch = { ticks: 't', numbers: 'n', label: 'l' }[part];
                     const letter = axis === 'x' ? ch : ch.toUpperCase();

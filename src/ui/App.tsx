@@ -13,6 +13,7 @@ import { writeWsp } from '../core/wspWriter';
 import { channelRange, defaultTransform, isScatterOrTime, makeAxis, sampleChannels, withStains } from './axes';
 import { channelDisplayName } from '../core/fcs';
 import { readMtx } from '../core/compFlowjo';
+import { EVENT_NUMBER } from '../core/formula';
 import { AddKeywordDialog, CompensationDialog, DerivedDialog, FindDialog, GateNamerDialog, KeywordsDialog, TransformDialog } from './Dialogs';
 import { GroupDialog } from './GroupDialog';
 import { ContextMenu, GateActions, ManualGateDialog, type MenuItem } from './GateActions';
@@ -222,7 +223,12 @@ export function App() {
   useEffect(() => {
     if (sel.popId && sample && !selPopValid) setSel({ sampleId: sample.id, popId: null });
   }, [sel.popId, sample, selPopValid]);
-  const channels = useMemo(() => (sMeta && sample ? sampleChannels(sMeta, sample.compensation, ws.matrices, ws.derivedParameters) : []), [sMeta, sample?.compensation, ws.matrices, ws.derivedParameters]); // eslint-disable-line react-hooks/exhaustive-deps
+  const channels = useMemo(() => {
+    if (!sMeta || !sample) return [];
+    const cs = sampleChannels(sMeta, sample.compensation, ws.matrices, ws.derivedParameters);
+    // Show Event # Parameter: an "Event #" axis at the end of the list (specs 24.2).
+    return ws.showEventNumber ? [...cs, { index: cs.length + 1, name: EVENT_NUMBER, label: '', bits: 32, range: Math.max(1, sample.eventCount), logDecades: 0, logOffset: 0, gain: 1 }] : cs;
+  }, [sMeta, sample?.compensation, sample?.eventCount, ws.matrices, ws.derivedParameters, ws.showEventNumber]); // eslint-disable-line react-hooks/exhaustive-deps
   // FlowJo Graph Window axis title: "name :: stain" (specs 18.1).
   const axisTitle = (ch: string) => { const c = channels.find((x) => x.name === ch); return c ? channelDisplayName(c) : ch; };
   const annotationKeys = [...new Set(groupSamples.flatMap((s) => Object.keys(s.annotations ?? {})))].sort();
@@ -505,9 +511,11 @@ export function App() {
     [sMeta, channels, ws.channelTransforms],
   );
   const kind: PlotKind = plotSettings.kind;
-  const displayOpts = { grid: !!plotSettings.grid, largeDots: !!plotSettings.largeDots, medians: !!plotSettings.medians, gateNames: !plotSettings.hideGateNames, gateFreq: !plotSettings.hideGateFreq };
+  const displayOpts: { grid: boolean; largeDots: boolean; medians: boolean; gateNames: boolean; gateFreq: boolean; colorBy?: { values: ArrayLike<number>; range: [number, number]; label: string } } = { grid: !!plotSettings.grid, largeDots: !!plotSettings.largeDots, medians: !!plotSettings.medians, gateNames: !plotSettings.hideGateNames, gateFreq: !plotSettings.hideGateFreq };
   const xAxis = useMemo(() => axisFor(plotSettings.x), [axisFor, plotSettings.x]);
   const yAxis = useMemo(() => (kind === 'histogram' ? null : axisFor(plotSettings.y ?? '')), [axisFor, plotSettings.y, kind]);
+  const colorAxis = useMemo(() => (kind === 'pseudocolor' && plotSettings.colorBy ? axisFor(plotSettings.colorBy) : null), [axisFor, plotSettings.colorBy, kind]);
+  if (colorAxis && plotData?.colorMean) displayOpts.colorBy = { values: plotData.colorMean, range: colorAxis.range, label: colorAxis.channel };
 
   useEffect(() => {
     if (!sample || !meta[sample.id] || !xAxis) return setPlotData(null);
@@ -526,6 +534,7 @@ export function App() {
         xRange: xAxis.range,
         yRange: yAxis ? yAxis.range : null,
         maxPoints: 20000,
+        ...(colorAxis && yAxis ? { color: { kind: 'channel' as const, channel: colorAxis.channel, transform: colorAxis.spec } } : {}),
       });
       if (live && d) setPlotData(d);
       // Overlays: same axes, each overlay population's own events.
@@ -544,7 +553,7 @@ export function App() {
       if (live) setOverlayData(ovs);
     });
     return () => { live = false; };
-  }, [sample?.id, sample?.compensation, sample?.populations, ws.matrices, meta, sel.popId, xAxis, yAxis, run, plotSettings.overlays]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sample?.id, sample?.compensation, sample?.populations, ws.matrices, meta, sel.popId, xAxis, yAxis, colorAxis, run, plotSettings.overlays]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto gate: a 256 x 256 histogram of the plotted population (specs 10.5).
   const [autoCounts, setAutoCounts] = useState<{ counts: Float64Array; n: number } | null>(null);
@@ -1011,6 +1020,7 @@ export function App() {
       if (k === 'k' && !e.shiftKey) { setPlotSettings({ x: step(plotSettings.x, 1) }); return true; } // Next X
       if (k === 'j' && !e.shiftKey) { setPlotSettings({ x: step(plotSettings.x, -1) }); return true; } // Previous X
       if (k === 'y' && kind !== 'histogram') { setPlotSettings({ y: step(plotSettings.y, e.shiftKey ? -1 : 1) }); return true; } // Next Y; previous Y own key (FlowJo's is F10)
+      if ((e.key === ']' || e.key === '[') && kind === 'pseudocolor') { setPlotSettings({ colorBy: plotSettings.colorBy ? step(plotSettings.colorBy, e.key === ']' ? 1 : -1) : names[0] }); return true; } // Next / Previous Color (no wrap)
       if (k === 'u' && !e.shiftKey) { if (sel.popId) setSel({ sampleId: sample.id, popId: sample.populations.find((p) => p.id === sel.popId)?.parentId ?? null }); return true; } // Up to Parent
       if (k === 'o' && !e.shiftKey) { if (gateSel) setSel({ sampleId: sample.id, popId: gateSel }); return true; } // Open Child
       return false; // Ctrl+G manual gate etc. fall through
@@ -1470,6 +1480,12 @@ export function App() {
                 <label><input type="checkbox" checked={!plotSettings.hideGateFreq} onChange={(e) => setPlotSettings({ hideGateFreq: e.target.checked ? undefined : true })} data-testid="display-freq" /> Show Gate Frequencies</label>
                 <label><input type="checkbox" checked={!plotSettings.hideGateNames} onChange={(e) => setPlotSettings({ hideGateNames: e.target.checked ? undefined : true })} data-testid="display-names" /> Show Gate Names</label>
                 <label title="A + at the medians (more than 10 events); a dotted line on a histogram"><input type="checkbox" checked={!!plotSettings.medians} onChange={(e) => setPlotSettings({ medians: e.target.checked || undefined })} data-testid="display-medians" /> Show Medians</label>
+                <label title="Adds an Event # parameter to the axis lists (workspace-wide)"><input type="checkbox" checked={!!ws.showEventNumber} onChange={(e) => updateWs((w) => { if (e.target.checked) w.showEventNumber = true; else delete w.showEventNumber; })} data-testid="display-event-number" /> Show Event # Parameter</label>
+                <label title="Colour the pseudocolor plot by the mean of a third parameter (Ctrl/Cmd+] / [ step it)">Color axis <select disabled={kind !== 'pseudocolor'} value={plotSettings.colorBy ?? ''} onChange={(e) => setPlotSettings({ colorBy: e.target.value || undefined })} data-testid="display-color">
+                  <option value="">off</option>
+                  {channels.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+                </select></label>
+                {colorAxis && plotData?.colorMean && <span className="color-legend" data-testid="color-legend" title={`${colorAxis.channel}: low (blue) to high (red)`}><span className="ramp" /> {colorAxis.channel}</span>}
               </details>
               <div className="row tools">
                 {(kind === 'histogram' ? TOOLS_1D : TOOLS_2D).map((t) => {

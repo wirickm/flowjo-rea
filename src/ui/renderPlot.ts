@@ -94,6 +94,9 @@ export interface RenderOptions {
   grid?: boolean;
   largeDots?: boolean;
   medians?: boolean;
+  // Colour axis: pseudocolor cells take the colour of the bin's mean of the
+  // colour parameter over its range (blue, green, yellow, red), not the density.
+  colorBy?: { values: ArrayLike<number>; range: [number, number]; label: string };
 }
 
 // Gate frequency text (specs 22.1): 3 significant figures, trailing zeros kept,
@@ -158,6 +161,7 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
         const img = ctx.createImageData(pw, ph);
         const greyBase = !!o.overlays?.length;
         const lmx = Math.log1p(mx);
+        const colorBy = o.colorBy && o.kind === 'pseudocolor' ? o.colorBy : null;
         for (let py = 0; py < ph; py++) {
           const by = Math.floor(((ph - 1 - py) / ph) * B);
           for (let px = 0; px < pw; px++) {
@@ -173,7 +177,8 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
               } else img.data[o + 3] = 0;
             } else if (c > (smoothed ? mx * 1e-4 : 0)) {
               // Greyscale base when overlays are shown so overlay colours stay distinct.
-              const tt = Math.log1p(c) / lmx;
+              const cv = colorBy ? colorBy.values[by * B + bx] : NaN;
+              const tt = colorBy && Number.isFinite(cv) ? (cv - colorBy.range[0]) / ((colorBy.range[1] - colorBy.range[0]) || 1) : Math.log1p(c) / lmx;
               const [r, g, b] = greyBase ? ([1, 1, 1].map(() => Math.round(215 - 135 * tt)) as [number, number, number]) : ramp(tt);
               img.data[o] = r; img.data[o + 1] = g; img.data[o + 2] = b; img.data[o + 3] = 255;
             } else img.data[o + 3] = 0;

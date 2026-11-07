@@ -74,6 +74,12 @@ export class SampleEngine {
   column(channel: string, compRef?: string): Float64Array {
     const ref = compRef ?? this.sample.compensation;
     let i = this.channelNames.indexOf(channel);
+    if (i < 0 && channel === EVENT_NUMBER) {
+      // "Show Event # Parameter" (ParameterList.getParameterIDs; specs 24.2): the event index.
+      const n = this.root.length, out = new Float64Array(n);
+      for (let k = 0; k < n; k++) out[k] = k;
+      return out;
+    }
     if (i < 0) {
       const dp = this.derived.find((d) => d.name === channel);
       if (dp) return this.derivedColumn(dp, ref);

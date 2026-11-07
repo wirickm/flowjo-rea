@@ -169,6 +169,7 @@ export interface Workspace {
   layoutPage?: import('./layoutArrange').PageSetup;
   layoutIteration?: import('./layoutArrange').LayoutIteration;
   layoutGuides?: import('./layoutArrange').Guides;
+  showEventNumber?: boolean; // Display > Show Event # Parameter (specs 24.2)
   // FlowJo Kinetics node settings and timeslices per population path (specs 11).
   kinetics?: Record<string, import('./kinetics').KineticsSettings>;
   layout?: LayoutItem[];
@@ -203,6 +204,7 @@ export interface PlotSettings {
   medians?: boolean;
   hideGateFreq?: boolean;
   hideGateNames?: boolean;
+  colorBy?: string; // colour axis parameter (specs 24.1)
 }
 
 // A layout cell: a plot rendered for whichever sample is chosen, or a text block.
@@ -226,6 +228,9 @@ export interface LayoutPlot extends PlotSettings, LayoutPlace {
   gateFreq?: boolean; // with Frequencies (default on; needs Show Gates)
   gateNames?: boolean; // with Names (default on; needs Show Gates)
   axes?: string; // FlowJo axes string: t n l (x), T N L (y); default 'tnlTNL'
+  adjunct?: boolean; // Show Adjunct Histograms (N5)
+  ancestry?: boolean; // Show Ancestry (N3)
+  backgating?: boolean; // with Backgating (N4; needs ancestry)
   text?: undefined;
 }
 export interface LayoutText extends LayoutPlace {

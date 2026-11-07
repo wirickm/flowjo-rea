@@ -1,5 +1,13 @@
 # Progress and handoff
 
+## State (2026-11-07, colour axis and layout annotations)
+
+Specs 24: colour axis (mean of a third parameter per bin, Ctrl/Cmd+] / [),
+Show Event # Parameter, layout Show Ancestry (with Backgating) and Show
+Adjunct Histograms. `npm test` 411 pass; `e2e/coloraxis.mjs` 8/8; every other
+e2e script passes. Still open: uncompensated parameters, grid figures with
+border axes, multigraph, .wsp layout import.
+
 ## State (2026-11-07, FlowJo-style workspace window)
 
 Specs 23: the default screen is now FlowJo's workspace window: taskbar, ribbon

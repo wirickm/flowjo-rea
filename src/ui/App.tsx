@@ -35,6 +35,8 @@ import { initHistory, pushHistory, redo, undo, type History } from './history';
 import { createAnalysisClient } from './workerClient';
 import { autoSaveMessage, CONFIRM, edgeWarning, loadPrefs, rememberDontAsk, savePrefs, shouldAutoSave, skipConfirm, type Prefs } from '../core/prefs';
 import { PrefsDialog, TablesDialog } from './Editors';
+import { ColorTableDialog, GraphOptionsPanel, RangeDialog } from './GraphOptions';
+import { autoWidthBasis, canShowOutliers, canSetForeground, clusterRanges, colorRowsFromString, colorTable, derivedFor, likeParameters, linLogSpec, peakRanges, resolutionOf, smoothingOf, specWithRange } from '../core/graphDisplay';
 
 const client = createAnalysisClient();
 
@@ -529,6 +531,12 @@ export function App() {
   const yAxis = useMemo(() => (kind === 'histogram' ? null : axisFor(plotSettings.y ?? '')), [axisFor, plotSettings.y, kind]);
   const colorAxis = useMemo(() => (kind === 'pseudocolor' && plotSettings.colorBy ? axisFor(plotSettings.colorBy) : null), [axisFor, plotSettings.colorBy, kind]);
   if (colorAxis && plotData?.colorMean) displayOpts.colorBy = { values: plotData.colorMean, range: colorAxis.range, label: colorAxis.channel };
+  // Graph window options (src/core/graphDisplay.ts; docs/validation/ui-gaps/graph.md).
+  const smoothing = smoothingOf(kind, plotSettings, prefs.smoothing1D);
+  const showOutliers = !!plotSettings.showOutliers && canShowOutliers(kind, smoothing > 0);
+  const ctable = useMemo(() => (prefs.colorTable ? colorTable(colorRowsFromString(prefs.colorTable)) : undefined), [prefs.colorTable]);
+  const graphOpts = { smoothing, foreColor: canSetForeground(kind, smoothing > 0) ? plotSettings.foreColor : undefined, backColor: plotSettings.backColor, yMax: kind === 'histogram' ? plotSettings.yMax : undefined, scientific: prefs.scientificNotation, colorTable: ctable };
+  Object.assign(displayOpts, graphOpts);
 
   useEffect(() => {
     if (!sample || !meta[sample.id] || !xAxis) return setPlotData(null);
@@ -543,10 +551,11 @@ export function App() {
         popId: sel.popId,
         x: { kind: 'channel', channel: xAxis.channel, transform: xAxis.spec },
         y: yAxis ? { kind: 'channel', channel: yAxis.channel, transform: yAxis.spec } : null,
-        bins: yAxis ? 200 : 256,
+        bins: resolutionOf(plotSettings),
         xRange: xAxis.range,
         yRange: yAxis ? yAxis.range : null,
-        maxPoints: 20000,
+        // Dot plots draw "# Dots" events (preference dotsToDraw, 8000).
+        maxPoints: kind === 'dot' ? (plotSettings.nDots ?? prefs.dotsToDraw) : 20000,
         ...(colorAxis && yAxis ? { color: { kind: 'channel' as const, channel: colorAxis.channel, transform: colorAxis.spec } } : {}),
       });
       if (live && d) setPlotData(d);
@@ -559,14 +568,14 @@ export function App() {
           sampleId: sample.id, compensation: sample.compensation, populations: sample.populations, matrices: ws.matrices, derived: ws.derivedParameters, popId: pop.id,
           x: { kind: 'channel', channel: xAxis.channel, transform: xAxis.spec },
           y: yAxis ? { kind: 'channel', channel: yAxis.channel, transform: yAxis.spec } : null,
-          bins: yAxis ? 200 : 256, xRange: xAxis.range, yRange: yAxis ? yAxis.range : null, maxPoints: 5000,
+          bins: resolutionOf(plotSettings), xRange: xAxis.range, yRange: yAxis ? yAxis.range : null, maxPoints: 5000,
         });
         ovs.push({ label: path, data: od });
       }
       if (live) setOverlayData(ovs);
     });
     return () => { live = false; };
-  }, [sample?.id, sample?.compensation, sample?.populations, ws.matrices, meta, sel.popId, xAxis, yAxis, colorAxis, run, plotSettings.overlays]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sample?.id, sample?.compensation, sample?.populations, ws.matrices, meta, sel.popId, xAxis, yAxis, colorAxis, run, plotSettings.overlays, plotSettings.resolution, plotSettings.nDots, kind === 'dot', prefs.dotsToDraw]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto gate: a 256 x 256 histogram of the plotted population (specs 10.5).
   const [autoCounts, setAutoCounts] = useState<{ counts: Float64Array; n: number } | null>(null);
@@ -848,9 +857,19 @@ export function App() {
     });
     if (sampleIds.length > 1) note('info', `Pasted into ${sampleIds.length} samples`);
   };
-  // Copy Image (GateWinController.doCopy): the plot as an image on the system clipboard.
-  const copyPlotImage = () => {
-    const cv = canvasRef.current;
+  // Copy Image (GateWinController.doCopy): the plot as an image on the system
+  // clipboard; Copy Image keeps a transparent background, Copy Image Without
+  // Transparency (COPYPICTURENOTRANS) a white one.
+  const plotImage = (transparent: boolean): HTMLCanvasElement | null => {
+    if (!transparent) return canvasRef.current;
+    if (!sample || !xAxis) return null;
+    const cv = document.createElement('canvas');
+    cv.width = PLOT.w; cv.height = PLOT.h;
+    renderPlot(cv.getContext('2d')!, { kind, x: xAxis, y: yAxis, data: plotData, gates: drawableGates(sample.populations, sel.popId, xAxis, yAxis), counts, contourLevel: plotSettings.contourLevel, showOutliers, overlays: overlayData, normalize: plotSettings.normalize, xTitle: axisTitle(xAxis.channel), yTitle: yAxis ? axisTitle(yAxis.channel) : undefined, ...displayOpts, transparent: true });
+    return cv;
+  };
+  const copyPlotImage = (transparent = true) => {
+    const cv = plotImage(transparent);
     if (!cv) return;
     cv.toBlob((blob) => {
       const fail = () => note('error', 'There was an error adding the image to the system clipboard.');
@@ -858,6 +877,156 @@ export function App() {
       navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(() => note('info', 'Plot image copied'), fail);
     }, 'image/png');
   };
+  // --- Graph window commands (docs/validation/ui-gaps/graph.md) ----------------
+  const [colorTableOpen, setColorTableOpen] = useState(false);
+  const [rangeDlg, setRangeDlg] = useState<{ channel: string; min: number; max: number } | null>(null);
+  // Gate colour (SETGATECOLOR: every quad of a quad set) and Tint (TINTGATE).
+  const setGateLook = (id: string, patch: { tint?: string; tinted?: boolean }) => sample && updateWs((w) => {
+    const pops = w.samples.find((x) => x.id === sample.id)!.populations;
+    const p = pops.find((q) => q.id === id);
+    if (!p) return;
+    const quadKinds = ['quadrant', 'splineQuadrant', 'spider', 'curlyQuad'];
+    const targets = patch.tint !== undefined && quadKinds.includes(p.gate.type) ? pops.filter((q) => q.parentId === p.parentId && q.gate.type === p.gate.type) : [p];
+    for (const q of targets) {
+      if (patch.tint !== undefined) q.tint = patch.tint;
+      if (patch.tinted !== undefined) { if (patch.tinted) q.tinted = true; else delete q.tinted; }
+    }
+  });
+  // Ranges on the X dimension of the shown population, in scale units.
+  const makeRanges = (ranges: { name: string; min: number; max: number }[], axis: Axis) => {
+    if (!sample || !ranges.length) return;
+    const X = { kind: 'channel' as const, channel: axis.channel, transform: axis.spec };
+    const kids = sample.populations.filter((p) => p.parentId === sel.popId);
+    const same = (p: Population, r: { name: string; min: number; max: number }) => p.name === r.name && p.gate.type === 'rect' && p.gate.dims.length === 1 && p.gate.min[0] === r.min && p.gate.max[0] === r.max;
+    // A child with the same name and range is replaced (FlowCAPUtil.createSubPopGate).
+    const fresh = ranges.filter((r) => !kids.some((p) => same(p, r)));
+    if (fresh.length) createGates(fresh.map((r) => ({ name: r.name, gate: { type: 'rect', dims: [X], min: [r.min], max: [r.max] } })));
+    note('info', `${ranges.length} range gate(s)${fresh.length < ranges.length ? ` (${ranges.length - fresh.length} already present)` : ''}`);
+  };
+  // Create Gates On Peaks: the shown population's unsmoothed 256-bucket histogram.
+  const gatesOnPeaks = async () => {
+    if (!sample || !xAxis || kind !== 'histogram') return;
+    const d = await client.plot({ sampleId: sample.id, compensation: sample.compensation, populations: sample.populations, matrices: ws.matrices, derived: ws.derivedParameters, popId: sel.popId, x: { kind: 'channel', channel: xAxis.channel, transform: xAxis.spec }, y: null, bins: 256, xRange: xAxis.range, yRange: null, maxPoints: 1 });
+    const [a, b] = xAxis.range;
+    const ranges = peakRanges(Float64Array.from(d.density), xAxis.channel).map((r) => ({ name: r.name, min: a + (r.lo / 256) * (b - a), max: a + (r.hi / 256) * (b - a) }));
+    if (!ranges.length) return note('warn', 'No peaks found');
+    makeRanges(ranges, xAxis);
+  };
+  // Create Cluster Gates: a range per integer value of the axis named "cluster".
+  const clusterGates = () => {
+    const axis = xAxis?.channel === 'cluster' ? xAxis : yAxis?.channel === 'cluster' ? yAxis : null;
+    if (!axis || !sMeta) return;
+    const c = channels.find((x) => x.name === 'cluster');
+    const pnr = c && c.index <= sMeta.channels.length ? sMeta.keywords[`$P${c.index}R`] : undefined;
+    makeRanges(clusterRanges(axis.t.inverse(axis.range[1]), pnr).map((r) => ({ name: r.name, min: axis.t.apply(r.min), max: axis.t.apply(r.max) })), axis);
+  };
+  // Transform menu of an axis (TransformChangeAction.makePopup, own additions).
+  const specOf = (ch: string): TransformSpec | null => { const c = channels.find((x) => x.name === ch); return c && sMeta ? ws.channelTransforms[ch] ?? defaultTransform(c, sMeta.keywords) : null; };
+  const setSpecs = (specs: Record<string, TransformSpec | null>) => updateWs((w) => { for (const [k, v] of Object.entries(specs)) { if (v) w.channelTransforms[k] = v; else delete w.channelTransforms[k]; } });
+  const fluor = (n: string) => !isScatterOrTime(n) && channels.find((c) => c.name === n)?.label !== 'derived';
+  const isTime = (n: string) => /^time$/i.test(n);
+  const calcWidth = async (ch: string) => {
+    const spec = specOf(ch);
+    if (!sample || !spec || (spec.kind !== 'flowjo-biex' && spec.kind !== 'logicle')) return note('warn', 'Calculate Width Basis applies to biexponential (logicle) scales');
+    const values = await client.dimensionValues({ sampleId: sample.id, compensation: sample.compensation, populations: sample.populations, matrices: ws.matrices, derived: ws.derivedParameters }, { kind: 'channel', channel: ch, transform: { kind: 'none' } });
+    const t = makeTransform(spec);
+    const pos = (v: number) => (t.apply(v) - t.displayMin) / (t.displayMax - t.displayMin);
+    const M = spec.kind === 'flowjo-biex' ? spec.pos : spec.M, T = spec.kind === 'flowjo-biex' ? spec.max : spec.T;
+    const w = autoWidthBasis(values, pos, M, T);
+    let next: TransformSpec;
+    if (spec.kind === 'flowjo-biex') next = { ...spec, width: w };
+    else { const W = Math.min(spec.M / 2, Math.log10(-w) / 2); next = { ...spec, W, A: Math.min(Math.max(spec.A, -W), spec.M - 2 * W) }; }
+    setSpecs({ [ch]: next });
+    note('info', `${ch}: width basis ${+w.toPrecision(4)}`);
+  };
+  const deriveParm = (ch: string, log: boolean) => {
+    const top = channelRange(channels.find((c) => c.name === ch)!);
+    const d = derivedFor(ch, log, channels.map((c) => c.name));
+    updateWs((w) => { w.derivedParameters = [...(w.derivedParameters ?? []), d]; w.channelTransforms[d.name] = { kind: 'linear', T: log ? Math.max(1, Math.ceil(Math.log10(top))) : top, A: 0 }; });
+    note('info', `Derived parameter ${d.name} = ${d.formula}`);
+  };
+  const transformMenu = (ch: string, x: number, y: number) => {
+    const spec = specOf(ch);
+    const c = channels.find((q) => q.name === ch);
+    if (!spec || !c) return;
+    const t = makeTransform(spec);
+    const lo = t.inverse(t.displayMin), hi = t.inverse(t.displayMax);
+    const top = channelRange(c);
+    const like = likeParameters(channels.map((q) => q.name), ch, fluor, isTime);
+    const items: MenuItem[] = [
+      { label: `${spec.kind === 'linear' ? '* ' : ''}Linear Axis`, testId: 'tm-linear', onClick: () => setSpecs({ [ch]: linLogSpec(false, lo, hi) }) },
+      { label: `${spec.kind === 'log' ? '* ' : ''}Log Axis`, testId: 'tm-log', onClick: () => setSpecs({ [ch]: linLogSpec(true, lo, hi) }) },
+      { label: 'Transform Off', testId: 'tm-off', onClick: () => setSpecs({ [ch]: { kind: 'linear', T: top, A: 0 } }) },
+      null,
+      { label: 'Reset', testId: 'tm-reset', onClick: () => setSpecs({ [ch]: null }) },
+      { label: 'Customize Axis...', testId: 'tm-custom', onClick: () => setDialog({ kind: 'transform', channel: ch }) },
+      { label: 'Change Displayed Parameter Range...', testId: 'tm-range', onClick: () => setRangeDlg({ channel: ch, min: lo, max: hi }) },
+      { label: 'Calculate Width Basis', testId: 'tm-autowidth', disabled: spec.kind !== 'flowjo-biex' && spec.kind !== 'logicle', onClick: () => void run(() => calcWidth(ch)) },
+      null,
+      { label: 'Apply To All Compensated Parameters', testId: 'tm-applycomp', onClick: () => { setSpecs(Object.fromEntries(like.filter((n) => n !== ch).map((n) => [n, { ...spec }]))); note('info', `Scale of ${ch} applied to ${like.length - 1} parameter(s)`); } },
+      { label: 'Remove Transforms', testId: 'tm-remove', onClick: () => setSpecs(Object.fromEntries(like.map((n) => [n, null]))) },
+      null,
+      { label: 'Derive Linear Parameter', testId: 'tm-derive-lin', onClick: () => deriveParm(ch, false) },
+      { label: 'Derive Log Parameter', testId: 'tm-derive-log', onClick: () => deriveParm(ch, true) },
+    ];
+    setCtx({ x, y, items });
+  };
+  const applyRange = (ch: string, min: number, max: number): string | null => {
+    const spec = specOf(ch);
+    if (!spec || !Number.isFinite(min) || !Number.isFinite(max)) return 'Enter numbers';
+    const next = specWithRange(spec, min, max);
+    if (!next) return `This scale cannot show ${min} to ${max}`;
+    setSpecs({ [ch]: next });
+    return null;
+  };
+  // Print (GWPrintAction): the plot image in the browser's print dialog (own).
+  const printPlot = () => {
+    const url = canvasRef.current?.toDataURL('image/png');
+    const w = url && window.open('', '_blank');
+    if (!w) return note('warn', 'Allow pop-ups to print the graph');
+    w.document.write(`<!doctype html><title>${popPath || sample?.fileName || 'Graph'}</title><img src="${url}" style="max-width:100%" onload="window.print()">`);
+    w.document.close();
+  };
+  // Make Movie (MovieAction, own form): the graph of each sample of the group
+  // at this population, one per second, recorded as a WebM video.
+  const makeMovie = async () => {
+    const cv = canvasRef.current;
+    if (!cv || !sample || typeof MediaRecorder === 'undefined' || !cv.captureStream) return note('warn', 'This browser cannot record a video of the canvas');
+    const list = groupSamples.filter((s) => meta[s.id]);
+    const stream = cv.captureStream(5);
+    const rec = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : '' });
+    const parts: Blob[] = [];
+    rec.ondataavailable = (e) => { if (e.data.size) parts.push(e.data); };
+    const done = new Promise<void>((r) => { rec.onstop = () => r(); });
+    const start = sample.id;
+    rec.start();
+    for (const s of list) {
+      const same = popPath ? s.populations.find((p) => populationPath(s.populations, p.id) === popPath) : null;
+      if (popPath && !same) continue;
+      setSel({ sampleId: s.id, popId: same?.id ?? null });
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    rec.stop();
+    await done;
+    setSel({ sampleId: start, popId: sel.popId });
+    download(`${(popPath || 'all').replace(/[^\w.-]+/g, '_')}_movie.webm`, new Blob(parts, { type: 'video/webm' }), 'video/webm');
+    note('info', `Movie of ${list.length} sample(s) saved`);
+  };
+  // First / Last Sample (own: GWCommand.FIRSTSIBLING / LASTSIBLING have no
+  // action in 10.6.2): the first / last sample of the group with this population.
+  const edgeSample = (last: boolean) => {
+    if (!sample) return null;
+    const list = groupSamples.length ? groupSamples : ws.samples;
+    const order = last ? [...list].reverse() : list;
+    for (const t of order) {
+      if (t === sample) return null;
+      if (!popPath) return { s: t, popId: null };
+      const same = t.populations.find((p) => populationPath(t.populations, p.id) === popPath);
+      if (same) return { s: t, popId: same.id };
+    }
+    return null;
+  };
+  const jumpSample = (last: boolean) => { const h = edgeSample(last); if (h) { setSel({ sampleId: h.s.id, popId: h.popId }); setMulti([]); } };
   // Copy Table to Clipboard: HTML and plain text (tab separated).
   const copyTable = async () => {
     const head = ['Sample', ...annotationKeys, ...ws.statColumns.map(colLabel)];
@@ -974,11 +1143,23 @@ export function App() {
         { label: 'Decrease Size', onClick: () => { if (!plotActions.current?.scaleGate(1 / 1.1)) note('warn', 'Only polygon, rectangle and ellipse gates change size'); } },
         null,
       ] as MenuItem[] : []),
+      ...(pop ? [{ label: `${pop.tinted ? '* ' : ''}Tint`, testId: 'ctx-Tint', onClick: () => setGateLook(pop.id, { tinted: !pop.tinted }) }] as MenuItem[] : []),
       { label: 'Add Statistic', onClick: () => addStatFor(pop ? populationPath(sample.populations, pop.id) : popPath) },
-      { label: 'Copy Image', onClick: copyPlotImage },
+      { label: 'Copy Image', onClick: () => copyPlotImage(true) },
+      { label: 'Copy Image Without Transparency', onClick: () => copyPlotImage(false) },
       { label: 'Copy Histogram Function', disabled: kind !== 'histogram', onClick: copyHistogram },
       { label: 'Copy Statistics', onClick: copyStatistics },
       { label: 'Copy to Layout Editor', onClick: () => document.querySelector<HTMLButtonElement>('[data-testid=add-to-layout]')?.click() },
+      // GatePanel popup: Smooth when the type can smooth, Adjust color table with
+      // the preference, Create Cluster Gates on a "cluster" axis, Create Gates On
+      // Peaks on histograms.
+      ...(kind !== 'dot' && kind !== 'contour' ? [{ label: `${smoothing > 0 ? '* ' : ''}Smooth`, testId: 'ctx-Smooth', onClick: () => setPlotSettings({ smoothing: smoothing > 0 ? 0 : 13 }) }] : []),
+      ...(prefs.adjustColor && (smoothing > 0 || kind === 'contour') ? [{ label: 'Adjust color table', onClick: () => setColorTableOpen(true) }] : []),
+      ...(xAxis?.channel === 'cluster' || yAxis?.channel === 'cluster' ? [{ label: 'Create Cluster Gates', onClick: clusterGates }] : []),
+      ...(kind === 'histogram' ? [{ label: 'Create Gates On Peaks', onClick: () => void run(gatesOnPeaks) }] : []),
+      null,
+      { label: 'Print...', onClick: printPlot },
+      { label: 'Make Movie...', disabled: groupSamples.length < 2, onClick: () => void makeMovie() },
     ];
     setCtx({ x, y, items });
   };
@@ -1442,8 +1623,10 @@ export function App() {
           {sample && sMeta && xAxis ? (
             <>
               <div className="row breadcrumb" data-testid="gating-path">
+                <button disabled={!edgeSample(false)} onClick={() => jumpSample(false)} title="First Sample: the first sample of the group with this population" data-testid="first-sample">|&lt;</button>
                 <button disabled={!neighbour(-1)} onClick={() => navSample(-1)} title="Previous Sample (PageUp, or Ctrl/Cmd+PageDown): view the previous population at this level" data-testid="prev-sample">&lt;</button>
                 <button disabled={!neighbour(1)} onClick={() => navSample(1)} title="Next Sample (PageDown, or Ctrl/Cmd+PageUp): view the next population at this level" data-testid="next-sample">&gt;</button>
+                <button disabled={!edgeSample(true)} onClick={() => jumpSample(true)} title="Last Sample: the last sample of the group with this population" data-testid="last-sample">&gt;|</button>
                 <span className="muted">Gating Path:</span>
                 <a href="#" onClick={(e) => { e.preventDefault(); setSel({ sampleId: sample.id, popId: null }); }} data-testid="crumb-root">{sample.fileName}</a>
                 {gatingPath.map((q) => (
@@ -1452,7 +1635,7 @@ export function App() {
                 {!gatingPath.length && <span className="muted"> (Ungated)</span>}
               </div>
               <div className="row plot-controls">
-                <select value={kind} onChange={(e) => setPlotSettings({ kind: e.target.value as PlotKind })} data-testid="plot-kind">
+                <select value={kind} onChange={(e) => setPlotSettings({ kind: e.target.value as PlotKind, smoothing: undefined })} data-testid="plot-kind" title="Changing the type resets smoothing to the type's default (GraphSpec.changeDisplayType)">
                   <option value="pseudocolor">Pseudocolor</option>
                   <option value="dot">Dot plot</option>
                   <option value="histogram">Histogram</option>
@@ -1464,12 +1647,14 @@ export function App() {
                   {channels.map((c) => <option key={c.name} value={c.name}>{c.label ? `${c.name} :: ${c.label}` : c.name}</option>)}
                 </select>
                 <button onClick={() => setDialog({ kind: 'transform', channel: plotSettings.x })} title="Axis scale" data-testid="x-scale">scale</button>
+                <button onClick={(e) => transformMenu(plotSettings.x, e.clientX, e.clientY)} title="Transform menu of the X axis" data-testid="x-transform">T</button>
                 {kind !== 'histogram' && (
                   <>
                     Y <select value={plotSettings.y ?? ''} onChange={(e) => setPlotSettings({ y: e.target.value })} data-testid="y-channel">
                       {channels.map((c) => <option key={c.name} value={c.name}>{c.label ? `${c.name} :: ${c.label}` : c.name}</option>)}
                     </select>
                     <button onClick={() => setDialog({ kind: 'transform', channel: plotSettings.y ?? '' })} title="Axis scale" data-testid="y-scale">scale</button>
+                    <button onClick={(e) => plotSettings.y && transformMenu(plotSettings.y, e.clientX, e.clientY)} title="Transform menu of the Y axis" data-testid="y-transform">T</button>
                   </>
                 )}
               </div>
@@ -1501,6 +1686,7 @@ export function App() {
                   {channels.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
                 </select></label>
                 {colorAxis && plotData?.colorMean && <span className="color-legend" data-testid="color-legend" title={`${colorAxis.channel}: low (blue) to high (red)`}><span className="ramp" /> {colorAxis.channel}</span>}
+                <GraphOptionsPanel settings={plotSettings} set={setPlotSettings} prefs={prefs} setPrefs={setPrefs} gate={sample.populations.find((q) => q.id === gateSel) ?? null} onGate={(patch) => gateSel && setGateLook(gateSel, patch)} onAdjustColor={() => setColorTableOpen(true)} />
               </details>
               <div className="row tools">
                 {(kind === 'histogram' ? TOOLS_1D : TOOLS_2D).map((t) => {
@@ -1533,7 +1719,7 @@ export function App() {
                 canvasRef={canvasRef}
                 overlays={overlayData}
                 contourLevel={plotSettings.contourLevel ?? (kind === 'zebra' ? 10 : 5)}
-                showOutliers={!!plotSettings.showOutliers}
+                showOutliers={showOutliers}
                 normalize={!!plotSettings.normalize}
                 onTool={setTool}
                 xLabel={gateLabel(xAxis.channel, channels.find((c) => c.name === xAxis.channel)?.label)}
@@ -1563,7 +1749,7 @@ export function App() {
               </div>
               <div className="muted" data-testid="plot-caption">
                 {popPath || 'All events'}: {plotData ? plotData.count.toLocaleString() : '-'} events shown
-                {plotData && (kind === 'dot' || (kind === 'contour' && plotSettings.showOutliers)) && plotData.points.length / 2 < plotData.count && ` (dot plot draws ${(plotData.points.length / 2).toLocaleString()} sampled events)`}
+                {plotData && (kind === 'dot' || showOutliers) && plotData.points.length / 2 < plotData.count && ` (dot plot draws ${(plotData.points.length / 2).toLocaleString()} sampled events)`}
               </div>
               <details className="overlay-picker">
                 <summary data-testid="overlay-toggle">Overlay populations ({plotSettings.overlays?.length ?? 0})</summary>
@@ -1851,6 +2037,7 @@ export function App() {
           const buttons = (
             <span>
               <button title="Duplicate View" onMouseDown={(e) => e.stopPropagation()} onClick={() => openWin(w.sampleId, w.popId, true)} data-testid="gw-duplicate">Duplicate View</button>
+              <button title="Close All Graph Windows" onMouseDown={(e) => e.stopPropagation()} onClick={() => { setWins([]); setActiveWin(null); }} data-testid="gw-close-all">Close All</button>
               <button aria-label="Close" onMouseDown={(e) => e.stopPropagation()} onClick={() => closeWin(w.id)} data-testid="gw-close">x</button>
             </span>
           );
@@ -2089,6 +2276,8 @@ export function App() {
         />
       )}
       {dialog?.kind === 'prefs' && <PrefsDialog prefs={prefs} onChange={setPrefs} onClose={() => setDialog(null)} />}
+      {colorTableOpen && <ColorTableDialog value={prefs.colorTable} onApply={(v) => setPrefs({ ...prefsRef.current, colorTable: v })} onClose={() => setColorTableOpen(false)} />}
+      {rangeDlg && <RangeDialog channel={rangeDlg.channel} min={rangeDlg.min} max={rangeDlg.max} onApply={(a, b) => applyRange(rangeDlg.channel, a, b)} onClose={() => setRangeDlg(null)} />}
       {dialog?.kind === 'tables' && <TablesDialog ws={ws} updateWs={updateWs} stats={stats} colLabel={colLabel} ask={ask} download={download} onClose={() => setDialog(null)} />}
       {dialog?.kind === 'export' && sample && (
         <ExportDialog
@@ -2101,7 +2290,7 @@ export function App() {
           onSvg={() => {
             if (!xAxis || !plotData) return;
             const svg = new SvgContext(PLOT.w, PLOT.h);
-            renderPlot(asCanvas(svg), { kind, x: xAxis, y: yAxis, data: plotData, gates: drawableGates(sample.populations, sel.popId, xAxis, yAxis), counts, contourLevel: plotSettings.contourLevel, showOutliers: plotSettings.showOutliers, overlays: overlayData, normalize: plotSettings.normalize, xTitle: axisTitle(xAxis.channel), yTitle: yAxis ? axisTitle(yAxis.channel) : undefined, ...displayOpts });
+            renderPlot(asCanvas(svg), { kind, x: xAxis, y: yAxis, data: plotData, gates: drawableGates(sample.populations, sel.popId, xAxis, yAxis), counts, contourLevel: plotSettings.contourLevel, showOutliers, overlays: overlayData, normalize: plotSettings.normalize, xTitle: axisTitle(xAxis.channel), yTitle: yAxis ? axisTitle(yAxis.channel) : undefined, ...displayOpts });
             download(`${sample.fileName}_${(popPath || 'all').replace(/[^\w.-]+/g, '_')}.svg`, svg.toString(), 'image/svg+xml');
           }}
           onPng={() => canvasRef.current?.toBlob((b) => b && download(`${sample.fileName}_${(popPath || 'all').replace(/[^\w.-]+/g, '_')}.png`, b, 'image/png'))}

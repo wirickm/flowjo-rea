@@ -14,6 +14,11 @@ export function PrefsDialog({ prefs, onChange, onClose }: { prefs: Prefs; onChan
       <input type="number" min={1} style={{ width: 50 }} data-testid="pref-autosave-min" value={prefs.autoSaveMinutes} onChange={(e) => set('autoSaveMinutes', Math.max(1, Number(e.target.value) || 1))} /> minutes<br />
       <label><input type="checkbox" data-testid="pref-edge" checked={prefs.eventsOnAxis} onChange={(e) => set('eventsOnAxis', e.target.checked)} /> Warn when more than </label>
       <input type="number" min={0} max={100} style={{ width: 50 }} data-testid="pref-edge-pct" value={prefs.warningThreshold} onChange={(e) => set('warningThreshold', Number(e.target.value) || 0)} />% of events are on an axis edge<br />
+      <h4>Graphs</h4>
+      <label><input type="checkbox" data-testid="pref-scinot" checked={prefs.scientificNotation} onChange={(e) => set('scientificNotation', e.target.checked)} /> Use Scientific Notation</label><br />
+      <label><input type="checkbox" data-testid="pref-smooth1d" checked={prefs.smoothing1D} onChange={(e) => set('smoothing1D', e.target.checked)} /> Smooth histograms</label><br />
+      <label>Dots to draw <input type="number" min={0} max={100000} style={{ width: 70 }} data-testid="pref-dots" value={prefs.dotsToDraw} onChange={(e) => set('dotsToDraw', Math.max(0, Math.min(100000, Math.trunc(Number(e.target.value) || 0))))} /></label><br />
+      <label><input type="checkbox" data-testid="pref-adjustcolor" checked={prefs.adjustColor} onChange={(e) => set('adjustColor', e.target.checked)} /> Show "Adjust color table"</label><br />
       <button data-testid="pref-reset-dontask" disabled={!prefs.dontAsk.length} onClick={() => onChange(resetDontAsk(prefs))}>Reset All Don't Show Memory ({prefs.dontAsk.length})</button>
       <div><button data-testid="prefs-close" onClick={onClose}>Close</button></div>
     </div></div></div>

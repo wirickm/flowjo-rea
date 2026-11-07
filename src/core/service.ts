@@ -516,6 +516,27 @@ export class AnalysisService {
     return { count, raw, missing };
   }
 
+  // Display-scale values of several dimensions for a population's events,
+  // interleaved per event (at most maxEvents, every k-th event), for the
+  // Compare Populations multivariate test and the 3D Viewer.
+  eventMatrix(r: AnalyzeRequest & { popId: string | null; dims: Dimension[]; maxEvents: number }): { values: Float32Array; count: number; total: number } {
+    const eng = this.engine(r);
+    const mask = r.popId ? eng.masks.get(r.popId) : eng.root;
+    if (!mask) throw new AppError('GATE_INVALID', 'Population not found');
+    const cols = r.dims.map((d) => eng.dimension(d));
+    let total = 0;
+    for (let i = 0; i < mask.length; i++) if (mask[i]) total++;
+    const step = Math.max(1, Math.ceil(total / Math.max(1, r.maxEvents)));
+    const out: number[] = [];
+    let k = 0, count = 0;
+    for (let i = 0; i < mask.length; i++) {
+      if (!mask[i] || k++ % step) continue;
+      for (const c of cols) out.push(c[i]);
+      count++;
+    }
+    return { values: Float32Array.from(out), count, total };
+  }
+
   dimensionValues(r: AnalyzeRequest, d: Dimension): Float64Array {
     return this.engine(r).dimension(d);
   }

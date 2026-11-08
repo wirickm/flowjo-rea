@@ -2,7 +2,9 @@
 // Script Editor's script list (imported <Scripts>, New, Duplicate, Delete,
 // Open, Save), Run against the workspace (counts, statistics fetched on
 // demand, groups and gates made by a script, undo), the console (persistent
-// variables, _, history, Ctrl+C interrupt) and Clear.
+// variables, _, history, Ctrl+C interrupt) and Clear; then the rest of the
+// API: display, annotation, not / magnetic, add / remove, fileMask with an
+// attached file, chart display / export and HTML movies.
 // Usage: node e2e/followup-editors.mjs [baseUrl]
 import { createRequire } from 'node:module';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -134,6 +136,56 @@ await page.waitForTimeout(300);
 check('Open Script loads a .fjs file named after the file', (await items()).includes('Loaded script (1 lines)'), (await items()).join('|'));
 await page.getByTestId('script-run').click();
 check('a loaded script runs', await waitConsole(/--- Loaded script ---/));
+await page.getByTestId('script-close').click();
+
+// --- follow-up: display, annotation, not / magnetic, add / remove, fileMask, charts, movies ---
+await page.getByTestId('open-scripts').click();
+await page.getByTestId('script-new').click();
+const runScript = async (code) => { await setScript(code); await page.getByTestId('script-run').click(); };
+const winsBefore = await page.getByTestId('graph-window').count();
+await runScript('var w = workspace.samples[0].display("FSC-A", "SSC-A"); w.location(500, 60); w.name');
+await waitConsole(/: Ungated\n/);
+await page.waitForTimeout(500);
+check('node display() opens the graph window of the node', (await page.getByTestId('graph-window').count()) === winsBefore + 1, `${winsBefore} -> ${await page.getByTestId('graph-window').count()}`);
+await runScript('var p = workspace.samples[0].populations("**")[0]; p.annotation = "checked by script"; var g = workspace.samples[0].gating.range("NotRange", "FSC-A", 50000, 150000); g.not = true; g.magnetic = true; workspace.samples[1].add(p); "done"');
+await waitConsole(/done\n/);
+await runScript('workspace.samples[0].populations("**")[0].annotation + " | " + workspace.samples[0].populations("NotRange")[0].not + " | " + workspace.samples[0].populations("NotRange")[0].magnetic');
+check('annotation and not / magnetic flags are stored in the workspace', await waitConsole(/checked by script \| true \| true\n/), (await consoleText()).slice(-120));
+await runScript('workspace.samples[1].populations("*").length + workspace.samples[0].populations("*").length');
+await page.getByTestId('script-close').click();
+await idle();
+const notRow = page.locator('[data-testid^="row-"][data-testid$="/NotRange"]');
+check('a script gate with not = true shows as an exclusion gate', (await notRow.count()) === 1 && /\[excl\]/.test(await notRow.innerText()), (await notRow.count()) ? await notRow.innerText() : 'missing');
+await page.getByTestId('open-scripts').click();
+await page.getByTestId('script-item-0').click();
+await runScript('var t = workspace.samples[1]; var n = t.populations("*").length; var first = workspace.samples[0].populations("*")[0].name; var c = t.populations(first)[0]; var had = !!c; t.remove(c); had + " " + (t.populations("*").length - n)');
+check('add() copied the population to another sample and remove() deletes it', await waitConsole(/true -1\n/), (await consoleText()).slice(-80));
+
+// fileMask: a mask file attached in the editor.
+const maskFile = join(out, 'script-mask.csv');
+writeFileSync(maskFile, 'inGate\n' + Array.from({ length: 1000 }, (_, i) => (i % 2 ? 0 : 1)).join('\n') + '\n');
+await page.getByTestId('script-attach').setInputFiles(maskFile);
+await page.waitForTimeout(300);
+check('Attach Files lists the attached file', (await page.getByTestId('script-files').innerText()).includes('script-mask.csv'));
+await runScript('var g = workspace.samples[0].gating.fileMask("Masked", "C:/data/script-mask.csv"); g.typeName + " " + g.file');
+check('gating.fileMask makes a FileMaskGate from the attached file', await waitConsole(/FileMaskGate C:\/data\/script-mask\.csv\n/), (await consoleText()).slice(-100));
+await page.getByTestId('script-close').click();
+await idle();
+await page.getByTestId('open-scripts').click();
+await runScript('workspace.samples[0].populations("Masked")[0].count');
+check('the file mask gate counts the marked events (500 of the first 1000)', await waitConsole(/\n500\n/), (await consoleText()).slice(-60));
+
+// Charts and movies.
+const dl = async (fn) => { const [d] = await Promise.all([page.waitForEvent('download', { timeout: 60000 }), fn()]); const pth = join(out, d.suggestedFilename()); await d.saveAs(pth); return { name: d.suggestedFilename(), buf: readFileSync(pth) }; };
+const png = await dl(() => runScript('var c = workspace.chart(); c.type = "Histogram"; c.parameters = ["FSC-A"]; var s = workspace.samples[0]; c.layer(s); c.layer(s.populations("**")[0], 0xff0000); c.export("/tmp/script-chart.png"); c.parameters'));
+check('chart.export writes the chart as a PNG', png.name === 'script-chart.png' && png.buf.slice(1, 4).toString() === 'PNG', `${png.name} ${png.buf.length}`);
+const svg = await dl(() => runScript('var c = workspace.chart(); c.layer(workspace.samples[0]); c.export("chart2", "svg"); 1'));
+check('chart.export with a type writes SVG', svg.name === 'chart2.svg' && svg.buf.toString().includes('<svg'), svg.name);
+await runScript('var c = workspace.chart(); c.layer(workspace.samples[0].populations("**")[0]); c.type = "DotPlot"; var w = c.display(); w.name');
+check('chart.display opens the first layer in a graph window', await waitConsole(/: [^\n]+\n$/), (await consoleText()).slice(-80));
+const movie = await dl(() => runScript('var m = movie.create(); workspace.samples.forEach(function (s) { var c = workspace.chart(); c.layer(s); m.append(c); }); m.frameDelay = 300; m.export("/tmp/script-movie"); m.name'));
+const html = movie.buf.toString();
+check('movie.export writes an HTML movie with one frame per appended chart', movie.name === 'script-movie.html' && (html.match(/class="f"/g) ?? []).length === 3 && html.includes('d=300'), `${movie.name} frames=${(html.match(/class="f"/g) ?? []).length}`);
 await page.getByTestId('script-close').click();
 
 check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));

@@ -390,7 +390,7 @@ Tests: `tests/workspace-gaps.test.ts` (18 tests), `e2e/workspace-gaps.mjs`
 | CONSENSUS_DP "Consensus Gate", CLUSTER_FREQ_DP "Cluster Frequency" | `WorkspaceAction` -> `FlowCAPUtil.createClusterComparisonParameter` / `createClusterConsensusParameter` / `doClusterComparisonQuery`; values from the native engine (`Sample::CreateConsensusGateParameter`, `Sample::CreateClusterFrequencyParameter`) | **Done** (rules in O4): Workspace tab, Derived Parameters band; unit "Consensus Gate and Cluster Frequency", e2e "Consensus Gate creates ...", "Cluster Frequency uses the focused population as primary" |
 | MIFlowCyt "Annotate Experiment..." / MIFLOW | `WSController.openMIFlowCytDialog` -> `MIFlowCytDialog`; see "Annotate Experiment (MIFlowCyt)" below | **Done** (`tests/miflowcyt.test.ts`, e2e `MIFlowCyt ...` in `e2e/followup-3d.mjs`) |
 | REPORTEDITOR "Report Editor" | `FJNavAction` built and discarded; its `doAction` has no REPORTEDITOR branch and no report editor class exists (see O1) | **Not a gap: no-op in FlowJo 10.6.2** |
-| SCRIPTEDITOR "Script Editor" | `WSScriptAction` -> `Workspace.getScriptEditor().setVisible(true)`: JavaScript (Rhino) script list, editor and console (see O2) | **Done** (core API; rest recorded in O2): taskbar "Script Editor"; tests `tests/scriptEditor.test.ts`, e2e `e2e/followup-editors.mjs` |
+| SCRIPTEDITOR "Script Editor" | `WSScriptAction` -> `Workspace.getScriptEditor().setVisible(true)`: JavaScript (Rhino) script list, editor and console (see O2) | **Done** (whole documented API; Own rules in O2): taskbar "Script Editor"; tests `tests/scriptEditor.test.ts`, e2e `e2e/followup-editors.mjs` |
 | EXPORT_DIVA / IMPORT_DIVA | `ExportDivaCommand` / `ImportDivaCommand` -> `DivaXMLManipulator.ExportToDiva` / `DivaXMLImporter.ImportFromDivaXML` | **Done** (rules in O5, two own rules): File tab "Import from FACSDiva" / "Export to FACSDiva"; unit "FACSDiva import", "FACSDiva export ... and round trip", e2e "Export ...", "Import from FACSDiva adds the gates" |
 | RIBBONCONFIG "Customize Ribbon", RIBBONSETDEFAULT "Apply defaults", RIBBONCOMMITTOPREFS "Commit to Preferences" | `WSDialogAction` (RIBBONCONFIG) -> `WSRibbonConfigDialog`; `WSRibbonSetDefaultAction`; `WSRibbonCommitToPrefsAction`; `AbstractRibbonStructure`, `FJRibbonDropTargetListener` | **Done** with own rules (section F2.3); tests `tests/ribbon.test.ts`, e2e `e2e/followup-f2.mjs` |
 
@@ -451,7 +451,7 @@ Scope (`ScriptEvaluator.prepareScope`, `WSScriptEvaluator.prepareScope`).
 
 Documented core API (implemented, `src/core/scriptApi.ts`).
 - `workspace`: `name`, `samples` (population list of samples, from the All
-  Samples group), `groups` (group manager), `chart()`.
+  Samples group), `groups` (group manager), `chart()` (below).
 - Population list (`PopulationListAPI`, docs `fj.apidocs.poplist.*`):
   `length`, `get(i)` / `[i]`, `get(name)` / `["name"]` (name or full path),
   `slice(start, end[, step])` (negative indices from the end), `paths`,
@@ -489,13 +489,142 @@ Documented core API (implemented, `src/core/scriptApi.ts`).
   `tan`, `sqr`, `max`, `min`, `sum`, `mean`, `median`, `stddev`, `pin`,
   `inRange`.
 
-Not implemented (calls print an error): `workspace.chart()` (`ChartAPI`,
-`ChartWindowAPI`, `ChartLayerSettingsAPI`: build and export graphs),
-`movie.create()` (`MovieAPI`: HTML movies of charts), node `display()`
-(opens graph windows), node `add` / `remove` of analysis nodes,
-`fileMask(name, file)` gates, node `annotation`, `GatedPopulationAPI`
-`not` / `magnetic` flags, the remaining `MathUtil` geometry helpers
-(`getLineAngle`, `slopeIntercept`, `computeLocalAngleDegrees` and similar).
+Rest of the API (follow-up round; every member below was decoded from
+`fj-scripting-api-2.0.0.jar` and the FlowJo classes it calls; `src/core/
+scriptApi.ts` keeps the scripts in the worker, workspace changes go back as
+operations applied with `updateWs`, page side effects as effects the page
+carries out after the run, `src/ui/scriptCharts.ts`).
+- Node types (`NodeAPIFactory` = `GatePopAPIFactory` then
+  `BasicNodeAPIFactory`): a population whose gate is a `RectGate` is a
+  `RectGateAPI` ("RectangleGate"; here a two-channel rectangle), a `RangeGate`
+  a `RangeGateAPI` ("RangeGate"; a one-channel rectangle), a `FileMaskGate` a
+  `FileMaskGateAPI` ("FileMaskGate"), any other gated population a
+  `GatedPopulationAPI` ("PopulationNode"); other nodes are `AppNodeAPI`
+  ("Node"). Rectangle and range bounds read and write in data units
+  (`minX`/`maxX`/`minY`/`maxY`, `min`/`max`, `parameter`); an open bound reads
+  -Infinity / Infinity. Setters on an existing gate change it (op `gateEdit`).
+  Done (tests "gate nodes get their FlowJo API type", "RectGateAPI /
+  RangeGateAPI setters edit an existing gate").
+- `not` / `magnetic` (`GatedPopulationAPI.isNot/setNot`, `isMagnetic/
+  setMagnetic` -> `Gate.setNot` / `Gate.setMagnetic`; `Gate.fNot` is written
+  as `eventsInside="0"`, `fMagnetic` as `magnetic`): map to the population's
+  `exclude` and `magnetic` fields. `update()` (`PopNode.gateModified`) is
+  accepted; **Own rule**: every change applies when the run ends, so update()
+  has nothing more to do. Done (test "not / magnetic flags"; e2e "a script
+  gate with not = true shows as an exclusion gate").
+- Annotation (`AppNodeAPI.getAnnotation/setAnnotation` -> `AppNode.
+  fAnnotation`, written as the node element's `annotation` attribute by
+  `AppNode.getElementShallow` and read in its constructor; the workspace
+  column `fj.appnode.prop.anno` "Annotation" shows it): new model fields
+  `Population.annotation` and `SampleState.nodeAnnotation`, read from and
+  written to `.wsp`, shown by the Annotation column (Edit Columns). Done
+  (tests "annotation get / set", "annotations and mask gates are written to
+  .wsp"). **Own rule**: statistic nodes have no annotation here (statistics
+  are workspace columns); setting one is an error.
+- Children and statistic nodes (`AppNodeAPI.getChildren` lists every child
+  node; `PopulationAPI.populations` keeps the populations): a population's
+  children include its statistics, typed "Node", named like the statistic
+  ("Median : FSC-A"), path `<population path>/<name>`. `findAll` matches them
+  too. **Own rule**: this app's statistics are workspace columns per
+  population path, so a statistic node appears under that path in every
+  sample, and adding / removing one changes the column for all samples.
+- `add(nodes...)` (`PopulationAPI.add` -> `ParentNode.addAnalysisNode`, then
+  `Workspace.inval`): each node becomes a child. A population is added with
+  its subtree (op `copy`); a child with the same name is replaced
+  (`replaceChild` when the identifiers match); a sample node is refused
+  (`isAllowedParentNode`); a node cannot go below itself. A statistic node
+  adds that statistic for this population (op `statAdd`). **Own rule**:
+  FlowJo moves the Java node object; here the subtree is copied (the source
+  keeps its node), which is what adding a node from another sample does in
+  effect. `remove(nodes...)` (`PopNode.removeAnalysisNode`) removes the nodes
+  that are children of this node with their subtrees (ops `remove`,
+  `statRemove`); other nodes are left alone. Done (tests "statistic nodes
+  are children typed Node; add / remove them", "add copies a population
+  subtree"; e2e "add() copied the population to another sample and remove()
+  deletes it").
+- `fileMask(name, fileUri)` (`GateAPICreator.fileMask` -> `FileMaskGate(
+  PopNode, FJFileRef)`; `FileMaskGateAPI.getFile/setFile`; written by
+  `FileMaskGate.getElement` as `<MaskGate nEvents><maskfile importFile/>`):
+  the native engine reads the file (`MaskGate::FileMaskToBoolsMask`, decoded
+  in `src/core/fileMask.ts`): tab-delimited when the first line has a tab,
+  else commas; cells trimmed of blanks, tabs and CR; a cell of only digits
+  and "." is a value, any other cell a column name; each row with a value is
+  the next event; a value above 0 marks the event; the gate uses the first
+  column (`MaskGate::MaskGate` takes mask 0); events after the last row are
+  outside. New gate type `mask` (bits of the sample's events), gated in the
+  analysis worker, written to `.wsp`. **Own rule**: a browser script cannot
+  open a path, so the file is one attached in the Script Editor ("Attach
+  Files"), matched by the last part of the path or URI; a missing file is a
+  script error. Reading a `.wsp` MaskGate back is not possible without the
+  file (skipped with the usual unsupported-gate warning). Done (tests
+  "fileMask reads an attached file", "parseFileMask", "a file mask gate keeps
+  the marked events"; e2e "gating.fileMask makes a FileMaskGate", "the file
+  mask gate counts the marked events").
+- `display()`, `display(x)`, `display(x, y)` (`PopulationAPI.display` ->
+  `PopNode.openOriginalGraph`; with x a Histogram `GraphSpec` of x; with x, y
+  `GraphSpec.defaultGraphSpec` (Pseudocolor) of x and y): opens the node's
+  graph window; with parameters the population's graph changes first (op
+  `plot`). Returns a `ChartWindowAPI` ("ChartWindow", name = the window title
+  `GateWinController.getGateWindowTitle`, here "sample: path"), with
+  `location(x, y)`, `close()`, `x`, `y`, `width`, `height`. **Own rule**: the
+  window opens when the run ends, so `x`/`y` read the location the script
+  set (0 before) and `width`/`height` read 0; `location` and `close` act on
+  the window afterwards. Done (test "display(), display(x), display(x, y)";
+  e2e "node display() opens the graph window").
+- `workspace.chart()` (`ChartAPI`): `type` (`DisplayType.fromString`: empty
+  gives Pseudocolor; names matched ignoring case: Contour, Density, Zebra,
+  Pseudocolor, DotPlot or "Dot Plot", Histogram, Timeseries, CDF, Heatmap
+  Statistic; anything else throws "Unrecognized type 'x'" with the allowed
+  graph window types), `parameters` (`setParameters`: first = X, second = Y;
+  `getParameters` returns as many as the type has dimensions), `layer(pop)`
+  (returns its `ChartLayerSettingsAPI`; `color` is a public int, -1 = none,
+  named "#rrggbb"), `layer(pop, color)`, `layer(pop, settings)`, `display()`
+  ("Chart has no layers" without one; opens the first layer's graph window
+  with the chart's type, parameters and the first layer's colour as the
+  foreground colour, `ChartLayerSettingsAPI._applyToGraphSpec`), `export(path
+  [, type])` (`ChartAPI._toLayout`: a layout chart of the first layer with
+  every layer on it; `ImageExporter.saveLayoutToFile`: the type from
+  `GraphicsFileType.fromString` (names or extensions png, jpg/jpeg, emf, pdf,
+  psd (PS), svg, swf, gif, tiff/tif; an unknown type throws "Unrecognized
+  file type 'x'"), else the file's extension, else the graph format
+  preference (PNG)). Implemented with the layout renderer (`renderLayout`,
+  `composePages`, `composeSvgPages`, `canvasesToPdf`): the file downloads
+  under the path's last part. **Own rules**: Timeseries and CDF draw as
+  histograms and Heatmap Statistic as pseudocolor (no such graph types
+  here); layers from another sample are drawn by population path on the
+  first layer's sample; exported layers use the layout's overlay colours;
+  GIF, TIFF and EMF are written as PNG; PS and SWF write nothing (as in
+  FlowJo, where no branch handles them); the file is written after the run.
+  Done (test "workspace.chart(): type, parameters, layers, display, export";
+  e2e "chart.export writes the chart as a PNG", "chart.export with a type
+  writes SVG", "chart.display opens the first layer in a graph window").
+- `movie.create()` (`MovieAPICreator.create` -> `MovieAPI`): `append(chart)`
+  renders the chart as a frame (`MediaExporter.render` of `_toLayout`; a
+  chart without layers fails), `frameDelay` (500 ms) and `autoPlay` (true)
+  with getters and setters, name "N frames", `export(path)`
+  (`HtmlMovieCreator.output`) returns an `HTMLMovieResourceAPI`
+  ("UserResource", "HTML Movie: path") whose `show()` opens the movie
+  (`Desktop.open`). **Own rule**: one self-contained HTML file named after
+  the path (".html" added) with the frames inline and play / pause / step
+  buttons, instead of FlowJo's folder (`html-movie.html`, `media/frames/
+  frame-N`, `media/config.js`); `show()` opens it in a new browser tab after
+  the run. Done (tests "movie.create()", "the movie HTML and the layout
+  chart"; e2e "movie.export writes an HTML movie").
+- `math` (`MathUtil`), the rest: constants `PI2`, `PI`, `E`, `LN2`, `LN10`,
+  `LOG2E`, `LOG10E`, `SQRT1_2`, `SQRT2`, `PHI` (1.618); `pin0`, `compare`,
+  `positiveAngularDifference` (radians, 0..2 pi), `completion`,
+  `getLineAngle(x1, y1, x2, y2)` (degrees, 0 for one point),
+  `normalizeDegrees` (to (0, 360]), `ceil` / `floor` (ints), `round(x,
+  digits)`, `roundToNearest`, `roundToCommonFactorOf2`, `isInteger`,
+  `bitSet`, `different`, `minMagnitude`, `logx`, `anyNonNumbers`,
+  `slopeIntercept(values, start, n)`, `invert(matrix, n)` (Gauss-Jordan
+  without pivoting, a zero pivot becomes 1e-4), `distributionStatistics(
+  values, n)` ([mean, sd, median, min, max, q1, q3]; n of 0 or 1 gives seven
+  zeros, as FlowJo's code does). Done (test "MathUtil helpers").
+  **Not a gap**: `getLineAngle(Point, Point)` and `computeLocalAngleDegrees(
+  ScalePoint[], double[])` take Java classes `FJScriptContextFactory` does
+  not let scripts reach, so no script can call them; `round(double[], int)`
+  rounds a Java copy of the array in place, which a script never sees.
 
 Editor commands (`ScriptEditorCommand`, 11 constants).
 - NEW_SCRIPT "New Script": adds a script named `NameUtil.uniqueName("New
@@ -544,12 +673,20 @@ Window and console.
   names are kept verbatim (FlowJo's default name carries trailing blanks).
   **Own rule**: an untouched workspace shows one New Script but writes no
   `<Scripts>` until a script is edited.
-- `TemplateFunction.applyScripts` runs every non-empty script when a
-  template is applied. Not done here (templates are applied without running
-  scripts).
+- Template scripts (`TemplateFunction.apply` -> `applyBindingNodes`, then
+  `applyScripts`: every non-empty script of the template's own list runs in
+  the target workspace's evaluator). Its only callers are the command-line
+  batch merge (`StartupCommands.mergeTemplate`, the `-template` /
+  `-inputWorkspace` startup options) and a debug menu action (`WSDebug`);
+  opening a template in the UI (`WSDocument.convertTemplateToWorkspace`)
+  and adding samples to it run no script (`ScriptEvaluator` has no other
+  user). **Not a gap: no-op in FlowJo 10.6.2's interactive template use**;
+  this app has no command-line batch mode (its templates open as
+  workspaces and keep their scripts, see E4).
 - Tests: `tests/scriptEditor.test.ts` (list rules, file names, `.wsp`
-  read/write, history, API, statistics rounds, operations, console scope);
-  e2e `e2e/followup-editors.mjs` (24 checks).
+  read/write, history, API, statistics rounds, operations, console scope,
+  and the follow-up members above: 30 tests); e2e `e2e/followup-editors.mjs`
+  (35 checks).
 
 ### O3. IMPORT_CSV_CLR "Import Parameters from CSV/CLR..."
 

@@ -18,5 +18,5 @@ self.onmessage = (ev: MessageEvent<Msg>) => {
   Object.assign(ctx, newCtx(snapshot, cache, writer));
   if (mode === 'run') runScript(code, ctx);
   else runConsole(code, ctx, self as unknown as Record<string, unknown>);
-  post({ id, out: ctx.out, ops: ctx.ops, missing: [...ctx.missing.values()] });
+  post({ id, out: ctx.out, ops: ctx.ops, effects: ctx.effects, missing: [...ctx.missing.values()] });
 };

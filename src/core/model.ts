@@ -62,7 +62,11 @@ export type Gate =
   // FlowJo anchored range (TetheredRangeGate, specs 10.6): a 1-D range whose
   // bounds are a live statistic times a multiplier; a missing bound is open.
   | { type: 'anchored'; dims: [Dimension]; min: AnchorBound | null; max: AnchorBound | null }
-  | { type: 'boolean'; op: 'and' | 'or' | 'not'; operands: { ref: string; complement?: boolean }[] };
+  | { type: 'boolean'; op: 'and' | 'or' | 'not'; operands: { ref: string; complement?: boolean }[] }
+  // FlowJo FileMaskGate (script gating.fileMask, docs/validation/ui-gaps/
+  // workspace.md O2): the events marked in a file, one row per event; bits is
+  // base64, bit i (LSB first) set = event i inside (src/core/scriptApi.ts).
+  | { type: 'mask'; dims: []; file: string; bits: string };
 
 // A statistic of a population of the same sample (populationPath '' = all
 // events) times a multiplier, in scale (data) units. scale: the FlowJo channel
@@ -95,6 +99,8 @@ export interface Population {
   // is drawn in its colour with a 40% fill.
   tint?: string;
   tinted?: boolean;
+  // FlowJo node annotation (AppNode.fAnnotation, the "annotation" attribute).
+  annotation?: string;
 }
 
 export interface SampleState {
@@ -107,6 +113,7 @@ export interface SampleState {
   populations: Population[];
   keywordsSnapshot: Record<string, string>;
   annotations?: Record<string, string>; // user-entered sample metadata
+  nodeAnnotation?: string; // FlowJo sample node annotation (AppNode.fAnnotation)
   // Edited parameter stains ($PnS) by parameter name; they replace the file's
   // stain in axis labels, gate names and the Keywords window (specs 18.1).
   stains?: Record<string, string>;

@@ -8,10 +8,10 @@
 import { useEffect, useRef, useState } from 'react';
 import ScriptWorker from '../worker/script.worker.ts?worker&inline';
 import { CONSOLE_NAME, ConsoleHistory, isEmptyScript, MAX_CONSOLE, newScript, presentation, scriptFileName, scriptFromFile, WELCOME_MSG, type FJScript } from '../core/fjScript';
-import { MAX_ROUNDS, statKey, type OutLine, type ScriptOp, type ScriptSnapshot, type StatReq } from '../core/scriptApi';
+import { MAX_ROUNDS, statKey, type OutLine, type ScriptEffect, type ScriptOp, type ScriptSnapshot, type StatReq } from '../core/scriptApi';
 import type { StatColumn, Workspace } from '../core/model';
 
-type Reply = { out: OutLine[]; ops: ScriptOp[]; missing: StatReq[] };
+type Reply = { out: OutLine[]; ops: ScriptOp[]; effects: ScriptEffect[]; missing: StatReq[] };
 interface Seg { text: string; color: OutLine['color'] }
 
 export function ScriptEditorDialog(p: {
@@ -19,7 +19,9 @@ export function ScriptEditorDialog(p: {
   updateWs: (fn: (w: Workspace) => void) => void;
   snapshot: () => ScriptSnapshot;
   statsOf: (sampleId: string, cols: StatColumn[]) => Promise<(number | string)[] | undefined>;
-  applyOps: (ops: ScriptOp[]) => void;
+  // Workspace changes (one undoable step), then the page's effects (graph
+  // windows, chart and movie files).
+  applyOps: (ops: ScriptOp[], effects: ScriptEffect[]) => void;
   download: (name: string, data: BlobPart, type?: string) => void;
   onClose: () => void;
 }) {
@@ -33,6 +35,9 @@ export function ScriptEditorDialog(p: {
   const [running, setRunning] = useState(false);
   const [cmd, setCmd] = useState('');
   const [saveMenu, setSaveMenu] = useState(false);
+  // Files a script can read by name (gating.fileMask): a browser script
+  // cannot open paths, so they are attached here for this editor session.
+  const [files, setFiles] = useState<{ name: string; text: string }[]>([]);
   const lastWriter = useRef('');
   const history = useRef(new ConsoleHistory());
   const worker = useRef<Worker | null>(null);
@@ -102,7 +107,7 @@ export function ScriptEditorDialog(p: {
     const cache: Record<string, number> = {};
     try {
       for (let round = 0; ; round++) {
-        const snapshot = p.snapshot();
+        const snapshot = { ...p.snapshot(), files };
         const reply = await new Promise<Reply | null>((resolve) => { pending.current = resolve; getWorker().postMessage({ id: round, mode, code, writer, snapshot, cache }); });
         if (!reply) return;
         if (reply.missing.length && round < MAX_ROUNDS) {
@@ -116,7 +121,7 @@ export function ScriptEditorDialog(p: {
           continue;
         }
         write(reply.out);
-        if (reply.ops.length) p.applyOps(reply.ops);
+        if (reply.ops.length || reply.effects.length) p.applyOps(reply.ops, reply.effects);
         return;
       }
     } finally {
@@ -170,6 +175,12 @@ export function ScriptEditorDialog(p: {
                   </span>
                 )}
               </span>
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <label className="file-btn" title="Files scripts can read by name, e.g. gating.fileMask(name, file)">Attach Files<input type="file" multiple data-testid="script-attach" onChange={(e) => { const fl = e.target.files; if (fl) void Promise.all(Array.from(fl).map(async (f) => ({ name: f.name, text: await f.text() }))).then((add) => setFiles((x) => [...x.filter((y) => !add.some((a) => a.name === y.name)), ...add])); e.target.value = ''; }} /></label>
+              <ul className="plain-list" data-testid="script-files" style={{ listStyle: 'none', padding: 0, margin: '4px 0', fontSize: 11 }}>
+                {files.map((f) => <li key={f.name}>{f.name} <button aria-label={`Detach ${f.name}`} onClick={() => setFiles((x) => x.filter((y) => y.name !== f.name))}>x</button></li>)}
+              </ul>
             </div>
           </div>
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>

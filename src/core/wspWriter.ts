@@ -93,6 +93,11 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
     const gateXml = (p: Population): string | null => {
       const g: Gate = p.gate;
       if (g.type === 'boolean') return null;
+      if (g.type === 'mask') {
+        // FileMaskGate.getElement: MaskGate with nEvents and the mask file
+        // reference (maskfile importFile); FlowJo re-reads the file.
+        return `<MaskGate eventsInside="${p.exclude ? 0 : 1}"${p.magnetic ? ' magnetic="1"' : ''} nEvents="${s.eventCount}"><maskfile importFile="${esc(g.file)}" /></MaskGate>`;
+      }
       if (g.dims.some((d) => d.kind !== 'channel')) {
         warn(`"${path(p)}" uses a ratio dimension; not representable, skipped`);
         return null;
@@ -233,7 +238,7 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
         .map((p) => {
           const count = counts?.[p.id];
           const ownerName = p.owningGroup ? ws.groups.find((g) => g.id === p.owningGroup)?.name : undefined;
-          const head = `name="${esc(p.name)}"${ownerName ? ` owningGroup="${esc(ownerName)}"` : ''} count="${count ?? -1}"`;
+          const head = `name="${esc(p.name)}"${p.annotation ? ` annotation="${esc(p.annotation)}"` : ''}${ownerName ? ` owningGroup="${esc(ownerName)}"` : ''} count="${count ?? -1}"`;
           if (p.gate.type === 'boolean') {
             const tag = p.gate.op === 'and' ? 'AndNode' : p.gate.op === 'or' ? 'OrNode' : 'NotNode';
             if (p.gate.operands.some((o) => o.complement)) warn(`"${path(p)}" uses a complemented operand; FlowJo boolean nodes have no such flag, written without it`);
@@ -257,7 +262,7 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
     const tx = [...scales.entries()].map(([name, t]) => t.xml(name)).join('');
     const total = s.eventCount || -1;
     sampleXml.push(
-      `<Sample><DataSet uri="file:/${esc(encodeURIComponent(s.fileName))}" sampleID="${sid}" />${matrixXml}<Transformations>${tx}</Transformations><Keywords>${kw}</Keywords><SampleNode name="${esc(s.fileName)}" count="${total}" sampleID="${sid}">${tree}</SampleNode></Sample>`,
+      `<Sample><DataSet uri="file:/${esc(encodeURIComponent(s.fileName))}" sampleID="${sid}" />${matrixXml}<Transformations>${tx}</Transformations><Keywords>${kw}</Keywords><SampleNode name="${esc(s.fileName)}"${s.nodeAnnotation ? ` annotation="${esc(s.nodeAnnotation)}"` : ''} count="${total}" sampleID="${sid}">${tree}</SampleNode></Sample>`,
     );
   });
   // Live keyword groups are written as FlowJo criteria (plus their current

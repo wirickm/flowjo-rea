@@ -47,7 +47,8 @@ import { PrefsDialog, TablesDialog } from './Editors';
 import { ExperimentDialog } from './Experiment';
 import { AddStatDialog, BooleanExprDialog, EditColumnsDialog, NamingDialog, ValueSeriesDialog } from './WorkspaceTools';
 import { ScriptEditorDialog } from './ScriptEditor';
-import type { ScriptOp, ScriptSnapshot } from '../core/scriptApi';
+import type { ChartSpec, ScriptEffect, ScriptOp, ScriptSnapshot, SnapGate } from '../core/scriptApi';
+import { chartFile, chartFrame, movieHtml, PLOT_KIND } from './scriptCharts';
 import { compileBoolExpr, exprOfGate, makeAndOr, makeCombination, makeIdentities, makeNots, MAX_COMBINATION, parseBoolExpr, BoolExprError } from '../core/booleanExpr';
 import { columnLabel, excelRows, isKeywordColumn, keywordEditable, keywordName, NAME, NCELLS, populationCell, sampleCell, setKeyword, sortSamples, STATISTIC, tableColumns, type TableRow } from '../core/workspaceTable';
 import { applyGroupTemplates, buildArchive, makeTemplate, readArchive } from '../core/template';
@@ -60,6 +61,21 @@ const client = createAnalysisClient();
 
 type Analysis = { results: PopulationResult[]; total: number; compError?: string };
 type Dialog = null | { kind: 'addKeyword' } | { kind: 'find' } | { kind: 'group'; id: string | null } | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export'; mode?: 'group' } | { kind: 'layout' } | { kind: 'derived' } | { kind: 'platforms' } | { kind: 'manual' } | { kind: 'prefs' } | { kind: 'tables' } | { kind: 'boolExpr'; editId?: string } | { kind: 'naming'; op: 'and' | 'or' | 'combo'; ids: string[] } | { kind: 'columns' } | { kind: 'addStat' } | { kind: 'series' } | { kind: 'addKeywordGroup' } | { kind: 'scripts' } | { kind: 'tool'; tool: PlatformTool; axes?: (string | null)[] } | { kind: 'miflow' };
+
+// A population's gate as the script API sees it (docs/validation/ui-gaps/
+// workspace.md O2): rectangles of two channels and ranges of one, with their
+// bounds in data units (open = +-Infinity); file masks; anything else.
+function scriptGate(q: Population): SnapGate {
+  const g = q.gate;
+  const flags = { ...(q.exclude ? { not: true } : {}), ...(q.magnetic ? { magnetic: true } : {}) };
+  if (g.type === 'rect' && g.dims.every((d) => d.kind === 'channel') && (g.dims.length === 1 || g.dims.length === 2)) {
+    const tf = g.dims.map((d) => makeTransform(d.transform));
+    return { kind: g.dims.length === 2 ? 'rect' : 'range', params: g.dims.map((d) => (d.kind === 'channel' ? d.channel : '')), min: g.min.map((v, k) => (v === null ? -Infinity : tf[k].inverse(v))), max: g.max.map((v, k) => (v === null ? Infinity : tf[k].inverse(v))), ...flags };
+  }
+  if (g.type === 'mask') return { kind: 'mask', params: [], min: [], max: [], file: g.file, bits: g.bits, ...flags };
+  return { kind: 'other', params: [], min: [], max: [], ...flags };
+}
+const mapChart = (c: ChartSpec, id: (x: string | null) => string | null): ChartSpec => ({ ...c, layers: c.layers.map((l) => ({ ...l, popId: id(l.popId) })) });
 
 function download(name: string, data: BlobPart, type = 'application/octet-stream') {
   const url = URL.createObjectURL(new Blob([data], { type }));
@@ -571,9 +587,9 @@ export function App() {
     setSel({ sampleId: w.sampleId, popId: w.popId });
     setMulti([]);
   };
-  const openWin = (sampleId: string, popId: string | null, duplicate = false) => {
+  const openWin = (sampleId: string, popId: string | null, duplicate = false): string => {
     const found = !duplicate && wins.find((w) => w.sampleId === sampleId && w.popId === popId);
-    if (found) return focusWin(found);
+    if (found) { focusWin(found); return found.id; }
     snapActive();
     const id = newId('gw');
     const n = wins.length;
@@ -581,6 +597,7 @@ export function App() {
     setActiveWin(id);
     setSel({ sampleId, popId });
     setMulti([]);
+    return id;
   };
   const closeWin = (id: string) => { setWins((ws0) => ws0.filter((w) => w.id !== id)); if (activeWin === id) setActiveWin(null); };
   // Dialogs live in the workspace window: bring it forward when one opens from a separate graph window.
@@ -778,34 +795,121 @@ export function App() {
       const a = analysis[s.id];
       const chans = meta[s.id]?.channels ?? s.channelNames.map((n, i) => ({ name: n, label: '', index: i + 1 }));
       return {
-        id: s.id, name: s.fileName, keywords: { ...s.keywordsSnapshot, ...(s.annotations ?? {}) }, total: a ? a.total : null,
+        id: s.id, name: s.fileName, keywords: { ...s.keywordsSnapshot, ...(s.annotations ?? {}) }, total: a ? a.total : null, events: s.eventCount,
+        ...(s.nodeAnnotation ? { annotation: s.nodeAnnotation } : {}),
         params: chans.map((c) => ({ name: c.name, stain: s.stains?.[c.name] ?? c.label, longName: c.label, index: c.index })),
-        pops: s.populations.map((q) => ({ id: q.id, name: q.name, parentId: q.parentId, count: a?.results.find((r) => r.id === q.id)?.count ?? null })),
+        pops: s.populations.map((q) => ({ id: q.id, name: q.name, parentId: q.parentId, count: a?.results.find((r) => r.id === q.id)?.count ?? null, gate: scriptGate(q), ...(q.annotation ? { annotation: q.annotation } : {}) })),
       };
     }),
+    stats: ws.statColumns.map((c) => ({ id: c.id, path: c.populationPath, stat: c.stat, ...(c.channel ? { channel: c.channel } : {}), ...(c.percentile !== undefined ? { percentile: c.percentile } : {}), ...(c.correlate ? { correlate: c.correlate } : {}) })),
   });
-  const applyScriptOps = (ops: ScriptOp[]) => updateWs((w) => {
+  // Script ops name nodes made during the run "new:N"; each gets an id first
+  // so the page's effects (graph windows) can find it afterwards.
+  const applyScriptOps = (ops: ScriptOp[], effects: ScriptEffect[] = []) => {
     const ids = new Map<string, string>();
     for (const o of ops) {
-      const s = 'sampleId' in o ? w.samples.find((x) => x.id === o.sampleId) : undefined;
-      if (o.op === 'rename') { const q = s?.populations.find((x) => x.id === o.popId); if (q) q.name = o.name; }
-      else if (o.op === 'keyword' && s) { if (o.value === null) { if (s.annotations) delete s.annotations[o.key]; } else setKeyword([s], o.key, o.value); }
-      else if (o.op === 'groupCreate') { if (!w.groups.some((g) => g.name === o.name)) w.groups.push({ id: newId('grp'), name: o.name, sampleIds: [] }); }
-      else if (o.op === 'groupRemove') w.groups = w.groups.filter((g) => g.id === 'all' || g.name !== o.name);
-      else if (o.op === 'groupAdd') { const g = w.groups.find((x) => x.name === o.name); if (g && g.id !== 'all' && !g.sampleIds.includes(o.sampleId)) g.sampleIds.push(o.sampleId); }
-      else if (o.op === 'groupRemoveSample') { const g = w.groups.find((x) => x.name === o.name); if (g && g.id !== 'all') g.sampleIds = g.sampleIds.filter((x) => x !== o.sampleId); }
-      else if (o.op === 'gate' && s) {
-        const parentId = o.parentId ? ids.get(o.parentId) ?? o.parentId : null;
-        const m = meta[s.id];
-        const dims = o.params.map((ch) => ({ kind: 'channel' as const, channel: ch, transform: (m ? makeAxis(m.channels, m.keywords, w.channelTransforms, ch)?.spec : undefined) ?? w.channelTransforms[ch] ?? { kind: 'none' as const } }));
-        const tf = dims.map((d) => makeTransform(d.transform));
-        const id = newId('pop');
-        ids.set(o.id, id);
-        const name = uniqueName(o.name, s.populations.filter((x) => x.parentId === parentId).map((x) => x.name));
-        s.populations.push({ id, name, parentId, gate: { type: 'rect', dims, min: o.min.map((v, i) => tf[i].apply(v)), max: o.max.map((v, i) => tf[i].apply(v)) } });
-      }
+      if (o.op === 'gate') ids.set(o.id, newId('pop'));
+      else if (o.op === 'copy') for (const t of Object.values(o.ids)) ids.set(t, newId('pop'));
+      else if (o.op === 'statAdd') ids.set(o.id, newId('col'));
     }
-  });
+    const id = (x: string) => ids.get(x) ?? x;
+    const idn = (x: string | null) => (x === null ? null : id(x));
+    if (ops.length) updateWs((w) => {
+      for (const o of ops) {
+        const s = 'sampleId' in o ? w.samples.find((x) => x.id === o.sampleId) : undefined;
+        const pop = s && 'popId' in o && o.popId ? s.populations.find((x) => x.id === id(o.popId!)) : undefined;
+        const dimsFor = (params: string[]) => {
+          const m = s ? meta[s.id] : undefined;
+          return params.map((ch) => ({ kind: 'channel' as const, channel: ch, transform: (m ? makeAxis(m.channels, m.keywords, w.channelTransforms, ch)?.spec : undefined) ?? w.channelTransforms[ch] ?? { kind: 'none' as const } }));
+        };
+        if (o.op === 'rename') { if (pop) pop.name = o.name; }
+        else if (o.op === 'keyword' && s) { if (o.value === null) { if (s.annotations) delete s.annotations[o.key]; } else setKeyword([s], o.key, o.value); }
+        else if (o.op === 'groupCreate') { if (!w.groups.some((g) => g.name === o.name)) w.groups.push({ id: newId('grp'), name: o.name, sampleIds: [] }); }
+        else if (o.op === 'groupRemove') w.groups = w.groups.filter((g) => g.id === 'all' || g.name !== o.name);
+        else if (o.op === 'groupAdd') { const g = w.groups.find((x) => x.name === o.name); if (g && g.id !== 'all' && !g.sampleIds.includes(o.sampleId)) g.sampleIds.push(o.sampleId); }
+        else if (o.op === 'groupRemoveSample') { const g = w.groups.find((x) => x.name === o.name); if (g && g.id !== 'all') g.sampleIds = g.sampleIds.filter((x) => x !== o.sampleId); }
+        else if (o.op === 'gate' && s) {
+          const parentId = idn(o.parentId);
+          const name = uniqueName(o.name, s.populations.filter((x) => x.parentId === parentId).map((x) => x.name));
+          let gate: Gate;
+          if (o.kind === 'mask') gate = { type: 'mask', dims: [], file: o.file ?? '', bits: o.bits ?? '' };
+          else {
+            const dims = dimsFor(o.params);
+            const tf = dims.map((d) => makeTransform(d.transform));
+            gate = { type: 'rect', dims, min: o.min.map((v, i) => tf[i].apply(v)), max: o.max.map((v, i) => tf[i].apply(v)) };
+          }
+          s.populations.push({ id: id(o.id), name, parentId, gate, ...(o.not ? { exclude: true } : {}), ...(o.magnetic ? { magnetic: true } : {}) });
+        } else if (o.op === 'gateEdit' && pop) {
+          const g = pop.gate;
+          if (g.type === 'rect') {
+            const tf = g.dims.map((d) => makeTransform(d.transform));
+            const conv = (v: number, k: number) => (Number.isFinite(v) ? tf[k].apply(v) : null);
+            if (o.min) g.min = o.min.map(conv);
+            if (o.max) g.max = o.max.map(conv);
+          }
+          if (g.type === 'mask' && o.bits !== undefined) { g.bits = o.bits; g.file = o.file ?? g.file; }
+          if (o.not !== undefined) { if (o.not) pop.exclude = true; else delete pop.exclude; }
+          if (o.magnetic !== undefined) { if (o.magnetic) pop.magnetic = true; else delete pop.magnetic; }
+        } else if (o.op === 'annotation' && s) {
+          const target = o.popId ? pop : s;
+          if (target && 'populations' in target) { if (o.text) target.nodeAnnotation = o.text; else delete target.nodeAnnotation; }
+          else if (target) { if (o.text) target.annotation = o.text; else delete target.annotation; }
+        } else if (o.op === 'copy' && s) {
+          const from = w.samples.find((x) => x.id === o.fromSampleId);
+          const root = from?.populations.find((x) => x.id === id(o.fromPopId));
+          if (!from || !root) continue;
+          const parentId = idn(o.parentId);
+          const same = s.populations.find((x) => x.parentId === parentId && x.name === root.name);
+          if (same) removePopulation(s, same.id);
+          const keep = subtreeIds(from.populations, [root.id]);
+          const copies = structuredClone(from.populations.filter((x) => keep.has(x.id)));
+          const map = new Map(copies.map((c) => [c.id, id(o.ids[Object.keys(o.ids).find((k) => id(k) === c.id) ?? c.id] ?? newId('pop'))]));
+          for (const c of copies) {
+            const { owningGroup: _g, ...rest } = c;
+            if (rest.gate.type === 'boolean') rest.gate.operands = rest.gate.operands.map((x) => ({ ...x, ref: map.get(x.ref) ?? x.ref }));
+            s.populations.push({ ...rest, id: map.get(c.id)!, parentId: c.id === root.id ? parentId : map.get(c.parentId!)! });
+          }
+        } else if (o.op === 'remove' && s) removePopulation(s, id(o.popId));
+        else if (o.op === 'statAdd') {
+          if (!w.statColumns.some((c) => c.populationPath === o.path && c.stat === o.stat && c.channel === o.channel && c.percentile === o.percentile && c.correlate === o.correlate))
+            w.statColumns.push({ id: id(o.id), populationPath: o.path, stat: o.stat, ...(o.channel ? { channel: o.channel } : {}), ...(o.percentile !== undefined ? { percentile: o.percentile } : {}), ...(o.correlate ? { correlate: o.correlate } : {}) });
+        } else if (o.op === 'statRemove') w.statColumns = w.statColumns.filter((c) => c.id !== id(o.id));
+        else if (o.op === 'plot') {
+          const saved = w.plots?.[o.path];
+          const kind = PLOT_KIND[o.kind] ?? (o.kind as PlotSettings['kind']);
+          w.plots = { ...(w.plots ?? {}), [o.path]: { ...(saved ?? { x: '', y: null }), kind, ...(o.x !== undefined ? { x: o.x } : {}), ...(o.y !== undefined ? { y: o.y } : {}), ...(o.foreColor ? { foreColor: o.foreColor } : {}) } as PlotSettings };
+        }
+      }
+    });
+    // Effects run once the changed workspace has rendered.
+    if (effects.length) setTimeout(() => scriptFx.current(effects, ids), 0);
+  };
+  // Graph windows, chart files and movies a script asked for (ScriptEffect).
+  const scriptWins = useRef(new Map<number, string>());
+  const scriptFx = useRef<(e: ScriptEffect[], ids: Map<string, string>) => void>(() => {});
+  scriptFx.current = (effects, ids) => {
+    const id = (x: string | null) => (x === null ? null : ids.get(x) ?? x);
+    void (async () => {
+      for (const e of effects) {
+        try {
+          if (e.kind === 'open') { const wid = openWin(e.sampleId, id(e.popId)); scriptWins.current.set(e.win, wid); }
+          else if (e.kind === 'close') { const wid = scriptWins.current.get(e.win); if (wid) closeWin(wid); }
+          else if (e.kind === 'move') { const wid = scriptWins.current.get(e.win); if (wid) setWins((ws0) => ws0.map((x) => (x.id === wid ? { ...x, x: e.x, y: e.y } : x))); }
+          else if (e.kind === 'export') {
+            const f = await chartFile(client, wsRef.current, meta, mapChart(e.chart, id), e.file, e.type);
+            if (f) { download(f.name, f.blob, f.blob.type); note('info', `Script exported chart ${f.name}`); }
+          } else if (e.kind === 'movie') {
+            const frames: string[] = [];
+            for (const fr of e.frames) frames.push(await chartFrame(client, wsRef.current, meta, mapChart(fr, id)));
+            const html = movieHtml(e.file.replace(/\.html?$/i, ''), frames, e.delay, e.autoPlay);
+            download(e.file, html, 'text/html');
+            if (e.show) { const url = URL.createObjectURL(new Blob([html], { type: 'text/html' })); window.open(url, '_blank'); }
+            note('info', `Script saved movie ${e.file} (${frames.length} frames)`);
+          }
+        } catch (err) { note('error', `Script: ${(err as Error).message}`); }
+      }
+    })();
+  };
 
   // FlowJo 10's rename dialog refuses a name a sibling already has (specs 6.7).
   const renamePop = (id: string, name: string) => {

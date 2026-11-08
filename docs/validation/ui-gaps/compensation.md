@@ -188,9 +188,29 @@ Status legend: Done (test), Own rule (deliberate difference), Deferred
   Layout Editor layout named from the compensation prefix and current group,
   filled with the wizard's control validation figures
   (`CompController.makeCompValidationFigs`).
-- flowjo-rea: Deferred. The app has one layout (no "new layout"), layout
-  plots cannot carry a matrix override, and the layout module is owned by
-  another change; the plots would not show the matrix being edited.
+- FlowJo detail (`AddToLayoutAction.getLayout`): the layout editor is
+  shown, `LEditor.doNewTemplate` adds a layout, its iteration is turned off,
+  the page-break layer is hidden and the layout is renamed "Comp-" plus the
+  current group's name (`Compensation.getPrefix` + `Group.getName`), or
+  "Compensation" without a current group. `makeCompValidationFigs` puts one
+  `ParameterEntryFigGroup` per control row (parameter name, the control's
+  scatter chart, the positive range-gate chart and the negative chart) 20 pt
+  apart down the page.
+- flowjo-rea: **Done with an own rule** for the contents. "Copy To New
+  Layout" in the Matrix Editor's preview bar saves the matrices, adds a new
+  layout named "Comp-<current group>" ("Compensation" without one; made
+  unique in the list), iteration off, and opens the layout editor. It holds
+  the preview grid (N x N, All by, or Histograms; at most 10 parameters,
+  150 pt cells) of the preview sample and population, each chart compensated
+  with the edited matrix (`LayoutPlot.compMatrix`). Own rule: flowjo-rea has
+  no wizard control rows to copy, so the Matrix Editor's own validation view
+  is copied; page breaks stay as set in the editor. Code:
+  `compGridItems`, `compLayoutName`, `newLayoutWith`
+  (src/core/layoutFigures.ts), button `comp-copy-layout`
+  (src/ui/Dialogs.tsx). Tests: unit "a new layout named Comp-<group>,
+  iteration off, holding the preview grid" (tests/followup-layout.test.ts);
+  e2e followup-layout "Copy To New Layout opens a new layout", "the new
+  layout holds the preview grid", "the copied charts render".
 
 ### CompCommand.REMOVE, REMOVEUNUSED, REMOVEUNEG, PARAMETERS "Parameter"
 - FlowJo 10.6.2: the CompCommand constants REMOVE, REMOVEUNUSED and
@@ -404,6 +424,6 @@ ADDFCS2, ADDFCS3: Not in 10.6.2 UI.
 | S_WEIGHTS_IMPORT, S_WEIGHTS_EXPORT, S_WEIGHTS_CLOSE | Done (default weights 1: matches) |
 | RESET | Own rule (no-op in 10.6.2) |
 | MAKEMOVIE | Own rule (in-place animation) |
-| ADDTOLAYOUT | Deferred |
+| ADDTOLAYOUT | Done (own rule: copies the preview grid) |
 | OPTIMIZEWT | Done (SSM-based; event-based dialog deferred) |
 | REMOVEUNEG, S_WEIGHTS_OK | Not in 10.6.2 UI |

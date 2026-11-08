@@ -8,6 +8,7 @@ import { annotationLines, applyStatistics, autoRange, contrastColor, drawFace, f
 import { addBand, defaultRibbon, DUPLICATE_BAND, HELP_URLS, LAST_BAND, moveBand, overlayNormalize, removeBand, webZoom } from '../src/core/layoutPrefs';
 import { compGridItems, compLayoutName, newLayoutWith } from '../src/core/layoutFigures';
 import { parseFigList, writeFigList } from '../src/core/wspLayout';
+import { addTableFigure } from '../src/core/miflowcyt';
 import { parseXml } from '../src/core/xml';
 
 const sample = (id: string, kw: Record<string, string>): SampleState => ({ id, fileName: `${id}.fcs`, fileSize: 0, fingerprint: '', datasetIndex: 0, compensation: 'none', populations: [], keywordsSnapshot: kw, channelNames: [], eventCount: 1 } as SampleState);
@@ -166,5 +167,13 @@ describe('Copy To New Layout and .wsp web pages', () => {
     const xml = writeFigList(r.items, [], () => '1', (_a, c) => c);
     expect(xml).toContain('<FigWebBrowser x="10"  y="20"  width="300"  height="200"');
     expect(xml).toContain('url="http://example.org"  zoom="1.5"');
+  });
+});
+
+describe('Save As Figure / Batch to Figure', () => {
+  it('a table figure: next number as id, text/table, the table name', () => {
+    const e1 = addTableFigure(undefined, 'Table');
+    const e2 = addTableFigure(e1, 'Table-1');
+    expect(e2.figures).toEqual([{ id: '1', mimetype: 'text/table', description: 'Table' }, { id: '2', mimetype: 'text/table', description: 'Table-1' }]);
   });
 });

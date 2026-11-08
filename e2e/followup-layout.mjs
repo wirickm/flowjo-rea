@@ -85,6 +85,14 @@ await page.waitForFunction(() => { const td = document.querySelector('[data-test
 await T('table-dest').selectOption('LAYOUT');
 await page.waitForFunction(() => { const td = document.querySelector('[data-testid=table-preview] tbody tr td:nth-child(2)'); return td && td.textContent !== 'NaN' && td.textContent !== ''; }, null, { timeout: 60000 }).catch(() => {});
 await T('table-create').click();
+await T('table-to-figure').click();
+await T('table-dest').selectOption('DISPLAY');
+await T('table-create').click();
+await T('tw-save-figure').click();
+await T('tw-close').click();
+await page.waitForTimeout(200);
+const figs = await page.evaluate(() => [...document.querySelectorAll('[data-testid=log] *')].map((e) => e.textContent).join('\n'));
+check('Batch to Figure and Save As Figure store the table as experiment figures', (figs.match(/saved as an experiment figure/g) ?? []).length >= 2, figs.slice(0, 200));
 await T('tables-close').click();
 await T('open-layout').click();
 await page.waitForTimeout(500);

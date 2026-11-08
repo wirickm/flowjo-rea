@@ -354,12 +354,14 @@ an empty range gives yellow). Categorical borders: one colour per text value
 (`Plate$StringColorMap`; flowjo-rea uses its own palette). Tests `heat map:
 range from 0...`; e2e `PE heat map: maximum value is yellow`.
 
-#### Statistic heat map (layout plate tool) - Done (own placement)
-FlowJo shows a statistic across a plate in the Layout Editor's plate tool
-(`le.plate.display.*`: drag a statistic, Heatmap display). flowjo-rea adds a
-"No Statistics / <statistics column>" chooser to the Plate Editor: each well
-with a loaded sample shows that column's value, heat-coloured with the rule
-above. Placing it in the Plate Editor rather than the layout is an own rule.
+#### Statistic heat map (layout plate tool) - Done (in the layout, as FlowJo)
+FlowJo shows statistics across a plate in the Layout Editor's plate figure
+(`FigPlateDisplay`, `le.plate.display.*`): now implemented there, see
+docs/validation/ui-gaps/layout.md section 7.3 (Heatmap, Heatmap Upper Half,
+Chernoff faces, group, ranges). The Plate Editor's "No Statistics /
+<statistics column>" chooser is kept as a duplicate convenience (own rule:
+FlowJo's Plate Editor has no statistic display); it uses the same heat
+colour rule.
 
 #### WELL_ADD_KEYS_TO_TABLE, WELL_CLEAR_KEYS, WELL_CREATE_STAGING_WELL - Done
 Well popup (right click): "Add attributes to table" (pairs into the keyword

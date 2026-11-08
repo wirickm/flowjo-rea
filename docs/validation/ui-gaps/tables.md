@@ -142,11 +142,11 @@ the editor (`table-window`) with live values. **Done** (e2e "Create Table
 | COPY_HTML "Copy As HTML" | HTML body as both the HTML and the plain text flavour | same. **Done** (e2e) |
 | SHOW_SUMMARY_STATS | toggles Mean / Std. Deviation rows | toggle bound to the table's Show Summary Stats. **Done** |
 | SAVEAS | save in the template's output format | `tw-save`. **Done** |
-| ADD_TO_LAYOUT | `FigFactory.makeTable` into the current layout; "Calculated tables added to the layout are not live and will not update." | **Own rule**: added as a static text block (`tableText`, columns separated by " \| "); the layout model has no table figure and `src/ui/Layout.tsx` is owned elsewhere. e2e "Batch To Current Layout adds a (static) table" |
+| ADD_TO_LAYOUT | `FJTableAction.addToLayout`: shows the layout editor, deselects all, `FigFactory.makeTable` adds a `FigTableDisplay` (element `TETable`), `TableController.addFigTable`, `FigTableDisplay.install(TableData)`: a grid of the column headers and the rows with their format colours (padding 4); notifies once "Calculated tables added to the layout are not live and will not update." | **Done**: a table figure (layout object `tetable`, `teTableSpec`) with a Sample column, the headers and the values with the column formats, at (40, 40); not live. e2e followup-layout "Batch To Current Layout adds a table figure (TETable)"; unit "a table-editor table becomes a static TETable". .wsp: not written (Deferred, see layout.md 7.2) |
 | PRINT "Print..." | Swing print of the table with header / footer | **Own rule**: opens the HTML table with the header and footer in a new window and calls the browser's print dialog. e2e "To Printer opens a print page with the header and footer" |
-| GRAPH "Graph" | no handler in `FJTableAction.doAction` in 10.6.2 | **Deferred**: nothing to match (the editor's Plots band covers graphing of columns) |
-| SELECT_TABLE_IN_LAYOUT | selects the linked `FigTableDisplay` | **Deferred**: needs a live table figure in the layout (see ADD_TO_LAYOUT) |
-| SAVE_FIGURE "Save As Figure" | stores the table in Experiment Annotation's figure list | **Deferred**: no figure list (Experiment Annotation is not modelled) |
+| GRAPH "Graph" | registered in `FJTableActionManager` but no branch in `FJTableAction.doAction` in 10.6.2 | **Not a gap: no-op in FlowJo 10.6.2** (the editor's Plots band covers graphing of columns) |
+| SELECT_TABLE_IN_LAYOUT "Select Table in Layout" | the enum constant (`fj.tableactionmanager.select`) is referenced by no other 10.6.2 class: neither `FJTableActionManager` nor `FJTableAction` handles it (`TableController.getFigTables` keeps the placed tables but nothing selects them) | **Not a gap: no-op in FlowJo 10.6.2**. Placed tables are real table figures now (ADD_TO_LAYOUT) and are selected in the layout as any figure |
+| SAVE_FIGURE "Save As Figure" | registered in `FJTableActionManager` (accelerator 5) but `FJTableAction.doAction` has no branch for it in 10.6.2; `FigureSpec(TableData, name, description)` (id = next figure number, mimetype "text/table", Table and HTML children) exists but is never called | **Own rule** (coordinated with the MIFlowCyt work): "Save As Figure" in the table window adds the table to the experiment figure list (`Workspace.experiment.figures`, `addTableFigure` in src/core/miflowcyt.ts) as FigureSpec would: next number as id, "text/table", the table name as description; the data is not embedded. e2e followup-layout "Batch to Figure and Save As Figure store the table as experiment figures"; unit "Save As Figure / Batch to Figure" |
 
 ## 3. Output targets and formatting
 
@@ -160,7 +160,7 @@ the editor (`table-window`) with live values. **Done** (e2e "Create Table
   layout.
 - flowjo-rea: `table-dest` select and "Create Table" (`te.batch`), saved on
   the table (`destination`, default Display). **Done** (e2e for each
-  destination); LAYOUT and PRINT as the Own rules above.
+  destination); LAYOUT a table figure (Done), PRINT as the Own rule above.
 
 ### TECommand.BATCHEXT "File Type:", TECommand.OUTPUTFORMAT
 - `TEFileFormatComboBox` lists `FJDocumentType` values; `createTableByFileType`
@@ -279,11 +279,21 @@ the editor (`table-window`) with live values. **Done** (e2e "Create Table
 - **Own rule**: browser print of the HTML table (see section 2).
 
 ### TECommand.BATCHTOFIGURE "Batch to Figure", FJTableCommand.SAVE_FIGURE
-- No action is wired to BATCHTOFIGURE in 10.6.2; SAVE_FIGURE needs
-  Experiment Annotation's figure list. **Deferred** (not modelled).
+- FlowJo 10.6.2: BATCHTOFIGURE ("Generate the table and store it in the list
+  of figures in the Experiment Annotation window") appears only in the
+  `TECommand` enum; SAVE_FIGURE is registered but `FJTableAction.doAction`
+  has no branch for it; the figure list (`FigureListPanel`,
+  `FigureListTable`, `FigureSpec`) is filled only from a read
+  `<experiment><figures>` element. Both commands do nothing in 10.6.2.
+- flowjo-rea: **Own rule**, implemented as the tooltip describes, on the
+  experiment figure list of the MIFlowCyt work (`Workspace.experiment`,
+  src/core/miflowcyt.ts, src/ui/Experiment.tsx; the storage is shared with
+  that module): "Batch to Figure" in the editor and "Save As Figure" in the
+  table window add `{ id: next number, mimetype: "text/table", description:
+  table name }` (`addTableFigure`). Tests as in section 2.
 
 ### TECommand.BATCHLAYOUT "Batch To Current Layout", FJTableCommand.ADD_TO_LAYOUT
-- **Own rule**: static text block (section 2).
+- **Done**: a table figure in the current layout (section 2; layout.md 7.2).
 
 ## Uncertain
 

@@ -6,6 +6,9 @@ const path = require('node:path');
 
 const INDEX = path.join(__dirname, '..', 'dist', 'index.html');
 
+// Name shown in the macOS app menu and About box (dev runs otherwise say "Electron").
+app.setName('flowjo-rea');
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1600,
@@ -43,6 +46,8 @@ function menu() {
 app.whenReady().then(() => {
   session.defaultSession.webRequest.onBeforeRequest((d, cb) => cb({ cancel: !/^(file|data|blob|devtools|chrome-extension):/.test(d.url) }));
   Menu.setApplicationMenu(menu());
+  // Packaged builds get the icon from build/icon.png; dev runs set the Dock icon here.
+  if (!app.isPackaged && app.dock) app.dock.setIcon(path.join(__dirname, '..', 'build', 'icon.png'));
   createWindow();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });

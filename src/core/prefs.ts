@@ -25,8 +25,12 @@ export interface Prefs {
   dotsToDraw: number;
   adjustColor: boolean;
   colorTable: string;
+  // Compensation: the hidden FlowJo preference element WeightOptimization
+  // (type EventBasedOptimizationProcessing, show on) that makes Optimize
+  // Weights ask for the method (OptimizeWeightDialog). Default off.
+  eventWeightOptimization: boolean;
 }
-export const DEFAULT_PREFS: Prefs = { noUndo: false, autoSave: false, autoSaveMinutes: 10, resetDontAskOnExit: false, eventsOnAxis: true, warningThreshold: 5, useStainForGateName: true, dontAsk: [], gateNames: [], scientificNotation: true, smoothing1D: true, dotsToDraw: 8000, adjustColor: false, colorTable: '' };
+export const DEFAULT_PREFS: Prefs = { noUndo: false, autoSave: false, autoSaveMinutes: 10, resetDontAskOnExit: false, eventsOnAxis: true, warningThreshold: 5, useStainForGateName: true, dontAsk: [], gateNames: [], scientificNotation: true, smoothing1D: true, dotsToDraw: 8000, adjustColor: false, colorTable: '', eventWeightOptimization: false };
 
 // Confirmations that offer "Don't ask again" (STreeMgr.confirmNodeDeletion);
 // group deletion always asks.

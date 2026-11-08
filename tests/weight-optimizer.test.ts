@@ -1,12 +1,13 @@
 // Spectral detector weight optimisation (CompCommand.OPTIMIZEWT; libNativeEngine
 // 3.6.2 WeightOptimizer, docs/validation/ui-gaps/compensation.md).
 import { describe, expect, it } from 'vitest';
-import type { SpilloverMatrix } from '../src/core/compensation';
+import { eventLambdas, MIN_EVENT_LAMBDA, unmix, unmixEventWeighted, type SpilloverMatrix } from '../src/core/compensation';
 import { ssmCoefficient } from '../src/core/compFlowjo';
 import { flowjoPercentile, type ChannelScale } from '../src/core/flowjoStats';
 import {
   FIRST_FACTOR, hasCustomWeights, MAX_ITERATIONS, optimizeWeights, SECOND_DAMPING, ssmForWeights, ssmSum, WeightSearch, type WeightOptInput,
 } from '../src/core/weightOptimizer';
+import { EventOptimization, eventModelForLambda, eventModelFromResult, eventSsm, eventUnmixText, formatG, LAMBDA_MAX, parseLambda, variableLambdas, type EventOptInput } from '../src/core/weightOptimizer';
 
 describe('weight search (OptimizeWeights)', () => {
   it('stops after the third stall counted from iteration index 5 when nothing improves', () => {
@@ -121,5 +122,117 @@ describe('SSM of the unmixed controls (CalculateSSM)', () => {
   it('refuses a fluorochrome without a control', () => {
     const inp = synthetic();
     expect(() => optimizeWeights({ ...inp, controls: inp.controls.slice(0, 1) })).toThrow(/Every fluorochrome needs a control/);
+  });
+});
+
+// Event based weight optimisation (OptimizeWeightDialog, WeightOptimizer::
+// RunVariableLambdaProcessing, Compensator::Compensate event weighting).
+
+describe('event-weighted unmixing (Compensator::Compensate)', () => {
+  const one: SpilloverMatrix = { id: 'e', name: 'e', channels: ['D1', 'D2'], outputNames: ['A'], values: [[1, 1]], source: 't', kind: 'spectral' };
+  it('weights each detector by 1 / (value + lambda)', () => {
+    const f = new Float64Array(1);
+    // w = 1/2, 1/4: f = (2/2 + 4/4) / (1/2 + 1/4) = 8/3.
+    unmixEventWeighted([[1, 1]], [2, 4], [0, 0], f);
+    expect(f[0]).toBeCloseTo(8 / 3, 12);
+    // A huge lambda makes the weights equal: the plain mean 3.
+    unmixEventWeighted([[1, 1]], [2, 4], [1e12, 1e12], f);
+    expect(f[0]).toBeCloseTo(3, 6);
+  });
+  it('lambda 0.001 or less reads as 0.001; the lambdas list is used by position only with engineBasedLambda', () => {
+    expect(eventLambdas(one)).toBeNull();
+    const ev = (wo: Partial<NonNullable<SpilloverMatrix['weightOptimization']>>) => eventLambdas({ ...one, weightOptimization: { type: 'EventBasedOptimizationProcessing', engineBasedLambda: false, lambda: 0, ...wo } });
+    expect(ev({})).toEqual([MIN_EVENT_LAMBDA, MIN_EVENT_LAMBDA]);
+    expect(ev({ lambda: 5 })).toEqual([5, 5]);
+    const lambdas = [{ name: 'D2', value: 7 }, { name: 'D1', value: 9 }];
+    expect(ev({ lambda: 5, lambdas })).toEqual([5, 5]);
+    expect(ev({ lambda: 5, engineBasedLambda: true, lambdas })).toEqual([7, 9]);
+  });
+  it('unmix applies the per-event weights and ignores the static detector weights', () => {
+    const m: SpilloverMatrix = { ...one, weights: [1, 100], weightOptimization: { type: 'EventBasedOptimizationProcessing', engineBasedLambda: false, lambda: 1 } };
+    const out = unmix([Float64Array.of(1, 9), Float64Array.of(3, 1)], ['D1', 'D2'], m).get('A')!;
+    // Event 1: w = 1/2, 1/4 -> (1/2 + 3/4) / (3/4) = 5/3. Event 2: w = 1/10, 1/2 -> (0.9 + 0.5) / 0.6.
+    expect(out[0]).toBeCloseTo(5 / 3, 12);
+    expect(out[1]).toBeCloseTo(1.4 / 0.6, 12);
+  });
+});
+
+describe('method dialog (OptimizeWeightDialog)', () => {
+  it('the Lambda field accepts numbers from 0 to Float.MAX_VALUE', () => {
+    expect(parseLambda('0')).toBe(0);
+    expect(parseLambda(' 2.5 ')).toBe(2.5);
+    expect(parseLambda('3.4e38')).toBe(3.4e38);
+    expect(parseLambda(String(LAMBDA_MAX))).toBe(LAMBDA_MAX);
+    expect(parseLambda('-1')).toBeNull();
+    expect(parseLambda('1e39')).toBeNull();
+    expect(parseLambda('abc')).toBeNull();
+    expect(parseLambda('')).toBeNull();
+  });
+  it('lambda 0 runs the engine (variance based lambdas); another lambda is stored as a float without a run', () => {
+    expect(eventModelForLambda(0)).toEqual({ runEngine: true, model: { type: 'EventBasedOptimizationProcessing', engineBasedLambda: false, lambda: 0 } });
+    const r = eventModelForLambda(0.1);
+    expect(r.runEngine).toBe(false);
+    expect(r.model.lambda).toBe(Math.fround(0.1));
+    expect(eventModelFromResult([{ name: 'D1', value: 2 }])).toEqual({ type: 'EventBasedOptimizationProcessing', engineBasedLambda: false, lambda: 0, lambdas: [{ name: 'D1', value: 2 }] });
+  });
+  it('formats the SSM sum as a C++ float stream does', () => {
+    expect(formatG(12.3456789)).toBe('12.3457');
+    expect(formatG(100)).toBe('100');
+    expect(formatG(1234567)).toBe('1.23457e+06');
+    expect(formatG(0.0001)).toBe('0.0001');
+    expect(formatG(0.00001234)).toBe('1.234e-05');
+    expect(formatG(0)).toBe('0');
+  });
+});
+
+describe('variance based lambdas and the event-based run (RunVariableLambdaProcessing)', () => {
+  const tiny = (negB: number[][]): EventOptInput => {
+    const matrix: SpilloverMatrix = { id: 't', name: 't', channels: ['D1', 'D2'], outputNames: ['A', 'B'], values: [[1, 0.1], [0.2, 1]], source: 't', kind: 'spectral' };
+    const pos = [Float64Array.of(100, 110, 120), Float64Array.of(10, 12, 14)];
+    const negA = [Float64Array.of(1, 2, 3), Float64Array.of(5, 5, 8)];
+    const lin: ChannelScale = { kind: 'linear', min: 0, max: 1000 };
+    return { matrix, populations: [pos, negA, negB.map((c) => Float64Array.from(c)), pos], controls: [{ pos: 0, neg: 1 }, { pos: 3, neg: 2 }], scales: [lin, lin], detectorScales: [undefined, undefined] };
+  };
+  it('each detector gets the mean over the controls of the squared SD of its negative population', () => {
+    // D1: SD [1,2,3] = 1 and SD [0,2,4] = 2 -> (1 + 4) / 2. D2: SD [5,5,8] = sqrt(3), SD [1,1,1] = 0 -> 3 / 2.
+    const l = variableLambdas(tiny([[0, 2, 4], [1, 1, 1]]));
+    expect(l[0]).toBe(2.5);
+    expect(l[1]).toBeCloseTo(1.5, 12);
+    // A universal negative counts once per control.
+    const u = tiny([[1, 2, 3], [5, 5, 8]]);
+    const lu = variableLambdas({ ...u, controls: [{ pos: 0, neg: 1 }, { pos: 3, neg: 1 }] });
+    expect(lu[0]).toBe(1);
+    expect(lu[1]).toBeCloseTo(3, 12);
+  });
+  it('uses the FlowJo SD statistic on a detector scale', () => {
+    const inp = tiny([[0, 2, 4], [1, 1, 1]]);
+    const lin: ChannelScale = { kind: 'linear', min: 0, max: 4096 };
+    // On a 4096-channel scale of 0..4096 the channel values are the data values.
+    expect(variableLambdas({ ...inp, detectorScales: [lin, lin] })[0]).toBeCloseTo(2.5, 5);
+  });
+  it('runs in slices: Compensating. at 0.5%, then the SSM sum message at 100%, deterministically', () => {
+    const base = synthetic();
+    const inp: EventOptInput = { ...base, detectorScales: [undefined, undefined, undefined] };
+    const run = new EventOptimization(inp);
+    expect(run.progress).toEqual({ fraction: Math.fround(0.005), message: 'Compensating.' });
+    let steps = 0;
+    while (run.step()) steps++;
+    // lambdas, then the three used populations.
+    expect(steps).toBe(4);
+    const lambdas = variableLambdas(inp);
+    expect(run.result.lambdas).toEqual(['D1', 'D2', 'D3'].map((name, d) => ({ name, value: lambdas[d] })));
+    expect(run.ssm).toEqual(eventSsm(inp, lambdas));
+    expect(run.progress).toEqual({ fraction: 1, message: `Current best SSM sum is ${formatG(Math.fround(ssmSum(run.ssm)))}. ` });
+    // The noisy detector D3 has the largest variance based lambda.
+    expect(lambdas[2]).toBeGreaterThan(Math.max(lambdas[0], lambdas[1]));
+    const again = new EventOptimization({ ...synthetic(), detectorScales: [undefined, undefined, undefined] }).run();
+    expect(again).toEqual(run.result);
+    expect(run.ssm[0][0]).toBe(0);
+    expect(run.ssm[0][1]).toBeGreaterThan(0);
+  });
+  it('describes an event-weighted matrix', () => {
+    const m = synthetic().matrix;
+    expect(eventUnmixText(m)).toBeNull();
+    expect(eventUnmixText({ ...m, weightOptimization: { type: 'EventBasedOptimizationProcessing', engineBasedLambda: false, lambda: 0 } })).toBe('per-event weighted least squares, weights 1 / (value + lambda) with lambda 0.001');
   });
 });

@@ -16,6 +16,8 @@ export function PrefsDialog({ prefs, onChange, onClose }: { prefs: Prefs; onChan
       <label><input type="checkbox" data-testid="pref-smooth1d" checked={prefs.smoothing1D} onChange={(e) => set('smoothing1D', e.target.checked)} /> Smooth histograms</label><br />
       <label>Dots to draw <input type="number" min={0} max={100000} style={{ width: 70 }} data-testid="pref-dots" value={prefs.dotsToDraw} onChange={(e) => set('dotsToDraw', Math.max(0, Math.min(100000, Math.trunc(Number(e.target.value) || 0))))} /></label><br />
       <label><input type="checkbox" data-testid="pref-adjustcolor" checked={prefs.adjustColor} onChange={(e) => set('adjustColor', e.target.checked)} /> Show "Adjust color table"</label><br />
+      <h4>Compensation</h4>
+      <label title="Optimize Weights first asks for the method: Sample Based or Event Based Weight Optimization (with Lambda)"><input type="checkbox" data-testid="pref-event-weightopt" checked={prefs.eventWeightOptimization} onChange={(e) => set('eventWeightOptimization', e.target.checked)} /> Offer Event Based Weight Optimization</label><br />
       <button data-testid="pref-reset-dontask" disabled={!prefs.dontAsk.length} onClick={() => onChange(resetDontAsk(prefs))}>Reset All Don't Show Memory ({prefs.dontAsk.length})</button>
       <div><button data-testid="prefs-close" onClick={onClose}>Close</button></div>
     </div></div></div>

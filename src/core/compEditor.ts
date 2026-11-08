@@ -6,7 +6,7 @@
 // (CompAnimationBatch), spectral detector weights (SpectralWeightsDialog) and
 // the Matrix Editor preferences (PrefsCompensation). Read with javap;
 // implemented independently. This module is the one owner of these rules.
-import { invert, isSpectral, unmixingOperator, type SpilloverMatrix } from './compensation';
+import { eventLambdas, invert, isSpectral, unmixEventWeighted, unmixingOperator, type SpilloverMatrix } from './compensation';
 import { fail } from './errors';
 
 // --- names ------------------------------------------------------------------
@@ -108,6 +108,16 @@ export function compensateEvents(raw: Record<string, Float32Array>, m: Spillover
   const cols = outs.map(() => new Float32Array(n));
   const src = m.channels.map((c) => raw[c]);
   const d = src.length;
+  const lam = eventLambdas(m);
+  if (lam) {
+    const x = new Float64Array(d), f = new Float64Array(outs.length);
+    for (let e = 0; e < n; e++) {
+      for (let i = 0; i < d; i++) x[i] = src[i][e];
+      unmixEventWeighted(m.values, x, lam, f);
+      for (let k = 0; k < outs.length; k++) cols[k][e] = f[k];
+    }
+    return Object.fromEntries(outs.map((o, k) => [o, cols[k]]));
+  }
   for (let e = 0; e < n; e++) {
     for (let k = 0; k < outs.length; k++) {
       let s = 0;

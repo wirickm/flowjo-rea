@@ -139,16 +139,16 @@ await page.getByTestId('display-scinot').check(); await idle();
 // gates on peaks
 const before = await page.locator('[data-testid^="pop-"]').count();
 await ctxMenu();
-await page.getByTestId('ctx-Create Gates On Peaks').click(); await idle();
+await page.getByTestId('ctx-Create-Gates-On-Peaks').click(); await idle();
 const pops = await page.locator('[data-testid^="pop-"]').evaluateAll((e) => e.map((x) => x.getAttribute('data-testid')));
 check('Create Gates On Peaks adds range gates named after the parameter', pops.length > before && pops.some((p) => p === `pop-${fl}` || p.startsWith(`pop-${fl}.Pop`)), pops.join(', '));
 await ctxMenu();
-await page.getByTestId('ctx-Create Gates On Peaks').click(); await idle();
+await page.getByTestId('ctx-Create-Gates-On-Peaks').click(); await idle();
 check('running it again replaces the same ranges (no duplicates)', (await page.locator('[data-testid^="pop-"]').count()) === pops.length);
 
 // --- Copy Image without transparency ---
 await ctxMenu();
-await page.getByTestId('ctx-Copy Image Without Transparency').click(); await idle();
+await page.getByTestId('ctx-Copy-Image-Without-Transparency').click(); await idle();
 await page.waitForTimeout(300);
 check('Copy Image Without Transparency copies the plot image', (await page.getByTestId('log').innerText()).includes('Plot image copied'));
 
@@ -203,7 +203,7 @@ check('Adjust color table recolours the pseudocolor plot', (await img()) !== c0)
 
 // --- Print / Make Movie menu ---
 await ctxMenu();
-check('the plot menu offers Print and Make Movie', (await page.getByTestId('ctx-Print...').count()) === 1 && (await page.getByTestId('ctx-Make Movie...').isEnabled()));
+check('the plot menu offers Print and Make Movie', (await page.getByTestId('ctx-Print').count()) === 1 && (await page.getByTestId('ctx-Make Movie...').isEnabled()));
 const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 20000 }).catch(() => null), page.getByTestId('ctx-Make Movie...').click()]);
 check('Make Movie records the group as a WebM video', !!dl && dl.suggestedFilename().endsWith('.webm'), dl ? dl.suggestedFilename() : 'no download');
 

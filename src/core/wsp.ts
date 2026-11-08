@@ -418,6 +418,7 @@ export function parseWsp(xml: string): WspImport {
           const pop: Population = { id, name, parentId, gate, ...(exclude ? { exclude: true } : {}), ...(magnetic ? { magnetic: true } : {}) };
           if (attr(p, 'owningGroup')) owners.set(pop, attr(p, 'owningGroup')!);
           if (attr(p, 'expanded') === '0') pop.collapsed = true;
+          if (attr(p, 'annotation')) pop.annotation = attr(p, 'annotation')!;
           pops.push(pop);
         } else {
           const deps = kids(kid(p, 'Dependents') ?? p, 'Dependent').map((d) => attr(d, 'name') ?? '');
@@ -425,6 +426,7 @@ export function parseWsp(xml: string): WspImport {
           const pop: Population = { id, name, parentId, gate: { type: 'boolean', op, operands: [] } };
           if (attr(p, 'owningGroup')) owners.set(pop, attr(p, 'owningGroup')!);
           if (attr(p, 'expanded') === '0') pop.collapsed = true;
+          if (attr(p, 'annotation')) pop.annotation = attr(p, 'annotation')!;
           pops.push(pop);
           pending.push({ pop, deps });
         }
@@ -481,6 +483,7 @@ export function parseWsp(xml: string): WspImport {
       ranges[name] = [sc.linearRange[0] / f, sc.linearRange[1] / f];
     }
     if (Object.keys(ranges).length) sample.flowjoLinearRanges = ranges;
+    if (attr(node, 'annotation')) sample.nodeAnnotation = attr(node, 'annotation')!;
     ws.samples.push(sample);
     flowjoCounts[fileName] = counts;
     for (const [ch, sc] of scales) {

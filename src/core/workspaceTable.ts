@@ -10,6 +10,8 @@ import { sampleValue } from './project';
 export const NAME = 'fj.appnode.prop.name';
 export const STATISTIC = 'fj.appnode.prop.statistic';
 export const NCELLS = 'fj.appnode.prop.ncells';
+// Node annotation (AppNodePropertyKey -> getAnnotation; fj.appnode.prop.anno).
+export const ANNOTATION = 'fj.appnode.prop.anno';
 export const DEFAULT_COLUMNS: TableColumn[] = [{ key: NAME }, { key: STATISTIC }, { key: NCELLS }];
 
 // The special columns this app can fill, with FlowJo's header texts
@@ -26,6 +28,7 @@ export const SPECIAL_COLUMNS: { key: string; label: string }[] = [
   { key: 'fj.appnode.prop.size', label: '$TOT' },
   { key: 'fj.appnode.prop.wellid', label: 'Well ID' },
   { key: 'fj.appnode.prop.collectiontime', label: 'Collection Time' },
+  { key: ANNOTATION, label: 'Annotation' },
 ];
 
 export const isKeywordColumn = (key: string) => key.startsWith('kw:');
@@ -47,6 +50,7 @@ export function sampleCell(ws: Pick<Workspace, 'matrices' | 'groups'>, s: Sample
     case 'fj.appnode.prop.matrix': return s.compensation === 'none' ? null : s.compensation === 'file' ? 'Acquisition-defined' : ws.matrices.find((m) => m.id === s.compensation)?.name ?? s.compensation;
     case 'fj.appnode.prop.wellid': return sampleValue(s, 'WELL ID') ?? sampleValue(s, '$WELLID') ?? null;
     case 'fj.appnode.prop.collectiontime': return sampleValue(s, '$BTIM') ?? null;
+    case ANNOTATION: return s.nodeAnnotation ?? null;
     default: return null;
   }
 }
@@ -56,6 +60,7 @@ export function sampleCell(ws: Pick<Workspace, 'matrices' | 'groups'>, s: Sample
 export function populationCell(ws: Pick<Workspace, 'groups'>, s: SampleState, popId: string, key: string): string | null {
   const p = s.populations.find((q) => q.id === popId);
   if (!p) return null;
+  if (key === ANNOTATION) return p.annotation ?? null;
   if (key === 'fj.appnode.prop.group') return p.owningGroup ? ws.groups.find((g) => g.id === p.owningGroup)?.name ?? null : null;
   if (key === 'fj.appnode.prop.gateparms') return p.gate.type === 'boolean' ? null : p.gate.dims.map((d) => (d.kind === 'channel' ? d.channel : `${d.num}/${d.den}`)).join(', ');
   return null;

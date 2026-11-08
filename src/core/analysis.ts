@@ -13,6 +13,7 @@ import { splineDividers } from './spline';
 import { decodeColumn } from './paramImport';
 import { clusterFrequencyColumn, consensusColumn } from './clusterParams';
 import { makeTransform } from './transforms';
+import { maskFromBits } from './fileMask';
 
 export interface PopulationResult {
   id: string;
@@ -483,6 +484,13 @@ export class SampleEngine {
           if (Number.isNaN(xs[i]) || Number.isNaN(ys[i])) continue;
           out[i] = labels[eventCell(ax, R, xs[i]) * R + eventCell(ay, R, ys[i])] === g.slot ? 1 : 0;
         }
+        return out;
+      }
+      case 'mask': {
+        // FlowJo FileMaskGate: the events marked in the mask file (decoded
+        // into bits when the gate is made; src/core/scriptApi.ts).
+        const bits = maskFromBits(g.bits, n);
+        out.set(bits);
         return out;
       }
       case 'anchored':

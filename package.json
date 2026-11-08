@@ -59,6 +59,7 @@
     },
     "mac": {
       "category": "public.app-category.medical",
+      "icon": "build/icon.png",
       "target": [
         {
           "target": "dmg",

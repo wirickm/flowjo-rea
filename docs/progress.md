@@ -1,5 +1,19 @@
 # Progress and handoff
 
+## State (2026-11-08, FlowJo 10 UI command parity)
+
+All 545 FlowJo 10.6.2 UI commands (command enums WS/GW/Transform/LE/Chart/
+TE/FJTable/Comp/PE/PlatformNav) are classified in
+`docs/validation/ui-gaps/final-status-2026-11-08.tsv`: 393 implemented, 86
+implemented with a documented own rule, 17 no-ops in FlowJo 10.6.2, 49 out of
+scope (licensing, cloud, enterprise, debug), 0 partial, 0 missing. Area specs
+with class.method evidence: `docs/validation/ui-gaps/*.md`. New areas include
+the plate editor, Compare Populations, 3D viewer, script editor, MIFlowCyt,
+FACSDiva / CSV-CLR formats, sample quality, ribbon customization, layout
+plate / table figures and batch targets, compensation plot grid and weight
+optimization. REA ledger 47/47 verified. Formats decoded from FlowJo's
+readers and writers are not yet checked against FlowJo-saved files.
+
 ## State (2026-11-07, separate graph windows, grid editing, .wsp layout figures)
 
 Graph windows are real separate windows (browser child windows, Electron

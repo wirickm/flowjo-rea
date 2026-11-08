@@ -93,6 +93,11 @@ Tests: `tests/workspace-gaps.test.ts` (18 tests), `e2e/workspace-gaps.mjs`
   (`CD4+CD8-`). All nodes become children of the first selection's parent.
 - Status: **Done** (tests "Create Combination Gates"; e2e "adds 2 NOT and 4 AND nodes").
 
+- PlatformNavCommand.COMBOGATES (unlabelled) is the same feature named in the
+  platform enum: in 10.6.2 only `PlatformNavCommand` refers to it (no handler,
+  checked with javap in the re-audit), so it is reached only as
+  GATECOMBINATION above (`bool-combo`). Not a separate gap.
+
 ### B6. GATEIS "Identical Gate" (tooltip "Create a cloned reference to each selected gate for placement in other parts of the analysis tree.")
 
 - `WSBoolGateAction.addIdentityGates`: for every selected population with a
@@ -290,7 +295,9 @@ Tests: `tests/workspace-gaps.test.ts` (18 tests), `e2e/workspace-gaps.mjs`
   criteria plus that one stain set, its live / synchronized / font settings;
   a new colour per group (`setFirstUnusedColor`).
 - This app: a "Multiple" button in Create Group (not when modifying), same
-  rule; names made unique. **Own rule**: groups get no automatic colour. Not
+  rule; names made unique. With Live on, each group keeps its criteria; with
+  Live off, the samples that match now are added once and the group has no
+  criteria (re-audit fix: Live was ignored before). **Own rule**: groups get no automatic colour. Not
   in the e2e script (the fixtures share one stain set).
 
 ### K6. REMOVEGROUPANALYSIS

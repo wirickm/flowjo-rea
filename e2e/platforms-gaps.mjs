@@ -112,6 +112,10 @@ await page.getByTestId('pe-add-plate').click();
 check('PE Add New Plate', (await page.getByTestId('pe-plate-select').locator('option').count()) === 2);
 await page.getByTestId('pe-del-plate').click();
 check('PE Delete Plate (confirmed)', (await page.getByTestId('pe-plate-select').locator('option').count()) === 1);
+await page.getByTestId('pe-miflow').click();
+check('Plate Editor Annotate Experiment opens the MIFlowCyt dialog over the plate editor', (await page.getByTestId('miflow-dialog').count()) === 1 && (await page.getByTestId('plate-editor').count()) === 1);
+await page.getByTestId('miflow-dialog').getByRole('button', { name: 'Cancel' }).click();
+check('closing it returns to the plate editor', (await page.getByTestId('miflow-dialog').count()) === 0 && (await page.getByTestId('plate-editor').count()) === 1);
 await page.getByTestId('pe-close').click();
 
 // --- Compare Populations

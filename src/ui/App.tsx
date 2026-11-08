@@ -19,7 +19,7 @@ import { MATRIX_DRAG_TYPE } from './CompEditor';
 import { ClusterParamButtons, FormatFileButtons } from './FormatTools';
 import { GroupDialog } from './GroupDialog';
 import { ContextMenu, GateActions, ManualGateDialog, type MenuItem } from './GateActions';
-import { everyNth, FLOWJO_FUNCTIONS, removeFromGroup, stainSet } from '../core/groupCriteria';
+import { acceptCriteria, everyNth, FLOWJO_FUNCTIONS, removeFromGroup, stainSet } from '../core/groupCriteria';
 import { concatGroups, type ConcatMode, type HeaderFormat } from '../core/exportRules';
 import { GRAPH_H, GRAPH_W, LayoutView } from './Layout';
 import { loadOverlayMode, overlayNormalize } from '../core/layoutPrefs';
@@ -2660,7 +2660,10 @@ export function App() {
               updateWs((w) => {
                 for (const st of d.criteria.stains ?? []) {
                   const name = uniqueName(st, w.groups.map((x) => x.name));
-                  const n: Group = { id: newId('grp'), name, sampleIds: [], criteria: { ...d.criteria, stains: [st] } };
+                  const crit = { ...d.criteria, stains: [st] };
+                  // Live keeps the criteria (members follow the samples); otherwise the
+                  // current matches are added once, as a plain group.
+                  const n: Group = d.live ? { id: newId('grp'), name, sampleIds: [], criteria: crit } : { id: newId('grp'), name, sampleIds: w.samples.filter((s) => acceptCriteria(w, s, crit)).map((s) => s.id) };
                   if (d.role !== 'undefined') n.role = d.role;
                   if (d.synchronized) n.synchronized = true;
                   if (d.fontStyle && d.fontStyle !== 'plain') n.fontStyle = d.fontStyle;

@@ -4,7 +4,8 @@
 // the well selection is window state, as in FlowJo.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SampleState, StatColumn, Workspace } from '../core/model';
-import { newId } from '../core/model';
+import { newId, populationPath } from '../core/model';
+import { ExperimentDialog } from './Experiment';
 import {
   addAttrs, addPairs, allWells, applyToSamples, clearWells, colWells, copyText, DEFAULT_SERIES, dilutionSeries, fillDown, fillRight, heatColor,
   importCsv, invert, keywordFilePairs, MAX_COLS, MAX_ROWS, newEditorState, newPlate, nextStagingName, parsePlateXml, pasteText, PLATE_SIZES,
@@ -57,6 +58,9 @@ export function PlateEditor(p: PlateEditorProps) {
   const clip = useRef<string>('');
   const group = p.groups.find((g) => g.id === p.currentGroupId) ?? p.groups[0];
   const groupSamples = useMemo(() => p.ws.samples.filter((s) => group?.sampleIds.includes(s.id)), [p.ws.samples, group]);
+  // PECommand.MIFLOWCYT: the plate editor's Annotate Experiment opens the same
+  // MIFlowCyt dialog as the workspace (WSController.openMIFlowCytDialog).
+  const [annotate, setAnnotate] = useState(false);
 
   const edit = (fn: (s: PlateEditorState, pl: PlateDef, say: Say) => void) => p.updateWs((w, say) => {
     w.plateEditor ??= newEditorState();
@@ -156,6 +160,7 @@ export function PlateEditor(p: PlateEditorProps) {
               <button data-testid="pe-save-selection" disabled={!sel.length} title="Create a new button in the footer to be able to recall this selection" onClick={() => { const n = window.prompt('Enter a name to describe the selection:', `Selection ${st.selections.length + 1}`); if (n) edit((s) => { s.selections.push({ name: n, wells: [...sel] }); }); }}>Save Well Selection</button>
             </fieldset>}
             {peRib.has('Plate Editor', 'experiment') && <fieldset style={peRib.style('Plate Editor', 'experiment')}><legend>Experiment</legend>
+              <button data-testid="pe-miflow" title="Edit the experimental description, as per the MIFlowCyt standard for cytometry annotation." onClick={() => setAnnotate(true)}>Annotate Experiment...</button>
               <button data-testid="pe-read-attrs" title="Assign attributes from the data files in the currently selected group to the wells" onClick={() => edit((_, pl, say) => { const r = readAttributesFromGroup(pl, groupSamples.map((s) => structuredClone(s))); if (r.missing) say('warn', `Unable to read attributes from all samples in group: ${r.missing} missing Well ID(s)`); })}>Read Attributes from Group</button>
               <button data-testid="pe-read-samples" title="Attempt to match the samples in the current group to the wells in the current plate" onClick={() => { const m: Record<string, string> = {}; for (const [w, l] of Object.entries(samplesByWell(plate, groupSamples))) m[w] = l.map((s) => s.fileName).join(', '); setAttached(m); }}>Read Samples from Group</button>
               <button data-testid="pe-apply" title="Copy the Keywords in the wells to the current group" onClick={() => p.updateWs((w, say) => { const ids = new Set(group?.sampleIds ?? []); const n = applyToSamples(plate, w.samples.filter((s) => ids.has(s.id))); say('info', `Plate keywords applied to ${n} sample(s)`); })}>Apply Plate Keywords to Group</button>
@@ -254,6 +259,10 @@ export function PlateEditor(p: PlateEditorProps) {
           <label title="Multiplier to determine value of next set of replicates.">Dilution Multiplier: <input type="number" value={series.multiplier} onChange={(e) => setSeries({ ...series, multiplier: Number(e.target.value) })} data-testid="pe-series-mult" /></label><br />
           <label title="Value which will be added to the next set of replicates in a series.">Sequence Incrementer: <input type="number" value={series.increment} onChange={(e) => setSeries({ ...series, increment: Number(e.target.value) })} data-testid="pe-series-inc" /></label>
           <div className="row"><button data-testid="pe-series-down" onClick={() => { toSel((pl) => dilutionSeries(pl, sel, series, true)); setSeries(null); }}>Fill Down</button><button data-testid="pe-series-right" onClick={() => { toSel((pl) => dilutionSeries(pl, sel, series, false)); setSeries(null); }}>Fill Right</button><button onClick={() => setSeries(null)}>Cancel</button></div></div></div></div>}
+      {annotate && <ExperimentDialog initial={p.ws.experiment} docName={p.ws.name} groupNames={p.ws.groups.map((g) => g.name)} figureNames={[...(p.ws.layout?.length ? ['Layout'] : []), ...(p.ws.tables ?? []).map((t) => t.name)]}
+        gatingText={() => { const s0 = groupSamples[0]; return s0 ? [s0.fileName, ...s0.populations.map((q) => `  ${populationPath(s0.populations, q.id)}`)].join('\n') : ''; }}
+        compText={() => { const s0 = groupSamples[0]; const m = s0 ? p.ws.matrices.find((x) => x.id === s0.compensation) : undefined; return m ? [m.name, `\t${m.channels.join('\t')}`, ...m.values.map((r, i) => `${m.channels[i]}\t${r.join('\t')}`)].join('\n') : ''; }}
+        download={p.download} onOk={(e) => { p.updateWs((w, say) => { w.experiment = e; say('info', 'Experiment annotation saved'); }); setAnnotate(false); }} onClose={() => setAnnotate(false)} />}
     </div>
   );
 }

@@ -29,7 +29,7 @@ export interface ToolCtx {
   onClose: () => void;
 }
 
-export function PlatformToolHost(p: ToolCtx & { tool: PlatformTool }) {
+export function PlatformToolHost(p: ToolCtx & { tool: PlatformTool; axes?: (string | null)[] }) {
   if (p.tool === 'plate') {
     const stats = async (s: SampleState, col: StatColumn, scales: Record<string, import('../core/flowjoStats').ChannelScale>) => (await p.client.stats({ sampleId: s.id, compensation: s.compensation, populations: s.populations, matrices: p.ws.matrices, derived: p.ws.derivedParameters, columns: [col], kinetics: p.ws.kinetics, scales }))[0];
     return <PlateEditor ws={p.ws} groups={p.ws.groups} currentGroupId={p.groupId} loaded={(id) => !!p.meta[id]} stats={stats} updateWs={p.updateWs} download={p.download} onClose={p.onClose} />;

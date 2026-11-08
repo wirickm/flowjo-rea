@@ -388,7 +388,7 @@ Tests: `tests/workspace-gaps.test.ts` (18 tests), `e2e/workspace-gaps.mjs`
 | CHECKSAMPLEQUALITY "Check Sample Quality" | `WSSampleQualityAction.doAction` -> `Sample.setCheckQuality(true)` for every sample of the current group; `SampleQualityControl` + engine `SampleValidity` | **Done** (section F2.1): Tools > Cytometry "Check Sample Quality", status badge per sample, report dialog; tests `tests/sampleQuality.test.ts`, e2e `e2e/followup-f2.mjs` |
 | IMPORT_CSV_CLR "Import Parameters from CSV/CLR..." | `WSDialogAction.importCsvClr` -> `FlowCAPUtil.importExternalParameter`; file read by the native engine (`Sample::CreateImportCsvParameter`, `Sample::CreateImportClrParameter`) | **Done** (rules in O3): File tab "Import Parameters from CSV/CLR..."; unit "Import Parameters from CSV/CLR", e2e "CSV import adds a parameter named from the header" |
 | CONSENSUS_DP "Consensus Gate", CLUSTER_FREQ_DP "Cluster Frequency" | `WorkspaceAction` -> `FlowCAPUtil.createClusterComparisonParameter` / `createClusterConsensusParameter` / `doClusterComparisonQuery`; values from the native engine (`Sample::CreateConsensusGateParameter`, `Sample::CreateClusterFrequencyParameter`) | **Done** (rules in O4): Workspace tab, Derived Parameters band; unit "Consensus Gate and Cluster Frequency", e2e "Consensus Gate creates ...", "Cluster Frequency uses the focused population as primary" |
-| MIFlowCyt "Annotate Experiment..." / MIFLOW | `WSAction` delegating to `WSController` (MIFlowCyt metadata dialog, bundle key `test.debug.miflowcyt`) | **Deferred**: the MIFlowCyt field list was not decoded; free annotations and keywords remain |
+| MIFlowCyt "Annotate Experiment..." / MIFLOW | `WSController.openMIFlowCytDialog` -> `MIFlowCytDialog`; see "Annotate Experiment (MIFlowCyt)" below | **Done** (`tests/miflowcyt.test.ts`, e2e `MIFlowCyt ...` in `e2e/followup-3d.mjs`) |
 | REPORTEDITOR "Report Editor" | `FJNavAction` built and discarded; its `doAction` has no REPORTEDITOR branch and no report editor class exists (see O1) | **Not a gap: no-op in FlowJo 10.6.2** |
 | SCRIPTEDITOR "Script Editor" | `WSScriptAction` -> `Workspace.getScriptEditor().setVisible(true)`: JavaScript (Rhino) script list, editor and console (see O2) | **Done** (core API; rest recorded in O2): taskbar "Script Editor"; tests `tests/scriptEditor.test.ts`, e2e `e2e/followup-editors.mjs` |
 | EXPORT_DIVA / IMPORT_DIVA | `ExportDivaCommand` / `ImportDivaCommand` -> `DivaXMLManipulator.ExportToDiva` / `DivaXMLImporter.ImportFromDivaXML` | **Done** (rules in O5, two own rules): File tab "Import from FACSDiva" / "Export to FACSDiva"; unit "FACSDiva import", "FACSDiva export ... and round trip", e2e "Export ...", "Import from FACSDiva adds the gates" |
@@ -699,13 +699,13 @@ Export:
 
 ## Counts
 
-Of the 51 gap rows (after the follow-up rounds): Done 32 (SCRIPTEDITOR,
+Of the 51 gap rows (after the follow-up rounds): Done 34 (SCRIPTEDITOR,
 CHECKSAMPLEQUALITY, IMPORT_CSV_CLR, CONSENSUS_DP, CLUSTER_FREQ_DP, EXPORT_DIVA,
-IMPORT_DIVA added in the follow-up rounds), Own rule 15 (CLOSE, REVERT, EXCEL,
-ACS, BROWSESAMPLES, ADDKEYTOGROUP, BOOLEANCREATE, BOOLEANEDIT, SORT1-3,
-TREEREMOVECOLUMN, RIBBONCONFIG, RIBBONSETDEFAULT, RIBBONCOMMITTOPREFS: done
-with own rules), Not a gap 2 (REPORTEDITOR, AUTOCC: no-ops in FlowJo 10.6.2),
-Deferred 2 (MIFlowCyt, MIFLOW). Some Done rows carry small own-rule notes, stated above.
+IMPORT_DIVA, MIFlowCyt, MIFLOW added in the follow-up rounds), Own rule 15
+(CLOSE, REVERT, EXCEL, ACS, BROWSESAMPLES, ADDKEYTOGROUP, BOOLEANCREATE,
+BOOLEANEDIT, SORT1-3, TREEREMOVECOLUMN, RIBBONCONFIG, RIBBONSETDEFAULT,
+RIBBONCOMMITTOPREFS: done with own rules), Not a gap 2 (REPORTEDITOR, AUTOCC:
+no-ops in FlowJo 10.6.2), Deferred 0. Some Done rows carry small own-rule notes, stated above.
 
 
 ## F2. Follow-up round f2 (2026-11-07)
@@ -865,3 +865,48 @@ Preferences writes the preferences new sessions start from (FlowJo saves the
 preferences on most edits); the commit command is offered in the dialog
 although 10.6.2 does not reach it. Tests: `tests/ribbon.test.ts` (5 ribbon
 tests), e2e `e2e/followup-f2.mjs` (19 ribbon checks).
+
+## Annotate Experiment (MIFlowCyt) - follow-up round
+
+Classes: `WSController.openMIFlowCytDialog`, `MIFlowCytDialog` (+ panels
+Overview / Specimen / Instrument / Analysis / Figures, `MIFlowCytTTPane`),
+`MIFlowCytElement`, `MIFlowCytAction`, `MIFlowCytActionManager$MIFlowCytCommand`,
+`FigureListPanel`, `FigureSpec`, `com.treestar.flowjo.core.fcs.MIFLOW`,
+`Workspace.getElement` / `setElement`, `FJPrefs.saveMIFlowCyt` / `getMIFlowCyt`.
+
+- Open: the workspace annotation when it has children, otherwise the
+  preference default (`FJPrefs.getMIFlowCyt`).
+- Fields (element name: label). Overview, written directly under
+  `<experiment>`: id: ID, name: Experiment, project: Project, created: Date and
+  date_end: to (both default to today, `FCSTimeDateUtil.getCurrentDateString`),
+  primary_researcher: Researcher, primary_investigator: Lab, organization:
+  Organization, keywords: Keywords, purpose, conclusion,
+  quality_control_measures (Quality Control), comments. `<specimen>`:
+  description (Sample Description), source, organism, age, gender,
+  phenotype, genotype, characteristics, treatment_long (Treatment
+  Description). `<instrument>`: model, vendor (Manufacturer), location,
+  flow_cell, panel; compensation is shown (drop a sample to append its
+  matrix) and read but not written by FlowJo's `extract`. `<analysis>`:
+  protocol (default "FlowJo <version>  (FlowJo, LLC, Ashland OR)"), gating
+  (drop a sample to append its gating tree), groups (`autoFillGroups`: the
+  group names, one per line). `<figures>`: `<figure id mimetype
+  description>` with embedded Image / Table / HTML children, made from
+  graphs, layouts or tables. A `WindowPosition` element keeps the dialog
+  bounds and tab.
+- Workspace: `<experiment>` is a child of `<Workspace>`, read in
+  `Workspace.setElement` (`getChild("experiment")` -> `setMetaData`) and
+  written by `getElement` when present.
+- Commands: OK (`doOK`: store and close), Cancel, Open (`doOpen`: a MIFlowCyt
+  XML file), Save As (`doSaveAs`: "<workspace> Summary.xml"), Print
+  (`doPrint`: `MIFlowCytElement.toHTML`, one table per section), Save to
+  Preferences as Default (`saveToPrefs`: preference + workspace), Auto-fill
+  groups, NAV0-4 (tabs), Previous / Next, HELP1-3 (help page, MIFlowCyt
+  paper, FlowRepository), SHARE / PUBLISH (Fluorish / FlowRepository upload).
+- flowjo-rea (`src/core/miflowcyt.ts`, `src/ui/Experiment.tsx`, `wsp.ts`,
+  `wspWriter.ts`, `Workspace.experiment`): all fields, tabs, OK / Cancel,
+  Open / Save As XML, Print (HTML page), Save to Preferences as Default
+  (browser storage), Auto-fill groups, "Append gating tree / compensation of
+  selected sample" buttons for the two drop targets, Figures as a list of
+  name / type / description rows (own rule: no embedded images). Own rules:
+  compensation is written too; WindowPosition is not kept; Share and
+  Publish (online services) are not offered.

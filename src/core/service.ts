@@ -590,6 +590,15 @@ export class AnalysisService {
     return { values: Float32Array.from(out), count, total };
   }
 
+  // Per-event membership (0/1) of a population over all the sample's events
+  // (Compare Populations Match Ratio / F-Measure).
+  populationMask(r: AnalyzeRequest & { popId: string | null }): Uint8Array {
+    const eng = this.engine(r);
+    const mask = r.popId ? eng.masks.get(r.popId) : eng.root;
+    if (!mask) throw new AppError('GATE_INVALID', 'Population not found');
+    return Uint8Array.from(mask, (v) => (v ? 1 : 0));
+  }
+
   dimensionValues(r: AnalyzeRequest, d: Dimension): Float64Array {
     return this.engine(r).dimension(d);
   }

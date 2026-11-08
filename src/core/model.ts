@@ -205,6 +205,8 @@ export interface Workspace {
   tableSort?: { key: string; ascending: boolean }[];
   // FlowJo scripts (<Scripts>, Script Editor; src/core/fjScript.ts).
   scripts?: import('./fjScript').FJScript[];
+  // Annotate Experiment (MIFlowCyt, the workspace's <experiment> element).
+  experiment?: import('./miflowcyt').Experiment;
 }
 
 // key: a FlowJo property key ("fj.appnode.prop.name") or "kw:<keyword>".

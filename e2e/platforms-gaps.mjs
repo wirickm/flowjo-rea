@@ -126,7 +126,7 @@ check('CP K-S max difference ~2/3 on the shifted parameter, ~0 on an identical o
 check('CP K-S probability text', (await page.getByTestId('compare-ksp-FL1-A').innerText()) === 'greater than 99.9%');
 await page.getByTestId('compare-mv').getByText(/T\(X\) =/).waitFor({ timeout: 60000 });
 const mvText = await page.getByTestId('compare-mv').innerText();
-check('CP multivariate chi-squared footer: T(X) > 0 with 300 bins', /#Bins = 300/.test(mvText) && Number(/T\(X\) = ([\d.]+)/.exec(mvText)?.[1]) > 1, mvText);
+check('CP multivariate chi-squared footer: T(X) > 0 (decoded tree bins)', /#Bins = \d+/.test(mvText) && Number(/T\(X\) = ([\d.]+)/.exec(mvText)?.[1]) > 1, mvText);
 await page.getByTestId('compare-rm-scatter').click();
 check('CP Remove Scatter drops FSC/SSC rows', (await page.getByTestId('compare-row-FSC-A').count()) === 0 && (await page.getByTestId('compare-row-FL1-A').count()) === 1);
 await page.getByTestId('compare-opt-cdf').check();
@@ -138,12 +138,12 @@ await page.getByTestId('open-threeD').click();
 const cv = page.getByTestId('threed-canvas');
 await page.waitForFunction(() => Number(document.querySelector('[data-testid=threed-canvas]')?.getAttribute('data-points')) > 0, null, { timeout: 60000 });
 check('3D point cloud has events', Number(await cv.getAttribute('data-points')) > 1000, await cv.getAttribute('data-points'));
-const yaw0 = await cv.getAttribute('data-yaw');
+const yaw0 = await cv.getAttribute('data-view');
 const box = await cv.boundingBox();
 await page.mouse.move(box.x + 300, box.y + 200); await page.mouse.down(); await page.mouse.move(box.x + 400, box.y + 220); await page.mouse.up();
-check('3D drag rotates', (await cv.getAttribute('data-yaw')) !== yaw0);
+check('3D drag rotates', (await cv.getAttribute('data-view')) !== yaw0);
 await page.getByTestId('threed-reset').click();
-check('3D Reset restores the default perspective', (await cv.getAttribute('data-yaw')) === yaw0);
+check('3D Reset restores the default perspective', (await cv.getAttribute('data-view')) === yaw0);
 await page.getByTestId('threed-close').click();
 
 // --- Create Calibration Parameter (own rule)

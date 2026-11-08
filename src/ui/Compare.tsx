@@ -4,7 +4,7 @@
 // sample population and the comparator (control) populations, with an
 // overlay of their histograms.
 import { useEffect, useMemo, useState } from 'react';
-import { CHI_BINS, compareHistograms, DEFAULT_MV_BINS, isNonFluorescent, isScatter, multivariateChi, type ChiResult, type UnivariateResult } from '../core/compare';
+import { CHI_BINS, compareHistograms, DEFAULT_MV_BINS, fMeasure, isNonFluorescent, isScatter, matchRatio, multivariateChi, type ChiResult, type FMeasureResult, type UnivariateResult } from '../core/compare';
 import { populationPath, UNCOMP_SUFFIX } from '../core/model';
 import { formatStat } from '../core/statsTable';
 import { makeAxis, sampleChannels, withStains } from './axes';
@@ -20,6 +20,10 @@ const STATS: { key: StatKey; label: string }[] = [
 const DEFAULT_STATS: StatKey[] = ['sed', 'overton', 'tx', 'ksd', 'ksAt', 'ksp'];
 interface PopRef { sampleId: string; path: string }
 interface Row { channel: string; res: UnivariateResult; sample: Float32Array; controls: Float32Array[] }
+// Comparison::MatchRatio / FMeasure per comparator (spec section 4).
+interface Measure { label: string; mr: number; f: FMeasureResult | null }
+interface Result { rows: Row[]; mv: ChiResult | null; measures: Measure[] }
+const fmt = (v: number) => (Number.isFinite(v) ? formatStat(Number(v.toPrecision(5))) : '-');
 
 const statValue = (r: UnivariateResult, k: StatKey): number | string => {
   switch (k) {
@@ -63,6 +67,11 @@ export function CompareDialog(p: ToolCtx) {
   const [pick, setPick] = useState<PopRef>({ sampleId: p.ws.samples.find((s) => s.id !== s0.id)?.id ?? s0.id, path: samplePath });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [measures, setMeasures] = useState<Measure[]>([]);
+  // Set source group: the sample population is taken from a group's samples
+  // (ComparisonNode.fSourceGroupNode); the engine keeps the last one.
+  const [sourceGroup, setSourceGroup] = useState<string>('');
+  const [groupRows, setGroupRows] = useState<{ sample: string; mv: ChiResult | null; measures: Measure[] }[] | null>(null);
 
   const popIdOf = (r: PopRef) => {
     const s = p.ws.samples.find((x) => x.id === r.sampleId);
@@ -73,44 +82,82 @@ export function CompareDialog(p: ToolCtx) {
   };
   const req = (s: typeof s0) => ({ sampleId: s.id, compensation: s.compensation, populations: s.populations, matrices: p.ws.matrices, derived: p.ws.derivedParameters });
 
+  const sourceSample = () => {
+    const g = p.ws.groups.find((x) => x.id === sourceGroup);
+    if (!g) return { s: s0, popId: p.popId };
+    let found: { s: typeof s0; popId: string | null } | null = null;
+    for (const id of g.sampleIds) { const r = popIdOf({ sampleId: id, path: samplePath }); if (r && p.meta[r.s.id]) found = r; }
+    return found ?? { s: s0, popId: p.popId };
+  };
+  const compute = async (src: { s: typeof s0; popId: string | null }, withRows: boolean): Promise<Result> => {
+    const refs = controls.map(popIdOf);
+    const missing = controls.filter((_, i) => !refs[i] || !p.meta[refs[i]!.s.id]);
+    if (missing.length) throw new Error(`Comparator not available (population missing or sample not loaded): ${missing.map((m) => `${p.ws.samples.find((s) => s.id === m.sampleId)?.fileName}/${m.path || 'All'}`).join(', ')}`);
+    const out: Row[] = [];
+    const dims: { kind: 'channel'; channel: string; transform: import('../core/transforms').TransformSpec }[] = [];
+    const spans: [number, number][] = [];
+    for (const ch of params) {
+      const ax = makeAxis(channels, meta0.keywords, p.ws.channelTransforms, ch);
+      if (!ax) continue;
+      const dim = { kind: 'channel' as const, channel: ch, transform: ax.spec };
+      dims.push(dim);
+      spans.push(ax.range);
+      if (!withRows) continue;
+      const hist = async (s: typeof s0, popId: string | null) => (await p.client.plot({ ...req(s), popId, x: dim, y: null, bins: 256, xRange: ax.range, yRange: null, maxPoints: 0 })).density;
+      const sh = await hist(src.s, src.popId);
+      const chs = [] as Float32Array[];
+      for (const r of refs) chs.push(await hist(r!.s, r!.popId));
+      const merged = chs[0].map((_, i) => chs.reduce((a, c) => a + c[i], 0));
+      const [d0, d1] = ax.range;
+      out.push({ channel: ch, sample: sh, controls: chs, res: compareHistograms(sh, merged, (i) => ax.t.inverse(d0 + (i * (d1 - d0)) / 256)) });
+    }
+    // Multivariate comparison on every listed parameter (all events), each
+    // value as its position on the parameter's display range.
+    let mv: ChiResult | null = null;
+    if (dims.length) {
+      const ev = async (s: typeof s0, popId: string | null) => { const m = await p.client.eventMatrix({ ...req(s), popId, dims, maxEvents: 1e9 }); return Array.from({ length: m.count }, (_, i) => Float64Array.from(m.values.subarray(i * dims.length, (i + 1) * dims.length), (v, k) => (v - spans[k][0]) / (spans[k][1] - spans[k][0]))); };
+      const smp = await ev(src.s, src.popId);
+      const ctl: Float64Array[][] = [];
+      for (const r of refs) ctl.push(await ev(r!.s, r!.popId));
+      mv = multivariateChi(ctl, smp, dims.length, mvBins);
+    }
+    const base = await p.client.populationMask({ ...req(src.s), popId: src.popId });
+    const ms: Measure[] = [];
+    for (let i = 0; i < refs.length; i++) {
+      const cand = await p.client.populationMask({ ...req(refs[i]!.s), popId: refs[i]!.popId });
+      const a = src.popId ? base : null, b = refs[i]!.popId ? cand : null;
+      ms.push({ label: `${refs[i]!.s.fileName}/${controls[i].path || 'All events'}`, mr: matchRatio([a], [b], base.length)[0], f: fMeasure([a], [b], base.length) });
+    }
+    return { rows: out, mv, measures: ms };
+  };
+
   useEffect(() => {
-    if (!controls.length) { setRows([]); setMv(null); return; }
+    if (!controls.length) { setRows([]); setMv(null); setMeasures([]); return; }
     let live = true;
     setBusy(true);
-    (async () => {
-      const refs = controls.map(popIdOf);
-      const missing = controls.filter((_, i) => !refs[i] || !p.meta[refs[i]!.s.id]);
-      if (missing.length) throw new Error(`Comparator not available (population missing or sample not loaded): ${missing.map((m) => `${p.ws.samples.find((s) => s.id === m.sampleId)?.fileName}/${m.path || 'All'}`).join(', ')}`);
-      const out: Row[] = [];
-      const dims: { kind: 'channel'; channel: string; transform: import('../core/transforms').TransformSpec }[] = [];
-      const spans: [number, number][] = [];
-      for (const ch of params) {
-        const ax = makeAxis(channels, meta0.keywords, p.ws.channelTransforms, ch);
-        if (!ax) continue;
-        const dim = { kind: 'channel' as const, channel: ch, transform: ax.spec };
-        dims.push(dim);
-        spans.push(ax.range);
-        const hist = async (s: typeof s0, popId: string | null) => (await p.client.plot({ ...req(s), popId, x: dim, y: null, bins: 256, xRange: ax.range, yRange: null, maxPoints: 0 })).density;
-        const sh = await hist(s0, p.popId);
-        const chs = [] as Float32Array[];
-        for (const r of refs) chs.push(await hist(r!.s, r!.popId));
-        const merged = chs[0].map((_, i) => chs.reduce((a, c) => a + c[i], 0));
-        const [d0, d1] = ax.range;
-        out.push({ channel: ch, sample: sh, controls: chs, res: compareHistograms(sh, merged, (i) => ax.t.inverse(d0 + (i * (d1 - d0)) / 256)) });
-      }
-      if (live) setRows(out);
-      // Multivariate comparison on every listed parameter, each scaled to its
-      // display range.
-      if (dims.length) {
-        const ev = async (s: typeof s0, popId: string | null) => { const m = await p.client.eventMatrix({ ...req(s), popId, dims, maxEvents: 20000 }); return Array.from({ length: m.count }, (_, i) => Float64Array.from(m.values.subarray(i * dims.length, (i + 1) * dims.length), (v, k) => (v - spans[k][0]) / (spans[k][1] - spans[k][0]))); };
-        const smp = await ev(s0, p.popId);
-        const ctl: Float64Array[] = [];
-        for (const r of refs) ctl.push(...(await ev(r!.s, r!.popId)));
-        if (live) setMv(multivariateChi(ctl, smp, dims.length, mvBins));
-      }
-    })().then(() => live && setError(null), (e) => live && setError((e as Error).message)).finally(() => live && setBusy(false));
+    compute(sourceSample(), true).then((r) => { if (live) { setRows(r.rows); setMv(r.mv); setMeasures(r.measures); setError(null); } }, (e) => live && setError((e as Error).message)).finally(() => live && setBusy(false));
     return () => { live = false; };
-  }, [controls, params, mvBins]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [controls, params, mvBins, sourceGroup]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Add To Group (ComparisonController.addToGroup copies the comparison node
+  // to every sample of the current group): own rule, the comparison is run
+  // for each loaded member at this population path and listed per sample.
+  const addToGroup = async () => {
+    const g = p.ws.groups.find((x) => x.id === p.groupId);
+    if (!g || !controls.length) return;
+    setBusy(true);
+    try {
+      const out: { sample: string; mv: ChiResult | null; measures: Measure[] }[] = [];
+      for (const id of g.sampleIds) {
+        const r = popIdOf({ sampleId: id, path: samplePath });
+        if (!r || !p.meta[r.s.id]) continue;
+        const res = await compute(r, false);
+        out.push({ sample: r.s.fileName, mv: res.mv, measures: res.measures });
+      }
+      setGroupRows(out);
+      setError(null);
+    } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  };
 
   const pickSample = p.ws.samples.find((s) => s.id === pick.sampleId);
   const paths = pickSample ? ['', ...pickSample.populations.map((q) => populationPath(pickSample.populations, q.id))] : [''];
@@ -128,6 +175,9 @@ export function CompareDialog(p: ToolCtx) {
             <button data-testid="compare-add-control" title="One or more populations used as the basis of the statistical comparisons" onClick={() => setControls((c) => (c.some((x) => x.sampleId === pick.sampleId && x.path === pick.path) ? c : [...c, pick]))}>Add Comparator</button>
             <select value="" onChange={(e) => { const g = p.ws.groups.find((x) => x.id === e.target.value); if (g) setControls(g.sampleIds.filter((id) => id !== s0.id).map((id) => ({ sampleId: id, path: samplePath }))); }} data-testid="compare-control-group" title="Use all of the samples in a group to determine the control values"><option value="">Set control group...</option>{p.ws.groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</select>
             <button data-testid="compare-reset-controls" onClick={() => setControls([])} title="Clear the list of populations used in calculating the control values">Reset control populations</button>
+            <select value="" onChange={(e) => { const g = p.ws.groups.find((x) => x.id === e.target.value); if (g) { setSourceGroup(g.id); setControls(g.sampleIds.map((id) => ({ sampleId: id, path: samplePath }))); } }} data-testid="compare-source-group" title="Use a group's population as the sample and its samples as the controls"><option value="">Set source group...</option>{p.ws.groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</select>
+            <button data-testid="compare-clear-source" disabled={!sourceGroup} onClick={() => setSourceGroup('')} title="Revert the current group">Clear source group</button>
+            <button data-testid="compare-add-to-group" disabled={!controls.length} onClick={() => void addToGroup()} title="Copy this comparison to all of the samples in the current group">Add To Group</button>
           </div>
           <div className="muted" data-testid="compare-controls">{controls.length ? controls.map((c) => `${p.ws.samples.find((s) => s.id === c.sampleId)?.fileName}/${c.path || 'All events'}`).join('; ') : 'Add a comparator population to compare.'}</div>
           <div className="row" style={{ flexWrap: 'wrap' }}>
@@ -154,6 +204,15 @@ export function CompareDialog(p: ToolCtx) {
               {opt.graph && <td><Graph sample={r.sample} controls={r.controls} merge={opt.merge} cdf={opt.cdf} diff={opt.diff} tintS={opt.tintS} tintC={opt.tintC} testId={`compare-graph-${r.channel}`} /></td>}
             </tr>)}</tbody>
           </table>
+          {sourceGroup && <p className="muted" data-testid="compare-source">Sample population from source group {p.ws.groups.find((g) => g.id === sourceGroup)?.name}: {sourceSample().s.fileName}/{samplePath || 'All events'}</p>}
+          {measures.length > 0 && <table className="grid" data-testid="compare-measures">
+            <thead><tr><th>Comparator</th><th>Match Ratio</th><th>FMeasure</th><th>Precision</th><th>Recall</th><th>Total FMeasure</th></tr></thead>
+            <tbody>{measures.map((m, i) => <tr key={i}><td>{m.label}</td><td data-testid={`compare-mr-${i}`}>{fmt(m.mr)}</td><td data-testid={`compare-f-${i}`}>{fmt(m.f?.value ?? NaN)}</td><td data-testid={`compare-prec-${i}`}>{fmt(m.f?.precision ?? NaN)}</td><td data-testid={`compare-rec-${i}`}>{fmt(m.f?.recall ?? NaN)}</td><td>{fmt(m.f?.total ?? NaN)}</td></tr>)}</tbody>
+          </table>}
+          {groupRows && <table className="grid" data-testid="compare-group-table">
+            <thead><tr><th>Sample</th><th>Multivariate T(X)</th><th>Multivariate Max T</th><th>Multivariate Num Bins</th>{measures.map((m, i) => <th key={i}>Match Ratio / FMeasure vs {m.label}</th>)}</tr></thead>
+            <tbody>{groupRows.map((g) => <tr key={g.sample}><td>{g.sample}</td><td>{g.mv ? fmt(g.mv.tx) : '-'}</td><td>{g.mv ? fmt(g.mv.maxT) : '-'}</td><td>{g.mv?.bins ?? '-'}</td>{g.measures.map((m, i) => <td key={i}>{fmt(m.mr)} / {fmt(m.f?.value ?? NaN)}</td>)}</tr>)}</tbody>
+          </table>}
           {/* ComparisonFooter */}
           <div className="row" data-testid="compare-footer">
             <span data-testid="compare-mv">Chi-squared Test: {mv ? <>T(X) = {mv.tx.toFixed(2)} (Max T Value = {mv.maxT.toFixed(2)}, #Bins = {mv.bins})</> : '-'}</span>

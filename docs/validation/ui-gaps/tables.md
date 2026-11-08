@@ -250,8 +250,19 @@ the editor (`table-window`) with live values. **Done** (e2e "Create Table
   Series plot").
 
 ### TECommand.PLOTPOINTCLOUD "3D Plot"
-- `ThreeDController` (Java 3D) on three columns. **Deferred**: no 3D
-  renderer in the app.
+- `TEPlotAction.plot`: refused with "Can't plot variables that are all the
+  same value." when a selected column's standard deviation is in [0, 1e-4);
+  otherwise `ThreeDDataModel(TableData)` makes one axis per selected column
+  (min / max; an empty cell fails with "Plot error: The data in column '%s'
+  can not be plotted.  Try batching the table first to check for empty
+  cells."; a frequency column spans 0..100; else a range under 0.001 becomes
+  [min, min + 1] and the range is widened 10% each side), then a
+  `ThreeDController` with point scale 0.8 and the colour axis on the third
+  column with the Spectrum gradient.
+- flowjo-rea: "3D Plot" in Plots (selected columns, at least three; X, Y, Z =
+  the first three) opens the 3D Viewer (platforms.md section 5). **Done**
+  (unit `table axes: widening, tiny range, frequency, empty cells`; e2e
+  "Table 3D Plot ..." in `e2e/followup-3d.mjs`).
 
 ## 5. Print, header / footer, figures
 

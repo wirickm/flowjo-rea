@@ -1,6 +1,7 @@
 // FlowJo-style .wsp writer. Mirrors the structure observed in FlowJo-saved
 // workspaces (see wsp.ts). NOT validated by opening in FlowJo: only
 // round-trip tested through this project's reader.
+import { experimentXml } from './miflowcyt';
 import { writeFigList } from './wspLayout';
 import { currentLayout } from './layoutFigures';
 import { invert } from './compensation';
@@ -313,7 +314,8 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
 ${columnsXml(ws)}<Groups>${groups}</Groups>
 <SampleList>${sampleXml.join('\n')}</SampleList>
 ${layoutXml()}
-${scriptsXml(ws.scripts)}</Workspace>
+${scriptsXml(ws.scripts)}${ws.experiment ? experimentXml(ws.experiment) : ''}
+</Workspace>
 `;
   return { xml, warnings };
 }

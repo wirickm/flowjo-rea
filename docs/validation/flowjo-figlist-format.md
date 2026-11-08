@@ -82,8 +82,12 @@ value directly with `atan2/cos`. **[H]**
 | `FigList`, `Group` | `FigGroup` | `FigList` | a group is a nested `FigList` element [H] |
 | `GridLayout`, `table2` | `FigGridLayout` | `GridLayout` | [H] |
 | `HeatMapGridLayout` | `FigHeatMapGridLayout` | yes | not decoded |
-| `StatTable` | `FigStatTable` | yes | section 4.3 |
-| `DifferenceTable`, `PlateDisplay`, `TETable`, `FigWebBrowser`, `FigMultigraphColorTable` | various | yes | not decoded |
+| `StatTable` | `FigStatTable` | yes | section 9.1 |
+| `DifferenceTable` | `FigDifferenceTable` | yes | section 9.2 |
+| `TETable` | `FigTableDisplay` | yes | section 9.3 |
+| `PlateDisplay` | `FigPlateDisplay` | yes | section 9.4 |
+| `FigWebBrowser` | `FigWebBrowser` | yes | FigRect bounds plus url, zoom, offsetX, offsetY (ui-gaps/layout.md 7.4) |
+| `FigMultigraphColorTable` | `FigMultigraphColorTable` | yes | not decoded |
 | `Image` | `FigImage` | yes | section 4.2 |
 | `Rectangle`, `RoundRect`, `Oval`, `Ellipse`, `Diamond`, `Triangle`, `Line` | shapes | yes | common attributes only (not decoded further) |
 | `Polygon` | `FigPoly` | written | **not in `makeFig`**, so 10.6.2 cannot read back a saved polygon shape [H] |
@@ -343,7 +347,7 @@ escape the HTML once, then let a normal XML writer escape it again. [M-H]
   `<StatTableModel showHeader= enableContentIteration=>` child. The child holds
   `<Populations>`, `<Columns>` and `<TextTraits name="Content" .../>`.
   `<Columns>` holds `Statistic`, `Graph`, `Key` (keyword) and `Anno`
-  (annotation) entries. [M; columns not decoded further]
+  (annotation) entries. Decoded in section 9.1.
   (`FigStatTable.getElement(boolean)`, `StatTableModel.getElement/getColumnDefsElement/setColumnDefsElement`)
 
 ### 4.4 `SimpleFJML` (`FigLightweightText`)
@@ -506,11 +510,9 @@ Confidence for this snippet:
    An importer can still honor the locks.
 3. The default values FlowJo puts on new figures (line weight, fill, chart
    size) were not traced through the preference defaults.
-4. The full `Legend`/`StatTable` column-definition schema (`Statistic` in
-   tables uses `TableStatistic`/`Statistic.getElement(boolean)`) and the
-   `Populations` element were not decoded.
-5. `HeatMapGridLayout`, `PlateDisplay`, `DifferenceTable`, `TETable`,
-   `FigWebBrowser` and the shape subclasses (`Line` endpoints and arrowheads,
+4. The `StatTable` column and row schema is decoded in section 9.1; the
+   `Legend` columns use the same column elements (not checked further).
+5. `HeatMapGridLayout`, `FigMultigraphColorTable` and the shape subclasses (`Line` endpoints and arrowheads,
    `RoundRect` radius, `Polygon` points) were not decoded.
 6. The reader for `flipH`/`flipV` was not located.
 7. Cell padding in grids is not persisted (as far as these classes show), and
@@ -519,3 +521,124 @@ Confidence for this snippet:
    OFF were not traced.
 9. Exact Swing HTML text, and how fonts and colors appear in it, depend on the
    JDK (FlowJo 10.6.2 bundles its own JRE).
+
+---
+
+## 9. Object figures: `StatTable`, `DifferenceTable`, `TETable`, `PlateDisplay`
+
+All four extend `FigBaseGrid`, so each starts with the common Fig attributes
+(section 2) and the grid attributes of `FigBaseGrid.getElement`: `rows`,
+`columns`, `drawGrid`, `autoFitContents`, `<RowSizes>`, `<ColSizes>`, then
+the element returned by `getContentElement`. For `StatTable`,
+`DifferenceTable` and `PlateDisplay` that content element is null (nothing
+is written); the grid dimensions are recomputed from the model on read. [H]
+
+### 9.1 `StatTable` (`FigStatTable.getElement(boolean)`, `createModel`; `StatTableModel.getElement / setElement / getNodesElement / setNodesElement / getColumnDefsElement / setColumnDefsElement`)
+
+After the grid attributes comes one `<StatTableModel>` child: [H]
+
+| Attr / child | Meaning |
+|---|---|
+| `showHeader` | bool; read with default 1 [H] |
+| `enableContentIteration` | bool; read with default 0. Separate from the common Fig attribute of the same name [H] |
+| `<Populations>` | the rows: one `<NodeReference>` each, in row order [H] |
+| `<Columns>` | the columns in order; when the element is missing the reader uses the default columns (Subset Name with Gating Path, Count) [H] |
+| `<TextTraits name="Content" .../>` | the cell font (`TextTraits.getAsElement`: `font`, `size`, `name`, `style` plain / bold / italic / bold-italic, `color`, `background`, `just` left / center / right; defaults SansSerif 11 plain) [H] |
+
+`<NodeReference>` (`NodeReference.getElement`, `PopModelNodeReference.getElement`, `NodeReference.<init>(Workspace, SElement)`): [H]
+- `rootID`: the FlowJo `sampleID` of the row's sample (for a group node, the
+  group name with `isGroup="1"`). On read, an empty `rootID` falls back to
+  `sampleID`, then `groupName`.
+- `path`: the node's analysis path (`AppNode.getAnalysisPathString`, the
+  node names below the sample joined by `/`, as `DataLayer@path`); empty for
+  the sample itself.
+- `control="1"` (written by `StatTableModel.getNodesElement` for control rows;
+  `setNodesElement` puts such rows in the control list).
+- `discriminatorValue`, `panelValue` (only when set) and an
+  `<OriginalNodeReference>` child: iteration state of `PopModelNodeReference`.
+
+Column elements (`setColumnDefsElement` dispatches on the element name): [H]
+- `<Anno name="fj.anno.*"/>`: annotation (`Annotation`, an
+  `AttributeValuePair`: `name`, optional `value`). Keys `fj.anno.popname`,
+  `.indentedpopname`, `.popnamewithpath`, `.samplename`, `.wsanno`,
+  `.compmatname`, `.fullpath`.
+- `<Key name="<keyword>"/>`: an FCS keyword (`Keyword`, also an
+  `AttributeValuePair`).
+- `<Statistic .../>` (`Statistic.addToElement(SElement, false)`, read as
+  `TableStatistic`): `name` = the StatKey string (as Statistic nodes in the
+  sample tree: `Count`, `Median`, `fj.stat.freqofparent`, ...), `id` =
+  parameter name cut at `::` (`StringUtil.truncateToColons`), `percent` for
+  percentile statistics, `ancestor`, `correlate` (second parameter),
+  `expectedRange` (the name of a preference range); no `value` (the boolean
+  is false). `TableStatistic` adds `subPopulation` (a statistic of a
+  sub-population relative to the row) when not empty.
+- `<Graph .../>`: a `GraphSpec` chart column.
+
+### 9.2 `DifferenceTable` (`FigDifferenceTable.createModel`, `DifferenceTableModel.getElementName / getElement / setElement`)
+
+As 9.1, but the model element is named `<Model>` (`DifferenceTableModel`
+overrides the element name and `FigDifferenceTable.createModel` reads the
+`Model` child). After the TextTraits it holds `<Control sampleID="..."/>`
+when a control sample is set; on read the sample is found by that ID. [H]
+
+### 9.3 `TETable` (`FigTableDisplay` extends `FigGridLayout`; `install(TableData)`)
+
+Written by `FigGridLayout`, so the content is a GridLayout `<Content>` with
+one `<Cell row col>` per figure and an (empty) `<Labels>` (section 5.2); the
+reader is the GridLayout reader. `install` builds the cells: [H]
+- `rows` = table rows + 1, `columns` = table columns.
+- Row 0: a `StyledText` per column made with `makeFigFjmlText` from the
+  column header (`ColumnSpec.nodeToHeader`, or the formula text of an
+  unnamed formula column); column 0's header is empty. Font: the
+  `tables` text style size and family, no background.
+- Rows 1..n: a `SimpleFJML` (`FigLightweightText`, section 4.4) per cell with
+  the cell text as `<Content>` (escaped twice like StyledText), padding
+  `1,4,1,4`, the table font, and the format's `FontOptions`
+  (`TableData.getFontOptions`): the background becomes the figure's `fill`
+  (white becomes no fill), the foreground colour and bold / italic go to the
+  `<TextTraits>` (`color`, `style`). `FontOptions` has no arrow, so the table
+  editor's expected-range arrows are not part of the figure. [H]
+- Cell padding of the grid is 0 (`FigTableDisplay.init`; not saved). [M]
+
+### 9.4 `PlateDisplay` (`FigPlateDisplay.getElement`; `PlateDisplayModel.getElement / setElement`; `PlateDisplayStatistic.getElement / setElement`; `HeatmapRange.getElement / <init>(SElement)`)
+
+After the grid attributes, one `<PlateDisplayModel>`: [H]
+- `groupName`: the sample group shown.
+- `displayMode`: `DisplayMode.toFCML`, the dictionary keys
+  `le.plate.display.mode.heatmap` / `le.plate.display.mode.chernoffface`
+  (a null mode is written as heatmap). Read with `FJMLUtil.find`, which
+  compares `toFCML` ignoring case.
+- `<Statistics>`: one `<PlateStatisticReference>` per statistic:
+  - `path`: the statistic node's full path (`StringUtil.pathToString` of
+    `AppNode.getPath`: the names of the population nodes and then the
+    statistic node, joined by `/`). The statistic node's name is
+    `Statistic.getDescription(sample)`: the statistic label (StatKey text,
+    for example `Freq. of Parent`, `Median`; Freq. of adds the ancestor),
+    ` (<percentile as a Java double>)` for percentiles, ` : ` and the
+    parameter's stain or name when the statistic has a parameter, and
+    ` / <second parameter>` for correlations. [H for the structure, M for the
+    exact name text]
+  - `displayTarget` (only when set): `DisplayTarget.toFCML`, keys
+    `le.plate.display.comp.heatmap1`, `.heatmap2`, `.face.pupilsize`,
+    `.face.eyespacing`, `.face.headshape`, `.face.eyesize`,
+    `.face.eyeshape`, `.face.eyebrows`, `.face.nose`, `.face.mouthsize`,
+    `.face.grin` (CHERNOFF_MOUTH_HEIGHT), `.face.mouth`.
+  - child `<HeatmapRange method= range=/>`: `method` =
+    `fj.heatmap.method.auto` or `fj.heatmap.method.expectedrange`, `range`
+    = the preference range name (only when not empty).
+- Show Sample Name is **not** saved (`fShowSampleName` starts false and is
+  not in `getElement`). [H]
+
+### 9.5 flowjo-rea import and export
+
+`src/core/wspLayout.ts` reads and writes all four (tests
+`tests/wsp-objects.test.ts`). Own rules: an expected range is written as the
+range name `"<min> - <max>"` and such a name is read back as numbers (other
+names are FlowJo preference ranges: reported, not applied); the table
+editor table's name and the plate's Show Sample Name are kept in extra
+attributes (`TETable@name`, `PlateDisplayModel@showSampleName`) that FlowJo
+does not read; plate statistics are statistics columns of the workspace,
+matched by the node path or added; group rows, Graph columns and
+sub-population statistics are reported and skipped on import. The written
+`TextTraits` use the default SansSerif 11 font [L for FlowJo's own table
+font].

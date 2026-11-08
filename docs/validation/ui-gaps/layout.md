@@ -27,9 +27,9 @@ why), **Not a gap** (FlowJo 10.6.2 does nothing), **Deferred** (why). Test names
 
 | Status | Count |
 |---|---|
-| Done | 79 |
-| Own rule | 14 |
-| Not a gap (no-op in FlowJo 10.6.2) | 3 |
+| Done | 80 |
+| Own rule | 11 |
+| Not a gap (no-op in FlowJo 10.6.2) | 5 |
 | Deferred | 0 |
 
 (96 gap rows; several Done rows also carry an own-rule note, given in their section.)
@@ -208,7 +208,11 @@ and selects the chart's population").
   `le.chart.backgate.horizontal/vertical`, `FigChartRow`; .wsp
   `Ancestry@horizontal`): the ancestry charts in a row to the right or a
   column below. **Done** (e: "Vertical ancestry puts the ancestry charts
-  below").
+  below"). .wsp: `FigChartRow.extract / setElementSelf` write and read
+  `horizontal` (default on), `backgatingLargeDots` and `backgatingContours`;
+  all three are now written from the chart and read back (unit
+  tests/wsp-objects.test.ts "a vertical ancestry ... is written as
+  horizontal="0" and read back"; before, horizontal="1" was always written).
 - ChartCommand.BACKGATELARGE "Show Large Dots", BACKGATECONTOURS "Show
   Contours": the backgated population drawn as large dots, or as contours.
   **Done** (controls; contour drawing reuses the contour plot).
@@ -222,7 +226,9 @@ and selects the chart's population").
   every layer moves to the iteration's sample except a control layer, which
   keeps its original node. So a control layer is a fixed reference (for
   example an unstained sample) overlaid on every iterated chart; it does not
-  change scaling. .wsp: `DataLayer/LegendSpec@control`. **Done**: the
+  change scaling. .wsp: `DataLayer/LegendSpec@control` (written per overlay
+  from `LayoutPlot.controls` and read back; unit "Set As Control is written as
+  LegendSpec control="1" ..."). **Done**: the
   Legend dialog lists the overlaid layers with a "Set As Control" check
   box (`LayoutPlot.controls`); a control layer is drawn from the chart's own
   sample while the others follow the iteration (`renderLayout`). Test: e2e
@@ -282,6 +288,16 @@ Status: **Done** for All by Y, half N x N and the cell types (e: "All by Y is
 one row of charts; half N x N is N rows", "multigraph 2-D cells can be dot or
 contour plots"). **Own rule** for Slinky: a static stack of the histograms,
 each normalised to its mode, with an offset (no hover expansion).
+
+.wsp: `FigChartGrid.extract` writes `Multigraph@type` as the `GridType` enum
+name (`NONE`, `SLINKY`, `HISTOS`, `ALLBY`, `HALFNXN`, `NXN`) and
+`displayType` as the `DisplayType` text; `setElement` reads the type with
+`GridType.fromFCML` (the name ignoring case, the command key `le.chart.*`,
+or the legacy labels "Show All Histograms", "Show All By...", "Show
+NxN..."). All five variants and the N x N cell type are now written and read
+(before: All by Y, Half N x N and Slinky were written as NONE and Histograms
+as HISTOGRAMS, which FlowJo reads as NONE). Unit tests/wsp-objects.test.ts
+"multigraph types use FigChartGrid$GridType names ...".
 
 ## 4. Several layouts
 
@@ -428,11 +444,44 @@ default); kept for the workspace (FlowJo: preferences).
 Proof: `LEPrintAction.doPrint`, `Batch$BatchDestination` (Layout, Printer,
 Web, Web movie, PowerPoint, PDF).
 
-Status: **Own rule**: Print is the PDF export (open it and print from the
-browser's PDF viewer; a browser has no page-setup print path for this
-canvas). Output targets are PDF, PNG and SVG files. **Deferred**: the
-Layout (batch into a new layout), Web, Web movie and PowerPoint targets
-(no writers for those formats in this app).
+Destinations (`Batch.output`, `Batch.doInBackground`):
+- Layout (`isLayout`): a new layout named after the batch
+  (`LEditor.uniqueTemplateName`), marked as a batch, with the template's print
+  layout, the tile list as its figures, iteration off and the template's
+  iteration group, added to the layout list and made current; its view zoom
+  is half the template's.
+- Web (`outputWeb`, `WebPageCreator`): an HTML index file whose title and
+  `<h2>` are the batch name, a rule, then one image per tile, each saved in a
+  `FlowJo_Web_files` folder as "<index>.<sample name>" with `/`, `\` and `:`
+  replaced by `_` (graphics format from the preferences), then a footer table
+  "This page was created by FlowJo, version <v>" with the date
+  (EEE, MMM dd, yyyy, hh:mm:ss a).
+- Web movie (`outputWebMovie`, `HtmlMovieCreator(FigList)`): the tiles as the
+  frames of an HTML movie (the same creator as Wiggle, 500 ms per frame).
+- PowerPoint (`outputPowerpoint`, `PowerPointCreator`): a notice about
+  feature limitations, then a .pptx copied from a template with one slide per
+  tile (blank layout `slideLayout7`), the tile saved as WMF and placed at
+  (0, 0) with size w x s, h x s EMU, s = (int) min(9000000 / w, 6750000 / h);
+  Append Output adds the slides to an existing file.
+- PDF (`PdfCreator`), Printer (`outputPrinter`).
+
+Status: **Done**: the Output Target select offers Layout, Web, Web movie,
+PowerPoint, PDF, PNG and SVG (src/core/layoutBatch.ts). Layout makes the new
+current layout from the tiles (graphs keep their tile's sample, iteration
+off; unit tests/wsp-objects.test.ts "Layout: a new current layout named after
+the batch ..."); Web downloads one HTML page (unit "Web: title, h2, one image
+per tile ..."); Web movie downloads the HTML movie of the tiles
+(`wiggleHtml`, 500 ms); PowerPoint downloads a .pptx (unit "PowerPoint: one
+slide per tile ..."; the package was also checked with python-pptx and a
+LibreOffice PDF conversion). **Own rules**: Print and Printer are the PDF
+export (open it and print from the browser's PDF viewer; a browser has no
+page-setup print path for this canvas); PNG and SVG are extra file targets;
+Web is one HTML file with the images inline instead of an index file and an
+image folder, and its footer names this app (no remote FlowJo logo); the
+PowerPoint package is written by the app itself (no template) with PNG
+pictures (a browser has no WMF writer) and is not appended to (a download
+cannot change an existing file); the layout target's view zoom is not
+halved (the app's zoom is not saved per layout).
 
 ### 6.6 OUTPUTFILENAME, OUTPUT_APPEND, GEOM_SEPARATE_PAGES, GEOM_ACROSS, GEOM_DOWN, GEOM_ROWS
 
@@ -522,8 +571,10 @@ URLs". STAT_TABLE_HELP: **Not a gap: no-op in FlowJo 10.6.2**.
 
 ### 6.9 ALIGN_H_SPREAD, ALIGN_V_SPREAD "Spread"
 
-**Own rule** (unchanged): not offered; the command does nothing in FlowJo
-10.6.2 (specs 21.2 A10).
+Proof: `FJAlignAction` passes both commands to `AlignableLayerDiagram.align`,
+whose switch (`AlignableLayerDiagram$2`) has no case for either SPREAD value,
+so nothing moves (specs 21.2 A10). **Not a gap: no-op in FlowJo 10.6.2**; the
+app does not offer them.
 
 ## 7. Object figures
 
@@ -575,9 +626,14 @@ first line of the workspace notes. SET_EXPECTED_RANGE (in `FJMLEditorDialog`,
 the range of a statistic field in text) is served by the same column range
 (own rule: text figures have no statistic fields). PARAMETER: the enum
 constant is used by no 10.6.2 class: **Not a gap: no-op in FlowJo 10.6.2**.
-.wsp: `StatTable` is not read or written (**Deferred**: FlowJo's
-NodeReference / statistic XML for table rows was not decoded; the figure is
-kept in the app's workspace file).
+.wsp: **Done**: `StatTable` is read and written as decoded in
+flowjo-figlist-format.md section 9.1 (grid attributes plus `StatTableModel`
+with `NodeReference` rows and `Anno` / `Key` / `Statistic` columns); unit
+tests/wsp-objects.test.ts "StatTable: NodeReference rows ...", "StatTable
+round trip". Own rules: expected ranges are written as the range name
+"min - max" (FlowJo names a preference range; other names are reported and
+not applied); Graph columns and sub-population statistics are reported and
+skipped on import.
 
 ### 7.2 Difference table: DIFF_TABLE_CONTROL_SAMPLE "Select a control sample"; table-editor tables
 
@@ -603,8 +659,14 @@ sample>", "Difference Table: row minus control ...".
 Table-editor tables (`FigTableDisplay`, element `TETable`; from
 FJTableCommand.ADD_TO_LAYOUT and TECommand.BATCHLAYOUT): **Done** as a
 static table figure (header, rows, format colours; "not live"), see
-tables.md. .wsp: `DifferenceTable` and `TETable` are not written
-(**Deferred**, as `StatTable`).
+tables.md. .wsp: **Done**: `DifferenceTable` (the `Model` element with
+`Control@sampleID`) and `TETable` (GridLayout content: header `StyledText`
+row, `SimpleFJML` cells with fill, text colour and style) are read and
+written (flowjo-figlist-format.md 9.2 and 9.3; unit "DifferenceTable round
+trip", "TETable round trip", "TETable: header StyledText row ..."). Own
+rules: the table-editor arrows are not in FlowJo's format (`FontOptions` has
+none) and are dropped in .wsp; the table name is kept in an extra `name`
+attribute that FlowJo ignores.
 
 ### 7.3 Plate display: CHOOSE_PLATE_STAT, CHOOSE_HEATMAP_RANGE, CHOOSE_PLATESTAT_DISPLAY_TARGET, CHOOSE_PLATE_GROUP, CHOOSE_PLATE_DISPLAY_MODE, REFRESH_PLATE, PLATE_SHOW_SAMPLE, REMOVE_UNUSED_PLATE_STATS, REMOVE_PLATE_STAT
 
@@ -645,7 +707,9 @@ statistic (a statistics column of the workspace stands for a statistic
 node), Display As, Auto / Expected Range, Delete, Remove Unused, Refresh;
 heat map, upper half, Chernoff faces (FacePainter geometry: head radius 30,
 eyes at 40 / 60 radius 5, pupils, eyebrows, nose, parabolic mouth), legend
-bar and annotation. f: the plate tests (wells, applyStatistics for both
+bar and annotation. A statistic added to a plate without a group takes the
+workspace's selected group (`currentGroup` from the workspace window; before,
+the first group). f: the plate tests (wells, applyStatistics for both
 modes, targets and Remove Unused, AUTO range with the MIN_VALUE start, well
 colours, annotation lines, Chernoff geometry); fe: "an empty plate asks for
 statistics", "dropping a statistic takes the current group and lays wells
@@ -660,8 +724,17 @@ use the box's y origin (FacePainter adds the x origin to the first point's
 y, which would misplace them on a plate). CHOOSE_PLATE_STAT: used by no
 10.6.2 class: **Not a gap: no-op in FlowJo 10.6.2**. Uncertain: the legend's
 axis labels for the second statistic (lower half) are not drawn. .wsp:
-`PlateDisplay` is not read or written (**Deferred**: statistic node paths of
-FlowJo were not mapped to statistics columns).
+**Done**: `PlateDisplay` is read and written (flowjo-figlist-format.md 9.4:
+`PlateDisplayModel` groupName, displayMode, `PlateStatisticReference` path,
+displayTarget, `HeatmapRange` method / range); a statistic node path
+"<population>/<statistic node name>" is matched to a statistics column of the
+workspace, or a new column is added (unit "PlateDisplay: group, display
+mode, statistics matched or added by node path ...", "PlateDisplay round
+trip"). Own rules: Show Sample Name is not saved by FlowJo
+(`PlateDisplayModel.getElement`) and is kept in an extra `showSampleName`
+attribute; expected ranges as for tables. Uncertain: FlowJo names a
+statistic node by its parameter's stain when it has one; such names resolve
+only when the stain is also a parameter name.
 
 ### 7.4 Web page: WEB_RESET_ZOOM, WEB_RESET_POSITION, WEB_NAVIGATE_DIALOG, WEB_REFRESH_IMAGE, WEB_RELOAD_PAGE
 
@@ -691,7 +764,7 @@ placeholder".
 |---|---|
 | EDITHEADER | Done (own: text model) |
 | PRINT | Own rule (PDF) |
-| BATCHSELECTDESTINATION | Own rule (PDF/PNG/SVG); other targets Deferred |
+| BATCHSELECTDESTINATION | Done (Layout, Web, Web movie, PowerPoint, PDF; own: Printer = PDF, single-file web page, PNG pptx) |
 | FIGPROPERTIES, COLORFILL, COLORLINE, COLORGRAD, LINEWEIGHT, LINESTROKE, GRADIENTTYPE | Done |
 | ARROWHEAD_FORWARD / BACKWARD / DOUBLE / NONE | Done |
 | INSERTPICTURE | Done |
@@ -702,7 +775,7 @@ placeholder".
 | ZOOMIN, ZOOMOUT, ZOOMFIT, ZOOMMENU | Done |
 | TEMPLATEADD, TEMPLATEDUPLICATE, TEMPLATEDELETE | Done |
 | FIGPRESETAPPLY, FIGPRESETCREATE, FIGPRESETREMOVE | Done (own scope) |
-| ALIGN_H_SPREAD, ALIGN_V_SPREAD | Own rule (no-op in FlowJo) |
+| ALIGN_H_SPREAD, ALIGN_V_SPREAD | Not a gap (no-op in 10.6.2) |
 | SPECIALCHAR | Done |
 | OVERLAY | Done (own: layout preference) |
 | SHOWHORIZONTAL | Done |

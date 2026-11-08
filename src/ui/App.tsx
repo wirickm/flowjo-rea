@@ -2579,6 +2579,7 @@ export function App() {
           ws={ws}
           meta={meta}
           samples={groupSamples}
+          currentGroup={group?.name}
           client={client}
           onChange={(items) => updateWs((w) => { w.layout = items; })}
           onSettings={(patch) => updateWs((w) => { Object.assign(w, patch); })}

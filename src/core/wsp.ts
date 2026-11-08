@@ -590,7 +590,8 @@ export function parseWsp(xml: string): WspImport {
       // Figures (specs 25.4): charts, text, shapes, images, groups, grids.
       const fl = kids(lay, 'FigList')[0];
       if (fl && kids(fl).length) {
-        const r = parseFigList(fl, (sid) => sampleIdMap.get(sid), (sid, name) => (resolvers.get(sid) ?? ((n: string) => n))(name));
+        // A figure without a sample (plate statistics) resolves parameters with the first sample's names.
+        const r = parseFigList(fl, (sid) => sampleIdMap.get(sid), (sid, name) => (resolvers.get(sid) ?? resolvers.values().next().value ?? ((n: string) => n))(name), { statColumns: ws.statColumns });
         out.layout = r.items;
         if (r.grids.length) out.layoutGrids = r.grids;
         warnings.push(...r.warnings.map((w) => `Layout editor${layouts.length > 1 ? ` (${out.name})` : ''}: ${w}`));

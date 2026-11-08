@@ -28,6 +28,8 @@ import { drawableGates } from './gateGeometry';
 import { PLOT, pw as PLOT_PW, renderPlot, type RenderOptions } from './renderPlot';
 import { asCanvas, SvgContext } from './svgContext';
 import { canvasesToPdf } from './pdf';
+import { batchLayoutPatch, pptxFromImages, webImageName, webPageHtml, type BatchTarget } from '../core/layoutBatch';
+import { wiggleHtml } from '../core/threeD';
 import { usablePage as usablePageOf } from '../core/layoutArrange';
 import type { createAnalysisClient } from './workerClient';
 
@@ -423,6 +425,7 @@ export function LayoutView(p: {
   ws: Workspace;
   meta: Record<string, SampleMeta>;
   samples: SampleState[];
+  currentGroup?: string; // the workspace's selected group (a dropped plate statistic takes it)
   client: Client;
   onChange: (items: LayoutItem[]) => void;
   onSettings: (patch: Partial<Workspace>) => void;
@@ -454,7 +457,7 @@ export function LayoutView(p: {
   const [guideDrag, setGuideDrag] = useState<{ axis: 'v' | 'h'; i: number; at: number } | null>(null);
   const [rendered, setRendered] = useState<Rendered[]>([]);
   const [busy, setBusy] = useState(false);
-  const [batchFormat, setBatchFormat] = useState<'png' | 'svg' | 'pdf'>('pdf');
+  const [batchFormat, setBatchFormat] = useState<BatchTarget>('pdf');
   const [tileCols, setTileCols] = useState(0);
   const [tileOrder, setTileOrder] = useState<'across' | 'down'>('across');
   const [tileFixed, setTileFixed] = useState<'cols' | 'rows'>('cols');
@@ -831,8 +834,39 @@ export function LayoutView(p: {
               onClick={async () => {
                 setBusy(true);
                 try {
-                  if (tileCols <= 0) {
-                    for (const v of values) await exportAs(batchFormat, `${baseName}_${safe(valueLabel(v))}`, await renderLayout(p.client, p.ws, p.meta, items, bindFor(v), extrasFor(v)), items, true);
+                  if (batchFormat === 'web' || batchFormat === 'webmovie' || batchFormat === 'pptx') {
+                    // One image per iteration value (a tile: the figures' extent), as WebPageCreator,
+                    // HtmlMovieCreator and PowerPointCreator take the tile list.
+                    const tiles: { name: string; canvas: HTMLCanvasElement; w: number; h: number }[] = [];
+                    for (const [k, v] of values.entries()) {
+                      const r = await renderLayout(p.client, p.ws, p.meta, items, bindFor(v), extrasFor(v));
+                      const u = unionBox(items.map(boxOf));
+                      const shifted = items.map((it, i) => { const b = boxOf(it, i); return withBox(it, { ...b, x: b.x - u.x, y: b.y - u.y }); });
+                      const all = composePages(r.map((x) => ({ ...x, item: shifted.find((q) => q.id === x.item.id) ?? x.item })), shifted, { w: u.w, h: u.h }, 2);
+                      tiles.push({ name: webImageName(k, valueLabel(v)), canvas: all.canvas, w: u.w, h: u.h });
+                    }
+                    if (batchFormat === 'pptx') {
+                      const slides = await Promise.all(tiles.map(async (t) => ({ png: new Uint8Array(await (await toBlob(t.canvas)).arrayBuffer()), w: t.w, h: t.h })));
+                      p.onDownload(`${baseName}.pptx`, new Blob([pptxFromImages(slides)], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }));
+                    } else {
+                      const srcs = tiles.map((t) => t.canvas.toDataURL('image/png'));
+                      const html = batchFormat === 'web' ? webPageHtml(baseName, tiles.map((t, i) => ({ name: t.name, src: srcs[i] })), 'flowjo-rea', new Date()) : wiggleHtml(baseName, srcs, 500);
+                      p.onDownload(`${baseName}.html`, new Blob([html], { type: 'text/html' }));
+                    }
+                  } else if (batchFormat === 'layout') {
+                    // Batch to a new layout (Batch.doInBackground, isLayout): the tiles become the
+                    // figures of a new layout with iteration off; each graph keeps its tile's sample.
+                    const ext = pageGrid(boxes, page);
+                    const u = unionBox(boxes.length ? boxes : [{ id: 'z', x: 0, y: 0, w: 1, h: 1 }]);
+                    const pitchX = separatePages ? tilePitch(ext.cols * page.w - 1, page.w) : u.w + 11, pitchY = separatePages ? tilePitch(ext.rows * page.h - 1, page.h) : u.h + 11;
+                    const out: LayoutItem[] = [];
+                    for (const [k, v] of values.entries()) {
+                      const t = tileAt(k, values.length), bind = bindFor(v);
+                      items.forEach((it, i) => { const b = boxOf(it, i); const c = { ...withBox(it, { ...b, x: b.x + t.c * pitchX, y: b.y + t.r * pitchY }), id: `${it.id}_b${k}`, ...(it.groupId ? { groupId: `${it.groupId}_b${k}` } : {}), cell: undefined } as LayoutItem; if (isPlotItem(c)) { const s = bind(it); if (s) (c as LayoutPlot).sampleId = s.id; } out.push(c); });
+                    }
+                    p.onSettings(batchLayoutPatch(p.ws, baseName, out));
+                  } else if (tileCols <= 0) {
+                    for (const v of values) await exportAs(batchFormat as 'png' | 'svg' | 'pdf', `${baseName}_${safe(valueLabel(v))}`, await renderLayout(p.client, p.ws, p.meta, items, bindFor(v), extrasFor(v)), items, true);
                   } else {
                     // I10: each value is one tile; tiles step by whole pages (Separate Pages) or by the extent.
                     const ext = pageGrid(boxes, page);
@@ -845,13 +879,13 @@ export function LayoutView(p: {
                       const ox = t.c * pitchX, oy = t.r * pitchY;
                       items.forEach((it, i) => { const b = boxOf(it, i); const c = { ...withBox(it, { ...b, x: b.x + ox, y: b.y + oy }), id: `${it.id}#${k}` } as LayoutItem; allItems.push(c); const ri = r.find((x) => x.item.id === it.id); if (ri) allR.push({ ...ri, item: c }); });
                     }
-                    await exportAs(batchFormat, `${baseName}_batch`, allR, allItems, true);
+                    await exportAs(batchFormat as 'png' | 'svg' | 'pdf', `${baseName}_batch`, allR, allItems, true);
                   }
                 } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
               }}
             >Batch ({values.length} value{values.length === 1 ? '' : 's'})</button>
-            <select value={batchFormat} onChange={(e) => setBatchFormat(e.target.value as 'png' | 'svg' | 'pdf')} data-testid="layout-batch-format" title="Output Target">
-              <option value="pdf">PDF</option><option value="png">PNG</option><option value="svg">SVG</option>
+            <select value={batchFormat} onChange={(e) => setBatchFormat(e.target.value as BatchTarget)} data-testid="layout-batch-format" title="Output Target">
+              <option value="layout">Layout</option><option value="web">Web</option><option value="webmovie">Web movie</option><option value="pptx">PowerPoint</option><option value="pdf">PDF</option><option value="png">PNG</option><option value="svg">SVG</option>
             </select>
             File name <input style={{ width: 90 }} placeholder="layout" value={fileName} onChange={(e) => setFileName(e.target.value)} data-testid="layout-file-name" />
             Tiles <input type="number" min={0} style={{ width: 50 }} data-testid="layout-tiles" title="0: one file per iteration value" value={tileCols} onChange={(e) => setTileCols(Math.max(0, Number(e.target.value) || 0))} />
@@ -1009,7 +1043,7 @@ export function LayoutView(p: {
           <div className="row layout-selrow">
             {!selected ? <span className="muted">Click an item to select it; Shift-click adds to the selection; drag a corner of a selected item to resize it (Shift keeps the aspect ratio).</span> : <>
               {selected.object !== undefined ? (
-                <ObjectPanel it={selected} ws={p.ws} keywords={keywordNames} channels={allParams} locked={locked} onChange={(o) => setObject(selected.id, o)} onRefresh={() => setTick((t) => t + 1)} editing={webEditing === selected.id} setEditing={(on) => setWebEditing(on ? selected.id : null)} />
+                <ObjectPanel it={selected} ws={p.ws} currentGroup={p.currentGroup} keywords={keywordNames} channels={allParams} locked={locked} onChange={(o) => setObject(selected.id, o)} onRefresh={() => setTick((t) => t + 1)} editing={webEditing === selected.id} setEditing={(on) => setWebEditing(on ? selected.id : null)} />
               ) : selected.text !== undefined ? (
                 <>
                   <textarea ref={textRef} value={selected.text} disabled={locked} data-testid="layout-text" onChange={(e) => setItem(selected.id, { text: e.target.value })} style={{ width: '35%', minHeight: 40 }} />

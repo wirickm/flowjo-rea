@@ -287,8 +287,8 @@ export function RowEditor({ rows, onChange, ws, testid }: { rows: TableRowRef[];
   );
 }
 
-export function ObjectPanel({ it, ws, keywords, channels, locked, onChange, onRefresh, editing, setEditing }: {
-  it: LayoutObject; ws: Workspace; keywords: string[]; channels: string[]; locked: boolean;
+export function ObjectPanel({ it, ws, currentGroup, keywords, channels, locked, onChange, onRefresh, editing, setEditing }: {
+  it: LayoutObject; ws: Workspace; currentGroup?: string; keywords: string[]; channels: string[]; locked: boolean;
   onChange: (o: LayoutObjectSpec) => void; onRefresh: () => void; editing: boolean; setEditing: (on: boolean) => void;
 }) {
   const o = it.object;
@@ -305,7 +305,7 @@ export function ObjectPanel({ it, ws, keywords, channels, locked, onChange, onRe
       </fieldset>
     );
   }
-  if (o.kind === 'plate') return <PlatePanel m={o.model} ws={ws} locked={locked} onChange={(model) => onChange({ ...o, model })} onRefresh={onRefresh} />;
+  if (o.kind === 'plate') return <PlatePanel m={o.model} ws={ws} currentGroup={currentGroup} locked={locked} onChange={(model) => onChange({ ...o, model })} onRefresh={onRefresh} />;
   if (o.kind === 'web') {
     return (
       <>
@@ -323,7 +323,7 @@ export function ObjectPanel({ it, ws, keywords, channels, locked, onChange, onRe
   return <><b>Table</b> <span className="muted">{o.name}: not live (from the table editor)</span></>;
 }
 
-function PlatePanel({ m, ws, locked, onChange, onRefresh }: { m: PlateDisplayModel; ws: Workspace; locked: boolean; onChange: (m: PlateDisplayModel) => void; onRefresh: () => void }) {
+function PlatePanel({ m, ws, currentGroup, locked, onChange, onRefresh }: { m: PlateDisplayModel; ws: Workspace; currentGroup?: string; locked: boolean; onChange: (m: PlateDisplayModel) => void; onRefresh: () => void }) {
   const statLabel = (id: string) => { const c = ws.statColumns.find((x) => x.id === id); return c ? `${c.populationPath || 'All events'}: ${STAT_LABELS[c.stat]}${c.channel ? ` (${c.channel})` : ''}` : id; };
   return (
     <fieldset disabled={locked} style={{ display: 'contents' }}>
@@ -331,7 +331,7 @@ function PlatePanel({ m, ws, locked, onChange, onRefresh }: { m: PlateDisplayMod
       <select value={m.groupName ?? ''} onChange={(e) => onChange({ ...m, groupName: e.target.value || undefined })} data-testid="plate-group" title="Choose Group: a sample group to display in this plate"><option value="">&lt;No Group Selected&gt;</option>{ws.groups.map((g) => <option key={g.id} value={g.name}>{g.name}</option>)}</select>
       <select value={modeOf(m)} onChange={(e) => onChange({ ...m, mode: e.target.value as PlateMode })} data-testid="plate-mode" title="Display Type: how statistics are shown in the wells">{(Object.keys(MODE_LABELS) as PlateMode[]).map((k) => <option key={k} value={k}>{MODE_LABELS[k]}</option>)}</select>
       <label title="Show the sample name in each well"><input type="checkbox" checked={!!m.showSampleName} onChange={(e) => onChange({ ...m, showSampleName: e.target.checked || undefined })} data-testid="plate-show-sample" /> Show Sample Name</label>
-      <select value="" onChange={(e) => e.target.value && onChange(applyStatistics(m, [e.target.value], ws.groups[0]?.name))} data-testid="plate-add-stat" title="Drag statistic nodes onto this plate to add statistics"><option value="">{m.stats.length ? 'Add statistic...' : 'No Statistics'}</option>{ws.statColumns.map((c) => <option key={c.id} value={c.id}>{statLabel(c.id)}</option>)}</select>
+      <select value="" onChange={(e) => e.target.value && onChange(applyStatistics(m, [e.target.value], currentGroup ?? ws.groups[0]?.name))} data-testid="plate-add-stat" title="Drag statistic nodes onto this plate to add statistics"><option value="">{m.stats.length ? 'Add statistic...' : 'No Statistics'}</option>{ws.statColumns.map((c) => <option key={c.id} value={c.id}>{statLabel(c.id)}</option>)}</select>
       {m.stats.map((s) => (
         <span key={s.statId} className="chip" data-testid="plate-stat">
           {statLabel(s.statId)}

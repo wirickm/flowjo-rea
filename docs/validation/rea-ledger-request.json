@@ -48,7 +48,7 @@
     ],
     "scenarios": [
       {
-        "evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+        "evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
         "operation": "verify_reconstruction_obligations",
         "authority": "controlled-replay"
       }
@@ -2262,7 +2262,826 @@
         "locations": []
       },
       {
-        "evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+        "evidence_id": "ev_71254e30b21639a9396ae22ab0b64fa8af03956651381003376aeb7f584ca7c7",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_a0f493e0da7135e55e3bf82754dc1ab4dad3b593d6fc3f02dd2975abaa181098"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "gates.magnetic",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Magnetic gates move toward the densest events as FlowJo 10 does",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/gateTools.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_74e3f693047f11831c6f13aa313751f504ff1ad18c02c62cde40c85357bebb0d",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_1938383da6febf8b2befb35e9cb3a61df4dd144c78f58ba66ee3eecc63db12f7",
+          "ev_4769d1547963f46964f66bad63d5bd19aaab829724f4c3a8a25bf40c1a3c487f"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "derived.evaluation",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Derived parameters bind names and compute per event as FlowJo 10 does",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/formula.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_773e900690e940e823e9a11133a33743c3de7e420ac295e41845674f58fd14b8",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "libNativeEngine-3.6.2.jnilib",
+          "digest": {
+            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
+          "format": "mach-o",
+          "architecture": "x86_64"
+        },
+        "provider": {
+          "id": "llvm-objdump",
+          "name": "LLVM objdump (analyst reading of disassembly)",
+          "version": "18.1.3"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_native_functions",
+        "parameters": {
+          "symbols": [
+            "Kinetics::ComputeThreshold",
+            "GParameter::FindTimeSlice"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Absolute threshold as given; percentile threshold: FindTimeSlice's result discarded, the timeslice start and end truncated used as an event-index range for a 4096-channel percentile (>= 100 maximum, <= 0 minimum).",
+          "spec": "docs/validation/flowjo-engine-specs.md section 11.3"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "address-range",
+            "start": "0x19b020",
+            "end": "0x19b0b0"
+          },
+          {
+            "kind": "address-range",
+            "start": "0x1618f0",
+            "end": "0x161a20"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_7813d9b25dc4fc521f6d7b23e530f97fe3d388c83ae15fa7e051b339e6243751",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_f8332d4debac6241cdd39e38e589116402f10a8612002703ca8daa1f0edf72e9"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "workspace.autosave",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Auto-save every N minutes, only for a saved workspace with samples, with FlowJo's status text",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/prefs.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_787346d2a451d348b53680adf0f885b63647b8c8e0b3e6f198d550066ddaee55",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_04b40f92eb46a2d55ca8c5ee5987abbb00cec3ed1b67acd2e9749e0a158ca21a"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "platforms.cellcycle-models",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Cell cycle models and outputs follow FlowJo 10's engine",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/cellcycle.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_7b34c95508f4f83e09a3cdf23e0f15c26716b3031ea290262367fd3caf4fda00",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "libNativeEngine-3.6.2.jnilib",
+          "digest": {
+            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
+          "format": "mach-o",
+          "architecture": "x86_64"
+        },
+        "provider": {
+          "id": "llvm-objdump",
+          "name": "LLVM objdump (analyst reading of disassembly)",
+          "version": "18.1.3"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_native_functions",
+        "parameters": {
+          "symbols": [
+            "KineticsRequest::FromXML",
+            "KineticsStatistic::FromString",
+            "SmoothingType::FromString",
+            "KineticsResult::ToXML"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Request attributes yAxis, statistic (nine names, unknown = Median), percentile, smoothing (None / Median = none, Gaussian, Moving Average), thresholdType 0 threshold / 1 thresholdStart, thresholdEnd, thresholdPercentile; reply Kinetics range = R with Plot1D values printed %6.5f, missing bins 0.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 11.1"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "address-range",
+            "start": "0x3d2cc0",
+            "end": "0x3d3280"
+          },
+          {
+            "kind": "address-range",
+            "start": "0x3d3280",
+            "end": "0x3d35b0"
+          },
+          {
+            "kind": "address-range",
+            "start": "0x3d35b0",
+            "end": "0x3d3700"
+          },
+          {
+            "kind": "address-range",
+            "start": "0x266f40",
+            "end": "0x2674d0"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_7b5d7e9d39c008d5e6e8999e0c13652484f71a02376e697d5488247e75091b4e",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_bc9a71d441d5bceea4c35a19da2ea9c4020089e0ec3dbd509f1e3b429f2daf2c"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "workspace.undo-limit",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Undo keeps the last 100 edits and a new edit drops the redo edits, as in FlowJo 10",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/ui/history.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_7bd5913593e2db3a3d1aab02c0923a4548a7f8cf35af880a81289c641547b806",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "com.treestar.flowjo.core.GroupCriteria.acceptSolo(Workspace, Group, Sample)",
+            "com.treestar.flowjo.core.GroupCriteria.accept(Workspace, Group, Sample)",
+            "com.treestar.flowjo.core.ParameterList.getStainSet()"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Without stain sets and an active first criterion a group accepts nothing; listed stain sets must contain the sample's stain set (trimmed non-empty $PnS of non-scatter, non-time parameters joined with ', '); a reference group combines with 'also' (either) or 'only' (both), any other function accepting nothing.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 7.1"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/core/GroupCriteria.class"
+          },
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/core/ParameterList.class"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_7cb8479303c58b361674da5eb9e4a72d284859ad99f9cbe45e895ac4bc352f0e",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "com.treestar.flowjo.cellcycle.CCNode.HISTOGRAM_CHANNELS = 1024",
+            "CellCycle::ProcessQuery (engine)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "The cell cycle model is fitted on a histogram of min(parameter channel range, 1024) channels; the user cannot set the resolution.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 6.1"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/cellcycle/CCNode.class"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_811344afe337fb6916b8f2c5a38c0c55120258ce066d9af79ca31d1cd5c770de",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_a2add5d35980e3ad357f95675188ff866b6927f40f319e9020922b2b5123f843"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "tables.editor",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Table editor columns, outputs and summary follow FlowJo 10",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/tableEditor.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_811470f8bf003e7fd6d1da5a145766d11d88ec36cf9a4d2bce61912b0306ce59",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_fa68f5b47a9be572aec9ca4fa91625b87d2de6c4cda0782f9c867ea7f10136a8"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "derived.dialog-wsp",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "The Derive Parameters dialog and .wsp nodes follow FlowJo 10",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/formula.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_82d64dbe78beda98ee2d8d21dfcaee1524a638cb52d21da6a18bb5b9ab5899c0",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "com.treestar.flowjo.core.nodes.KeywordCriterion.evalFunction(Sample)",
+            "com.treestar.flowjo.core.nodes.KeywordCriterion.eval(Sample, boolean)",
+            "com.treestar.flowjo.core.nodes.KeywordCriterion.evalConnector(boolean, boolean)",
+            "com.treestar.flowjo.core.enumerations.CriteriaTest.isNumericFunction(int)",
+            "com.treestar.lib.parsing.ParseUtil.isNumber(String) (fjlib-2.3.0.jar)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Up to 4 keyword criteria; an active criterion has a keyword and a non-empty value. The result starts true and every active criterion applies its connector (And, Or, And-not), the first included. A missing keyword tests false; the six comparisons are numeric when the trimmed sample value is a number, otherwise case-insensitive string order; Contains / Lacks are case-insensitive substring tests; Exists is true when the keyword is present.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 7.1"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/core/nodes/KeywordCriterion.class"
+          },
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/core/enumerations/CriteriaTest.class"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_86747a307fbdcb80c896e59379305942a741add02e08c75e065750ef5da886f0",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "com.treestar.flowjo.application.graphwindow.kinetics.KineticsNode",
+            "com.treestar.flowjo.application.graphwindow.kinetics.KineticsStatisticFormat",
+            "StatKey kin* (plat.kin.*)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "KineticsNode in the population's Subpopulations with yAxis, statistic, percentile, smoothing, absoluteThreshold, threshold, thresholdPercentile (-999999 unset), thresholdTimesliceName, yAuto, yMin, yMax, colorIndex and Timeslice children (color #rrggbb); statistics plat.kin.startt .. plat.kin.dt with id = timeslice.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 11.6"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/application/graphwindow/kinetics/KineticsNode.class"
+          },
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/application/graphwindow/kinetics/KineticsStatisticFormat.class"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_87b26f0fc03fa03260078ec7e33246f37400eef02e400353b630e50757723a0d",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_a2add5d35980e3ad357f95675188ff866b6927f40f319e9020922b2b5123f843"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "tables.iteration-batch",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Iteration by sample, keyword or panel and batch tiles follow FlowJo 10",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/tableEditor.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_8935d761dad3ce15b38d2bf12085b115f4769f77730411d55365944f3b21b5ce",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_6361ad16585b7f47712dfb94c855deef8006152569b2a26315a08df987cedc5f"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "graph.stain-axis-title",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "Edited $PnS stains rename parameters as 'name :: stain' like FlowJo 10",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/ui/axes.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_89699b91f5e6a9c7eeb423b5baa867fe4bd231763b0c5a62ffa46a0380494d50",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "libNativeEngine-3.6.2.jnilib",
+          "digest": {
+            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
+          "format": "mach-o",
+          "architecture": "x86_64"
+        },
+        "provider": {
+          "id": "llvm-objdump",
+          "name": "LLVM objdump (analyst reading of disassembly)",
+          "version": "18.1.3"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_native_functions",
+        "parameters": {
+          "symbols": [
+            "GParameter::Median(ActivePopulation*, bool)",
+            "BasicHistogram::ChannelMedian(bool)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "The median is read from a 4096-channel histogram: the first channel whose cumulative count (single precision) reaches n * 50 * 0.01, converted back to a data value; no interpolation.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 4"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "address-range",
+            "start": "0x15cfb0",
+            "end": "0x15d050"
+          },
+          {
+            "kind": "address-range",
+            "start": "0xe9fe0",
+            "end": "0xea170"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_8ad78c8892a84c714733361d8859cfde3c27211d188dde85a060799f84d227d8",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "FlowJo-10.6.2.jar",
+          "digest": {
+            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
+          "format": "zip",
+          "architecture": null
+        },
+        "provider": {
+          "id": "javap",
+          "name": "OpenJDK javap (analyst reading of bytecode)",
+          "version": "21.0.12"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_java_classes",
+        "parameters": {
+          "symbols": [
+            "layout.AlignableLayerDiagram",
+            "layout.AbstractLayerDiagram",
+            "application.leditor.Iteration",
+            "application.leditor.Batch"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "Layout coordinates are points on US Letter with 1 inch margins; align left/top/right/bottom use the selection extent and centres the integer mean of centres; spacing keeps first and last and steps leading edges by floor(centre span / (n-1)); align to grid snaps to 36 pt; bring to front keeps selection order and send to back reverses it; nudge steps multiply Alt 2, Ctrl 2, Shift 3; panel iteration keeps a graph's position in its panel and keyword iteration maps the k-th sample by value.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 21"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/application/leditor/Iteration.class"
+          },
+          {
+            "kind": "artifact-path",
+            "path": "com/treestar/flowjo/application/leditor/Batch.class"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_997c1dbb15d2fd8c7cf786bd5b41dad21b9171ea859546cd2c97d72e4c390fc7",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [],
+        "subject": {
+          "name": "libNativeEngine-3.6.2.jnilib",
+          "digest": {
+            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
+          },
+          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
+          "format": "mach-o",
+          "architecture": "x86_64"
+        },
+        "provider": {
+          "id": "llvm-objdump",
+          "name": "LLVM objdump (analyst reading of disassembly)",
+          "version": "18.1.3"
+        },
+        "predicate_type": "flowjo-rea.static-behavior",
+        "operation": "inspect_native_functions",
+        "parameters": {
+          "symbols": [
+            "FGate::GetRectRangeInScale(double&, double&, double&, double&, TransformedParameter*, TransformedParameter*)"
+          ]
+        },
+        "normalized_result": {
+          "behavior": "A rectangle bound whose channel floor((b - min) * C / (max - min) + 0.5), C = max(channel range, 4096), is <= 0 (lower) or >= C (upper) is replaced by an open bound; other bounds are kept.",
+          "spec": "docs/validation/flowjo-engine-specs.md section 3"
+        },
+        "confidence": "observed",
+        "authority": "shipped-artifact",
+        "environment": null,
+        "limitations": [
+          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
+        ],
+        "locations": [
+          {
+            "kind": "address-range",
+            "start": "0x804d0",
+            "end": "0x807c0"
+          }
+        ]
+      },
+      {
+        "evidence_id": "ev_9a59a28140b736c3779dbd06c9b19c8ad0800f5a5889125df420732861ad7cab",
+        "analysis_profile": null,
+        "raw_result": null,
+        "relationship_coverage": null,
+        "evidence_links": [
+          "ev_27565fd9f5e9e72571db8afdd7e629cb243f1aee11b48b86a591b1b72cea58cc"
+        ],
+        "subject": null,
+        "provider": {
+          "id": "flowjo-rea.review",
+          "name": "flowjo-rea obligation review",
+          "version": "1"
+        },
+        "predicate_type": "flowjo-rea.obligation-review",
+        "operation": "review_reconstruction_obligation",
+        "parameters": {
+          "obligation_id": "export.event-cap",
+          "obligation_version": 1
+        },
+        "normalized_result": {
+          "title": "No more than N takes every step-th event, as FlowJo 10 does",
+          "required_case_kinds": [
+            "positive",
+            "negative"
+          ],
+          "owner": "src/core/exportRules.ts"
+        },
+        "confidence": "derived",
+        "authority": "analyst-inference",
+        "environment": null,
+        "limitations": [
+          "AI-assisted review (Claude Code session); no human review is attested."
+        ],
+        "locations": []
+      },
+      {
+        "evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
         "analysis_profile": null,
         "raw_result": null,
         "relationship_coverage": null,
@@ -2389,7 +3208,7 @@
             {
               "obligation_id": "names.unique-sibling",
               "obligation_version": 1,
-              "owner_sha256": "e5b483b9495732bcbd2ed76b4ad90183e11af14248e9fd67adecfc78e50bf671",
+              "owner_sha256": "214b21beae3531a1076712dbcbbf8bb06b8daa393cb3f8d57d88e76d5fe038b1",
               "fixtures": [
                 {
                   "fixture_id": "names.unique-sibling.suffix",
@@ -3281,7 +4100,7 @@
             {
               "obligation_id": "derived.evaluation",
               "obligation_version": 1,
-              "owner_sha256": "a68cdbd618c0c21898aec0444edf191b265afe0e8ddd40789c41d55b2f38adae",
+              "owner_sha256": "5276f8c97e77ee5c56c0c2be557356bb5b1214b4925140da85b42d8569170e84",
               "fixtures": [
                 {
                   "fixture_id": "dp.names",
@@ -3320,7 +4139,7 @@
             {
               "obligation_id": "derived.dialog-wsp",
               "obligation_version": 1,
-              "owner_sha256": "54fc22bce6e93faf0052f1a1cf854d6b26dffeb123059f3a98df4d9107d11575",
+              "owner_sha256": "d214467c1d8c93f011be4c9deb9ab2c6ae32e53a63356bd7d33e31f8bd427721",
               "fixtures": [
                 {
                   "fixture_id": "dp.namerule",
@@ -3388,7 +4207,7 @@
             {
               "obligation_id": "compensation.files",
               "obligation_version": 1,
-              "owner_sha256": "6bb71762217501349ff224e3234aef3a839fd07f879c07ef246fe75ed133d6ad",
+              "owner_sha256": "1abf3b6385c7b1b3f3c60e2389ccd88880376ad6b3a573527e88053b27833fb0",
               "fixtures": [
                 {
                   "fixture_id": "comp.mtx",
@@ -3417,7 +4236,7 @@
             {
               "obligation_id": "compensation.wizard-ssm",
               "obligation_version": 1,
-              "owner_sha256": "f169ebe6b92e39d33f4a707826615211459f4e5e21fb19075dcf56cd70e10850",
+              "owner_sha256": "ae7f6b778582e95ebd1608d8f96c720b8931eb132d3c3fd2b210bb59ae5d70b9",
               "fixtures": [
                 {
                   "fixture_id": "comp.wiz",
@@ -3504,7 +4323,7 @@
             {
               "obligation_id": "workspace.dont-ask-again",
               "obligation_version": 1,
-              "owner_sha256": "bcdfb096223fb96240d2f60ab5447f8f5a6977c76cc2b699e8b76a1b60962e1d",
+              "owner_sha256": "4ce0f8130b4626f1b17850b96f1adf1635c62849044cce270279364519a4c15c",
               "fixtures": [
                 {
                   "fixture_id": "workspace.dont-ask-again.pos",
@@ -3528,7 +4347,7 @@
             {
               "obligation_id": "workspace.autosave",
               "obligation_version": 1,
-              "owner_sha256": "5a3aa73f983fb65f3338996642bd772943b4e278a4543023b1e2ce9896329093",
+              "owner_sha256": "6d753b19158a8e302c39eadc1355e2b54fd09d5757eb6c31c85e7d25e6781b62",
               "fixtures": [
                 {
                   "fixture_id": "workspace.autosave.pos",
@@ -3552,7 +4371,7 @@
             {
               "obligation_id": "graphs.edge-warning",
               "obligation_version": 1,
-              "owner_sha256": "5a3aa73f983fb65f3338996642bd772943b4e278a4543023b1e2ce9896329093",
+              "owner_sha256": "6d753b19158a8e302c39eadc1355e2b54fd09d5757eb6c31c85e7d25e6781b62",
               "fixtures": [
                 {
                   "fixture_id": "graphs.edge-warning.pos",
@@ -3600,7 +4419,7 @@
             {
               "obligation_id": "tables.iteration-batch",
               "obligation_version": 1,
-              "owner_sha256": "cb4964465b1ba428eb0299b66258fff357e0ae14031dfd3e836a4e1d13706f0d",
+              "owner_sha256": "6584810c26347ad357433b54ecc53ecb92b7b3c94b2fa3a8ee3a687223e93dd3",
               "fixtures": [
                 {
                   "fixture_id": "tables.iteration-batch.pos",
@@ -3624,7 +4443,7 @@
             {
               "obligation_id": "graph.stain-axis-title",
               "obligation_version": 1,
-              "owner_sha256": "e27c913fb5049c6c8b7117d87ef387ce3ce69e2a6c9c532acc07ebeeea58ecba",
+              "owner_sha256": "70fdee81e287248aee60b392bf6be750f39813b79c0d55a43c93137b1b05409e",
               "fixtures": [
                 {
                   "fixture_id": "graph.stain-axis-title.pos",
@@ -3648,7 +4467,7 @@
             {
               "obligation_id": "layout.arrange-iteration",
               "obligation_version": 1,
-              "owner_sha256": "c78e82f54f7344025b0f4b408d7187d375eaee4a793dd163d2000eb10e6e425f",
+              "owner_sha256": "d65ca4bb847d8bb662e3f4a8870f70879d3604f133aa2ae59ca36280b205df9b",
               "fixtures": [
                 {
                   "fixture_id": "layout.arrange-iteration.pos",
@@ -3672,7 +4491,7 @@
             {
               "obligation_id": "wsp.layout-figures",
               "obligation_version": 1,
-              "owner_sha256": "3daa57d130f2df475c7f311cf5f9c2b8ddb44350e85d2c7aef21a4357f8243a3",
+              "owner_sha256": "c144096605c6ec9f9584041ba7fe3c11dfd211d84c09765460204d45cf61e795",
               "fixtures": [
                 {
                   "fixture_id": "wsp.layout-figures.pos",
@@ -3705,825 +4524,6 @@
         },
         "limitations": [
           "Verifiers are this repository’s vitest suites run in one local process; FlowJo reference counts come from FlowJo-saved .wsp files (FlowJo 10.6.2 to 10.10.0)."
-        ],
-        "locations": []
-      },
-      {
-        "evidence_id": "ev_71254e30b21639a9396ae22ab0b64fa8af03956651381003376aeb7f584ca7c7",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [
-          "ev_a0f493e0da7135e55e3bf82754dc1ab4dad3b593d6fc3f02dd2975abaa181098"
-        ],
-        "subject": null,
-        "provider": {
-          "id": "flowjo-rea.review",
-          "name": "flowjo-rea obligation review",
-          "version": "1"
-        },
-        "predicate_type": "flowjo-rea.obligation-review",
-        "operation": "review_reconstruction_obligation",
-        "parameters": {
-          "obligation_id": "gates.magnetic",
-          "obligation_version": 1
-        },
-        "normalized_result": {
-          "title": "Magnetic gates move toward the densest events as FlowJo 10 does",
-          "required_case_kinds": [
-            "positive",
-            "negative"
-          ],
-          "owner": "src/core/gateTools.ts"
-        },
-        "confidence": "derived",
-        "authority": "analyst-inference",
-        "environment": null,
-        "limitations": [
-          "AI-assisted review (Claude Code session); no human review is attested."
-        ],
-        "locations": []
-      },
-      {
-        "evidence_id": "ev_74e3f693047f11831c6f13aa313751f504ff1ad18c02c62cde40c85357bebb0d",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [
-          "ev_1938383da6febf8b2befb35e9cb3a61df4dd144c78f58ba66ee3eecc63db12f7",
-          "ev_4769d1547963f46964f66bad63d5bd19aaab829724f4c3a8a25bf40c1a3c487f"
-        ],
-        "subject": null,
-        "provider": {
-          "id": "flowjo-rea.review",
-          "name": "flowjo-rea obligation review",
-          "version": "1"
-        },
-        "predicate_type": "flowjo-rea.obligation-review",
-        "operation": "review_reconstruction_obligation",
-        "parameters": {
-          "obligation_id": "derived.evaluation",
-          "obligation_version": 1
-        },
-        "normalized_result": {
-          "title": "Derived parameters bind names and compute per event as FlowJo 10 does",
-          "required_case_kinds": [
-            "positive",
-            "negative"
-          ],
-          "owner": "src/core/formula.ts"
-        },
-        "confidence": "derived",
-        "authority": "analyst-inference",
-        "environment": null,
-        "limitations": [
-          "AI-assisted review (Claude Code session); no human review is attested."
-        ],
-        "locations": []
-      },
-      {
-        "evidence_id": "ev_773e900690e940e823e9a11133a33743c3de7e420ac295e41845674f58fd14b8",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [],
-        "subject": {
-          "name": "libNativeEngine-3.6.2.jnilib",
-          "digest": {
-            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
-          },
-          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
-          "format": "mach-o",
-          "architecture": "x86_64"
-        },
-        "provider": {
-          "id": "llvm-objdump",
-          "name": "LLVM objdump (analyst reading of disassembly)",
-          "version": "18.1.3"
-        },
-        "predicate_type": "flowjo-rea.static-behavior",
-        "operation": "inspect_native_functions",
-        "parameters": {
-          "symbols": [
-            "Kinetics::ComputeThreshold",
-            "GParameter::FindTimeSlice"
-          ]
-        },
-        "normalized_result": {
-          "behavior": "Absolute threshold as given; percentile threshold: FindTimeSlice's result discarded, the timeslice start and end truncated used as an event-index range for a 4096-channel percentile (>= 100 maximum, <= 0 minimum).",
-          "spec": "docs/validation/flowjo-engine-specs.md section 11.3"
-        },
-        "confidence": "observed",
-        "authority": "shipped-artifact",
-        "environment": null,
-        "limitations": [
-          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
-        ],
-        "locations": [
-          {
-            "kind": "address-range",
-            "start": "0x19b020",
-            "end": "0x19b0b0"
-          },
-          {
-            "kind": "address-range",
-            "start": "0x1618f0",
-            "end": "0x161a20"
-          }
-        ]
-      },
-      {
-        "evidence_id": "ev_7813d9b25dc4fc521f6d7b23e530f97fe3d388c83ae15fa7e051b339e6243751",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [
-          "ev_f8332d4debac6241cdd39e38e589116402f10a8612002703ca8daa1f0edf72e9"
-        ],
-        "subject": null,
-        "provider": {
-          "id": "flowjo-rea.review",
-          "name": "flowjo-rea obligation review",
-          "version": "1"
-        },
-        "predicate_type": "flowjo-rea.obligation-review",
-        "operation": "review_reconstruction_obligation",
-        "parameters": {
-          "obligation_id": "workspace.autosave",
-          "obligation_version": 1
-        },
-        "normalized_result": {
-          "title": "Auto-save every N minutes, only for a saved workspace with samples, with FlowJo's status text",
-          "required_case_kinds": [
-            "positive",
-            "negative"
-          ],
-          "owner": "src/core/prefs.ts"
-        },
-        "confidence": "derived",
-        "authority": "analyst-inference",
-        "environment": null,
-        "limitations": [
-          "AI-assisted review (Claude Code session); no human review is attested."
-        ],
-        "locations": []
-      },
-      {
-        "evidence_id": "ev_787346d2a451d348b53680adf0f885b63647b8c8e0b3e6f198d550066ddaee55",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [
-          "ev_04b40f92eb46a2d55ca8c5ee5987abbb00cec3ed1b67acd2e9749e0a158ca21a"
-        ],
-        "subject": null,
-        "provider": {
-          "id": "flowjo-rea.review",
-          "name": "flowjo-rea obligation review",
-          "version": "1"
-        },
-        "predicate_type": "flowjo-rea.obligation-review",
-        "operation": "review_reconstruction_obligation",
-        "parameters": {
-          "obligation_id": "platforms.cellcycle-models",
-          "obligation_version": 1
-        },
-        "normalized_result": {
-          "title": "Cell cycle models and outputs follow FlowJo 10's engine",
-          "required_case_kinds": [
-            "positive",
-            "negative"
-          ],
-          "owner": "src/core/cellcycle.ts"
-        },
-        "confidence": "derived",
-        "authority": "analyst-inference",
-        "environment": null,
-        "limitations": [
-          "AI-assisted review (Claude Code session); no human review is attested."
-        ],
-        "locations": []
-      },
-      {
-        "evidence_id": "ev_7b34c95508f4f83e09a3cdf23e0f15c26716b3031ea290262367fd3caf4fda00",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [],
-        "subject": {
-          "name": "libNativeEngine-3.6.2.jnilib",
-          "digest": {
-            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
-          },
-          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
-          "format": "mach-o",
-          "architecture": "x86_64"
-        },
-        "provider": {
-          "id": "llvm-objdump",
-          "name": "LLVM objdump (analyst reading of disassembly)",
-          "version": "18.1.3"
-        },
-        "predicate_type": "flowjo-rea.static-behavior",
-        "operation": "inspect_native_functions",
-        "parameters": {
-          "symbols": [
-            "KineticsRequest::FromXML",
-            "KineticsStatistic::FromString",
-            "SmoothingType::FromString",
-            "KineticsResult::ToXML"
-          ]
-        },
-        "normalized_result": {
-          "behavior": "Request attributes yAxis, statistic (nine names, unknown = Median), percentile, smoothing (None / Median = none, Gaussian, Moving Average), thresholdType 0 threshold / 1 thresholdStart, thresholdEnd, thresholdPercentile; reply Kinetics range = R with Plot1D values printed %6.5f, missing bins 0.",
-          "spec": "docs/validation/flowjo-engine-specs.md section 11.1"
-        },
-        "confidence": "observed",
-        "authority": "shipped-artifact",
-        "environment": null,
-        "limitations": [
-          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
-        ],
-        "locations": [
-          {
-            "kind": "address-range",
-            "start": "0x3d2cc0",
-            "end": "0x3d3280"
-          },
-          {
-            "kind": "address-range",
-            "start": "0x3d3280",
-            "end": "0x3d35b0"
-          },
-          {
-            "kind": "address-range",
-            "start": "0x3d35b0",
-            "end": "0x3d3700"
-          },
-          {
-            "kind": "address-range",
-            "start": "0x266f40",
-            "end": "0x2674d0"
-          }
-        ]
-      },
-      {
-        "evidence_id": "ev_7b5d7e9d39c008d5e6e8999e0c13652484f71a02376e697d5488247e75091b4e",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [
-          "ev_bc9a71d441d5bceea4c35a19da2ea9c4020089e0ec3dbd509f1e3b429f2daf2c"
-        ],
-        "subject": null,
-        "provider": {
-          "id": "flowjo-rea.review",
-          "name": "flowjo-rea obligation review",
-          "version": "1"
-        },
-        "predicate_type": "flowjo-rea.obligation-review",
-        "operation": "review_reconstruction_obligation",
-        "parameters": {
-          "obligation_id": "workspace.undo-limit",
-          "obligation_version": 1
-        },
-        "normalized_result": {
-          "title": "Undo keeps the last 100 edits and a new edit drops the redo edits, as in FlowJo 10",
-          "required_case_kinds": [
-            "positive",
-            "negative"
-          ],
-          "owner": "src/ui/history.ts"
-        },
-        "confidence": "derived",
-        "authority": "analyst-inference",
-        "environment": null,
-        "limitations": [
-          "AI-assisted review (Claude Code session); no human review is attested."
-        ],
-        "locations": []
-      },
-      {
-        "evidence_id": "ev_7bd5913593e2db3a3d1aab02c0923a4548a7f8cf35af880a81289c641547b806",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [],
-        "subject": {
-          "name": "FlowJo-10.6.2.jar",
-          "digest": {
-            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
-          },
-          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
-          "format": "zip",
-          "architecture": null
-        },
-        "provider": {
-          "id": "javap",
-          "name": "OpenJDK javap (analyst reading of bytecode)",
-          "version": "21.0.12"
-        },
-        "predicate_type": "flowjo-rea.static-behavior",
-        "operation": "inspect_java_classes",
-        "parameters": {
-          "symbols": [
-            "com.treestar.flowjo.core.GroupCriteria.acceptSolo(Workspace, Group, Sample)",
-            "com.treestar.flowjo.core.GroupCriteria.accept(Workspace, Group, Sample)",
-            "com.treestar.flowjo.core.ParameterList.getStainSet()"
-          ]
-        },
-        "normalized_result": {
-          "behavior": "Without stain sets and an active first criterion a group accepts nothing; listed stain sets must contain the sample's stain set (trimmed non-empty $PnS of non-scatter, non-time parameters joined with ', '); a reference group combines with 'also' (either) or 'only' (both), any other function accepting nothing.",
-          "spec": "docs/validation/flowjo-engine-specs.md section 7.1"
-        },
-        "confidence": "observed",
-        "authority": "shipped-artifact",
-        "environment": null,
-        "limitations": [
-          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
-        ],
-        "locations": [
-          {
-            "kind": "artifact-path",
-            "path": "com/treestar/flowjo/core/GroupCriteria.class"
-          },
-          {
-            "kind": "artifact-path",
-            "path": "com/treestar/flowjo/core/ParameterList.class"
-          }
-        ]
-      },
-      {
-        "evidence_id": "ev_7cb8479303c58b361674da5eb9e4a72d284859ad99f9cbe45e895ac4bc352f0e",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [],
-        "subject": {
-          "name": "FlowJo-10.6.2.jar",
-          "digest": {
-            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
-          },
-          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
-          "format": "zip",
-          "architecture": null
-        },
-        "provider": {
-          "id": "javap",
-          "name": "OpenJDK javap (analyst reading of bytecode)",
-          "version": "21.0.12"
-        },
-        "predicate_type": "flowjo-rea.static-behavior",
-        "operation": "inspect_java_classes",
-        "parameters": {
-          "symbols": [
-            "com.treestar.flowjo.cellcycle.CCNode.HISTOGRAM_CHANNELS = 1024",
-            "CellCycle::ProcessQuery (engine)"
-          ]
-        },
-        "normalized_result": {
-          "behavior": "The cell cycle model is fitted on a histogram of min(parameter channel range, 1024) channels; the user cannot set the resolution.",
-          "spec": "docs/validation/flowjo-engine-specs.md section 6.1"
-        },
-        "confidence": "observed",
-        "authority": "shipped-artifact",
-        "environment": null,
-        "limitations": [
-          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
-        ],
-        "locations": [
-          {
-            "kind": "artifact-path",
-            "path": "com/treestar/flowjo/cellcycle/CCNode.class"
-          }
-        ]
-      },
-      {
-        "evidence_id": "ev_811344afe337fb6916b8f2c5a38c0c55120258ce066d9af79ca31d1cd5c770de",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [
-          "ev_a2add5d35980e3ad357f95675188ff866b6927f40f319e9020922b2b5123f843"
-        ],
-        "subject": null,
-        "provider": {
-          "id": "flowjo-rea.review",
-          "name": "flowjo-rea obligation review",
-          "version": "1"
-        },
-        "predicate_type": "flowjo-rea.obligation-review",
-        "operation": "review_reconstruction_obligation",
-        "parameters": {
-          "obligation_id": "tables.editor",
-          "obligation_version": 1
-        },
-        "normalized_result": {
-          "title": "Table editor columns, outputs and summary follow FlowJo 10",
-          "required_case_kinds": [
-            "positive",
-            "negative"
-          ],
-          "owner": "src/core/tableEditor.ts"
-        },
-        "confidence": "derived",
-        "authority": "analyst-inference",
-        "environment": null,
-        "limitations": [
-          "AI-assisted review (Claude Code session); no human review is attested."
-        ],
-        "locations": []
-      },
-      {
-        "evidence_id": "ev_811470f8bf003e7fd6d1da5a145766d11d88ec36cf9a4d2bce61912b0306ce59",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [
-          "ev_fa68f5b47a9be572aec9ca4fa91625b87d2de6c4cda0782f9c867ea7f10136a8"
-        ],
-        "subject": null,
-        "provider": {
-          "id": "flowjo-rea.review",
-          "name": "flowjo-rea obligation review",
-          "version": "1"
-        },
-        "predicate_type": "flowjo-rea.obligation-review",
-        "operation": "review_reconstruction_obligation",
-        "parameters": {
-          "obligation_id": "derived.dialog-wsp",
-          "obligation_version": 1
-        },
-        "normalized_result": {
-          "title": "The Derive Parameters dialog and .wsp nodes follow FlowJo 10",
-          "required_case_kinds": [
-            "positive",
-            "negative"
-          ],
-          "owner": "src/core/formula.ts"
-        },
-        "confidence": "derived",
-        "authority": "analyst-inference",
-        "environment": null,
-        "limitations": [
-          "AI-assisted review (Claude Code session); no human review is attested."
-        ],
-        "locations": []
-      },
-      {
-        "evidence_id": "ev_82d64dbe78beda98ee2d8d21dfcaee1524a638cb52d21da6a18bb5b9ab5899c0",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [],
-        "subject": {
-          "name": "FlowJo-10.6.2.jar",
-          "digest": {
-            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
-          },
-          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
-          "format": "zip",
-          "architecture": null
-        },
-        "provider": {
-          "id": "javap",
-          "name": "OpenJDK javap (analyst reading of bytecode)",
-          "version": "21.0.12"
-        },
-        "predicate_type": "flowjo-rea.static-behavior",
-        "operation": "inspect_java_classes",
-        "parameters": {
-          "symbols": [
-            "com.treestar.flowjo.core.nodes.KeywordCriterion.evalFunction(Sample)",
-            "com.treestar.flowjo.core.nodes.KeywordCriterion.eval(Sample, boolean)",
-            "com.treestar.flowjo.core.nodes.KeywordCriterion.evalConnector(boolean, boolean)",
-            "com.treestar.flowjo.core.enumerations.CriteriaTest.isNumericFunction(int)",
-            "com.treestar.lib.parsing.ParseUtil.isNumber(String) (fjlib-2.3.0.jar)"
-          ]
-        },
-        "normalized_result": {
-          "behavior": "Up to 4 keyword criteria; an active criterion has a keyword and a non-empty value. The result starts true and every active criterion applies its connector (And, Or, And-not), the first included. A missing keyword tests false; the six comparisons are numeric when the trimmed sample value is a number, otherwise case-insensitive string order; Contains / Lacks are case-insensitive substring tests; Exists is true when the keyword is present.",
-          "spec": "docs/validation/flowjo-engine-specs.md section 7.1"
-        },
-        "confidence": "observed",
-        "authority": "shipped-artifact",
-        "environment": null,
-        "limitations": [
-          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
-        ],
-        "locations": [
-          {
-            "kind": "artifact-path",
-            "path": "com/treestar/flowjo/core/nodes/KeywordCriterion.class"
-          },
-          {
-            "kind": "artifact-path",
-            "path": "com/treestar/flowjo/core/enumerations/CriteriaTest.class"
-          }
-        ]
-      },
-      {
-        "evidence_id": "ev_86747a307fbdcb80c896e59379305942a741add02e08c75e065750ef5da886f0",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [],
-        "subject": {
-          "name": "FlowJo-10.6.2.jar",
-          "digest": {
-            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
-          },
-          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
-          "format": "zip",
-          "architecture": null
-        },
-        "provider": {
-          "id": "javap",
-          "name": "OpenJDK javap (analyst reading of bytecode)",
-          "version": "21.0.12"
-        },
-        "predicate_type": "flowjo-rea.static-behavior",
-        "operation": "inspect_java_classes",
-        "parameters": {
-          "symbols": [
-            "com.treestar.flowjo.application.graphwindow.kinetics.KineticsNode",
-            "com.treestar.flowjo.application.graphwindow.kinetics.KineticsStatisticFormat",
-            "StatKey kin* (plat.kin.*)"
-          ]
-        },
-        "normalized_result": {
-          "behavior": "KineticsNode in the population's Subpopulations with yAxis, statistic, percentile, smoothing, absoluteThreshold, threshold, thresholdPercentile (-999999 unset), thresholdTimesliceName, yAuto, yMin, yMax, colorIndex and Timeslice children (color #rrggbb); statistics plat.kin.startt .. plat.kin.dt with id = timeslice.",
-          "spec": "docs/validation/flowjo-engine-specs.md section 11.6"
-        },
-        "confidence": "observed",
-        "authority": "shipped-artifact",
-        "environment": null,
-        "limitations": [
-          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
-        ],
-        "locations": [
-          {
-            "kind": "artifact-path",
-            "path": "com/treestar/flowjo/application/graphwindow/kinetics/KineticsNode.class"
-          },
-          {
-            "kind": "artifact-path",
-            "path": "com/treestar/flowjo/application/graphwindow/kinetics/KineticsStatisticFormat.class"
-          }
-        ]
-      },
-      {
-        "evidence_id": "ev_87b26f0fc03fa03260078ec7e33246f37400eef02e400353b630e50757723a0d",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [
-          "ev_a2add5d35980e3ad357f95675188ff866b6927f40f319e9020922b2b5123f843"
-        ],
-        "subject": null,
-        "provider": {
-          "id": "flowjo-rea.review",
-          "name": "flowjo-rea obligation review",
-          "version": "1"
-        },
-        "predicate_type": "flowjo-rea.obligation-review",
-        "operation": "review_reconstruction_obligation",
-        "parameters": {
-          "obligation_id": "tables.iteration-batch",
-          "obligation_version": 1
-        },
-        "normalized_result": {
-          "title": "Iteration by sample, keyword or panel and batch tiles follow FlowJo 10",
-          "required_case_kinds": [
-            "positive",
-            "negative"
-          ],
-          "owner": "src/core/tableEditor.ts"
-        },
-        "confidence": "derived",
-        "authority": "analyst-inference",
-        "environment": null,
-        "limitations": [
-          "AI-assisted review (Claude Code session); no human review is attested."
-        ],
-        "locations": []
-      },
-      {
-        "evidence_id": "ev_8935d761dad3ce15b38d2bf12085b115f4769f77730411d55365944f3b21b5ce",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [
-          "ev_6361ad16585b7f47712dfb94c855deef8006152569b2a26315a08df987cedc5f"
-        ],
-        "subject": null,
-        "provider": {
-          "id": "flowjo-rea.review",
-          "name": "flowjo-rea obligation review",
-          "version": "1"
-        },
-        "predicate_type": "flowjo-rea.obligation-review",
-        "operation": "review_reconstruction_obligation",
-        "parameters": {
-          "obligation_id": "graph.stain-axis-title",
-          "obligation_version": 1
-        },
-        "normalized_result": {
-          "title": "Edited $PnS stains rename parameters as 'name :: stain' like FlowJo 10",
-          "required_case_kinds": [
-            "positive",
-            "negative"
-          ],
-          "owner": "src/ui/axes.ts"
-        },
-        "confidence": "derived",
-        "authority": "analyst-inference",
-        "environment": null,
-        "limitations": [
-          "AI-assisted review (Claude Code session); no human review is attested."
-        ],
-        "locations": []
-      },
-      {
-        "evidence_id": "ev_89699b91f5e6a9c7eeb423b5baa867fe4bd231763b0c5a62ffa46a0380494d50",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [],
-        "subject": {
-          "name": "libNativeEngine-3.6.2.jnilib",
-          "digest": {
-            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
-          },
-          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
-          "format": "mach-o",
-          "architecture": "x86_64"
-        },
-        "provider": {
-          "id": "llvm-objdump",
-          "name": "LLVM objdump (analyst reading of disassembly)",
-          "version": "18.1.3"
-        },
-        "predicate_type": "flowjo-rea.static-behavior",
-        "operation": "inspect_native_functions",
-        "parameters": {
-          "symbols": [
-            "GParameter::Median(ActivePopulation*, bool)",
-            "BasicHistogram::ChannelMedian(bool)"
-          ]
-        },
-        "normalized_result": {
-          "behavior": "The median is read from a 4096-channel histogram: the first channel whose cumulative count (single precision) reaches n * 50 * 0.01, converted back to a data value; no interpolation.",
-          "spec": "docs/validation/flowjo-engine-specs.md section 4"
-        },
-        "confidence": "observed",
-        "authority": "shipped-artifact",
-        "environment": null,
-        "limitations": [
-          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
-        ],
-        "locations": [
-          {
-            "kind": "address-range",
-            "start": "0x15cfb0",
-            "end": "0x15d050"
-          },
-          {
-            "kind": "address-range",
-            "start": "0xe9fe0",
-            "end": "0xea170"
-          }
-        ]
-      },
-      {
-        "evidence_id": "ev_8ad78c8892a84c714733361d8859cfde3c27211d188dde85a060799f84d227d8",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [],
-        "subject": {
-          "name": "FlowJo-10.6.2.jar",
-          "digest": {
-            "sha256": "6a6436c0bf65d6d0a3bd763b97d04e09e410fdc0468618e5156c28deb861c61c"
-          },
-          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/FlowJo-10.6.2.jar",
-          "format": "zip",
-          "architecture": null
-        },
-        "provider": {
-          "id": "javap",
-          "name": "OpenJDK javap (analyst reading of bytecode)",
-          "version": "21.0.12"
-        },
-        "predicate_type": "flowjo-rea.static-behavior",
-        "operation": "inspect_java_classes",
-        "parameters": {
-          "symbols": [
-            "layout.AlignableLayerDiagram",
-            "layout.AbstractLayerDiagram",
-            "application.leditor.Iteration",
-            "application.leditor.Batch"
-          ]
-        },
-        "normalized_result": {
-          "behavior": "Layout coordinates are points on US Letter with 1 inch margins; align left/top/right/bottom use the selection extent and centres the integer mean of centres; spacing keeps first and last and steps leading edges by floor(centre span / (n-1)); align to grid snaps to 36 pt; bring to front keeps selection order and send to back reverses it; nudge steps multiply Alt 2, Ctrl 2, Shift 3; panel iteration keeps a graph's position in its panel and keyword iteration maps the k-th sample by value.",
-          "spec": "docs/validation/flowjo-engine-specs.md section 21"
-        },
-        "confidence": "observed",
-        "authority": "shipped-artifact",
-        "environment": null,
-        "limitations": [
-          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
-        ],
-        "locations": [
-          {
-            "kind": "artifact-path",
-            "path": "com/treestar/flowjo/application/leditor/Iteration.class"
-          },
-          {
-            "kind": "artifact-path",
-            "path": "com/treestar/flowjo/application/leditor/Batch.class"
-          }
-        ]
-      },
-      {
-        "evidence_id": "ev_997c1dbb15d2fd8c7cf786bd5b41dad21b9171ea859546cd2c97d72e4c390fc7",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [],
-        "subject": {
-          "name": "libNativeEngine-3.6.2.jnilib",
-          "digest": {
-            "sha256": "ae2369f31d932bc6f6c0997ef2232e7448a6df0471e169591f18abe155289b56"
-          },
-          "local_path": "FlowJo-OSX64-10.6.2.dmg!/FlowJo/FlowJo.app/Contents/Resources/Java/libNativeEngine-3.6.2.jnilib",
-          "format": "mach-o",
-          "architecture": "x86_64"
-        },
-        "provider": {
-          "id": "llvm-objdump",
-          "name": "LLVM objdump (analyst reading of disassembly)",
-          "version": "18.1.3"
-        },
-        "predicate_type": "flowjo-rea.static-behavior",
-        "operation": "inspect_native_functions",
-        "parameters": {
-          "symbols": [
-            "FGate::GetRectRangeInScale(double&, double&, double&, double&, TransformedParameter*, TransformedParameter*)"
-          ]
-        },
-        "normalized_result": {
-          "behavior": "A rectangle bound whose channel floor((b - min) * C / (max - min) + 0.5), C = max(channel range, 4096), is <= 0 (lower) or >= C (upper) is replaced by an open bound; other bounds are kept.",
-          "spec": "docs/validation/flowjo-engine-specs.md section 3"
-        },
-        "confidence": "observed",
-        "authority": "shipped-artifact",
-        "environment": null,
-        "limitations": [
-          "Read by an analyst from disassembly or bytecode of the shipped FlowJo 10.6.2 build; behavior is stated in words and no FlowJo code is retained."
-        ],
-        "locations": [
-          {
-            "kind": "address-range",
-            "start": "0x804d0",
-            "end": "0x807c0"
-          }
-        ]
-      },
-      {
-        "evidence_id": "ev_9a59a28140b736c3779dbd06c9b19c8ad0800f5a5889125df420732861ad7cab",
-        "analysis_profile": null,
-        "raw_result": null,
-        "relationship_coverage": null,
-        "evidence_links": [
-          "ev_27565fd9f5e9e72571db8afdd7e629cb243f1aee11b48b86a591b1b72cea58cc"
-        ],
-        "subject": null,
-        "provider": {
-          "id": "flowjo-rea.review",
-          "name": "flowjo-rea obligation review",
-          "version": "1"
-        },
-        "predicate_type": "flowjo-rea.obligation-review",
-        "operation": "review_reconstruction_obligation",
-        "parameters": {
-          "obligation_id": "export.event-cap",
-          "obligation_version": 1
-        },
-        "normalized_result": {
-          "title": "No more than N takes every step-th event, as FlowJo 10 does",
-          "required_case_kinds": [
-            "positive",
-            "negative"
-          ],
-          "owner": "src/core/exportRules.ts"
-        },
-        "confidence": "derived",
-        "authority": "analyst-inference",
-        "environment": null,
-        "limitations": [
-          "AI-assisted review (Claude Code session); no human review is attested."
         ],
         "locations": []
       },
@@ -7918,7 +7918,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -7926,7 +7926,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -7934,7 +7934,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -7944,7 +7944,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "wsp.polygon-counts"
           ],
@@ -7980,7 +7980,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -7988,7 +7988,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -7998,7 +7998,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "wsp.logicle-ellipse"
           ],
@@ -8034,7 +8034,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8042,7 +8042,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -8052,7 +8052,7 @@
           "command": "npx vitest run tests/wsp.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "gate.rect-open-bounds"
           ],
@@ -8093,7 +8093,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8101,7 +8101,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8109,7 +8109,7 @@
             "case_kind": "malformed",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -8119,7 +8119,7 @@
           "command": "npx vitest run tests/flowjo-stats.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "stats.flowjo-conventions"
           ],
@@ -8134,7 +8134,7 @@
         "owner": {
           "module_path": "src/core/model.ts",
           "symbol": "uniqueName",
-          "owner_sha256": "e5b483b9495732bcbd2ed76b4ad90183e11af14248e9fd67adecfc78e50bf671"
+          "owner_sha256": "214b21beae3531a1076712dbcbbf8bb06b8daa393cb3f8d57d88e76d5fe038b1"
         },
         "parser_type": null,
         "original_cases": [
@@ -8155,7 +8155,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8163,7 +8163,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -8173,7 +8173,7 @@
           "command": "npx vitest run tests/uat-step2.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "names.unique-sibling"
           ],
@@ -8209,7 +8209,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8217,7 +8217,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -8227,7 +8227,7 @@
           "command": "npx vitest run tests/uat-step2.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "gate.min-shape"
           ],
@@ -8263,7 +8263,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8271,7 +8271,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8279,7 +8279,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -8289,7 +8289,7 @@
           "command": "npx vitest run tests/uat-step2.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "sample.relink-keywords"
           ],
@@ -8325,7 +8325,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8333,7 +8333,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8341,7 +8341,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -8351,7 +8351,7 @@
           "command": "npx vitest run tests/quad-delete.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "gate.quad-sibling-delete"
           ],
@@ -8387,7 +8387,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8395,7 +8395,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -8405,7 +8405,7 @@
           "command": "npx vitest run tests/cellcycle.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "cellcycle.histogram-channels"
           ],
@@ -8441,7 +8441,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8449,7 +8449,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8457,7 +8457,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -8467,7 +8467,7 @@
           "command": "npx vitest run tests/history.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "workspace.undo-limit"
           ],
@@ -8508,7 +8508,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8516,7 +8516,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8524,7 +8524,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8532,7 +8532,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8540,7 +8540,7 @@
             "case_kind": "malformed",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -8550,7 +8550,7 @@
           "command": "npx vitest run tests/group-criteria.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "groups.keyword-criteria"
           ],
@@ -8586,7 +8586,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8594,7 +8594,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8602,7 +8602,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -8612,7 +8612,7 @@
           "command": "npx vitest run tests/group-criteria.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "groups.acceptance"
           ],
@@ -8648,7 +8648,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8656,7 +8656,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -8666,7 +8666,7 @@
           "command": "npx vitest run tests/group-criteria.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "groups.roles"
           ],
@@ -8702,7 +8702,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8710,7 +8710,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8718,7 +8718,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8726,7 +8726,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8734,7 +8734,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -8744,7 +8744,7 @@
           "command": "npx vitest run tests/group-analysis.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "groups.owned-analysis"
           ],
@@ -8780,7 +8780,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8788,7 +8788,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8796,7 +8796,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -8806,7 +8806,7 @@
           "command": "npx vitest run tests/flowjo-stats-moments.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "stats.histogram-moments"
           ],
@@ -8847,7 +8847,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8855,7 +8855,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8863,7 +8863,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -8873,7 +8873,7 @@
           "command": "npx vitest run tests/flowjo-stats-moments.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "stats.mode-mad-correlation"
           ],
@@ -8909,7 +8909,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8917,7 +8917,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8925,7 +8925,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -8935,7 +8935,7 @@
           "command": "npx vitest run tests/flowjo-stats-moments.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "stats.wsp-names"
           ],
@@ -8971,7 +8971,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8979,7 +8979,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -8987,7 +8987,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -8997,7 +8997,7 @@
           "command": "npx vitest run tests/export-rules.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "export.event-cap"
           ],
@@ -9033,7 +9033,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9041,7 +9041,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9049,7 +9049,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -9059,7 +9059,7 @@
           "command": "npx vitest run tests/export-rules.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "export.csv-format"
           ],
@@ -9095,7 +9095,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9103,7 +9103,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9111,7 +9111,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9119,7 +9119,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -9129,7 +9129,7 @@
           "command": "npx vitest run tests/export-rules.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "export.concatenate"
           ],
@@ -9165,7 +9165,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9173,7 +9173,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -9183,7 +9183,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "gates.quad-bisector"
           ],
@@ -9219,7 +9219,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9227,7 +9227,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -9237,7 +9237,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "gates.names-tools"
           ],
@@ -9278,7 +9278,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9286,7 +9286,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9294,7 +9294,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9302,7 +9302,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -9312,7 +9312,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "gates.spider-curly"
           ],
@@ -9348,7 +9348,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9356,7 +9356,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9364,7 +9364,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -9374,7 +9374,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "gates.magnetic"
           ],
@@ -9415,7 +9415,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9423,7 +9423,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9431,7 +9431,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9439,7 +9439,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -9449,7 +9449,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "gates.auto-gate"
           ],
@@ -9490,7 +9490,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9498,7 +9498,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9506,7 +9506,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9514,7 +9514,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -9524,7 +9524,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "gates.pencil-convert"
           ],
@@ -9565,7 +9565,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9573,7 +9573,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9581,7 +9581,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9589,7 +9589,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -9599,7 +9599,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "gates.clipboard-manual"
           ],
@@ -9645,7 +9645,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9653,7 +9653,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9661,7 +9661,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9669,7 +9669,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -9679,7 +9679,7 @@
           "command": "npx vitest run tests/gate-tools.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "gates.anchored-bifurgate"
           ],
@@ -9725,7 +9725,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9733,7 +9733,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9741,7 +9741,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9749,7 +9749,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9757,7 +9757,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9765,7 +9765,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -9775,7 +9775,7 @@
           "command": "npx vitest run tests/kinetics.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "kinetics.series"
           ],
@@ -9816,7 +9816,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9824,7 +9824,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9832,7 +9832,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9840,7 +9840,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -9850,7 +9850,7 @@
           "command": "npx vitest run tests/kinetics.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "kinetics.smoothing-threshold"
           ],
@@ -9896,7 +9896,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9904,7 +9904,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9912,7 +9912,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9920,7 +9920,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9928,7 +9928,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9936,7 +9936,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9944,7 +9944,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -9952,7 +9952,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -9962,7 +9962,7 @@
           "command": "npx vitest run tests/kinetics.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "kinetics.timeslices"
           ],
@@ -9998,7 +9998,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10006,7 +10006,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10014,7 +10014,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10022,7 +10022,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10030,7 +10030,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10038,7 +10038,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -10048,7 +10048,7 @@
           "command": "npx vitest run tests/formula.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "derived.language"
           ],
@@ -10063,7 +10063,7 @@
         "owner": {
           "module_path": "src/core/formula.ts",
           "symbol": "compileFormula",
-          "owner_sha256": "a68cdbd618c0c21898aec0444edf191b265afe0e8ddd40789c41d55b2f38adae"
+          "owner_sha256": "5276f8c97e77ee5c56c0c2be557356bb5b1214b4925140da85b42d8569170e84"
         },
         "parser_type": null,
         "original_cases": [
@@ -10089,7 +10089,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10097,7 +10097,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10105,7 +10105,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10113,7 +10113,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10121,7 +10121,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -10131,7 +10131,7 @@
           "command": "npx vitest run tests/formula.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "derived.evaluation"
           ],
@@ -10146,7 +10146,7 @@
         "owner": {
           "module_path": "src/core/formula.ts",
           "symbol": "derivedNameError",
-          "owner_sha256": "54fc22bce6e93faf0052f1a1cf854d6b26dffeb123059f3a98df4d9107d11575"
+          "owner_sha256": "d214467c1d8c93f011be4c9deb9ab2c6ae32e53a63356bd7d33e31f8bd427721"
         },
         "parser_type": null,
         "original_cases": [
@@ -10167,7 +10167,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10175,7 +10175,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -10185,7 +10185,7 @@
           "command": "npx vitest run tests/formula.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "derived.dialog-wsp"
           ],
@@ -10226,7 +10226,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10234,7 +10234,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10242,7 +10242,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10250,7 +10250,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10258,7 +10258,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10266,7 +10266,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -10276,7 +10276,7 @@
           "command": "npx vitest run tests/fcs-flowjo.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "fcs.read"
           ],
@@ -10291,7 +10291,7 @@
         "owner": {
           "module_path": "src/core/compFlowjo.ts",
           "symbol": "writeMtx",
-          "owner_sha256": "6bb71762217501349ff224e3234aef3a839fd07f879c07ef246fe75ed133d6ad"
+          "owner_sha256": "1abf3b6385c7b1b3f3c60e2389ccd88880376ad6b3a573527e88053b27833fb0"
         },
         "parser_type": null,
         "original_cases": [
@@ -10312,7 +10312,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10320,7 +10320,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10328,7 +10328,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -10338,7 +10338,7 @@
           "command": "npx vitest run tests/comp-flowjo.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "compensation.files"
           ],
@@ -10353,7 +10353,7 @@
         "owner": {
           "module_path": "src/core/compFlowjo.ts",
           "symbol": "flowjoWizard",
-          "owner_sha256": "f169ebe6b92e39d33f4a707826615211459f4e5e21fb19075dcf56cd70e10850"
+          "owner_sha256": "ae7f6b778582e95ebd1608d8f96c720b8931eb132d3c3fd2b210bb59ae5d70b9"
         },
         "parser_type": null,
         "original_cases": [
@@ -10389,7 +10389,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10397,7 +10397,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10405,7 +10405,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10413,7 +10413,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10421,7 +10421,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -10431,7 +10431,7 @@
           "command": "npx vitest run tests/comp-flowjo.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "compensation.wizard-ssm"
           ],
@@ -10467,7 +10467,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10475,7 +10475,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -10485,7 +10485,7 @@
           "command": "npx vitest run tests/cellcycle.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "platforms.cellcycle-models"
           ],
@@ -10521,7 +10521,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10529,7 +10529,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -10539,7 +10539,7 @@
           "command": "npx vitest run tests/proliferation.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "platforms.proliferation-indices"
           ],
@@ -10554,7 +10554,7 @@
         "owner": {
           "module_path": "src/core/prefs.ts",
           "symbol": "skipConfirm",
-          "owner_sha256": "bcdfb096223fb96240d2f60ab5447f8f5a6977c76cc2b699e8b76a1b60962e1d"
+          "owner_sha256": "4ce0f8130b4626f1b17850b96f1adf1635c62849044cce270279364519a4c15c"
         },
         "parser_type": null,
         "original_cases": [
@@ -10575,7 +10575,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10583,7 +10583,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -10593,7 +10593,7 @@
           "command": "npx vitest run tests/prefs-tables.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "workspace.dont-ask-again"
           ],
@@ -10608,7 +10608,7 @@
         "owner": {
           "module_path": "src/core/prefs.ts",
           "symbol": "shouldAutoSave",
-          "owner_sha256": "5a3aa73f983fb65f3338996642bd772943b4e278a4543023b1e2ce9896329093"
+          "owner_sha256": "6d753b19158a8e302c39eadc1355e2b54fd09d5757eb6c31c85e7d25e6781b62"
         },
         "parser_type": null,
         "original_cases": [
@@ -10629,7 +10629,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10637,7 +10637,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -10647,7 +10647,7 @@
           "command": "npx vitest run tests/prefs-tables.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "workspace.autosave"
           ],
@@ -10662,7 +10662,7 @@
         "owner": {
           "module_path": "src/core/prefs.ts",
           "symbol": "edgeWarning",
-          "owner_sha256": "5a3aa73f983fb65f3338996642bd772943b4e278a4543023b1e2ce9896329093"
+          "owner_sha256": "6d753b19158a8e302c39eadc1355e2b54fd09d5757eb6c31c85e7d25e6781b62"
         },
         "parser_type": null,
         "original_cases": [
@@ -10683,7 +10683,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10691,7 +10691,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -10701,7 +10701,7 @@
           "command": "npx vitest run tests/prefs-tables.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "graphs.edge-warning"
           ],
@@ -10737,7 +10737,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10745,7 +10745,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -10755,7 +10755,7 @@
           "command": "npx vitest run tests/prefs-tables.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "tables.editor"
           ],
@@ -10770,7 +10770,7 @@
         "owner": {
           "module_path": "src/core/tableEditor.ts",
           "symbol": "iterate",
-          "owner_sha256": "cb4964465b1ba428eb0299b66258fff357e0ae14031dfd3e836a4e1d13706f0d"
+          "owner_sha256": "6584810c26347ad357433b54ecc53ecb92b7b3c94b2fa3a8ee3a687223e93dd3"
         },
         "parser_type": null,
         "original_cases": [
@@ -10791,7 +10791,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10799,7 +10799,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -10809,7 +10809,7 @@
           "command": "npx vitest run tests/prefs-tables.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "tables.iteration-batch"
           ],
@@ -10824,7 +10824,7 @@
         "owner": {
           "module_path": "src/ui/axes.ts",
           "symbol": "withStains",
-          "owner_sha256": "e27c913fb5049c6c8b7117d87ef387ce3ce69e2a6c9c532acc07ebeeea58ecba"
+          "owner_sha256": "70fdee81e287248aee60b392bf6be750f39813b79c0d55a43c93137b1b05409e"
         },
         "parser_type": null,
         "original_cases": [
@@ -10845,7 +10845,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10853,7 +10853,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -10863,7 +10863,7 @@
           "command": "npx vitest run tests/stains.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "graph.stain-axis-title"
           ],
@@ -10878,7 +10878,7 @@
         "owner": {
           "module_path": "src/core/layoutArrange.ts",
           "symbol": "align",
-          "owner_sha256": "c78e82f54f7344025b0f4b408d7187d375eaee4a793dd163d2000eb10e6e425f"
+          "owner_sha256": "d65ca4bb847d8bb662e3f4a8870f70879d3604f133aa2ae59ca36280b205df9b"
         },
         "parser_type": null,
         "original_cases": [
@@ -10899,7 +10899,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10907,7 +10907,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -10917,7 +10917,7 @@
           "command": "npx vitest run tests/layout-arrange.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "layout.arrange-iteration"
           ],
@@ -10932,7 +10932,7 @@
         "owner": {
           "module_path": "src/core/wspLayout.ts",
           "symbol": "parseFigList",
-          "owner_sha256": "3daa57d130f2df475c7f311cf5f9c2b8ddb44350e85d2c7aef21a4357f8243a3"
+          "owner_sha256": "c144096605c6ec9f9584041ba7fe3c11dfd211d84c09765460204d45cf61e795"
         },
         "parser_type": null,
         "original_cases": [
@@ -10953,7 +10953,7 @@
             "case_kind": "positive",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           },
           {
@@ -10961,7 +10961,7 @@
             "case_kind": "negative",
             "authority": "integration",
             "evidence_ids": [
-              "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25"
+              "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93"
             ]
           }
         ],
@@ -10971,7 +10971,7 @@
           "command": "npx vitest run tests/wsp-figures.test.ts",
           "authority": "integration",
           "status": "pass",
-          "result_evidence_id": "ev_6c55d4b8d5c3db6c37810c69f743db4e78ff76edbdec38d7be4b0f2cef20ce25",
+          "result_evidence_id": "ev_9a71beeab5db6c42274d8109be2532d65165a18863ae2bc5bf8e661729041b93",
           "enumerated_obligation_ids": [
             "wsp.layout-figures"
           ],

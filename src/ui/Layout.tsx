@@ -8,7 +8,14 @@ import {
   pageGrid, PAPERS, sendToBack, spacing, stepOrder, tilePitch, unionBox, DEFAULT_GUIDES, MAX_GUIDES, snapToGuides, borderAxes, cellOrigin, gridBounds, gridDelete, gridInsert, gridResize, type AlignMode, type Box, type CellRef, type GridDef, type Guides, type LayoutIteration, type PageSetup,
   scaledPage, handleAt, isCornerHandle, resizeBox, ZOOM_STEPS, zoomIn, zoomOut, zoomFit, autoPageScale, pasteOffset, PASTE_TEXT_POINT, invertSelection,
 } from '../core/layoutArrange';
-import { isPlotItem, populationPath, type LayoutItem, type LayoutPlot, type LayoutShape, type LayoutText, type SampleState, type Workspace } from '../core/model';
+import { isPlotItem, populationPath, type LayoutItem, type LayoutObject, type LayoutPlot, type LayoutShape, type LayoutText, type SampleState, type Workspace } from '../core/model';
+import { annoText, columnLabel, LEGEND_DEFAULT_COLUMNS, newDiffTable, newStatTable, type LayoutObjectSpec, type StatTableColumn } from '../core/layoutTables';
+import { newPlateModel } from '../core/layoutPlate';
+import {
+  addBand, ALL_BANDS, BAND_LABELS, CONFIG_PROMPT, defaultRibbon, HELP_URLS, loadOverlayMode, loadRibbon, moveBand, OVERLAY_LABELS, removeBand, saveOverlayMode, saveRibbon, SET_DEFAULTS_CONFIRM, TASK_LABELS, TASKS, WEB_DEFAULT_URL, webZoom,
+  type OverlayMode, type RibbonBand, type RibbonConfig, type RibbonTask,
+} from '../core/layoutPrefs';
+import { ColumnEditor, drawObject, evaluateObject, ObjectPanel, objectSize, openHelp, type ObjRender } from './LayoutObjects';
 import {
   ANNOTATIONS, annoToken, DEFAULT_HEADER_FOOTER, GRADIENTS, headerText, keywordToken, LINE_STYLES, LINE_WEIGHTS, liveText, paintFigFrame, SPECIAL_CHARS, styleOf,
   addLayout, applyPreset, makePreset, deleteLayout, duplicateLayout, layoutNames, renameLayout, selectLayout, DEFAULT_LAYOUT_NAME, type FigStyle, type GradientType, type HeaderFooter, type LineStyle, type LineWeight,
@@ -68,9 +75,13 @@ export const graphBoxSize = (it: SizeItem) => { const c = graphCanvasSize(it); r
 
 // Position of an item; items saved before positions existed are laid out two
 // across in list order (own migration rule).
+// Object figures without an explicit size take the size of their last
+// evaluation (a table grows with its rows, as FlowJo's grid figures do).
+const objectSizes = new Map<string, { w: number; h: number }>();
 export function boxOf(it: LayoutItem, i: number): Box {
-  const w = it.width ?? (isPlotItem(it) ? GRAPH_W : TEXT_W);
-  const h = it.height ?? (isPlotItem(it) ? GRAPH_H : TEXT_H);
+  const os = it.object ? objectSizes.get(it.id) ?? objectSize(undefined, it.object) : null;
+  const w = it.width ?? (isPlotItem(it) ? GRAPH_W : os ? os.w : TEXT_W);
+  const h = it.height ?? (isPlotItem(it) ? GRAPH_H : os ? os.h : TEXT_H);
   return { id: it.id, x: it.left ?? (i % 2) * (GRAPH_W + 30), y: it.top ?? Math.floor(i / 2) * (GRAPH_H + 30), w, h, locked: it.locked, groupId: it.groupId };
 }
 const withBox = (it: LayoutItem, b: Box): LayoutItem => ({ ...it, left: b.x, top: b.y, width: b.w, height: b.h });
@@ -100,6 +111,7 @@ interface Rendered {
   title: string;
   error?: string;
   placeholder?: boolean;
+  obj?: ObjRender; // object figures (tables, plates, web pages)
 }
 
 // The sample a layout item shows for an iteration value (I1-I7). Items saved
@@ -107,6 +119,7 @@ interface Rendered {
 export type Bind = (it: LayoutItem) => SampleState | undefined;
 export interface RenderExtras { valueSample?: SampleState; placeholders?: boolean; title?: string; page?: number }
 
+const loaded0 = (ws: Workspace, id?: string) => (id ? ws.samples.find((x) => x.id === id) : undefined);
 const loadImage = (src: string) => new Promise<HTMLImageElement>((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('image not available')); im.src = src; });
 
 // Render every layout item for its bound sample.
@@ -114,6 +127,10 @@ export async function renderLayout(client: Client, ws: Workspace, meta: Record<s
   const counts = new Map<string, Record<string, { count: number; parentCount: number }>>();
   const out: Rendered[] = [];
   for (const item of items) {
+    if (item.object !== undefined) {
+      try { const obj = await evaluateObject(client, ws, meta, item, extras.valueSample); objectSizes.set(item.id, objectSize(obj, item.object)); out.push({ item, canvas: null, title: item.object.kind, obj }); } catch (e) { out.push({ item, canvas: null, title: item.object.kind, error: (e as Error).message }); }
+      continue;
+    }
     if (item.text !== undefined) {
       // Live text (Insert Keyword / Insert Annotation) for the iteration's sample.
       const s = extras.valueSample;
@@ -137,7 +154,9 @@ export async function renderLayout(client: Client, ws: Workspace, meta: Record<s
     if (extras.placeholders) { out.push({ item, canvas: null, title: label, placeholder: true }); continue; }
     const s = bind(item);
     if (!s || !meta[s.id]) { out.push({ item, canvas: null, title: label, error: 'no sample for this iteration value' }); continue; }
-    const base = { sampleId: s.id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters };
+    // Copy To New Layout (CompCommand.ADDTOLAYOUT): a chart may carry the matrix it was copied with.
+    const compensation = item.compMatrix && ws.matrices.some((x) => x.id === item.compMatrix) ? item.compMatrix : s.compensation;
+    const base = { sampleId: s.id, compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters };
     if (!counts.has(s.id)) {
       const a = await client.analyze(base);
       const c: Record<string, { count: number; parentCount: number }> = {};
@@ -157,9 +176,23 @@ export async function renderLayout(client: Client, ws: Workspace, meta: Record<s
     const req = (popId: string | null, maxPoints: number, withColor = false) => client.plot({ ...base, popId, ...(withColor && cAxis ? { color: { kind: 'channel' as const, channel: cAxis.channel, transform: cAxis.spec } } : {}), x: { kind: 'channel', channel: x.channel, transform: x.spec }, y: y ? { kind: 'channel', channel: y.channel, transform: y.spec } : null, bins: y ? 200 : 256, xRange: x.range, yRange: y ? y.range : null, maxPoints });
     const data: PlotResult = await req(pop?.id ?? null, 20000, true);
     const overlays: { label: string; data: PlotResult }[] = [];
+    // Legend rows (LegendModel): one per layer, with the legend's columns. A
+    // layer Set As Control keeps the chart's own sample when the layout
+    // iterates (PopModel.bind skips control layers).
+    const legendCols = item.legendColumns ?? LEGEND_DEFAULT_COLUMNS;
+    const legendLabel = async (ls: SampleState, path: string, data: PlotResult) => {
+      const ctx = { sampleName: ls.fileName, path, keyword: (k: string) => ls.keywordsSnapshot[k.toUpperCase()] ?? ls.keywordsSnapshot[k], compensation: '', wsAnnotation: ws.notes.split('\n')[0] ?? '' };
+      const stats = legendCols.filter((c): c is Extract<StatTableColumn, { type: 'stat' }> => c.type === 'stat' && c.stat.stat !== 'count');
+      const vals = stats.length ? await client.stats({ ...base, sampleId: ls.id, populations: ls.populations, columns: stats.map((c, k) => ({ ...c.stat, id: `#${k}`, populationPath: path })), kinetics: ws.kinetics }) : [];
+      return legendCols.map((c) => (c.type === 'anno' ? annoText(c.anno, ctx) : c.type === 'keyword' ? ctx.keyword(c.name) ?? '' : c.stat.stat === 'count' ? data.count.toLocaleString() : String(vals[stats.indexOf(c)] ?? ''))).join('  ');
+    };
+    const ownSample = loaded0(ws, item.sampleId) ?? s;
     for (const path of item.overlays ?? []) {
-      const op = s.populations.find((q) => populationPath(s.populations, q.id) === path);
-      if (op) overlays.push({ label: path, data: await req(op.id, 5000) });
+      const ls = item.controls?.includes(path) ? ownSample : s;
+      const op = ls.populations.find((q) => populationPath(ls.populations, q.id) === path);
+      if (!op) continue;
+      const d = ls === s ? await req(op.id, 5000) : await client.plot({ ...base, sampleId: ls.id, populations: ls.populations, popId: op.id, x: { kind: 'channel', channel: x.channel, transform: x.spec }, y: y ? { kind: 'channel', channel: y.channel, transform: y.spec } : null, bins: y ? 200 : 256, xRange: x.range, yRange: y ? y.range : null, maxPoints: 5000 });
+      overlays.push({ label: await legendLabel(ls, path, d), data: d });
     }
     const title = (ch: string) => { const c = chans.find((q) => q.name === ch); return c ? channelDisplayName(c) : ch; };
     const options: RenderOptions = { kind: item.kind, x, y, data, gates: item.showGates === false ? [] : drawableGates(s.populations, pop?.id ?? null, x, y), counts: counts.get(s.id)!, contourLevel: item.contourLevel, showOutliers: item.showOutliers, overlays, noLegend: item.legend === false, normalize: item.normalize, xTitle: title(x.channel), yTitle: y ? title(y.channel) : undefined, gateNames: item.gateNames !== false && !item.hideGateNames, gateFreq: item.gateFreq !== false && !item.hideGateFreq, axes: item.axes, grid: item.grid, largeDots: item.largeDots, medians: item.medians, ...(cAxis && data.colorMean ? { colorBy: { values: data.colorMean, range: cAxis.range, label: cAxis.channel } } : {}) };
@@ -273,7 +306,9 @@ export async function renderLayout(client: Client, ws: Workspace, meta: Record<s
 // fill / outline of a chart's box (Figure Properties), in layout points.
 function drawFig(ctx: CanvasRenderingContext2D, it: LayoutItem, b: Box, r: Rendered | undefined) {
   paintFigFrame(ctx, it, b);
-  if (it.text !== undefined) {
+  if (it.object !== undefined) {
+    if (r?.error) { ctx.fillStyle = '#b00020'; ctx.font = '10px sans-serif'; ctx.fillText(r.error, b.x + 4, b.y + 14); } else drawObject(ctx, it, b, r?.obj);
+  } else if (it.text !== undefined) {
     ctx.fillStyle = it.color ?? '#111';
     ctx.font = textFont(it);
     const sz = it.size ?? 11;
@@ -377,6 +412,8 @@ const ALIGN: { mode: AlignMode; label: string; key: string }[] = [
   { mode: 'top', label: 'Top', key: 't' }, { mode: 'vcenter', label: 'Middle', key: 'm' }, { mode: 'bottom', label: 'Bottom', key: 'b' },
 ];
 
+// Pages of the batch PDFs made in this session, by file name (Append Output).
+const appended = new Map<string, HTMLCanvasElement[]>();
 // The layout editor's clipboard (Copy / Cut / Paste within and between layouts).
 let clipboard: LayoutItem[] = [];
 const newFigId = (p: string) => `${p}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -432,6 +469,14 @@ export function LayoutView(p: {
   const [showHF, setShowHF] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [preset, setPreset] = useState('');
+  // Overlay Mode preference, the customised ribbon (both per viewer, as FlowJo's preferences).
+  const [overlayMode, setOverlayMode] = useState<OverlayMode>(loadOverlayMode);
+  const [ribbon, setRibbon] = useState<RibbonConfig>(loadRibbon);
+  const [ribbonCfg, setRibbonCfg] = useState(false);
+  const [legendFor, setLegendFor] = useState<string | null>(null);
+  const [webEditing, setWebEditing] = useState<string | null>(null);
+  const [append, setAppend] = useState(false);
+  const [tick, setTick] = useState(0); // Refresh (plates) / Reload Page and Refresh Image (web pages)
   const pageRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textRef = useRef<HTMLTextAreaElement | null>(null);
@@ -453,7 +498,7 @@ export function LayoutView(p: {
     let live = true;
     renderLayout(p.client, p.ws, p.meta, items, bindFor(cur), extrasFor(cur)).then((r) => live && setRendered(r)).catch((e) => live && setError((e as Error).message));
     return () => { live = false; };
-  }, [cur, p.ws, p.meta, placeholders]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cur, p.ws, p.meta, placeholders, tick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const boxes = items.map(boxOf);
   // Selecting a grouped item selects its group (FigGroup is one figure).
@@ -549,6 +594,10 @@ export function LayoutView(p: {
   // Drawing tools: a new shape at (30, 50), 144 x 72 pt (a line 144 pt long);
   // resize it with its corner handles (own placement; FlowJo draws by dragging).
   const addShape = (shape: LayoutShape['shape'], arrow?: LayoutShape['arrow']) => addFig({ id: newFigId('shp'), shape, left: 30, top: 50, width: 144, height: shape === 'line' ? 0 : 72, ...(shape === 'line' ? { ends: [0, 0, 1, 0] as [number, number, number, number] } : {}), ...(arrow ? { arrow } : {}) });
+  // Object figures (FigStatTable, FigDifferenceTable, FigPlateDisplay,
+  // FigWebBrowser): at (30, 50); tables and plates size themselves.
+  const addObject = (object: LayoutObjectSpec) => addFig({ id: newFigId('obj'), object, left: 30, top: 50, ...(object.kind === 'web' ? { width: 400, height: 300 } : {}) } as LayoutObject);
+  const setObject = (id: string, object: LayoutObjectSpec) => setItem(id, { object } as Partial<LayoutItem>);
   // Insert Graphic / pasted image (FigImage): at (30, 50), its own size in points.
   const addImageFig = async (url: string) => {
     const im = await new Promise<HTMLImageElement>((res, rej) => { const x = new Image(); x.onload = () => res(x); x.onerror = rej; x.src = url; }).catch(() => null);
@@ -646,15 +695,18 @@ export function LayoutView(p: {
   const paper = PAPERS[setup.paper];
   const paperSize = setup.orientation === 'landscape' ? { w: paper.h, h: paper.w } : { w: paper.w, h: paper.h };
   const toBlob = (cv: HTMLCanvasElement) => new Promise<Blob>((res, rej) => cv.toBlob((b) => (b ? res(b) : rej(new Error('PNG encoding failed'))), 'image/png'));
-  const exportAs = async (fmt: 'png' | 'svg' | 'pdf', name: string, r: Rendered[], its: LayoutItem[]) => {
+  const exportAs = async (fmt: 'png' | 'svg' | 'pdf', name: string, r: Rendered[], its: LayoutItem[], batch = false) => {
     if (fmt === 'svg') return p.onDownload(`${name}.svg`, new Blob([composeSvgPages(r, its, page)], { type: 'image/svg+xml' }));
     const k = 2 / pageScale;
     const all = composePages(r, its, page, k);
     if (fmt === 'png') return p.onDownload(`${name}.png`, await toBlob(all.canvas));
-    const pages = splitPages(all, page, k);
+    let pages = splitPages(all, page, k);
     // H1: with a header or footer, each PDF page is the whole paper.
-    if (hf.header || hf.footer) return p.onDownload(`${name}.pdf`, new Blob([await canvasesToPdf(withHeaderFooter(pages, paperSize, hf, layoutName), paperSize.w, paperSize.h, 0)], { type: 'application/pdf' }));
-    p.onDownload(`${name}.pdf`, new Blob([await canvasesToPdf(pages, paperSize.w, paperSize.h, MARGIN)], { type: 'application/pdf' }));
+    const whole = hf.header || hf.footer;
+    if (whole) pages = withHeaderFooter(pages, paperSize, hf, layoutName);
+    // Append Output (BatchSettings.append): a batch PDF continues the PDF of the same name from this session.
+    if (batch && append) { pages = [...(appended.get(name) ?? []), ...pages]; appended.set(name, pages); } else if (batch) appended.set(name, pages);
+    p.onDownload(`${name}.pdf`, new Blob([await canvasesToPdf(pages, paperSize.w, paperSize.h, whole ? 0 : MARGIN)], { type: 'application/pdf' }));
   };
   // Grid figures (FigGridLayout; specs 25.2): a grid object (rows, columns,
   // padding, cell size) whose cells hold the items, row by row. By default the
@@ -743,16 +795,12 @@ export function LayoutView(p: {
     return tileOrder === 'across' ? { c: k % cols, r: Math.floor(k / cols) } : { c: Math.floor(k / rows), r: k % rows };
   };
   const baseName = fileName.trim() || 'layout';
-
-  return (
-    <div className="modal-bg">
-      <div className="modal wide layout" role="dialog" aria-label="Layout editor">
-        <div className="modal-head">
-          <b>Layout editor ({items.length} items)</b>
-          <button onClick={p.onClose} aria-label="Close">x</button>
-        </div>
-        <div className="modal-body">
-          <div className="row" role="toolbar" aria-label="Layouts">
+  // Ribbon bands (LERibbonCommand$Band): the toolbar controls grouped as
+  // FlowJo groups them; the rows (tasks) and their bands follow the
+  // customised ribbon (Customize Ribbon / Apply Default Ribbons).
+  const hAlign = ALIGN.filter((a) => a.mode === 'left' || a.mode === 'hcenter' || a.mode === 'right'), vAlign = ALIGN.filter((a) => !hAlign.includes(a));
+  const band: Record<RibbonBand, React.ReactNode> = {
+    LAYOUTS: <>
             Layout {renaming !== null ? (
               <input autoFocus data-testid="layout-rename-input" value={renaming} onChange={(e) => setRenaming(e.target.value)} onBlur={() => { p.onSettings(renameLayout(p.ws, renaming)); setRenaming(null); }} onKeyDown={(e) => { if (e.key === 'Enter') { p.onSettings(renameLayout(p.ws, renaming)); setRenaming(null); } if (e.key === 'Escape') setRenaming(null); }} />
             ) : (
@@ -762,18 +810,8 @@ export function LayoutView(p: {
             <button data-testid="layout-list-duplicate" title="Duplicate: another layout starting from this one" onClick={() => { setSel([]); p.onSettings(duplicateLayout(p.ws)); }}>Duplicate</button>
             <button data-testid="layout-list-delete" title="Delete this layout" onClick={() => { if (window.confirm(`Delete the layout "${layoutName}"?`)) { setSel([]); p.onSettings(deleteLayout(p.ws)); } }}>Delete</button>
             <button data-testid="layout-list-rename" onClick={() => setRenaming(layoutName)}>Rename</button>
-            | Zoom <button data-testid="layout-zoom-out" title="Zoom Out (Ctrl/Cmd+-)" onClick={() => setZoom(zoomOut(zoom))}>-</button>
-            <select value={ZOOM_STEPS.includes(Math.round(zoom * 100)) ? zoom : ''} onChange={(e) => setZoom(Number(e.target.value))} data-testid="layout-zoom">{!ZOOM_STEPS.includes(Math.round(zoom * 100)) && <option value="">{Math.round(zoom * 100)}%</option>}{ZOOM_STEPS.map((z) => <option key={z} value={z / 100}>{z}%</option>)}</select>
-            <button data-testid="layout-zoom-in" title="Zoom In (Ctrl/Cmd+=)" onClick={() => setZoom(zoomIn(zoom))}>+</button>
-            <button data-testid="layout-zoom-fit" title="Fit to Window" onClick={fit}>Fit</button>
-            <button data-testid="layout-zoom-100" title="Reset Zoom" onClick={() => setZoom(1)}>100%</button>
-            | Scale <button data-testid="layout-scale-page" title="Scale To Page" onClick={() => p.onSettings({ layoutPage: { ...setup, scale: autoPageScale(boxes, usablePageOf(setup), 'page') } })}>Page</button>
-            <button data-testid="layout-scale-width" title="Scale To Width" onClick={() => p.onSettings({ layoutPage: { ...setup, scale: autoPageScale(boxes, usablePageOf(setup), 'width') } })}>Width</button>
-            <button data-testid="layout-scale-height" title="Scale To Height" onClick={() => p.onSettings({ layoutPage: { ...setup, scale: autoPageScale(boxes, usablePageOf(setup), 'height') } })}>Height</button>
-            <button data-testid="layout-scale-reset" disabled={pageScale === 1} onClick={() => p.onSettings({ layoutPage: { ...setup, scale: undefined } })}>1:1</button>
-            <span className="muted" data-testid="layout-scale">{Math.round(100 / pageScale)}%</span>
-          </div>
-          <div className="row">
+    </>,
+    ITERATION: <>
             Group <select value={p.ws.layoutGroup ?? ''} onChange={(e) => p.onSettings({ layoutGroup: e.target.value || undefined })} data-testid="layout-iter-group" title="Iteration Group: the samples of batches and browsing"><option value="">Workspace selection</option>{p.ws.groups.map((g) => <option key={g.id} value={g.name}>{g.name}</option>)}</select>
             Iterate <select value={iter.type} onChange={(e) => p.onSettings({ layoutIteration: e.target.value === 'KEYWORD' ? { type: 'KEYWORD', keyword: '$FIL' } : e.target.value === 'PANEL' ? { type: 'PANEL', size: 2 } : { type: e.target.value as 'OFF' | 'SAMPLE' } })} data-testid="layout-iter">
               <option value="OFF">Off</option><option value="SAMPLE">Sample</option><option value="KEYWORD">Keyword</option><option value="PANEL">Panel</option>
@@ -784,12 +822,84 @@ export function LayoutView(p: {
             {iter.type === 'OFF' ? 'Sample for graphs without one' : 'Value'} <select value={cur} onChange={(e) => setValue(e.target.value)} data-testid="layout-sample" title="PageDown / PageUp / Home / End on the page step through the values">
               {values.map((v) => <option key={v} value={v}>{valueLabel(v)}</option>)}
             </select>
+    </>,
+    BATCH: <>
+            <button
+              disabled={!items.length || busy || iter.type === 'OFF'}
+              title={iter.type === 'OFF' ? 'Choose an iteration to batch' : undefined}
+              data-testid="layout-batch"
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  if (tileCols <= 0) {
+                    for (const v of values) await exportAs(batchFormat, `${baseName}_${safe(valueLabel(v))}`, await renderLayout(p.client, p.ws, p.meta, items, bindFor(v), extrasFor(v)), items, true);
+                  } else {
+                    // I10: each value is one tile; tiles step by whole pages (Separate Pages) or by the extent.
+                    const ext = pageGrid(boxes, page);
+                    const u = unionBox(boxes.length ? boxes : [{ id: 'z', x: 0, y: 0, w: 1, h: 1 }]);
+                    const pitchX = separatePages ? tilePitch(ext.cols * page.w - 1, page.w) : u.w + 11, pitchY = separatePages ? tilePitch(ext.rows * page.h - 1, page.h) : u.h + 11;
+                    const allItems: LayoutItem[] = [], allR: Rendered[] = [];
+                    for (const [k, v] of values.entries()) {
+                      const r = await renderLayout(p.client, p.ws, p.meta, items, bindFor(v), extrasFor(v));
+                      const t = tileAt(k, values.length);
+                      const ox = t.c * pitchX, oy = t.r * pitchY;
+                      items.forEach((it, i) => { const b = boxOf(it, i); const c = { ...withBox(it, { ...b, x: b.x + ox, y: b.y + oy }), id: `${it.id}#${k}` } as LayoutItem; allItems.push(c); const ri = r.find((x) => x.item.id === it.id); if (ri) allR.push({ ...ri, item: c }); });
+                    }
+                    await exportAs(batchFormat, `${baseName}_batch`, allR, allItems, true);
+                  }
+                } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+              }}
+            >Batch ({values.length} value{values.length === 1 ? '' : 's'})</button>
+            <select value={batchFormat} onChange={(e) => setBatchFormat(e.target.value as 'png' | 'svg' | 'pdf')} data-testid="layout-batch-format" title="Output Target">
+              <option value="pdf">PDF</option><option value="png">PNG</option><option value="svg">SVG</option>
+            </select>
+            File name <input style={{ width: 90 }} placeholder="layout" value={fileName} onChange={(e) => setFileName(e.target.value)} data-testid="layout-file-name" />
+            Tiles <input type="number" min={0} style={{ width: 50 }} data-testid="layout-tiles" title="0: one file per iteration value" value={tileCols} onChange={(e) => setTileCols(Math.max(0, Number(e.target.value) || 0))} />
+            <select value={tileFixed} onChange={(e) => setTileFixed(e.target.value as 'cols' | 'rows')} data-testid="layout-tile-fixed"><option value="cols">columns</option><option value="rows">rows</option></select>
+            <select value={tileOrder} onChange={(e) => setTileOrder(e.target.value as 'across' | 'down')} data-testid="layout-tile-order"><option value="across">Across</option><option value="down">Down</option></select>
+            <label><input type="checkbox" checked={separatePages} onChange={(e) => setSeparatePages(e.target.checked)} data-testid="layout-separate-pages" /> Separate pages</label>
+            <label title="Append Output: a PDF batch adds its pages to the PDF of the same name made earlier in this session (own rule; FlowJo appends PowerPoint slides to an existing file)"><input type="checkbox" checked={append} onChange={(e) => setAppend(e.target.checked)} data-testid="layout-append" /> Append Output</label>
+            {busy && <span className="muted">exporting...</span>}
+    </>,
+    DOCUMENT: <>
             Paper <select value={setup.paper} onChange={(e) => p.onSettings({ layoutPage: { ...setup, paper: e.target.value as PageSetup['paper'] } })} data-testid="layout-paper">
               {Object.entries(PAPERS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>
             <select value={setup.orientation} onChange={(e) => p.onSettings({ layoutPage: { ...setup, orientation: e.target.value as PageSetup['orientation'] } })} data-testid="layout-orientation">
               <option value="portrait">Portrait</option><option value="landscape">Landscape</option>
             </select>
+            <button data-testid="layout-header-footer" onClick={() => setShowHF(!showHF)} title="Edit Header / Footer of the printed pages">Header / Footer</button>
+            Scale <button data-testid="layout-scale-page" title="Scale To Page" onClick={() => p.onSettings({ layoutPage: { ...setup, scale: autoPageScale(boxes, usablePageOf(setup), 'page') } })}>Page</button>
+            <button data-testid="layout-scale-width" title="Scale To Width" onClick={() => p.onSettings({ layoutPage: { ...setup, scale: autoPageScale(boxes, usablePageOf(setup), 'width') } })}>Width</button>
+            <button data-testid="layout-scale-height" title="Scale To Height" onClick={() => p.onSettings({ layoutPage: { ...setup, scale: autoPageScale(boxes, usablePageOf(setup), 'height') } })}>Height</button>
+            <button data-testid="layout-scale-reset" disabled={pageScale === 1} onClick={() => p.onSettings({ layoutPage: { ...setup, scale: undefined } })}>1:1</button>
+            <span className="muted" data-testid="layout-scale">{Math.round(100 / pageScale)}%</span>
+            <button disabled={!items.length} onClick={() => commit(avoidPageBreaks(boxes, page))} data-testid="layout-avoid-breaks">Avoid page breaks</button>
+            <button disabled={!rendered.length} data-testid="layout-export" onClick={() => void exportAs('png', `${baseName}_${safe(valueLabel(cur))}`, rendered, items)}>Export PNG</button>
+            <button disabled={!rendered.length} data-testid="layout-export-svg" onClick={() => void exportAs('svg', `${baseName}_${safe(valueLabel(cur))}`, rendered, items)}>Export SVG</button>
+            <button disabled={!rendered.length} data-testid="layout-export-pdf" onClick={() => void exportAs('pdf', `${baseName}_${safe(valueLabel(cur))}`, rendered, items)} title="Print: the pages as a PDF to print">Export PDF ({grid.cols * grid.rows} page{grid.cols * grid.rows > 1 ? 's' : ''})</button>
+    </>,
+    GO: <>
+            <button disabled={values.indexOf(cur) <= 0} onClick={() => step(-1)} data-testid="layout-go-prev" title="Previous value (PageUp)">Prev</button>
+            <button disabled={values.indexOf(cur) >= values.length - 1} onClick={() => step(1)} data-testid="layout-go-next" title="Next value (PageDown)">Next</button>
+    </>,
+    CLIPBOARD: <>
+            <button disabled={!items.length} onClick={copy} data-testid="layout-copy" title="Copy (Ctrl/Cmd+C): the selection, or all figures">Copy</button>
+            <button disabled={!enabled(1)} onClick={cut} data-testid="layout-cut" title="Cut (Ctrl/Cmd+X)">Cut</button>
+            <button onClick={() => (clipboard.length ? paste() : void pasteSystem())} data-testid="layout-paste" title="Paste (Ctrl/Cmd+V): placed in view, +4 pt">Paste</button>
+            <button disabled={!items.length} onClick={() => void copyImage(true)} data-testid="layout-copy-transparent" title="Copy Selection With Transparency (Ctrl/Cmd+Shift+C)">Copy image (transparent)</button>
+            <button disabled={!items.length} onClick={() => void copyImage(false)} data-testid="layout-copy-opaque" title="Copy Selection Without transparency">Copy image (opaque)</button>
+    </>,
+    SELECT: <>
+            <button disabled={!items.length} onClick={() => setSel(items.map((i) => i.id))} data-testid="layout-select-all" title="Select All (Ctrl/Cmd+A)">Select all</button>
+            <button disabled={!items.length} onClick={() => setSel(invertSelection(items.map((i) => i.id), sel))} data-testid="layout-select-invert" title="Invert Selection">Invert</button>
+    </>,
+    SHOWHIDE: <>
+            Zoom <button data-testid="layout-zoom-out" title="Zoom Out (Ctrl/Cmd+-)" onClick={() => setZoom(zoomOut(zoom))}>-</button>
+            <select value={ZOOM_STEPS.includes(Math.round(zoom * 100)) ? zoom : ''} onChange={(e) => setZoom(Number(e.target.value))} data-testid="layout-zoom">{!ZOOM_STEPS.includes(Math.round(zoom * 100)) && <option value="">{Math.round(zoom * 100)}%</option>}{ZOOM_STEPS.map((z) => <option key={z} value={z / 100}>{z}%</option>)}</select>
+            <button data-testid="layout-zoom-in" title="Zoom In (Ctrl/Cmd+=)" onClick={() => setZoom(zoomIn(zoom))}>+</button>
+            <button data-testid="layout-zoom-fit" title="Fit to Window" onClick={fit}>Fit</button>
+            <button data-testid="layout-zoom-100" title="Reset Zoom" onClick={() => setZoom(1)}>100%</button>
             <label><input type="checkbox" checked={showGrid} onChange={(e) => setShowGrid(e.target.checked)} data-testid="layout-show-grid" /> Grid</label>
             <label><input type="checkbox" checked={showBreaks} onChange={(e) => setShowBreaks(e.target.checked)} data-testid="layout-show-breaks" /> Page breaks</label>
             <label><input type="checkbox" checked={showRulers} onChange={(e) => setShowRulers(e.target.checked)} data-testid="layout-show-rulers" /> Rulers</label>
@@ -800,8 +910,90 @@ export function LayoutView(p: {
               <button disabled={guides.v.length + guides.h.length >= MAX_GUIDES} onClick={() => p.onSettings({ layoutGuides: { ...guides, h: [...guides.h, 250] } })} data-testid="layout-add-hguide">+ horizontal guide</button>
               <span className="muted">drag a guide off the page to remove it</span>
             </>}
-            <button data-testid="layout-header-footer" onClick={() => setShowHF(!showHF)} title="Edit Header / Footer of the printed pages">Header / Footer</button>
-          </div>
+            <label title="Overlay Mode (Preferences, Graphs): the default histogram scaling of new layout histograms. In FlowJo 10.6.2 Unit falls back to Auto.">Overlay Mode <select value={overlayMode} onChange={(e) => { const m = e.target.value as OverlayMode; setOverlayMode(m); saveOverlayMode(m); }} data-testid="layout-overlay-mode">{(Object.keys(OVERLAY_LABELS) as OverlayMode[]).map((k) => <option key={k} value={k}>{OVERLAY_LABELS[k]}</option>)}</select></label>
+    </>,
+    PROPERTIES: selected ? <span data-testid="layout-props" role="toolbar" aria-label="Figure properties">
+              <b>Properties</b>
+              <label title="Fill colour (None: unfilled)"><input type="checkbox" checked={!!st?.fill} onChange={(e) => setStyle({ fill: e.target.checked ? st?.fill ?? '#ffffff' : undefined })} data-testid="layout-fill-on" /> Fill</label>
+              <input type="color" value={st?.fill ?? '#ffffff'} onChange={(e) => setStyle({ fill: e.target.value })} data-testid="layout-fill" />
+              Line <input type="color" value={st?.line ?? '#000000'} onChange={(e) => setStyle({ line: e.target.value, ...(st?.weight === 'none' ? { weight: 'normal' as LineWeight } : {}) })} data-testid="layout-line-color" />
+              <select value={st?.weight} onChange={(e) => setStyle({ weight: e.target.value as LineWeight })} data-testid="layout-line-weight" title="Line Weight">{(Object.keys(LINE_WEIGHTS) as LineWeight[]).map((k) => <option key={k} value={k}>{LINE_WEIGHTS[k].label}</option>)}</select>
+              <select value={st?.lineStyle} onChange={(e) => setStyle({ lineStyle: e.target.value as LineStyle })} data-testid="layout-line-style" title="Line Style">{(Object.keys(LINE_STYLES) as LineStyle[]).map((k) => <option key={k} value={k}>{LINE_STYLES[k].label}</option>)}</select>
+              Gradient <input type="color" value={st?.gradient ?? '#ffffff'} onChange={(e) => setStyle({ gradient: e.target.value })} data-testid="layout-gradient" />
+              <select value={st?.gradientType} onChange={(e) => setStyle({ gradientType: e.target.value as GradientType, ...(e.target.value !== 'none' && !st?.fill ? { fill: '#ffffff' } : {}), ...(e.target.value !== 'none' && !st?.gradient ? { gradient: '#808080' } : {}) })} data-testid="layout-gradient-type" title="Gradient Type">{GRADIENTS.map((g) => <option key={g} value={g}>{g[0].toUpperCase() + g.slice(1)}</option>)}</select>
+              {selected.shape === 'line' && <>Arrow <select value={selected.arrow ?? 'none'} onChange={(e) => p.onChange(items.map((i) => (sel.includes(i.id) && i.shape === 'line' ? { ...i, arrow: e.target.value as LayoutShape['arrow'] } : i)))} data-testid="layout-arrowhead"><option value="none">None</option><option value="forward">Forward</option><option value="backward">Backward</option><option value="double">Double-headed</option></select></>}
+              <span className="muted" data-testid="layout-sel-box">{selBoxes[0] ? `${selBoxes[0].w} x ${selBoxes[0].h} pt` : ''}</span>
+    </span> : null,
+    LOCKS: <>
+            <button disabled={!enabled(1)} onClick={() => toggle('locked')} data-testid="layout-lock" title="Lock position (drag and nudge skip it; align still moves it, as in FlowJo)">{selItems.length && selItems[0].locked ? 'Unlock' : 'Lock'}</button>
+            <button disabled={!enabled(1)} onClick={() => toggle('sizeLock')} data-testid="layout-lock-size" title="Lock Size: no resize handles">{selItems[0]?.sizeLock ? 'Unlock size' : 'Lock size'}</button>
+            <button disabled={!enabled(1)} onClick={() => toggle('contentLock')} data-testid="layout-lock-content" title="Lock Content: chart settings and text cannot change">{selItems[0]?.contentLock ? 'Unlock content' : 'Lock content'}</button>
+            {selected && <><label title="Resizing keeps the aspect ratio (Shift while dragging does too)"><input type="checkbox" checked={!!selected.aspectLock} onChange={(e) => p.onChange(items.map((i) => (sel.includes(i.id) ? ({ ...i, aspectLock: e.target.checked || undefined } as LayoutItem) : i)))} data-testid="layout-aspect-lock" /> Keep aspect</label></>}
+    </>,
+    TEXT: <>
+            <button data-testid="layout-add-text" onClick={() => addText()}>Text</button>
+    </>,
+    FIGPRESET: selected ? <>
+              Preset <select value={preset} onChange={(e) => setPreset(e.target.value)} data-testid="layout-preset">{!(p.ws.layoutFigPresets ?? []).length && <option value="">(none)</option>}{(p.ws.layoutFigPresets ?? []).map((q) => <option key={q.name} value={q.name}>{q.name}</option>)}</select>
+              <button data-testid="layout-preset-apply" disabled={!(p.ws.layoutFigPresets ?? []).length} title="Apply this preset to the selected figure(s)" onClick={() => { const pr = (p.ws.layoutFigPresets ?? []).find((q) => q.name === preset) ?? p.ws.layoutFigPresets?.[0]; if (pr) p.onChange(items.map((i) => (sel.includes(i.id) ? applyPreset(i, pr) : i))); }}>Apply</button>
+              <button data-testid="layout-preset-add" title="Create a preset from the selected figure" onClick={() => { const list = p.ws.layoutFigPresets ?? []; const pr = makePreset(selected, list.map((q) => q.name)); p.onSettings({ layoutFigPresets: [pr, ...list] }); setPreset(pr.name); }}>Add</button>
+              <button data-testid="layout-preset-delete" disabled={!(p.ws.layoutFigPresets ?? []).length} onClick={() => { const name = preset || p.ws.layoutFigPresets?.[0]?.name; const rest = (p.ws.layoutFigPresets ?? []).filter((q) => q.name !== name); p.onSettings({ layoutFigPresets: rest.length ? rest : undefined }); setPreset(rest[0]?.name ?? ''); }}>Delete</button>
+    </> : null,
+    ANNOTATE: <>
+            Insert <button data-testid="layout-add-rect" onClick={() => addShape('rect')}>Rectangle</button>
+            <button data-testid="layout-add-roundrect" onClick={() => addShape('roundrect')}>Rounded</button>
+            <button data-testid="layout-add-ellipse" onClick={() => addShape('ellipse')}>Ellipse</button>
+            <button data-testid="layout-add-line" onClick={() => addShape('line')}>Line</button>
+            <button data-testid="layout-add-arrow" onClick={() => addShape('line', 'forward')}>Arrow</button>
+            <label className="button-like" title="Insert Graphic: an image file at (30, 50)">Graphic... <input type="file" accept="image/*" style={{ display: 'none' }} data-testid="layout-insert-graphic" onChange={async (e) => { const f = e.target.files?.[0]; if (f) await addImageFig(await blobUrl(f)); e.target.value = ''; }} /></label>
+            <button data-testid="layout-add-stattable" title="Statistic Table: rows of samples or populations, columns of statistics, keywords and annotations" onClick={() => addObject(newStatTable())}>Statistic Table</button>
+            <button data-testid="layout-add-difftable" title="Difference Table: statistics as differences from a control sample" onClick={() => addObject(newDiffTable())}>Difference Table</button>
+            <button data-testid="layout-add-plate" title="Plate: a group's statistics shown on its plate layout" onClick={() => addObject({ kind: 'plate', model: newPlateModel() })}>Plate</button>
+            <button data-testid="layout-add-web" title="Web Page: a live web page in the layout" onClick={() => { const u = window.prompt('Enter Link:', WEB_DEFAULT_URL); if (u) addObject({ kind: 'web', url: u, zoom: 1, offsetX: 0, offsetY: 0 }); }}>Web Page</button>
+    </>,
+    REORDER: <>
+            <button disabled={!enabled(1)} onClick={() => reorder((o) => bringToFront(o, expand(sel)))} data-testid="layout-front">Front</button>
+            <button disabled={!enabled(1)} onClick={() => reorder((o) => stepOrder(o, expand(sel), 1))} data-testid="layout-forward">Forward</button>
+            <button disabled={!enabled(1)} onClick={() => reorder((o) => stepOrder(o, expand(sel), -1))} data-testid="layout-backward">Backward</button>
+            <button disabled={!enabled(1)} onClick={() => reorder((o) => sendToBack(o, expand(sel)))} data-testid="layout-back">Back</button>
+            <button disabled={!enabled(2)} onClick={group} data-testid="layout-group">Group</button>
+            <button disabled={!selBoxes.some((b) => b.groupId)} onClick={ungroup} data-testid="layout-ungroup">Ungroup</button>
+            <button disabled={!enabled(1)} onClick={duplicate} data-testid="layout-duplicate" title="Duplicate at +8 pt (Ctrl/Cmd+D)">Duplicate</button>
+            <button disabled={!enabled(1)} onClick={remove} data-testid="layout-remove">Delete</button>
+            <button disabled={!enabled(1)} onClick={makeGrid} data-testid="layout-grid">Grid layout</button>
+            <label title="Cells hold bare charts; X axes on the bottom border, Y axes on the left border (FigGridLayout: minimalChartInGrids, border axes)"><input type="checkbox" checked={gridBare} onChange={(e) => setGridBare(e.target.checked)} data-testid="layout-grid-bare" /> bare charts, border axes</label>
+            <input type="number" min={1} style={{ width: 40 }} value={gridRows} onChange={(e) => setGridRows(Math.max(1, Number(e.target.value) || 1))} aria-label="grid rows" /> x <input type="number" min={1} style={{ width: 40 }} value={gridCols} onChange={(e) => setGridCols(Math.max(1, Number(e.target.value) || 1))} aria-label="grid columns" />
+    </>,
+    VERTICAL: <>
+            {vAlign.map((a) => <button key={a.mode} disabled={!enabled(2)} onClick={() => arrange((u) => align(u, a.mode))} data-testid={`layout-align-${a.mode}`} title={a.key ? `Ctrl/Cmd+${a.key.toUpperCase()}` : undefined}>{a.label}</button>)}
+            <button disabled={!enabled(3)} onClick={() => arrange((u) => spacing(u, 'v'))} data-testid="layout-space-v" title="Vertical spacing (Ctrl/Cmd+K)">Space V</button>
+    </>,
+    HORIZONTAL: <>
+            Align {hAlign.map((a) => <button key={a.mode} disabled={!enabled(2)} onClick={() => arrange((u) => align(u, a.mode))} data-testid={`layout-align-${a.mode}`} title={a.key ? `Ctrl/Cmd+${a.key.toUpperCase()}` : undefined}>{a.label}</button>)}
+            <button disabled={!enabled(3)} onClick={() => arrange((u) => spacing(u, 'h'))} data-testid="layout-space-h" title="Horizontal spacing (Ctrl/Cmd+J)">Space H</button>
+            <button disabled={!enabled(1)} onClick={() => arrange((u) => alignToGrid(u))} data-testid="layout-align-grid" title={`Snap the top-left to the ${GRID_PT} pt grid`}>To grid</button>
+    </>,
+  };
+
+  return (
+    <div className="modal-bg">
+      <div className="modal wide layout" role="dialog" aria-label="Layout editor">
+        <div className="modal-head">
+          <b>Layout editor ({items.length} items)</b>
+          <button onClick={p.onClose} aria-label="Close">x</button>
+        </div>
+        <div className="modal-body">
+          {TASKS.map((t) => (
+            <div key={t} className="row layout-task" role="toolbar" aria-label={TASK_LABELS[t]} data-testid={`layout-task-${t}`}>
+              {ribbon[t].map((b) => band[b] !== null && <span key={b} className="layout-band" data-testid={`layout-band-${b}`} title={BAND_LABELS[b]}>{band[b]}</span>)}
+              {t === 'LEDITOR' && <>
+                <button data-testid="layout-ribbon-config" title="Customize Ribbon: open the ribbon customization dialog" onClick={() => setRibbonCfg(!ribbonCfg)}>Customize Ribbon</button>
+                <button data-testid="layout-ribbon-default" title="Apply Default Ribbons" onClick={() => { if (window.confirm(SET_DEFAULTS_CONFIRM)) { setRibbon(defaultRibbon()); saveRibbon(null); } }}>Apply Default Ribbons</button>
+              </>}
+            </div>
+          ))}
+          {legendFor && (() => { const it = items.find((x) => x.id === legendFor); return it && isPlotItem(it) ? <LegendDialog it={it} keywords={keywordNames} channels={allParams} onChange={(patch) => setItem(it.id, patch as Partial<LayoutItem>)} onClose={() => setLegendFor(null)} /> : null; })()}
+          {ribbonCfg && <RibbonDialog config={ribbon} onChange={(c) => { setRibbon(c); saveRibbon(c); }} onClose={() => setRibbonCfg(false)} />}
           {showHF && (
             <div className="row" data-testid="layout-hf">
               <label><input type="checkbox" checked={hf.header} onChange={(e) => p.onSettings({ layoutHeaderFooter: { ...hf, header: e.target.checked } })} data-testid="layout-hf-header" /> Header</label>
@@ -813,66 +1005,12 @@ export function LayoutView(p: {
               <span className="muted" data-testid="layout-hf-preview">{headerText(hf.headerRight, { document: layoutName, page: 1, version: 'flowjo-rea' })}; tags: &lt;DocumentName/&gt; &lt;Date/&gt; &lt;LongDate/&gt; &lt;Time/&gt; &lt;Version/&gt; &lt;PageNumber/&gt;</span>
             </div>
           )}
-          <div className="row" role="toolbar" aria-label="Arrange">
-            Align {ALIGN.map((a) => <button key={a.mode} disabled={!enabled(2)} onClick={() => arrange((u) => align(u, a.mode))} data-testid={`layout-align-${a.mode}`} title={a.key ? `Ctrl/Cmd+${a.key.toUpperCase()}` : undefined}>{a.label}</button>)}
-            <button disabled={!enabled(3)} onClick={() => arrange((u) => spacing(u, 'h'))} data-testid="layout-space-h" title="Horizontal spacing (Ctrl/Cmd+J)">Space H</button>
-            <button disabled={!enabled(3)} onClick={() => arrange((u) => spacing(u, 'v'))} data-testid="layout-space-v" title="Vertical spacing (Ctrl/Cmd+K)">Space V</button>
-            <button disabled={!enabled(1)} onClick={() => arrange((u) => alignToGrid(u))} data-testid="layout-align-grid" title={`Snap the top-left to the ${GRID_PT} pt grid`}>To grid</button>
-            | <button disabled={!enabled(1)} onClick={() => reorder((o) => bringToFront(o, expand(sel)))} data-testid="layout-front">Front</button>
-            <button disabled={!enabled(1)} onClick={() => reorder((o) => stepOrder(o, expand(sel), 1))} data-testid="layout-forward">Forward</button>
-            <button disabled={!enabled(1)} onClick={() => reorder((o) => stepOrder(o, expand(sel), -1))} data-testid="layout-backward">Backward</button>
-            <button disabled={!enabled(1)} onClick={() => reorder((o) => sendToBack(o, expand(sel)))} data-testid="layout-back">Back</button>
-            | <button disabled={!enabled(2)} onClick={group} data-testid="layout-group">Group</button>
-            <button disabled={!selBoxes.some((b) => b.groupId)} onClick={ungroup} data-testid="layout-ungroup">Ungroup</button>
-            <button disabled={!enabled(1)} onClick={() => toggle('locked')} data-testid="layout-lock" title="Lock position (drag and nudge skip it; align still moves it, as in FlowJo)">{selItems.length && selItems[0].locked ? 'Unlock' : 'Lock'}</button>
-            <button disabled={!enabled(1)} onClick={() => toggle('sizeLock')} data-testid="layout-lock-size" title="Lock Size: no resize handles">{selItems[0]?.sizeLock ? 'Unlock size' : 'Lock size'}</button>
-            <button disabled={!enabled(1)} onClick={() => toggle('contentLock')} data-testid="layout-lock-content" title="Lock Content: chart settings and text cannot change">{selItems[0]?.contentLock ? 'Unlock content' : 'Lock content'}</button>
-            <button disabled={!enabled(1)} onClick={duplicate} data-testid="layout-duplicate" title="Duplicate at +8 pt (Ctrl/Cmd+D)">Duplicate</button>
-            <button disabled={!enabled(1)} onClick={remove} data-testid="layout-remove">Delete</button>
-            | <button disabled={!items.length} onClick={() => commit(avoidPageBreaks(boxes, page))} data-testid="layout-avoid-breaks">Avoid page breaks</button>
-            <button disabled={!enabled(1)} onClick={makeGrid} data-testid="layout-grid">Grid layout</button>
-            <label title="Cells hold bare charts; X axes on the bottom border, Y axes on the left border (FigGridLayout: minimalChartInGrids, border axes)"><input type="checkbox" checked={gridBare} onChange={(e) => setGridBare(e.target.checked)} data-testid="layout-grid-bare" /> bare charts, border axes</label>
-            <input type="number" min={1} style={{ width: 40 }} value={gridRows} onChange={(e) => setGridRows(Math.max(1, Number(e.target.value) || 1))} aria-label="grid rows" /> x <input type="number" min={1} style={{ width: 40 }} value={gridCols} onChange={(e) => setGridCols(Math.max(1, Number(e.target.value) || 1))} aria-label="grid columns" />
-          </div>
-          <div className="row" role="toolbar" aria-label="Edit and insert">
-            <button disabled={!items.length} onClick={() => setSel(items.map((i) => i.id))} data-testid="layout-select-all" title="Select All (Ctrl/Cmd+A)">Select all</button>
-            <button disabled={!items.length} onClick={() => setSel(invertSelection(items.map((i) => i.id), sel))} data-testid="layout-select-invert" title="Invert Selection">Invert</button>
-            <button disabled={!items.length} onClick={copy} data-testid="layout-copy" title="Copy (Ctrl/Cmd+C): the selection, or all figures">Copy</button>
-            <button disabled={!enabled(1)} onClick={cut} data-testid="layout-cut" title="Cut (Ctrl/Cmd+X)">Cut</button>
-            <button onClick={() => (clipboard.length ? paste() : void pasteSystem())} data-testid="layout-paste" title="Paste (Ctrl/Cmd+V): placed in view, +4 pt">Paste</button>
-            <button disabled={!items.length} onClick={() => void copyImage(true)} data-testid="layout-copy-transparent" title="Copy Selection With Transparency (Ctrl/Cmd+Shift+C)">Copy image (transparent)</button>
-            <button disabled={!items.length} onClick={() => void copyImage(false)} data-testid="layout-copy-opaque" title="Copy Selection Without transparency">Copy image (opaque)</button>
-            | Insert <button data-testid="layout-add-text" onClick={() => addText()}>Text</button>
-            <button data-testid="layout-add-rect" onClick={() => addShape('rect')}>Rectangle</button>
-            <button data-testid="layout-add-roundrect" onClick={() => addShape('roundrect')}>Rounded</button>
-            <button data-testid="layout-add-ellipse" onClick={() => addShape('ellipse')}>Ellipse</button>
-            <button data-testid="layout-add-line" onClick={() => addShape('line')}>Line</button>
-            <button data-testid="layout-add-arrow" onClick={() => addShape('line', 'forward')}>Arrow</button>
-            <label className="button-like" title="Insert Graphic: an image file at (30, 50)">Graphic... <input type="file" accept="image/*" style={{ display: 'none' }} data-testid="layout-insert-graphic" onChange={async (e) => { const f = e.target.files?.[0]; if (f) await addImageFig(await blobUrl(f)); e.target.value = ''; }} /></label>
-          </div>
-          {selected && (
-            <div className="row" data-testid="layout-props" role="toolbar" aria-label="Figure properties">
-              <b>Properties</b>
-              <label title="Fill colour (None: unfilled)"><input type="checkbox" checked={!!st?.fill} onChange={(e) => setStyle({ fill: e.target.checked ? st?.fill ?? '#ffffff' : undefined })} data-testid="layout-fill-on" /> Fill</label>
-              <input type="color" value={st?.fill ?? '#ffffff'} onChange={(e) => setStyle({ fill: e.target.value })} data-testid="layout-fill" />
-              Line <input type="color" value={st?.line ?? '#000000'} onChange={(e) => setStyle({ line: e.target.value, ...(st?.weight === 'none' ? { weight: 'normal' as LineWeight } : {}) })} data-testid="layout-line-color" />
-              <select value={st?.weight} onChange={(e) => setStyle({ weight: e.target.value as LineWeight })} data-testid="layout-line-weight" title="Line Weight">{(Object.keys(LINE_WEIGHTS) as LineWeight[]).map((k) => <option key={k} value={k}>{LINE_WEIGHTS[k].label}</option>)}</select>
-              <select value={st?.lineStyle} onChange={(e) => setStyle({ lineStyle: e.target.value as LineStyle })} data-testid="layout-line-style" title="Line Style">{(Object.keys(LINE_STYLES) as LineStyle[]).map((k) => <option key={k} value={k}>{LINE_STYLES[k].label}</option>)}</select>
-              Gradient <input type="color" value={st?.gradient ?? '#ffffff'} onChange={(e) => setStyle({ gradient: e.target.value })} data-testid="layout-gradient" />
-              <select value={st?.gradientType} onChange={(e) => setStyle({ gradientType: e.target.value as GradientType, ...(e.target.value !== 'none' && !st?.fill ? { fill: '#ffffff' } : {}), ...(e.target.value !== 'none' && !st?.gradient ? { gradient: '#808080' } : {}) })} data-testid="layout-gradient-type" title="Gradient Type">{GRADIENTS.map((g) => <option key={g} value={g}>{g[0].toUpperCase() + g.slice(1)}</option>)}</select>
-              {selected.shape === 'line' && <>Arrow <select value={selected.arrow ?? 'none'} onChange={(e) => p.onChange(items.map((i) => (sel.includes(i.id) && i.shape === 'line' ? { ...i, arrow: e.target.value as LayoutShape['arrow'] } : i)))} data-testid="layout-arrowhead"><option value="none">None</option><option value="forward">Forward</option><option value="backward">Backward</option><option value="double">Double-headed</option></select></>}
-              <label title="Resizing keeps the aspect ratio (Shift while dragging does too)"><input type="checkbox" checked={!!selected.aspectLock} onChange={(e) => p.onChange(items.map((i) => (sel.includes(i.id) ? ({ ...i, aspectLock: e.target.checked || undefined } as LayoutItem) : i)))} data-testid="layout-aspect-lock" /> Keep aspect</label>
-              | Preset <select value={preset} onChange={(e) => setPreset(e.target.value)} data-testid="layout-preset">{!(p.ws.layoutFigPresets ?? []).length && <option value="">(none)</option>}{(p.ws.layoutFigPresets ?? []).map((q) => <option key={q.name} value={q.name}>{q.name}</option>)}</select>
-              <button data-testid="layout-preset-apply" disabled={!(p.ws.layoutFigPresets ?? []).length} title="Apply this preset to the selected figure(s)" onClick={() => { const pr = (p.ws.layoutFigPresets ?? []).find((q) => q.name === preset) ?? p.ws.layoutFigPresets?.[0]; if (pr) p.onChange(items.map((i) => (sel.includes(i.id) ? applyPreset(i, pr) : i))); }}>Apply</button>
-              <button data-testid="layout-preset-add" title="Create a preset from the selected figure" onClick={() => { const list = p.ws.layoutFigPresets ?? []; const pr = makePreset(selected, list.map((q) => q.name)); p.onSettings({ layoutFigPresets: [pr, ...list] }); setPreset(pr.name); }}>Add</button>
-              <button data-testid="layout-preset-delete" disabled={!(p.ws.layoutFigPresets ?? []).length} onClick={() => { const name = preset || p.ws.layoutFigPresets?.[0]?.name; const rest = (p.ws.layoutFigPresets ?? []).filter((q) => q.name !== name); p.onSettings({ layoutFigPresets: rest.length ? rest : undefined }); setPreset(rest[0]?.name ?? ''); }}>Delete</button>
-              <span className="muted" data-testid="layout-sel-box">{selBoxes[0] ? `${selBoxes[0].w} x ${selBoxes[0].h} pt` : ''}</span>
-            </div>
-          )}
           {/* Always present, so selecting does not shift the page under the pointer. */}
           <div className="row layout-selrow">
             {!selected ? <span className="muted">Click an item to select it; Shift-click adds to the selection; drag a corner of a selected item to resize it (Shift keeps the aspect ratio).</span> : <>
-              {selected.text !== undefined ? (
+              {selected.object !== undefined ? (
+                <ObjectPanel it={selected} ws={p.ws} keywords={keywordNames} channels={allParams} locked={locked} onChange={(o) => setObject(selected.id, o)} onRefresh={() => setTick((t) => t + 1)} editing={webEditing === selected.id} setEditing={(on) => setWebEditing(on ? selected.id : null)} />
+              ) : selected.text !== undefined ? (
                 <>
                   <textarea ref={textRef} value={selected.text} disabled={locked} data-testid="layout-text" onChange={(e) => setItem(selected.id, { text: e.target.value })} style={{ width: '35%', minHeight: 40 }} />
                   <select value={selected.font ?? 'SansSerif'} disabled={locked} onChange={(e) => setItem(selected.id, { font: e.target.value === 'SansSerif' ? undefined : e.target.value })} data-testid="layout-text-font">{FONT_NAMES.map((f) => <option key={f} value={f}>{f}</option>)}</select>
@@ -884,6 +1022,7 @@ export function LayoutView(p: {
                   <select value="" disabled={locked} onChange={(e) => e.target.value && insertAtCaret(annoToken(e.target.value))} data-testid="layout-insert-annotation" title="Insert Annotation"><option value="">Insert Annotation...</option>{ANNOTATIONS.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}</select>
                   <button disabled={locked} onClick={() => setShowChars(!showChars)} data-testid="layout-special-chars" title="Special Characters">&Sigma;</button>
                   {showChars && <span className="layout-chars" data-testid="layout-chars">{SPECIAL_CHARS.map((g) => <span key={g.group} title={g.group}>{g.codes.map((c) => <button key={c} title={`${g.group}: U+${c.toString(16).toUpperCase().padStart(4, '0')}`} onClick={() => insertAtCaret(String.fromCharCode(c))} data-testid="layout-char">{String.fromCharCode(c)}</button>)}</span>)}</span>}
+                  <button onClick={() => openHelp(HELP_URLS.FJML_HELP)} data-testid="layout-fjml-help" title="Open FJML Editor help page">?</button>
                   <span className="muted" data-testid="layout-text-live">{rendered.find((r) => r.item.id === selected.id)?.text}</span>
                 </>
               ) : selPlot ? (
@@ -898,6 +1037,8 @@ export function LayoutView(p: {
                   <label><input type="checkbox" disabled={locked || selPlot.showGates === false} checked={selPlot.gateNames !== false} onChange={(e) => setPlot({ gateNames: e.target.checked ? undefined : false })} data-testid="layout-gate-names" /> with Names</label>
                   <label><input type="checkbox" disabled={locked} checked={!!selPlot.showAnnotation} onChange={(e) => setPlot({ showAnnotation: e.target.checked || undefined })} data-testid="layout-show-annotation" /> Show Annotation</label>
                   {!!selPlot.overlays?.length && <select value="" disabled={locked} onChange={(e) => e.target.value && setPlot({ overlays: selPlot.overlays!.filter((o) => o !== e.target.value) })} data-testid="layout-remove-layer" title="Remove Layer: take an overlaid population off the chart"><option value="">Remove layer...</option>{selPlot.overlays.map((o) => <option key={o} value={o}>{o || 'All events'}</option>)}</select>}
+                  <button disabled={locked} onClick={() => setLegendFor(selPlot.id)} data-testid="layout-legend-props" title="Legend Properties: the legend's rows (layers, Set As Control) and columns">Legend...</button>
+                  <button onClick={() => openHelp(HELP_URLS.HELP)} data-testid="layout-chart-help" title="Help: open a web page with further information">Help</button>
                   <label title="Legend of the overlaid populations"><input type="checkbox" disabled={locked || !selPlot.overlays?.length} checked={selPlot.legend !== false} onChange={(e) => setPlot({ legend: e.target.checked ? undefined : false })} data-testid="layout-legend" /> Legend</label>
                   <label title="1-D distributions of X and Y along the edges of a 2-D plot"><input type="checkbox" disabled={locked || selPlot.kind === 'histogram'} checked={!!selPlot.adjunct} onChange={(e) => setPlot({ adjunct: e.target.checked || undefined })} data-testid="layout-adjunct" /> Show Adjunct Histograms</label>
                   <label title="One chart per ancestor level, 140 pt"><input type="checkbox" disabled={locked || !selPlot.populationPath} checked={!!selPlot.ancestry} onChange={(e) => setPlot({ ancestry: e.target.checked || undefined, backgating: e.target.checked ? selPlot.backgating : undefined })} data-testid="layout-ancestry" /> Show Ancestry</label>
@@ -934,48 +1075,9 @@ export function LayoutView(p: {
               Padding <input type="number" min={0} style={{ width: 40 }} value={selGrid.pad} onChange={(e) => setGrid({ pad: Math.max(0, Number(e.target.value) || 0) })} data-testid="grid-pad" /> pt
               <label><input type="checkbox" checked={selGrid.bare} onChange={(e) => setGrid({ bare: e.target.checked })} data-testid="grid-bare" /> bare charts, border axes</label>
               <button onClick={extractGrid} data-testid="grid-extract" title="Extract Cells from Grid">Extract cells</button>
+              <button onClick={() => openHelp(HELP_URLS.GRID_HELP)} data-testid="grid-help" title="Open layout editor grid documentation">About Grids...</button>
             </div>
           )}
-          <div className="row">
-            <button disabled={!rendered.length} data-testid="layout-export" onClick={() => void exportAs('png', `${baseName}_${safe(valueLabel(cur))}`, rendered, items)}>Export PNG</button>
-            <button disabled={!rendered.length} data-testid="layout-export-svg" onClick={() => void exportAs('svg', `${baseName}_${safe(valueLabel(cur))}`, rendered, items)}>Export SVG</button>
-            <button disabled={!rendered.length} data-testid="layout-export-pdf" onClick={() => void exportAs('pdf', `${baseName}_${safe(valueLabel(cur))}`, rendered, items)} title="Print: the pages as a PDF to print">Export PDF ({grid.cols * grid.rows} page{grid.cols * grid.rows > 1 ? 's' : ''})</button>
-            <button
-              disabled={!items.length || busy || iter.type === 'OFF'}
-              title={iter.type === 'OFF' ? 'Choose an iteration to batch' : undefined}
-              data-testid="layout-batch"
-              onClick={async () => {
-                setBusy(true);
-                try {
-                  if (tileCols <= 0) {
-                    for (const v of values) await exportAs(batchFormat, `${baseName}_${safe(valueLabel(v))}`, await renderLayout(p.client, p.ws, p.meta, items, bindFor(v), extrasFor(v)), items);
-                  } else {
-                    // I10: each value is one tile; tiles step by whole pages (Separate Pages) or by the extent.
-                    const ext = pageGrid(boxes, page);
-                    const u = unionBox(boxes.length ? boxes : [{ id: 'z', x: 0, y: 0, w: 1, h: 1 }]);
-                    const pitchX = separatePages ? tilePitch(ext.cols * page.w - 1, page.w) : u.w + 11, pitchY = separatePages ? tilePitch(ext.rows * page.h - 1, page.h) : u.h + 11;
-                    const allItems: LayoutItem[] = [], allR: Rendered[] = [];
-                    for (const [k, v] of values.entries()) {
-                      const r = await renderLayout(p.client, p.ws, p.meta, items, bindFor(v), extrasFor(v));
-                      const t = tileAt(k, values.length);
-                      const ox = t.c * pitchX, oy = t.r * pitchY;
-                      items.forEach((it, i) => { const b = boxOf(it, i); const c = { ...withBox(it, { ...b, x: b.x + ox, y: b.y + oy }), id: `${it.id}#${k}` } as LayoutItem; allItems.push(c); const ri = r.find((x) => x.item.id === it.id); if (ri) allR.push({ ...ri, item: c }); });
-                    }
-                    await exportAs(batchFormat, `${baseName}_batch`, allR, allItems);
-                  }
-                } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
-              }}
-            >Batch ({values.length} value{values.length === 1 ? '' : 's'})</button>
-            <select value={batchFormat} onChange={(e) => setBatchFormat(e.target.value as 'png' | 'svg' | 'pdf')} data-testid="layout-batch-format" title="Output Target">
-              <option value="pdf">PDF</option><option value="png">PNG</option><option value="svg">SVG</option>
-            </select>
-            File name <input style={{ width: 90 }} placeholder="layout" value={fileName} onChange={(e) => setFileName(e.target.value)} data-testid="layout-file-name" />
-            Tiles <input type="number" min={0} style={{ width: 50 }} data-testid="layout-tiles" title="0: one file per iteration value" value={tileCols} onChange={(e) => setTileCols(Math.max(0, Number(e.target.value) || 0))} />
-            <select value={tileFixed} onChange={(e) => setTileFixed(e.target.value as 'cols' | 'rows')} data-testid="layout-tile-fixed"><option value="cols">columns</option><option value="rows">rows</option></select>
-            <select value={tileOrder} onChange={(e) => setTileOrder(e.target.value as 'across' | 'down')} data-testid="layout-tile-order"><option value="across">Across</option><option value="down">Down</option></select>
-            <label><input type="checkbox" checked={separatePages} onChange={(e) => setSeparatePages(e.target.checked)} data-testid="layout-separate-pages" /> Separate pages</label>
-            {busy && <span className="muted">exporting...</span>}
-          </div>
           {error && <p className="error">{error}</p>}
           {!items.length && <p className="muted">Use "Add to layout" under a plot (or right-click a gate, Copy to Layout Editor) to place it at (200, 200).</p>}
           <div className="layout-scroll" ref={scrollRef}>
@@ -1013,7 +1115,10 @@ export function LayoutView(p: {
                     className={`layout-card ${isSel ? 'sel' : ''} ${it.locked ? 'locked' : ''} ${it.shape !== undefined ? 'shape' : ''}`}
                     data-testid="layout-card"
                     data-id={it.id}
-                    data-kind={it.text !== undefined ? 'text' : it.shape ?? (it.image !== undefined ? 'image' : 'chart')}
+                    data-kind={it.object !== undefined ? it.object.kind : it.text !== undefined ? 'text' : it.shape ?? (it.image !== undefined ? 'image' : 'chart')}
+                    data-cells={r?.obj?.kind === 'table' ? JSON.stringify(r.obj.cells) : undefined}
+                    data-wells={r?.obj?.kind === 'plate' ? JSON.stringify(r.obj.wells.map((w) => ({ r: w.r, c: w.c, name: w.name, c1: w.c1, c2: w.c2, face: !!w.face }))) : undefined}
+                    data-lines={r?.obj?.kind === 'plate' ? JSON.stringify(r.obj.lines) : undefined}
                     data-group={it.groupId}
                     data-style={it.style ? JSON.stringify(it.style) : undefined}
                     data-box={`${b.x},${b.y},${b.w},${b.h}`}
@@ -1022,9 +1127,10 @@ export function LayoutView(p: {
                     title={r?.title}
                   >
                     {isPlotItem(it) && it.showAnnotation && r && <div className="layout-annot" style={{ top: -ANNOT_H * zoom, fontSize: 9 * zoom }}>{r.title}</div>}
-                    {!isPlotItem(it) || it.style ? <FigFace it={it} b={b} r={r} zoom={zoom} pad={pad} /> : null}
+                    {(!isPlotItem(it) || it.style) && it.object?.kind !== 'web' ? <FigFace it={it} b={b} r={r} zoom={zoom} pad={pad} /> : null}
+                    {it.object?.kind === 'web' && <WebFace key={`${it.id}:${tick}`} spec={it.object} b={b} zoom={zoom} editing={webEditing === it.id} onChange={(o) => setObject(it.id, o)} onEdit={() => { setSel([it.id]); setWebEditing(webEditing === it.id ? null : it.id); }} />}
                     {it.text !== undefined ? <div className="layout-textbox" style={{ font: textFont(it, zoom), color: it.color }}>{r?.text ?? it.text}</div>
-                      : it.shape !== undefined || it.image !== undefined ? null
+                      : it.shape !== undefined || it.image !== undefined || it.object !== undefined ? null
                         : r?.placeholder ? <p className="muted layout-placeholder">{r.title}</p>
                           : r?.canvas ? <img alt={r.title} src={r.canvas.toDataURL()} draggable={false} />
                             : <p className="error">{r?.error ?? 'rendering...'}</p>}
@@ -1058,4 +1164,80 @@ function FigFace({ it, b, r, zoom, pad }: { it: LayoutItem; b: Box; r: Rendered 
     else drawFig(ctx, it, box, r);
   });
   return <canvas ref={ref} className="layout-face" style={{ left: -pad * zoom, top: -pad * zoom, width: w * zoom, height: h * zoom }} />;
+}
+
+// A web page figure on screen (FigWebBrowser): a live page in a frame, moved
+// by the offset and scaled by the zoom. A cover keeps clicks for the layout;
+// while editing inside (double click), the wheel zooms and dragging pans.
+// Exports draw a placeholder with the address (own rule: a cross-origin page
+// cannot be drawn into a canvas).
+function WebFace({ spec, b, zoom, editing, onChange, onEdit }: { spec: Extract<LayoutObjectSpec, { kind: 'web' }>; b: Box; zoom: number; editing: boolean; onChange: (o: LayoutObjectSpec) => void; onEdit: () => void }) {
+  const [pan, setPan] = useState<{ x: number; y: number } | null>(null);
+  const [live, setLive] = useState({ x: spec.offsetX, y: spec.offsetY });
+  useEffect(() => setLive({ x: spec.offsetX, y: spec.offsetY }), [spec.offsetX, spec.offsetY]);
+  return (
+    <div className="layout-web" data-testid="layout-web" data-zoom={spec.zoom} data-offset={`${live.x},${live.y}`} data-editing={editing ? '1' : undefined} style={{ position: 'absolute', inset: 0, overflow: 'hidden', background: '#fff', outline: editing ? '2px solid #3b6fd8' : undefined }}>
+      <iframe src={spec.url} title={spec.url} data-testid="layout-web-frame" sandbox="allow-scripts allow-same-origin allow-forms" referrerPolicy="no-referrer"
+        style={{ border: 0, position: 'absolute', left: 0, top: 0, width: b.w / spec.zoom, height: b.h / spec.zoom, transform: `translate(${live.x * zoom}px, ${live.y * zoom}px) scale(${spec.zoom * zoom})`, transformOrigin: '0 0', pointerEvents: 'none' }} />
+      <div data-testid="layout-web-cover" style={{ position: 'absolute', inset: 0, cursor: editing ? 'move' : undefined }}
+        onDoubleClick={(e) => { e.stopPropagation(); onEdit(); }}
+        onWheel={(e) => { if (!editing) return; e.stopPropagation(); onChange({ ...spec, zoom: webZoom(spec.zoom, Math.sign(e.deltaY)) }); }}
+        onMouseDown={(e) => { if (!editing) return; e.stopPropagation(); setPan({ x: e.clientX, y: e.clientY }); }}
+        onMouseMove={(e) => { if (!pan) return; e.stopPropagation(); setLive((l) => ({ x: l.x + (e.clientX - pan.x) / zoom, y: l.y + (e.clientY - pan.y) / zoom })); setPan({ x: e.clientX, y: e.clientY }); }}
+        onMouseUp={(e) => { if (!pan) return; e.stopPropagation(); setPan(null); onChange({ ...spec, offsetX: Math.round(live.x), offsetY: Math.round(live.y) }); }}
+      />
+    </div>
+  );
+}
+
+// Customize Ribbon (LERibbonConfigDialog, FJRibbonConfigDialog): the bands of
+// each toolbar row; add a band to a row (not twice in one row), remove one
+// (not a row's last), or swap neighbours. Kept with the preferences.
+function RibbonDialog({ config, onChange, onClose }: { config: RibbonConfig; onChange: (c: RibbonConfig) => void; onClose: () => void }) {
+  const [msg, setMsg] = useState('');
+  const apply = (r: { config: RibbonConfig; error?: string }) => { setMsg(r.error ?? ''); if (!r.error) onChange(r.config); };
+  return (
+    <div className="row" data-testid="layout-ribbon-dialog" role="dialog" aria-label="Ribbon Configuration" style={{ flexDirection: 'column', alignItems: 'flex-start', border: '1px solid #c7cfdc', padding: 6 }}>
+      <b>Ribbon Configuration</b>
+      <span className="muted">{CONFIG_PROMPT}</span>
+      {TASKS.map((t: RibbonTask) => (
+        <div key={t} className="row" data-testid={`ribbon-task-${t}`}>
+          <b style={{ width: 90 }}>{TASK_LABELS[t]}</b>
+          {config[t].map((bd, k) => (
+            <span key={bd} className="chip" data-testid="ribbon-band" data-band={bd}>
+              <button disabled={k === 0} onClick={() => onChange(moveBand(config, t, bd, -1))} data-testid="ribbon-band-left" title="Swap with the band on the left">&lt;</button>
+              {BAND_LABELS[bd]}
+              <button disabled={k === config[t].length - 1} onClick={() => onChange(moveBand(config, t, bd, 1))} data-testid="ribbon-band-right" title="Swap with the band on the right">&gt;</button>
+              <button onClick={() => apply(removeBand(config, t, bd))} data-testid="ribbon-band-remove" title="Remove the band from the ribbon">x</button>
+            </span>
+          ))}
+          <select value="" onChange={(e) => e.target.value && apply(addBand(config, t, e.target.value as RibbonBand))} data-testid={`ribbon-add-${t}`}><option value="">Add band...</option>{ALL_BANDS.map((bd) => <option key={bd} value={bd}>{BAND_LABELS[bd]}</option>)}</select>
+        </div>
+      ))}
+      {msg && <p className="error" data-testid="ribbon-message">{msg}</p>}
+      <button onClick={onClose} data-testid="ribbon-close">Close</button>
+    </div>
+  );
+}
+
+// Legend Properties (LegendPropertiesAction: FigLegend.getInfo opens the
+// chart's settings at its Legend tab, LegendPanel): Show Legend, the layers
+// (Set As Control: LegendSetControlAction), and the legend's columns.
+function LegendDialog({ it, keywords, channels, onChange, onClose }: { it: LayoutPlot; keywords: string[]; channels: string[]; onChange: (patch: Partial<LayoutPlot>) => void; onClose: () => void }) {
+  const cols = it.legendColumns ?? LEGEND_DEFAULT_COLUMNS;
+  return (
+    <div className="row" data-testid="layout-legend-dialog" role="dialog" aria-label="Legend" style={{ flexWrap: 'wrap', border: '1px solid #c7cfdc', padding: 6 }}>
+      <b>Legend</b>
+      <label title="Check to show the legend in the Layout Editor"><input type="checkbox" checked={it.legend !== false} onChange={(e) => onChange({ legend: e.target.checked ? undefined : false })} data-testid="legend-show" /> Show Legend</label>
+      {!(it.overlays ?? []).length && <span className="muted">No overlaid layers</span>}
+      {(it.overlays ?? []).map((o) => (
+        <label key={o} className="chip" data-testid="legend-layer" title="Set As Control: this layer keeps the chart's own sample when the layout iterates">
+          <input type="checkbox" checked={!!it.controls?.includes(o)} onChange={(e) => { const c = (it.controls ?? []).filter((x) => x !== o); onChange({ controls: e.target.checked ? [...c, o] : c.length ? c : undefined }); }} data-testid="legend-set-control" /> {o || 'All events'} (Set As Control)
+        </label>
+      ))}
+      <span className="muted" data-testid="legend-columns-label">{cols.map(columnLabel).join(' | ')}</span>
+      <ColumnEditor columns={cols} keywords={keywords} channels={channels} testid="legend" onChange={(c) => onChange({ legendColumns: c })} />
+      <button onClick={onClose} data-testid="legend-close">Close</button>
+    </div>
+  );
 }

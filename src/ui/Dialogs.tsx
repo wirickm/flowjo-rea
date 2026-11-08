@@ -149,6 +149,8 @@ export function CompensationDialog(p: {
   transformFor?: (ch: string) => TransformSpec | undefined;
   onPreview?: (sampleId: string, path: string, channels: string[]) => Promise<{ count: number; raw: Record<string, Float32Array>; missing: string[] }>;
   onClose: () => void;
+  // Copy To New Layout (CompCommand.ADDTOLAYOUT): the matrix, preview and view.
+  onCopyToLayout?: (matrixId: string, sampleId: string, path: string, view: CompView, channels: string[]) => void;
   // Compensation wizard: candidate control samples (current group), channels
   // of the current sample, population paths usable as a pre-gate.
   controls: { id: string; fileName: string; loaded: boolean }[];
@@ -581,6 +583,7 @@ export function CompensationDialog(p: {
                 <span className="muted" data-testid="comp-zoom">{Math.round(zoom)}%</span>
                 <button data-testid="comp-animate" disabled={animating || !pvData} title="Show the compensation applied from 0.1% to 400% of the calculated amount." onClick={() => void animate()}>Animate</button>
                 {animating && <b data-testid="comp-anim-label">{scaleLabel(anim)}</b>}
+                {p.onCopyToLayout && <button data-testid="comp-copy-layout" title="Copy To New Layout: a new layout with these plots, compensated with this matrix" onClick={() => { p.onSave(mats); p.onCopyToLayout!(m.id, pv.sampleId, pv.path, view, visibleOut); }}>Copy To New Layout</button>}
                 <span
                   data-testid="comp-matrix-icon"
                   draggable

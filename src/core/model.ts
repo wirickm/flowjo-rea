@@ -270,8 +270,8 @@ export interface SavedLayout {
 
 // A layout cell: a plot rendered for whichever sample is chosen, a text block,
 // a drawn shape (rectangle, ellipse, line) or an inserted image.
-export type LayoutItem = LayoutPlot | LayoutText | LayoutShape | LayoutImage;
-export const isPlotItem = (it: LayoutItem): it is LayoutPlot => it.text === undefined && it.shape === undefined && it.image === undefined;
+export type LayoutItem = LayoutPlot | LayoutText | LayoutShape | LayoutImage | LayoutObject;
+export const isPlotItem = (it: LayoutItem): it is LayoutPlot => it.text === undefined && it.shape === undefined && it.image === undefined && it.object === undefined;
 // Position, size and z-order (list order) in points, as in FlowJo 10's layout
 // editor (specs 21); items without a position get one from their index.
 export interface LayoutPlace {
@@ -307,9 +307,16 @@ export interface LayoutPlot extends PlotSettings, LayoutPlace {
   backgateLarge?: boolean; // backgated population as large dots (BACKGATELARGE)
   backgateContours?: boolean; // backgated population as contours (BACKGATECONTOURS)
   empty?: boolean; // Remove Data from Chart: an empty drop box
+  // Set As Control (LegendSpec@control): overlay paths that keep the chart's own
+  // sample when the layout iterates (src/core/layoutObjects.ts).
+  controls?: string[];
+  // Legend columns (LegendModel, legend Properties); absent = Sample Name, Subset Name, Count.
+  legendColumns?: import('./layoutTables').StatTableColumn[];
+  compMatrix?: string; // matrix override (Copy To New Layout from the matrix editor)
   text?: undefined;
   shape?: undefined;
   image?: undefined;
+  object?: undefined;
 }
 export interface LayoutText extends LayoutPlace {
   id: string;
@@ -322,6 +329,7 @@ export interface LayoutText extends LayoutPlace {
   color?: string;
   shape?: undefined;
   image?: undefined;
+  object?: undefined;
 }
 // Drawing tools (FigRect, FigEllipse, FigRoundRect, FigLine). A line runs
 // between two corners of its box: ends = [x1, y1, x2, y2], each 0 (left / top)
@@ -333,6 +341,7 @@ export interface LayoutShape extends LayoutPlace {
   arrow?: 'none' | 'forward' | 'backward' | 'double';
   text?: undefined;
   image?: undefined;
+  object?: undefined;
 }
 // Insert Graphic (FigImage): image is a data: or http(s) URL.
 export interface LayoutImage extends LayoutPlace {
@@ -340,6 +349,17 @@ export interface LayoutImage extends LayoutPlace {
   image: string;
   text?: undefined;
   shape?: undefined;
+  object?: undefined;
+}
+// Statistic table, difference table, table-editor table, plate display and web
+// page figures (FigStatTable, FigDifferenceTable, FigTableDisplay,
+// FigPlateDisplay, FigWebBrowser; src/core/layoutTables.ts, layoutPlate.ts).
+export interface LayoutObject extends LayoutPlace {
+  id: string;
+  object: import('./layoutTables').LayoutObjectSpec;
+  text?: undefined;
+  shape?: undefined;
+  image?: undefined;
 }
 
 export type StatKind =

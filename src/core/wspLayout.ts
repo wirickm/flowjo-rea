@@ -135,6 +135,9 @@ export function parseFigList(figList: El, sample: (wspId: string) => string | un
   // a file URL cannot be read by the browser and shows as a placeholder.
   const image = (e: El): LayoutItem => { const r = rect(e); return { id: id('img'), image: attr(e, 'url') ?? '', left: r.x, top: r.y, width: Math.max(4, r.w), height: Math.max(4, r.h), ...style(e) }; };
 
+  // FigWebBrowser (FigRect bounds plus url, zoom, offsetX, offsetY; url
+  // defaults to http://www.flowjo.com).
+  const web = (e: El): LayoutItem => { const r = rect(e); return { id: id('obj'), object: { kind: 'web', url: attr(e, 'url') ?? 'http://www.flowjo.com', zoom: num(e, 'zoom', 1) || 1, offsetX: num(e, 'offsetX'), offsetY: num(e, 'offsetY') }, left: r.x, top: r.y, width: Math.max(4, r.w), height: Math.max(4, r.h), ...style(e) }; };
   const walk = (parent: El, groupId?: string) => {
     for (const e of kids(parent)) {
       const k = local(e);
@@ -142,6 +145,7 @@ export function parseFigList(figList: El, sample: (wspId: string) => string | un
       else if (k === 'StyledText' || k === 'SimpleText') items.push({ ...text(e), ...(groupId ? { groupId } : {}) } as LayoutItem);
       else if (SHAPES[k]) items.push({ ...shape(e), ...(groupId ? { groupId } : {}) } as LayoutItem);
       else if (k === 'Image') items.push({ ...image(e), ...(groupId ? { groupId } : {}) } as LayoutItem);
+      else if (k === 'FigWebBrowser') items.push({ ...web(e), ...(groupId ? { groupId } : {}) } as LayoutItem);
       else if (k === 'FigList' || k === 'Group') walk(e, groupId ?? id('grp'));
       else if (k === 'GridLayout') {
         const r = rect(e), rows = Math.max(1, num(e, 'rows', 3)), cols = Math.max(1, num(e, 'columns', 4));
@@ -214,7 +218,8 @@ export function writeFigList(items: LayoutItem[], grids: GridDef[], sampleId: (a
     }
     return `<${NAMES[it.shape]} x="${r.x}"  y="${r.y}"  width="${r.w}"  height="${r.h}"  ${figAttrs(it, 'normal')} />`;
   };
-  const one = (it: LayoutItem): string => (it.text !== undefined ? textXml(it) : it.shape !== undefined ? shapeXml(it) : it.image !== undefined ? `<Image x="${it.left ?? 0}"  y="${it.top ?? 0}"  width="${it.width ?? 100}"  height="${it.height ?? 100}"  ${figAttrs(it, 'none')}  url="${esc(it.image)}" />` : isPlotItem(it) ? chartXml(it) : '');
+  const webXml = (it: LayoutItem & { object: { kind: 'web'; url: string; zoom: number; offsetX: number; offsetY: number } }) => `<FigWebBrowser x="${it.left ?? 0}"  y="${it.top ?? 0}"  width="${it.width ?? 400}"  height="${it.height ?? 300}"  ${figAttrs(it, 'none')}  offsetX="${Math.round(it.object.offsetX)}"  offsetY="${Math.round(it.object.offsetY)}"  url="${esc(it.object.url)}"  zoom="${it.object.zoom}" />`;
+  const one = (it: LayoutItem): string => (it.object !== undefined ? (it.object.kind === 'web' ? webXml(it as Parameters<typeof webXml>[0]) : '') : it.text !== undefined ? textXml(it) : it.shape !== undefined ? shapeXml(it) : it.image !== undefined ? `<Image x="${it.left ?? 0}"  y="${it.top ?? 0}"  width="${it.width ?? 100}"  height="${it.height ?? 100}"  ${figAttrs(it, 'none')}  url="${esc(it.image)}" />` : isPlotItem(it) ? chartXml(it) : '');
   const out: string[] = [];
   const doneGroups = new Set<string>();
   for (const it of items) {

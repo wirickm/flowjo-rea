@@ -87,6 +87,8 @@ table.matrix input { width: 72px; }
 .layout-page .page-break.v { top: 0; border-left: 1px dashed #d33; }
 .layout-page .page-break.h { left: 0; border-top: 1px dashed #d33; }
 .layout-selrow { height: 76px; overflow-y: auto; align-content: flex-start; }
+.layout-band { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; padding-right: 8px; margin-right: 4px; border-right: 1px solid #d5dae3; }
+.chip { display: inline-flex; align-items: center; gap: 3px; border: 1px solid #c7cfdc; border-radius: 3px; padding: 1px 4px; }
 .layout-page .layout-guide { position: absolute; z-index: 9999; }
 .layout-page .layout-guide.v { top: 0; width: 7px; cursor: ew-resize; background: linear-gradient(90deg, transparent 3px, #18a0c8 3px, #18a0c8 4px, transparent 4px); }
 .layout-page .layout-guide.h { left: 0; height: 7px; cursor: ns-resize; background: linear-gradient(180deg, transparent 3px, #18a0c8 3px, #18a0c8 4px, transparent 4px); }

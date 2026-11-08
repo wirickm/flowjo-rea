@@ -66,3 +66,14 @@ export function experimentHtml(e: Experiment): string {
   const sec = (title: string, r: Record<string, string>, list: [string, string][]) => `<h3>${title}</h3><table border="1" cellspacing="0" cellpadding="3">${list.map(([k, l]) => `<tr><th align="left">${esc(l)}</th><td>${esc(r[k] ?? '').replace(/\n/g, '<br>')}</td></tr>`).join('')}</table>`;
   return `<html><body>${sec('Overview', e.fields, OVERVIEW_FIELDS)}${sec('Specimen', e.specimen, SPECIMEN_FIELDS)}${sec('Instrument', e.instrument, INSTRUMENT_FIELDS)}${sec('Analysis', e.analysis, ANALYSIS_FIELDS)}<h3>Figures</h3><table border="1" cellspacing="0" cellpadding="3">${e.figures.map((f) => `<tr><td>${esc(f.id)}</td><td>${esc(f.mimetype)}</td><td>${esc(f.description)}</td></tr>`).join('')}</table></body></html>`;
 }
+
+// Save As Figure / Batch to Figure (FJTableCommand.SAVE_FIGURE,
+// TECommand.BATCHTOFIGURE; docs/validation/ui-gaps/tables.md): a table stored
+// as an experiment figure the way FigureSpec(TableData, name, description)
+// builds one: the next figure number as id, mimetype "text/table", the given
+// description (own rule: the table data itself is not embedded).
+export function addTableFigure(e: Experiment | undefined, description: string): Experiment {
+  const base = e ?? newExperiment();
+  const next = 1 + Math.max(0, ...base.figures.map((f) => Number(f.id)).filter((n) => Number.isFinite(n)));
+  return { ...base, figures: [...base.figures, { id: String(next), mimetype: 'text/table', description }] };
+}

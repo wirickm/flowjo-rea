@@ -295,14 +295,15 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
     const others = ws.otherLayouts ?? [];
     if (!ws.layout?.length && !ws.layoutPage && !ws.layoutIteration && !others.length) return '';
     const sid = (appId: string | undefined) => String(Math.max(0, ws.samples.findIndex((x) => x.id === appId)) + 1);
-    const param = (appId: string | undefined, ch: string) => (appId && input.sampleMatrix(appId)?.channels.includes(ch) ? `${PREFIX}${ch}` : ch);
+    // No sample (plate statistics, unbound charts): the first sample, as sid() does.
+    const param = (appId: string | undefined, ch: string) => { const a = appId ?? ws.samples[0]?.id; return a && input.sampleMatrix(a)?.channels.includes(ch) ? `${PREFIX}${ch}` : ch; };
     // One <Layout> per layout (ui-gaps/layout.md); LayoutEditor@current names the current one.
     const one = (l: SavedLayout) => {
       const page = l.layoutPage ?? { paper: 'letter', orientation: 'portrait' };
       const [pw, ph] = page.paper === 'a4' ? [595.3, 841.9] : [612, 792];
       const it = l.layoutIteration ?? { type: 'OFF' as const };
       const iter = `<Iteration iterationType="${it.type}"  iterationValue=""  iterationKeyword="${it.type === 'KEYWORD' ? esc(it.keyword) : ''}"  discriminator="${it.type === 'KEYWORD' && it.discriminator ? esc(it.discriminator) : ''}"  panelSize="${it.type === 'PANEL' ? it.size : 1}"  groupName="${l.layoutGroup ? esc(l.layoutGroup) : 'workspaceSelection'}" />`;
-      const figs = writeFigList(l.layout ?? [], l.layoutGrids ?? [], sid, param);
+      const figs = writeFigList(l.layout ?? [], l.layoutGrids ?? [], sid, param, { statColumns: ws.statColumns });
       const scale = page.scale && page.scale > 0 ? page.scale : 1;
       return `<Layout name="${esc(l.name)}"  isBatch="0"  showGrid="0"  showRulers="1"  showGuides="0"  showPageBreaks="1"  scale="1" ><PrintLayout rows="1"  columns="1"  padding="36"  scalingMode="${scale === 1 ? 'fj.print.scale.none' : 'fj.print.scale.custom'}"  scaling="${+scale.toFixed(10)}"  orientation="${page.orientation === 'landscape' ? 0 : 1}"  width="${pw}"  height="${ph}" />${iter}${figs}</Layout>`;
     };

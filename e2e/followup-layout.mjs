@@ -271,6 +271,28 @@ const second = await download(() => T('layout-batch').click());
 check('Append Output adds the batch pages to the earlier PDF of the same name', pdfPages(second) === 2 * pdfPages(first) && pdfPages(first) > 0, `${pdfPages(first)} -> ${pdfPages(second)}`);
 await T('layout-append').uncheck();
 await T('layout-tiles').fill('0');
+// --- Output targets (Batch$BatchDestination): Web, Web movie, PowerPoint, Layout
+const nVals = await T('layout-sample').locator('option').count();
+await T('layout-batch-format').selectOption('web');
+const web = (await download(() => T('layout-batch').click())).toString('utf8');
+check('Output Target Web: one HTML page with the batch name and one image per value', /<h2>layout<\/h2>/.test(web) && (web.match(/<IMG src="data:image\/png/g) ?? []).length === nVals && /This page was created by flowjo-rea/.test(web), String(nVals));
+await T('layout-batch-format').selectOption('webmovie');
+const movie = (await download(() => T('layout-batch').click())).toString('utf8');
+check('Output Target Web movie: an HTML movie with one frame per value', (movie.match(/<img class="f"/g) ?? []).length === nVals && /setInterval/.test(movie));
+await T('layout-batch-format').selectOption('pptx');
+const pptx = await download(() => T('layout-batch').click());
+const slides = (pptx.toString('latin1').match(/ppt\/slides\/slide\d+\.xml(?!\.rels)/g) ?? []);
+check('Output Target PowerPoint: a .pptx with one slide per value', pptx.slice(0, 2).toString() === 'PK' && new Set(slides).size === nVals, String(new Set(slides).size));
+const before = await T('layout-list').inputValue();
+const nCards = await page.locator('[data-testid=layout-card]').count();
+await T('layout-batch-format').selectOption('layout');
+await T('layout-batch').click();
+await page.waitForTimeout(800);
+const after = await T('layout-list').inputValue();
+check('Output Target Layout: a new current layout holds the tiles with iteration off', after !== before && (await T('layout-iter').inputValue()) === 'OFF' && (await page.locator('[data-testid=layout-card]').count()) === nCards * nVals, `${before} -> ${after}, ${nCards} x ${nVals}`);
+await T('layout-list').selectOption(before);
+await page.waitForTimeout(300);
+await T('layout-batch-format').selectOption('pdf');
 await T('layout-iter').selectOption('OFF');
 await page.getByRole('dialog', { name: 'Layout editor' }).getByRole('button', { name: 'Close', exact: true }).click();
 

@@ -37,7 +37,7 @@ const FIG = `<FigList>
     <Labels><Row index="0"  column="1" /><Column index="1"  row="0" /></Labels>
   </GridLayout>
   <Image url="logo.png"  x="0"  y="0"  width="10"  height="10" />
-  <StatTable x="0"  y="0"  width="10"  height="10" />
+  <HeatMapGridLayout x="0"  y="0"  width="10"  height="10" />
 </FigList>`;
 
 const strip = (n: string) => n.replace(/^Comp-/, '');
@@ -59,7 +59,7 @@ describe('.wsp layout figures (specs 25.4)', () => {
     expect(r.items[4]).toMatchObject({ kind: 'histogram', cell: { row: 0, col: 1 } });
   });
   it('unsupported figures are reported', () => {
-    expect(r.warnings.join('\n')).toMatch(/StatTable \(1\) is not supported/);
+    expect(r.warnings.join('\n')).toMatch(/HeatMapGridLayout \(1\) is not supported/);
     expect(r.items.length).toBe(6);
   });
   it('an Image figure is imported with its URL (Insert Graphic)', () => {

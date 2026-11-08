@@ -123,3 +123,15 @@ describe('MESF calibration (own rule)', () => {
     expect(fitCalibration([{ mfi: 1, mesf: 2 }])).toBeNull();
   });
 });
+
+describe('Compare Populations chart size (ComparisonController.changeGraphSize)', () => {
+  it('Increase multiplies the height by 1.3, Decrease by 0.67 (truncated); scale moves by 0.05', async () => {
+    const { resizeChart, COMPARE_CHART_H } = await import('../src/core/compare');
+    const up = resizeChart({ h: COMPARE_CHART_H, scale: 1 }, true);
+    expect(up.h).toBe(91);
+    expect(up.scale).toBeCloseTo(1.05, 6);
+    const down = resizeChart(up, false);
+    expect(down.h).toBe(60);
+    expect(down.scale).toBeCloseTo(1, 6);
+  });
+});

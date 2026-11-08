@@ -21,7 +21,7 @@ Tests: `tests/plate.test.ts` (20 tests), `tests/compare.test.ts` (17 tests),
 `e2e/platforms-gaps.mjs` (30 checks, dev server port 5186).
 
 Status counts (63 rows; COMBOGATES belongs to the workspace area):
-Done 52, Own rule 7, Deferred 3, Not a gap 1 (follow-up rounds: THREE_D and MIFLOWCYT Done, TEMPLATE a 10.6.2 no-op, RIBBONCONFIG and RIBBONSETDEFAULT done with own rules in round f2; several Done rows carry small own-rule notes).
+Done 52, Own rule 7, Deferred 0, Not a gap 4 (QB, QC, TIMESERIES, TEMPLATE; follow-up rounds: THREE_D and MIFLOWCYT Done, TEMPLATE a 10.6.2 no-op, RIBBONCONFIG and RIBBONSETDEFAULT done with own rules in round f2; several Done rows carry small own-rule notes).
 
 ## 1. Where the platforms live in FlowJo 10.6.2
 
@@ -46,21 +46,22 @@ Done 52, Own rule 7, Deferred 3, Not a gap 1 (follow-up rounds: THREE_D and MIFL
 
 ## 2. PlatformNavCommand
 
-### QB "Q&B" - Deferred
+### QB "Q&B" - Not a gap: no-op in FlowJo 10.6.2
 FlowJo 10.6.2 has the enum, the label and the tooltip ("A customized
 regression analysis to measure noise and linearity of the cytometer") but no
 handler (NodeFactory default branch) and no ribbon entry, so the command does
 nothing. There is no FlowJo behaviour to reproduce; a cytometer Q and B
-regression would be a new design without a reference. Deferred.
+regression would be a new design without a reference. Not a gap: no-op in
+FlowJo 10.6.2.
 
-### QC (unlabelled) - Deferred
+### QC (unlabelled) - Not a gap: no-op in FlowJo 10.6.2
 Same as QB: `WSPlatformAction.isQC` exists but `doPlatform` ignores index 7.
 The `graphwindow.qc.QCController` classes (strings `plat.qc.*`: Drift,
 Spikiness, Rate, Weighted Slope) are not reachable through this command in
-10.6.2. Deferred for the same reason. (Sample quality on the Instrumentation
+10.6.2. Not a gap, for the same reason. (Sample quality on the Instrumentation
 band is a different command, `aSampleQuality`, outside this area.)
 
-### TIMESERIES (unlabelled) - Deferred (covered by Kinetics)
+### TIMESERIES (unlabelled) - Not a gap: no-op in FlowJo 10.6.2 (Kinetics covers time plots)
 `getTimeSeries()` builds the action but `isPlatformCmd` rejects the command,
 so it does nothing in 10.6.2. Statistic-over-time plots are the Kinetics
 platform, which flowjo-rea already implements (`src/core/kinetics.ts`,
@@ -541,7 +542,22 @@ source group ...`, `CP Clear source group reverts`. Uncertain: whether the
 parent population is also written when a source group is set (if so, it
 would come last and win).
 
-Still deferred: chart size buttons and graph smoothing (cosmetic).
+**Increase / Decrease Chart Size, Smooth - Done.** `ComparisonAction.doAction`
+INCREASE_GRAPH_SIZE / DECREASE_GRAPH_SIZE call
+`ComparisonController.changeGraphSize(true / false)`:
+`ComparisonNode.multiplyChartHeight(1.3 or 0.67)` (height truncated to an
+integer) and `ComparisonNode.rescale` (graph scale +0.05 or -0.05), then the
+graphs are redrawn. SMOOTH (`ComparisonCheckboxAction`) calls
+`setSmooth(13)` when checked and `setSmooth(0)` when not; a new comparison
+starts smoothed (`ComparisonNode` constructor sets `fSmooth` 13), and as in
+the graph window the engine reads it as on / off. flowjo-rea: "Increase
+Chart Size" / "Decrease Chart Size" (`compare-chart-bigger`,
+`compare-chart-smaller`) apply the same factors to the overlay height and the
+scale to its width (starting at 70 px high; FlowJo keeps the start height in
+the window state, own rule); "Smooth" (`compare-opt-smooth`, on by default)
+draws the histograms through the graph window's FlowJo 1-D smoothing. Unit
+"Compare Populations chart size", e2e `CP Increase / Decrease Chart Size`,
+`CP Smooth ...`.
 
 ## 5. 3D Viewer (THREE_D) - Done (own-rule rendering)
 
@@ -646,8 +662,10 @@ columns Path, $FIL, $DATE, $TOT, $PAR, $CYT, $SRC plus added keywords; Find
 filters on path and any keyword value; Show duplicates (same $FIL, $TOT and
 size); Save to workspace adds the selected files; Save to spreadsheet
 downloads a CSV of the selected (or all listed) files. Own rule because a
-browser cannot scan the file system. Deferred: database, Enterprise server,
-Open parent folder. e2e `SCAN ...` checks.
+browser cannot scan the file system. Not offered (own rule): database and
+Enterprise server sources (FlowJo Enterprise, out of scope like the other
+NA enterprise commands) and Open parent folder (a browser page cannot open
+the OS file manager). e2e `SCAN ...` checks.
 
 ## 7. Uncertain points
 

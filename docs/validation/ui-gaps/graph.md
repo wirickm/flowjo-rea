@@ -382,11 +382,11 @@ is not, this app's version is an Own rule.
 | CLOSEALL, COPYPICTURENOTRANS | Done |
 | PREFS | Done (graph entries) |
 | TransformCommand.RESET | Done |
-| AUTO_WIDTH_CALCULATE | Done (biex, logicle; arcsinh deferred) |
+| AUTO_WIDTH_CALCULATE | Done (biex, logicle; arcsinh added in follow-up f2, section 6.5) |
 | SCINOTATION | Done as preference, menu shortcut own |
 | FIRSTSIBLING, LASTSIBLING | Own rule (no 10.6.2 action) |
 | CHANGE_PARAMETER_RANGE, TRANSFORM_OFF, APPLY_TRANSFORM_TO_ALL_COMPS, REMOVE_TRANSFORM_FROM_ALL_COMPS, DERIVE_LIN_PARM, DERIVE_LOG_PARM | Own rule (no 10.6.2 action) |
 | ADDSTAT | Own rule (unchanged) |
 | PRINT, MAKEMOVIE | Own rule (browser equivalents) |
-| CALCULATE_NEG_TRANSFORM_VALUE | Deferred (no 10.6.2 rule) |
+| CALCULATE_NEG_TRANSFORM_VALUE | Not a gap: no-op in FlowJo 10.6.2 (section 6.6) |
 | SHOWCUBE | Done (3D Viewer; no node kept, own) |

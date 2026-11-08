@@ -300,3 +300,10 @@ export function fMeasure(correct: Mask[], candidates: Mask[], n: number): FMeasu
 // ComparisonFrame remove buttons.
 export const isScatter = (n: string) => /^(FSC|SSC)/i.test(n);
 export const isNonFluorescent = (n: string) => /^(FSC|SSC|Time|Event)/i.test(n) || /^time$/i.test(n);
+
+// Chart size: ComparisonController.changeGraphSize multiplies the chart height
+// by 1.3 (Increase) or 0.67 (Decrease), truncated, and moves the graph scale by
+// +/- 0.05 (ComparisonNode.multiplyChartHeight, rescale). Smooth: on stores 13,
+// off 0 (ComparisonCheckboxAction, ComparisonNode default fSmooth = 13).
+export const COMPARE_CHART_H = 70, COMPARE_CHART_W = 220;
+export const resizeChart = (c: { h: number; scale: number }, up: boolean) => ({ h: Math.trunc(c.h * (up ? 1.3 : 0.67)), scale: Math.fround(c.scale + Math.fround(up ? 0.05 : -0.05)) });

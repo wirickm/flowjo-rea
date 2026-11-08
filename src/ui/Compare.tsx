@@ -4,10 +4,11 @@
 // sample population and the comparator (control) populations, with an
 // overlay of their histograms.
 import { useEffect, useMemo, useState } from 'react';
-import { CHI_BINS, compareHistograms, DEFAULT_MV_BINS, fMeasure, isNonFluorescent, isScatter, matchRatio, multivariateChi, type ChiResult, type FMeasureResult, type UnivariateResult } from '../core/compare';
+import { CHI_BINS, COMPARE_CHART_H, COMPARE_CHART_W, resizeChart, compareHistograms, DEFAULT_MV_BINS, fMeasure, isNonFluorescent, isScatter, matchRatio, multivariateChi, type ChiResult, type FMeasureResult, type UnivariateResult } from '../core/compare';
 import { populationPath, UNCOMP_SUFFIX } from '../core/model';
 import { formatStat } from '../core/statsTable';
 import { makeAxis, sampleChannels, withStains } from './axes';
+import { smoothCurve } from '../core/graphDisplay';
 import type { ToolCtx } from './PlatformTools';
 
 type StatKey = 'sed' | 'overton' | 'tx' | 'ksd' | 'ksAt' | 'ksp' | 'maxT';
@@ -37,9 +38,9 @@ const statValue = (r: UnivariateResult, k: StatKey): number | string => {
   }
 };
 
-function Graph(p: { sample: Float32Array; controls: Float32Array[]; merge: boolean; cdf: boolean; diff: boolean; tintS: boolean; tintC: boolean; testId: string }) {
-  const W = 220, H = 70;
-  const norm = (h: ArrayLike<number>) => { let s = 0; for (let i = 0; i < h.length; i++) s += h[i]; const out = Array.from(h, (v) => (s ? v / s : 0)); if (p.cdf) for (let i = 1; i < out.length; i++) out[i] += out[i - 1]; return out; };
+function Graph(p: { sample: Float32Array; controls: Float32Array[]; merge: boolean; cdf: boolean; diff: boolean; tintS: boolean; tintC: boolean; smooth: boolean; h: number; scale: number; testId: string }) {
+  const W = Math.max(40, Math.round(COMPARE_CHART_W * p.scale)), H = Math.max(10, p.h);
+  const norm = (h0: ArrayLike<number>) => { const h = p.smooth ? smoothCurve(h0) : h0; let s = 0; for (let i = 0; i < h.length; i++) s += h[i]; const out = Array.from(h, (v) => (s ? v / s : 0)); if (p.cdf) for (let i = 1; i < out.length; i++) out[i] += out[i - 1]; return out; };
   const merged = p.controls.length ? p.controls[0].map((_, i) => p.controls.reduce((a, c) => a + c[i], 0)) : new Float32Array(p.sample.length);
   const lines = [{ v: norm(p.sample), c: '#d0021b', tint: p.tintS }, ...(p.merge ? [merged] : p.controls).map((c) => ({ v: norm(c), c: '#2a5bd7', tint: p.tintC }))];
   if (p.diff) lines.push({ v: lines[0].v.map((x, i) => x - lines[1]?.v[i] || 0), c: '#2ca02c', tint: false });
@@ -63,7 +64,8 @@ export function CompareDialog(p: ToolCtx) {
   const [rows, setRows] = useState<Row[]>([]);
   const [mv, setMv] = useState<ChiResult | null>(null);
   const [mvBins, setMvBins] = useState(DEFAULT_MV_BINS);
-  const [opt, setOpt] = useState({ graph: true, cdf: false, diff: false, tintS: false, tintC: false, merge: false });
+  const [opt, setOpt] = useState({ graph: true, cdf: false, diff: false, tintS: false, tintC: false, merge: false, smooth: true });
+  const [chart, setChart] = useState({ h: COMPARE_CHART_H, scale: 1 });
   const [pick, setPick] = useState<PopRef>({ sampleId: p.ws.samples.find((s) => s.id !== s0.id)?.id ?? s0.id, path: samplePath });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -191,7 +193,9 @@ export function CompareDialog(p: ToolCtx) {
             <select value="" onChange={(e) => e.target.value && setStats((s) => [...s, e.target.value as StatKey])} data-testid="compare-add-stat"><option value="">Add statistic...</option>{STATS.filter((x) => !stats.includes(x.key)).map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}</select>
           </div>
           <div className="row" style={{ flexWrap: 'wrap' }}>
-            {([['graph', 'Show graph'], ['cdf', 'Show CDF'], ['diff', 'Plot Difference'], ['tintS', 'Tint Sample'], ['tintC', 'Tint Control'], ['merge', 'Merge control histograms']] as const).map(([k, l]) => <label key={k}><input type="checkbox" checked={opt[k]} onChange={(e) => setOpt({ ...opt, [k]: e.target.checked })} data-testid={`compare-opt-${k}`} />{l}</label>)}
+            {([['graph', 'Show graph'], ['cdf', 'Show CDF'], ['diff', 'Plot Difference'], ['tintS', 'Tint Sample'], ['tintC', 'Tint Control'], ['merge', 'Merge control histograms'], ['smooth', 'Smooth']] as const).map(([k, l]) => <label key={k}><input type="checkbox" checked={opt[k]} onChange={(e) => setOpt({ ...opt, [k]: e.target.checked })} data-testid={`compare-opt-${k}`} />{l}</label>)}
+            <button disabled={!opt.graph} onClick={() => setChart((c) => resizeChart(c, true))} data-testid="compare-chart-bigger" title="Increase Chart Size">Increase Chart Size</button>
+            <button disabled={!opt.graph} onClick={() => setChart((c) => resizeChart(c, false))} data-testid="compare-chart-smaller" title="Decrease Chart Size">Decrease Chart Size</button>
           </div>
           {error && <p className="error" data-testid="compare-error">{error}</p>}
           {busy && <p className="muted">Calculating...</p>}
@@ -201,7 +205,7 @@ export function CompareDialog(p: ToolCtx) {
               <td><input type="checkbox" checked={checked.includes(r.channel)} onChange={(e) => setChecked((c) => (e.target.checked ? [...c, r.channel] : c.filter((x) => x !== r.channel)))} /></td>
               <td>{r.channel}</td>
               {stats.map((k) => <td key={k} data-testid={`compare-${k}-${r.channel}`}>{(() => { const v = statValue(r.res, k); return typeof v === 'number' ? formatStat(Number(v.toPrecision(5))) : v; })()}</td>)}
-              {opt.graph && <td><Graph sample={r.sample} controls={r.controls} merge={opt.merge} cdf={opt.cdf} diff={opt.diff} tintS={opt.tintS} tintC={opt.tintC} testId={`compare-graph-${r.channel}`} /></td>}
+              {opt.graph && <td><Graph sample={r.sample} controls={r.controls} merge={opt.merge} cdf={opt.cdf} diff={opt.diff} tintS={opt.tintS} tintC={opt.tintC} smooth={opt.smooth} h={chart.h} scale={chart.scale} testId={`compare-graph-${r.channel}`} /></td>}
             </tr>)}</tbody>
           </table>
           {sourceGroup && <p className="muted" data-testid="compare-source">Sample population from source group {p.ws.groups.find((g) => g.id === sourceGroup)?.name}: {sourceSample().s.fileName}/{samplePath || 'All events'}</p>}

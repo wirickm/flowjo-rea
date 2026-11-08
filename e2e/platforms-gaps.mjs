@@ -131,6 +131,20 @@ await page.getByTestId('compare-rm-scatter').click();
 check('CP Remove Scatter drops FSC/SSC rows', (await page.getByTestId('compare-row-FSC-A').count()) === 0 && (await page.getByTestId('compare-row-FL1-A').count()) === 1);
 await page.getByTestId('compare-opt-cdf').check();
 check('CP graph shown per parameter', (await page.getByTestId('compare-graph-FL1-A').count()) === 1);
+{
+  const g = page.getByTestId('compare-graph-FL1-A');
+  const h0 = Number(await g.getAttribute('height'));
+  await page.getByTestId('compare-chart-bigger').click();
+  const h1 = Number(await g.getAttribute('height'));
+  await page.getByTestId('compare-chart-smaller').click();
+  const h2 = Number(await g.getAttribute('height'));
+  check('CP Increase / Decrease Chart Size: height x1.3 then x0.67 (truncated)', h1 === Math.trunc(h0 * 1.3) && h2 === Math.trunc(h1 * 0.67), `${h0} -> ${h1} -> ${h2}`);
+  check('CP Smooth is on by default', await page.getByTestId('compare-opt-smooth').isChecked());
+  const d0 = await g.innerHTML();
+  await page.getByTestId('compare-opt-smooth').uncheck();
+  check('CP Smooth off redraws the curves', (await g.innerHTML()) !== d0);
+  await page.getByTestId('compare-opt-smooth').check();
+}
 await page.getByTestId('compare-close').click();
 
 // --- 3D Viewer

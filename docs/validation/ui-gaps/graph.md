@@ -348,8 +348,14 @@ is not, this app's version is an Own rule.
   canvas as a WebM video (MediaRecorder) and downloaded. FlowJo's frame
   sequences (gate or transform increments) are not reproduced. Test: "Make
   Movie records the group as a WebM video" (e2e).
-- Show in 3D (`GWNavAction` SHOWCUBE): **Deferred**: a 3-D cube view needs a
-  WebGL renderer and FlowJo's cube controls, which were not read.
+- Show in 3D (`GWNavAction` SHOWCUBE -> `openCubeView`): opens the population's
+  existing `ThreeDNode` child if there is one, otherwise
+  `NodeFactory.doPlatform(THREE_D)` makes one; `ThreeDNode.setDefaults` takes
+  X and Y from the graph and picks unused parameters for Z and the colour
+  axis. **Done**: plot menu "Show in 3D" opens the 3D Viewer (platforms.md
+  section 5) with the graph's X and Y; own rule: no node is kept, so each use
+  opens a new viewer. e2e "Show in 3D opens the 3D Viewer of this population
+  with the graph X axis" (`e2e/followup-3d.mjs`).
 
 ## Summary
 
@@ -374,4 +380,4 @@ is not, this app's version is an Own rule.
 | ADDSTAT | Own rule (unchanged) |
 | PRINT, MAKEMOVIE | Own rule (browser equivalents) |
 | CALCULATE_NEG_TRANSFORM_VALUE | Deferred (no 10.6.2 rule) |
-| SHOWCUBE | Deferred (no 3-D view) |
+| SHOWCUBE | Done (3D Viewer; no node kept, own) |

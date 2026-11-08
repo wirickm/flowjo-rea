@@ -16,11 +16,12 @@ Code: `src/core/plate.ts`, `src/core/compare.ts`, `src/core/calibration.ts`,
 kind `{ kind: 'tool' }` and a button row in the Tools ribbon tab (flowjo
 layout, band "Experiment / Biology") and in the classic Cytometry band.
 
-Tests: `tests/plate.test.ts` (20 tests), `tests/compare.test.ts` (13 tests),
+Tests: `tests/plate.test.ts` (20 tests), `tests/compare.test.ts` (17 tests),
+`tests/threeD.test.ts` (7), `tests/miflowcyt.test.ts` (3), `e2e/followup-3d.mjs` (26 checks, port 5191),
 `e2e/platforms-gaps.mjs` (30 checks, dev server port 5186).
 
 Status counts (63 rows; COMBOGATES belongs to the workspace area):
-Done 50, Own rule 6, Deferred 7 (several Done rows carry small own-rule notes).
+Done 52, Own rule 5, Deferred 5, Not a gap 1 (follow-up round: THREE_D and MIFLOWCYT Done, TEMPLATE a 10.6.2 no-op; several Done rows carry small own-rule notes).
 
 ## 1. Where the platforms live in FlowJo 10.6.2
 
@@ -82,7 +83,7 @@ e2e `CAL fit slope 1, r 1`, `CAL defines a derived parameter`.
 
 ### COMPARISON "Compare Populations..." - Done (with own-rule parts, section 4)
 
-### THREE_D "3D Viewer" - Own rule (section 5)
+### THREE_D "3D Viewer" - Done (section 5; own-rule rendering)
 
 ### FCSSCAN "FCS Scan" - Own rule (section 6)
 
@@ -156,11 +157,16 @@ with a header and a non-empty value is added to that well. flowjo-rea also
 reports the number of ignored lines. Test `import requires a well id column
 and skips bad rows`.
 
-#### TEMPLATE "Save As Template" - Deferred
-Opens `PlateTemplateDialog` ("Saving as Plate Template": which keywords must
-match files added later, e.g. $CYT, PLATE NAME) to build a workspace template
-that annotates newly added data. flowjo-rea has no workspace templates
-(WSPT); deferred until that exists.
+#### TEMPLATE "Save As Template" - Not a gap: no-op in FlowJo 10.6.2
+`PlateEditor.saveAsTemplate` only constructs `PlateTemplateDialog`
+("Saving as Plate Template"). That dialog is a mock-up: its two keyword
+tables are filled with hard-coded example pairs ($CYT = LSRII, PLATE NAME =
+CD4 Treg activation; $P15S = pSTAT5, $P12S = CD4, $P9S = CD68) under "If these
+keywords match files being added:" / "...these keywords will be applied to
+them.", and its only action (`PlateTemplateDialog$1.doAction`) opens the help
+page when the help button is pressed; Save and the other buttons do nothing
+and nothing is written. It is not the workspace template (.wspt,
+`src/core/template.ts`), which is unrelated. flowjo-rea offers no button.
 
 #### CLOSE / CLOSEDLOG "Close" - Done
 Closes the Plate Editor window (CLOSEDLOG has no separate handler). The plate
@@ -323,9 +329,13 @@ group sample in that well (`WSSampleMgr.addProtocol`). flowjo-rea writes
 them as sample annotations. e2e `PE Apply Plate Keywords to Group annotates
 samples`.
 
-#### MIFLOWCYT "Annotate Experiment..." - Deferred
-Opens the MIFlowCyt experiment-description editor (`PEAction.annotate`).
-The MIFlowCyt schema editor is a separate feature; deferred.
+#### MIFLOWCYT "Annotate Experiment..." - Done
+Opens the MIFlowCyt experiment annotation editor (`PEAction.annotate` ->
+`MIFlowCytDialog`); the same dialog as WSCommand.MIFlowCyt, specified in
+workspace.md ("Annotate Experiment"). From the Plate Editor FlowJo also copies
+the result to the plate (`PlateModel.setMetadata`); flowjo-rea keeps the one
+workspace annotation (own rule). Button `open-miflow` in the Experiment band;
+tests `tests/miflowcyt.test.ts`, e2e `MIFlowCyt ...` in `e2e/followup-3d.mjs`.
 
 ### Settings band and well display
 
@@ -420,31 +430,196 @@ columns, Reset statistics; Show graph, Show CDF, Plot Difference (green),
 Tint Sample, Tint Control, Merge control histograms; multivariate footer and
 bins. e2e `CP ...` checks.
 
-Deferred: Add To Group / Set source group / Clear source group (FlowJo copies
-the comparison node to every sample of the group; flowjo-rea has no platform
-nodes in the sample tree), Match Ratio, Precision, Recall, F-Measure,
-V-Measure (cluster-matching measures, `Comparison::MatchRatio` etc., not
-decoded), chart size buttons, and graph smoothing.
+**Multivariate (decoded, follow-up round; replaces the earlier own rule).**
+`Comparison::CalcMultivariateStats` -> `MultiDimCompare::ChiSquare`,
+`BuildComparisonTree`, `DivideTree`, `SortPartition`,
+`FilterSampleThroughTree`, `FilterEventThroughLeaf`, `CleanUpLeafCounts`,
+`BasicHistogram::ChannelStdDev` / `ChannelMedian` / `AddDataValue` (native
+engine, read with Ghidra headless; output kept out of the repo):
 
-## 5. 3D Viewer (THREE_D) - Own rule
+- Each event's value on each listed parameter is stored as a 16-bit integer
+  v = (channel << 10) / channel range, i.e. its position on the parameter's
+  scale times 1024 (flowjo-rea: trunc(1024 u), u the display-scale position
+  clamped to 0..1).
+- Minimum leaf size = trunc(max(Nc / bins, 5)) with Nc the summed event count
+  of all control populations and bins the "Number of bins" field (300).
+- Split mode 1 (the `LeafComparison` built by ChiSquare): at each node a
+  1024-bin histogram of every parameter is made from the node's events; the
+  parameter with the largest histogram standard deviation (bin index units,
+  n - 1 denominator, strictly larger wins, so ties keep the first) is cut at
+  its median bin, the first bin whose running count reaches n x 50 x 0.01,
+  at least 1. Events with v < cut go left.
+- A node whose cut leaves one side empty becomes a terminal leaf. Otherwise
+  each side becomes a terminal leaf when it has fewer events than the minimum
+  leaf size, else it is divided again (left first, nodes appended
+  post-order).
+- A tree is built on every control population in turn into the same node
+  list; filtering starts at the last node, the root of the last tree. The
+  controls are filtered one by one into the same count vector, which
+  `CleanUpLeafCounts` clears each time, so the control counts are those of
+  the last control while Nc is the sum of all controls (engine behaviour,
+  reproduced). Bins B = the number of terminal leaves of all trees.
+- chi = sum over leaves of (p - q)^2 / (p + q) in float, with p = s x (1/Ns),
+  q = c x (1/Nc), leaves with p + q = 0 skipped; T(X) and Max T as above with
+  N = min(Ns, Nc).
 
-FlowJo (`com.treestar.threeD`): a `ThreeDNode` under the population; plot
-types Point Cloud, Bubble Plot, Voxel Plot, Terrain Plot; actions Cube,
-Labels, Next / Previous Sample, Reset (rotation), Export... (image), Wiggle...
-(GIF), Color (gradient; default spectrum violet, blue, cyan, green, yellow,
-red from `ThreeDDataModel`), Color Parameter, Size Parameter (bubble only),
-Point Scale; right-click an axis to change its parameter; axis ranges widened
-by 10% (`AXIS_WIDENING_FACTOR`).
+flowjo-rea: `multivariateChi` in `src/core/compare.ts`, all events of each
+population (the earlier 20000-event subsample is gone). Tests `multivariate
+tree: largest-sd parameter, median bin split, ...`, `multivariate with
+several controls: last control counts, Nc summed`.
 
-flowjo-rea (`src/ui/ThreeD.tsx`): canvas point cloud of three parameters of
-the selected population on their display scales (up to 8000 events, every
-k-th, from `eventMatrix`), drag to rotate (yaw/pitch, orthographic,
-depth-sorted points), Reset, Cube, Labels, X/Y/Z parameter selectors, Color
-Parameter with the spectrum gradient, Point Scale, Previous / Next Sample
-(same population path, loaded samples only), Export... as PNG. Own rules: no
-Bubble / Voxel / Terrain plots, no Wiggle GIF, no node in the sample tree,
-display ranges without the 10% widening. e2e `3D point cloud has events`,
-`3D drag rotates`, `3D Reset restores the default perspective`.
+**Population measures - Done.** `ComparisonNode.evalMeasureStat` sends one
+request per comparator (`ComparisonRequest(node, pop, "FMeasure" |
+"MatchRatio")`) with the comparison's own population in role "correct" /
+"consensus" and the comparator as "candidate"; `Comparison::ProcessQuery`
+takes the first population as the event base, so the event set is every
+event of that population's sample, indexed by event number (a population
+with no gate, "All events", contains every event and counts as size 1).
+
+- Match Ratio (`Comparison::MatchRatio`): per event f = (number of consensus
+  populations holding it) x (1 / number of consensus populations) and
+  weight w = |f - 0.5|; a population scores w for each event where it agrees
+  with the majority (in it and f > 0.5, or not in it and f < 0.5; a gate-less
+  population scores when f > 0.5). The per-population score rows are laid out
+  with a stride of (populations - 1) instead of the event count, so they
+  overlap; with one consensus and one candidate the reported value is
+  score(consensus row) / sum w = (1 + agreements over events 0..N-2) / N.
+  Reproduced literally.
+- FMeasure (`CalculateMatchingMatrix`, `Comparison::FMeasure`,
+  `FMeasureStatisticInfo::ToXML`): M = events in both; precision = M /
+  |candidate|, recall = M / |correct|, value = 2PR / (P + R) (0 when P + R =
+  0), totalFMeasure = sum over correct populations of |correct| / N times its
+  best F (one pair: |correct| / N x F). Precision and Recall are separate
+  table statistics read from the same result.
+- V-Measure: **Not a gap: no-op in FlowJo 10.6.2**. The engine has
+  `Comparison::VMeasure`, but `ComparisonNode.gIncludeVMeasure` is the
+  compile-time constant false, so the request is never sent and the column
+  never gets a value.
+- "Include Sample in Match Ratio" (`INCLUDE_SAMPLE`,
+  `setIncludeSampleInMatchRatioControls`): **Not a gap: no-op in FlowJo
+  10.6.2**; the flag is saved on the node but no request reads it.
+
+flowjo-rea (`matchRatio`, `fMeasure` in `src/core/compare.ts`; worker
+`populationMask`): a "Comparator" table under the parameter table with Match
+Ratio, FMeasure, Precision, Recall and Total FMeasure per comparator. Own
+rule: FlowJo shows these as table-editor statistics of the comparison node;
+flowjo-rea has no comparison node, so they appear in the window. Tests
+`match ratio (one consensus, one candidate) reproduces the row stride`,
+`F-measure, precision, recall and total`; e2e `CP Match Ratio and F-measure
+per comparator`.
+
+**Add To Group - Own rule.** `ComparisonController.addToGroup` copies the
+comparison node (`getElement` -> `NodeFactory.create`) to the current group
+(`GroupNode.addAnalysisNode`), so every member sample gets the comparison at
+the same population. flowjo-rea has no platform nodes; "Add To Group" runs
+the comparison for every loaded member at this population path and lists
+multivariate T(X), Max T, bins and the Match Ratio / FMeasure per comparator,
+one row per sample. e2e `CP Add To Group lists the comparison for each group
+sample`.
+
+**Set source group / Clear source group - Done.**
+`ComparisonController.setSourceControlGroup(true)` sets both
+`setSourceGroupNode` and `setControlGroupNode` to the group population
+(Set control group sets only the latter); `clearSourceGroup` sets the source
+to null. With a source group, `ComparisonNode.addComparisonElement` writes a
+"sample" population for every group member that has the path, and
+`Comparison::ProcessQuery` keeps the last one, so the sample side is the
+population in the last member of the group. flowjo-rea: "Set source group..."
+does the same (last loaded member; controls = the group's samples at the
+path), "Clear source group" reverts to the window's sample. e2e `CP Set
+source group ...`, `CP Clear source group reverts`. Uncertain: whether the
+parent population is also written when a source group is set (if so, it
+would come last and win).
+
+Still deferred: chart size buttons and graph smoothing (cosmetic).
+
+## 5. 3D Viewer (THREE_D) - Done (own-rule rendering)
+
+Decoded from `com.treestar.threeD.*` (`ThreeDController`, `ThreeDFrame`,
+`ThreeDJPlot`, `Plot3DJ`, `ThreeDDataModel`, `ThreeDSettings`,
+`ThreeDGradient`, `ThreeDScatterBuilder`, `ThreeDBubbleBuilder`,
+`ThreeDSurfaceBuilder`, `MouseRotate`, `RotateBehavior`, `ThreeDNode`,
+`actions.ThreeDActionManager` and the 27 `actions.ThreeDCommand`s) and
+`PrefsFJML$ThreeD`. Rules in `src/core/threeD.ts`, viewer
+`src/ui/ThreeD.tsx`.
+
+Commands (`ThreeDActionManager.createActions` registers SAVE, SAMPLEPREV,
+SAMPLENEXT, BOXSHOWHIDE, LABELSHOWHIDE, RESETAXES, SETCOLORPARAM,
+SETSIZEPARAM, SETSIZEVALUE, ADDCOLOR, REMOVECOLOR, SAVEIMG, WIGGLE,
+SETPOPCOLOR, OPENCLUSTERPANEL, TOGGLEPOPENABLED, HELPVIEWER; the button bar
+`ThreeDFrame.BTN_BAR_ACTIONS` is Export..., Labels, Cube, Reset, Help, plus
+the graph-type combo SETGRAPHTYPE; the side panel holds Point Scale, Size
+Parameter, the colour row (Color Parameter + Color gradient) and the
+population list):
+
+| Command | 10.6.2 rule | flowjo-rea |
+|---|---|---|
+| SETGRAPHTYPE | `ThreeDController$PlotType` POINTCLOUD, BUBBLE, TERRAIN | Done (select) |
+| (Voxel Plot) | dictionary only, no PlotType | Not a gap |
+| BOXSHOWHIDE "Cube" | wireframe box on/off, default on | Done |
+| LABELSHOWHIDE "Labels" | axis labels on/off | Done |
+| RESETAXES "Reset" | `Plot3DJ.resetCamera` -> `createDefaultOrientation` = identity (X right, Y up, Z toward the viewer) | Done (also stops a spin) |
+| SAVEIMG "Export..." | image file "<sample>+..." | Done (PNG) |
+| WIGGLE "Wiggle..." | `saveWiggle`: frame 1 = view turned by -EYE_ANGLE (0.03 rad) about its Y axis, frame 2 = current view, written by `HtmlMovieCreator` (frame delay 500 ms, auto play) although the tooltip says GIF; registered but on no button or menu | Own rule: offered as a button, one self-contained HTML file |
+| SAMPLEPREV / SAMPLENEXT | sibling navigation | Done (loaded samples) |
+| SETXPARAM / SETYPARAM / SETZPARAM | right-click an axis ("Choose %s Parameter") | Own rule: X / Y / Z selects |
+| SETCOLORPARAM, SETCOLORGRAD "Color" | colour axis: parameter + one of 9 gradients (Black, Red, Green, Blue, Spectrum, Black -> Transparent, Transparent -> Black, Black -> White, Black -> Red); `getColorAtLocation` mixes the nearest control points | Done |
+| ADDCOLOR / REMOVECOLOR | `doThreeDAction` is empty | Not a gap: no-op |
+| SETSIZEPARAM "Size Parameter" | bubble plots only ("Static" or a parameter) | Done |
+| SETSIZEVALUE "Point Scale" | slider 0..100 -> sizeFactor 0..1 | Done |
+| SETPOPCOLOR / TOGGLEPOPENABLED | population list colour / on-off | Done |
+| OPENCLUSTERPANEL | opens `ThreeDGradientEditor`; on no button | Not a gap (unreachable) |
+| SAMPLEUP, MAKEANIMATION, TOGGLEZUP, TOGGLEAUTOROTATE, SETCOLORGRAD (as action), TOGGLELOGLIN, CLOSE, SETXPARAM.. as actions | no action registered (CLOSE only in the File menu) | Not a gap |
+| HELPVIEWER | help page | not offered |
+
+Rules:
+
+- Population data (`ThreeDController.addPop` ->
+  `ThreeDDataModel.appendAxis(GParameter, GraphNode)`): every parameter of the
+  sample, values from the engine normalised to the parameter's scale (0..1);
+  the model then subtracts the minimum and multiplies (not divides) by the
+  range, so a population that does not span its scale is drawn shrunk toward
+  the cube corner. Reproduced (`populationAxis`). Uncertain: that the
+  engine's "normalize" output is the 0..1 scale position.
+- Defaults (`ThreeDNode.setDefaults`, `ThreeDSettings`): X and Y from the
+  graph, Z and the colour parameter unused parameters, colour gradient the
+  preference `ThreeD/plotdefaultColor` = Spectrum (violet 0.1, blue 0.25,
+  cyan 0.35, green 0.45, yellow 0.65, red 0.9), point scale 0.01, cube and
+  axes on, background white. flowjo-rea picks unused parameters
+  fluorescent-first (exact `Sample.chooseUnusedParameter` order not read).
+- Several populations (`computeMultiPlot`): each added population gets the
+  next quick colour (red, orange, yellow, green, cyan, blue, magenta); with
+  two or more enabled, points take their population's colour instead of the
+  colour axis.
+- Point Cloud (`ThreeDScatterBuilder`): points of round(180 x sizeFactor x 0.1
+  + 1) pixels (1 px at the default, 15 px for tables, 19 px at full scale).
+- Bubble Plot (`ThreeDBubbleBuilder`): spheres of radius u^2 x sizeFactor x
+  0.1 + 0.01 cube units (u = size parameter) or sizeFactor x 0.1 + 0.01 when
+  static, at most `bubbleMaxEvents` (1000) spheres, every
+  (n / min(n, 1000))-th event.
+- Terrain Plot (`ThreeDSurfaceBuilder`, `$ThreeDBinnedData`): X and Z binned
+  into `contourResolution` (50) bins; height(i, j) = binsX[i] x binsZ[j] /
+  largest product (the product of the marginals, not a joint histogram); a
+  quad mesh between bin centres, one lit material colour (the first event's
+  colour when a colour axis is set); no Y axis.
+- Rotation (`MouseRotate`, `RotateBehavior`): drag rotates 0.008 rad per
+  pixel from the press position; after a drag whose last horizontal step was
+  2 px or more the plot keeps turning about its own Y axis every 40 ms by
+  clamp(0.005 dx, +-0.08) rad until the next press. Perspective of Java 3D's
+  nominal view (field of view pi/4).
+- Not kept: the workspace `ThreeDNode` (attributes ThreeDVersion, type,
+  xaxis, yaxis, zaxis, sizeaxis, sizevalue, matrix, showaxis, showcube, zup);
+  flowjo-rea has no platform nodes, so the viewer's settings are not saved
+  (own rule).
+
+Own rules: drawn on a 2D canvas with a per-pixel depth buffer (points),
+depth-sorted shaded discs (bubbles) and depth-sorted lit quads (terrain)
+instead of Java 3D; at most 100000 events per population; axis tick labels
+are not drawn (names only).
+
+Entry points: Platforms "3D Viewer", graph window "Show in 3D" (graph.md),
+table editor "3D Plot" (tables.md). Tests `tests/threeD.test.ts` (7), e2e
+`3D ...` in `e2e/followup-3d.mjs` and `e2e/platforms-gaps.mjs`.
 
 ## 6. FCS Scan (FCSSCAN) - Own rule
 
@@ -469,6 +644,6 @@ Open parent folder. e2e `SCAN ...` checks.
 - Exact $Pn keyword rule of `isInteresting` (Read Attributes from Group).
 - FlowJo plate XML compatibility of Open/Save (element names followed, not
   verified against a FlowJo-saved file).
-- Multivariate probability-binning split order and scaling.
+- Multivariate: the exact channel quantisation (FlowJo's channel step before the x1024 scaling).
 - The K-S "K-S Probability" column: the engine produces both a numeric p (the
   table's lower bound of the interval) and the text; flowjo-rea shows the text.

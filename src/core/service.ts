@@ -13,6 +13,7 @@ import { populationPath } from './model';
 import { fingerprint } from './project';
 import { channelOf, valueOf, type ChannelScale } from './flowjoStats';
 import { flowjoWizard, spilloverSpreading, type FlowjoWizardResult, type WizardEntry, type WizardPopulation } from './compFlowjo';
+import { createWeightSearch, EventOptimization, ssmForWeights, type WeightOptProgress, type WeightSearch, type WeightOptInput } from './weightOptimizer';
 import { BIFUR_BINS, bifurValley, smoothHistogram1D } from './gateTools';
 import { computeStat, gather, validPercentile } from './stats';
 import { makeTransform, type TransformSpec } from './transforms';
@@ -106,10 +107,15 @@ export interface PlatformRequest extends AnalyzeRequest {
   channel: string;
 }
 
+export interface WeightOptPopRef { sampleId: string; compensation: string; populations: Population[]; path: string }
+
 export class AnalysisService {
   private files = new Map<string, FcsFile>();
   private bytes = new Map<string, { fileName: string; bytes: Uint8Array }>();
   private engines = new Map<string, { key: string; engine: SampleEngine }>();
+  private weightOpts = new Map<number, { input: WeightOptInput; search: WeightSearch }>();
+  private weightOptSeq = 0;
+  private eventOpts = new Map<number, EventOptimization>();
 
   async load(sampleId: string, fileName: string, bytes: Uint8Array, datasetIndex = 0): Promise<SampleMeta> {
     const f = parseFcs(bytes, { datasetIndex });
@@ -165,6 +171,11 @@ export class AnalysisService {
     this.engines.delete(sampleId);
   }
 
+  // The loaded file's bytes (a copy: the worker transfers results), for Save as Archive.
+  rawBytes(sampleId: string): Uint8Array | null {
+    return this.bytes.get(sampleId)?.bytes.slice() ?? null;
+  }
+
   has(sampleId: string) {
     return this.files.has(sampleId);
   }
@@ -175,7 +186,7 @@ export class AnalysisService {
     const key = JSON.stringify([r.compensation, r.populations, r.matrices, r.derived]);
     const hit = this.engines.get(r.sampleId);
     if (hit && hit.key === key) return hit.engine;
-    const engine = new SampleEngine(f, { compensation: r.compensation, populations: r.populations }, r.matrices, r.derived ?? []).run();
+    const engine = new SampleEngine(f, { compensation: r.compensation, populations: r.populations }, r.matrices, r.derived ?? [], r.sampleId).run();
     this.engines.set(r.sampleId, { key, engine });
     return engine;
   }
@@ -224,11 +235,12 @@ export class AnalysisService {
         if (cs) { const c = cs[i]; if (Number.isFinite(c)) { csum![by * B + bx] += c; if (c < c0) c0 = c; if (c > c1) c1 = c; } }
       } else density[bx]++;
     }
-    // maxPoints is an upper bound on the sampled events returned.
-    const step = Math.max(1, Math.ceil(count / r.maxPoints));
+    // min(count, maxPoints) events, evenly spaced through the population
+    // (a dot plot's "# Dots").
+    const want = Math.min(count, Math.max(0, Math.trunc(r.maxPoints)));
     const pts: number[] = [];
-    let k = 0;
-    if (ys) for (let i = 0; i < mask.length; i++) if (mask[i] && k++ % step === 0) pts.push(xs[i], ys[i]);
+    let k = 0, next = 0, taken = 0;
+    if (ys && want > 0) for (let i = 0; i < mask.length && taken < want; i++) if (mask[i]) { if (k === next) { pts.push(xs[i], ys[i]); taken++; next = Math.floor((taken * count) / want); } k++; }
     return {
       count,
       bins: B,
@@ -338,6 +350,70 @@ export class AnalysisService {
     });
     const res = flowjoWizard(entries, r.detectors, r.scales, r.name);
     return { ...res, ssm: spilloverSpreading(entries, r.detectors, r.scales) };
+  }
+
+  // Optimize Weights (CompCommand.OPTIMIZEWT, SSM-based): one control per
+  // fluorochrome of the spectral matrix, with its positive and negative
+  // populations; raw detector values are gathered once, then the search runs
+  // in short slices (weightOptStep) so the editor can show progress.
+  weightOptStart(r: { matrix: SpilloverMatrix; controls: { pos: WeightOptPopRef; neg: WeightOptPopRef }[]; scales: ChannelScale[]; matrices: SpilloverMatrix[] }): { id: number } & WeightOptProgress {
+    const input = this.weightOptInput(r);
+    const search = createWeightSearch(input);
+    const id = ++this.weightOptSeq;
+    this.weightOpts.set(id, { input, search });
+    return { id, ...search.progress };
+  }
+  private weightOptInput(r: { matrix: SpilloverMatrix; controls: { pos: WeightOptPopRef; neg: WeightOptPopRef }[]; scales: ChannelScale[]; matrices: SpilloverMatrix[] }): WeightOptInput {
+    const pops: Float64Array[][] = [];
+    const keys = new Map<string, number>();
+    const ref = (p: WeightOptPopRef): number => {
+      const k = `${p.sampleId}|${p.path}`;
+      const have = keys.get(k);
+      if (have !== undefined) return have;
+      const f = this.files.get(p.sampleId);
+      if (!f) throw new AppError('WORKSPACE_INVALID', 'Control sample data is not loaded');
+      const pop = p.populations.find((x) => populationPath(p.populations, x.id) === p.path);
+      if (!pop) throw new AppError('GATE_INVALID', `Population "${p.path}" is missing in ${f.keywords['$FIL'] ?? p.sampleId}`);
+      const eng = this.engine({ sampleId: p.sampleId, compensation: p.compensation, populations: p.populations, matrices: r.matrices });
+      const mask = eng.masks.get(pop.id)!;
+      pops.push(r.matrix.channels.map((d) => gather(eng.column(d, 'uncompensated'), mask)));
+      keys.set(k, pops.length - 1);
+      return pops.length - 1;
+    };
+    return { matrix: r.matrix, populations: pops, controls: r.controls.map((c) => ({ pos: ref(c.pos), neg: ref(c.neg) })), scales: r.scales };
+  }
+  // Event Based Weight Optimization with lambda 0 (RunVariableLambdaProcessing):
+  // variance based lambdas from the negative populations, the controls
+  // unmixed event by event, then their SSM; run in slices like the search.
+  eventOptStart(r: { matrix: SpilloverMatrix; controls: { pos: WeightOptPopRef; neg: WeightOptPopRef }[]; scales: ChannelScale[]; detectorScales: (ChannelScale | undefined)[]; matrices: SpilloverMatrix[] }): { id: number } & WeightOptProgress {
+    const run = new EventOptimization({ ...this.weightOptInput(r), detectorScales: r.detectorScales });
+    const id = ++this.weightOptSeq;
+    this.eventOpts.set(id, run);
+    return { id, ...run.progress };
+  }
+  eventOptStep(id: number, ms = 150): WeightOptProgress & { done: boolean; lambdas?: { name: string; value: number }[]; ssm?: number[][] } {
+    const o = this.eventOpts.get(id);
+    if (!o) throw new AppError('COMP_INVALID', 'No weight optimisation is running');
+    const t0 = Date.now();
+    while (o.step() && Date.now() - t0 < ms) { /* next phase */ }
+    if (!o.done) return { done: false, ...o.progress };
+    this.eventOpts.delete(id);
+    return { done: true, ...o.progress, ...o.result };
+  }
+  // Runs detector steps for about `ms` milliseconds; when the search is done
+  // returns the weights and the SSM at those weights.
+  weightOptStep(id: number, ms = 150): WeightOptProgress & { done: boolean; weights?: number[]; ssm?: number[][]; iterations?: number } {
+    const o = this.weightOpts.get(id);
+    if (!o) throw new AppError('COMP_INVALID', 'No weight optimisation is running');
+    const t0 = Date.now();
+    while (o.search.step() && Date.now() - t0 < ms) { /* next detector */ }
+    if (!o.search.done) return { done: false, ...o.search.progress };
+    this.weightOpts.delete(id);
+    return { done: true, ...o.search.progress, weights: o.search.weights, ssm: ssmForWeights(o.input, o.search.weights), iterations: o.search.iteration };
+  }
+  weightOptCancel(id: number): void {
+    this.weightOpts.delete(id);
+    this.eventOpts.delete(id);
   }
 
   // Population values for export, with FlowJo's event cap applied.
@@ -490,6 +566,60 @@ export class AnalysisService {
       const valley = bifurValley(smoothHistogram1D(counts));
       return { channel, split: valley < 0 ? null : valueOf(s, valley) };
     });
+  }
+
+  // Compensation Matrix Editor preview (MatrixNxNPanel): uncompensated values
+  // of the matrix detectors for an evenly spaced subsample (at most maxEvents)
+  // of the preview population; the editor compensates them with the matrix
+  // being edited. Channels the sample lacks are listed in missing.
+  compPreview(r: AnalyzeRequest & { popId: string | null; channels: string[]; maxEvents: number }): { count: number; raw: Record<string, Float32Array>; missing: string[] } {
+    const eng = this.engine(r);
+    const mask = r.popId ? eng.masks.get(r.popId) : eng.root;
+    if (!mask) throw new AppError('GATE_INVALID', 'Population not found');
+    const names = this.files.get(r.sampleId)!.channels.map((c) => c.name);
+    const missing = r.channels.filter((c) => !names.includes(c));
+    let count = 0;
+    for (let i = 0; i < mask.length; i++) if (mask[i]) count++;
+    const step = Math.max(1, Math.ceil(count / Math.max(1, r.maxEvents)));
+    const idx: number[] = [];
+    for (let i = 0, k = 0; i < mask.length; i++) if (mask[i] && k++ % step === 0) idx.push(i);
+    const raw: Record<string, Float32Array> = {};
+    for (const c of r.channels) {
+      if (missing.includes(c)) continue;
+      const col = eng.column(c, 'none');
+      raw[c] = Float32Array.from(idx, (i) => col[i]);
+    }
+    return { count, raw, missing };
+  }
+
+  // Display-scale values of several dimensions for a population's events,
+  // interleaved per event (at most maxEvents, every k-th event), for the
+  // Compare Populations multivariate test and the 3D Viewer.
+  eventMatrix(r: AnalyzeRequest & { popId: string | null; dims: Dimension[]; maxEvents: number }): { values: Float32Array; count: number; total: number } {
+    const eng = this.engine(r);
+    const mask = r.popId ? eng.masks.get(r.popId) : eng.root;
+    if (!mask) throw new AppError('GATE_INVALID', 'Population not found');
+    const cols = r.dims.map((d) => eng.dimension(d));
+    let total = 0;
+    for (let i = 0; i < mask.length; i++) if (mask[i]) total++;
+    const step = Math.max(1, Math.ceil(total / Math.max(1, r.maxEvents)));
+    const out: number[] = [];
+    let k = 0, count = 0;
+    for (let i = 0; i < mask.length; i++) {
+      if (!mask[i] || k++ % step) continue;
+      for (const c of cols) out.push(c[i]);
+      count++;
+    }
+    return { values: Float32Array.from(out), count, total };
+  }
+
+  // Per-event membership (0/1) of a population over all the sample's events
+  // (Compare Populations Match Ratio / F-Measure).
+  populationMask(r: AnalyzeRequest & { popId: string | null }): Uint8Array {
+    const eng = this.engine(r);
+    const mask = r.popId ? eng.masks.get(r.popId) : eng.root;
+    if (!mask) throw new AppError('GATE_INVALID', 'Population not found');
+    return Uint8Array.from(mask, (v) => (v ? 1 : 0));
   }
 
   dimensionValues(r: AnalyzeRequest, d: Dimension): Float64Array {

@@ -1,8 +1,9 @@
 // Draws a complete plot (data, axes, gates) into a 460x420 canvas context.
 // Shared by the interactive plot and the layout editor.
-import { contourLevels, marchingSquares, probabilityBands, probabilityThresholds, smooth } from '../core/contour';
+import { contourLevels, marchingSquares, probabilityBands, probabilityThresholds } from '../core/contour';
 import type { Gate } from '../core/model';
 import type { PlotResult } from '../core/service';
+import { canShowOutliers, smoothCurve, smoothGrid } from '../core/graphDisplay';
 import { ticks } from './axes';
 import { spiderHandles, type Axis, type Drawable } from './gateGeometry';
 
@@ -11,7 +12,9 @@ export const pw = PLOT.w - PLOT.ml - PLOT.mr;
 export const ph = PLOT.h - PLOT.mt - PLOT.mb;
 
 // Perceptual blue -> green -> yellow -> red ramp for pseudocolor density.
-function ramp(t: number): [number, number, number] {
+// table: a colour table (Adjust color table) replacing the built-in ramp.
+function ramp(t: number, table?: [number, number, number][]): [number, number, number] {
+  if (table?.length) return table[Math.min(table.length - 1, Math.max(0, Math.floor(t * table.length)))];
   const stops: [number, number, number][] = [[20, 40, 160], [0, 150, 220], [40, 190, 90], [240, 220, 40], [230, 60, 30]];
   const s = Math.min(0.9999, Math.max(0, t)) * (stops.length - 1);
   const i = Math.floor(s);
@@ -41,8 +44,11 @@ export function placeLabel(placed: LabelBox[], w: number, x: number, y: number, 
   return box;
 }
 
-function drawLabel(ctx: CanvasRenderingContext2D, label: string, x: number, y: number, align: 'center' | 'right') {
-  const m = /^(-?10)\^(\d+)$/.exec(label);
+function drawLabel(ctx: CanvasRenderingContext2D, label: string, x: number, y: number, align: 'center' | 'right', scientific = true) {
+  const m0 = /^(-?)10\^(\d+)$/.exec(label);
+  // Preference "Use Scientific Notation" off: the plain number.
+  if (m0 && !scientific) label = `${m0[1]}${(10 ** Number(m0[2])).toFixed(0)}`;
+  const m = scientific ? /^(-?10)\^(\d+)$/.exec(label) : null;
   ctx.save();
   ctx.textAlign = 'left';
   if (!m) {
@@ -75,6 +81,8 @@ export interface RenderOptions {
   // Populations drawn on top (backgating): dots on 2-D plots, curves on
   // histograms. Histograms share one count axis unless normalize is set.
   overlays?: { label: string; data: PlotResult }[];
+  overlayLarge?: boolean; // overlay dots drawn large (layout BACKGATELARGE)
+  noLegend?: boolean; // hide the overlay legend (layout Legend toggle)
   // Histograms: FlowJo's "Normalized To Mode": every curve scaled so its mode is
   // 100; the axis is relabelled. Off by default, as in FlowJo 10 (specs 6.7).
   normalize?: boolean;
@@ -97,6 +105,18 @@ export interface RenderOptions {
   // Colour axis: pseudocolor cells take the colour of the bin's mean of the
   // colour parameter over its range (blue, green, yellow, red), not the density.
   colorBy?: { values: ArrayLike<number>; range: [number, number]; label: string };
+  // Graph window options (docs/validation/ui-gaps/graph.md): smoothing amount
+  // in effect (0 off; FlowJo draws every amount above 0 alike), foreground
+  // (dots, curves, contour lines, outliers) and background colours, a
+  // transparent canvas (Copy Image), the histogram Y top (undefined = Auto),
+  // the scientific-notation preference and a colour table.
+  smoothing?: number;
+  foreColor?: string;
+  backColor?: string;
+  transparent?: boolean;
+  yMax?: number;
+  scientific?: boolean;
+  colorTable?: [number, number, number][];
 }
 
 // Gate frequency text (specs 22.1): 3 significant figures, trailing zeros kept,
@@ -141,26 +161,40 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
   const yAxis: Axis = o.y ?? { channel: '', spec: { kind: 'none' }, t: null!, range: [0, 1] };
   const sx = (v: number) => PLOT.ml + ((v - o.x.range[0]) / (o.x.range[1] - o.x.range[0])) * pw;
   const sy = (v: number) => PLOT.mt + ph - ((v - yAxis.range[0]) / (yAxis.range[1] - yAxis.range[0])) * ph;
-  const hs = histogramScale(o.data?.density ?? null, (o.overlays ?? []).map((ov) => ov.data.density), !!o.normalize);
-  const histMax = hs.max;
-  const hy = (c: number) => PLOT.mt + ph - (c / (histMax * 1.05)) * ph;
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, PLOT.w, PLOT.h);
+  const smoothOn = (o.smoothing ?? 0) > 0;
+  // Histograms: smoothed curves when smoothing is on (BasicHistogram::Smooth).
+  const curve = (dd: ArrayLike<number>) => (smoothOn && !o.y ? smoothCurve(dd) : dd);
+  const baseCurve = o.data && !o.y ? curve(o.data.density) : null;
+  const hs = histogramScale(baseCurve, (o.overlays ?? []).map((ov) => curve(ov.data.density)), !!o.normalize);
+  // Set Y Axis Range: Manual sets the top of the count axis (no 5% headroom).
+  const manualY = !o.y && !o.normalize && o.yMax !== undefined && o.yMax > 0;
+  const histMax = manualY ? o.yMax! / 1.05 : hs.max;
+  const hy = (c: number) => PLOT.mt + ph - (Math.min(c, histMax * 1.05) / (histMax * 1.05)) * ph;
+    if (o.transparent) ctx.clearRect(0, 0, PLOT.w, PLOT.h);
+    else { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, PLOT.w, PLOT.h); }
+    if (o.backColor) { ctx.fillStyle = o.backColor; ctx.fillRect(PLOT.ml, PLOT.mt, pw, ph); }
+    const fore = o.foreColor;
     const d = o.data;
     if (d) {
       if (o.y && (o.kind === 'pseudocolor' || o.kind === 'density' || o.kind === 'zebra')) {
         const B = d.bins;
         // density: Gaussian-smoothed counts; zebra: equal-probability bands of
         // the smoothed density, alternating light/dark shades per band.
-        const smoothed = o.kind === 'pseudocolor' ? null : smooth(d.density, B, 1.5);
+        // Smooth on: the engine's adaptive kernel; off: the raw counts.
+        const smoothed = smoothOn ? smoothGrid(d.density, B) : null;
         const levels = contourLevels(o.contourLevel ?? 10);
-        const bands = o.kind === 'zebra' ? probabilityBands(smoothed!, probabilityThresholds(smoothed!, levels)) : null;
+        const bandGrid = smoothed ?? Float64Array.from(d.density);
+        const bands = o.kind === 'zebra' ? probabilityBands(bandGrid, probabilityThresholds(bandGrid, levels)) : null;
+        // Show Outliers (smoothed pseudocolor / density / zebra): cells under the
+        // outermost 2% level are left empty and their events drawn as dots.
+        const outT = o.showOutliers && smoothed && canShowOutliers(o.kind, true) ? probabilityThresholds(smoothed, contourLevels(2))[0] : NaN;
         const grid: ArrayLike<number> = smoothed ?? d.density;
         let mx = 0;
         for (let i = 0; i < grid.length; i++) mx = Math.max(mx, grid[i]);
         const img = ctx.createImageData(pw, ph);
         const greyBase = !!o.overlays?.length;
         const lmx = Math.log1p(mx);
+        const table = o.colorTable;
         const colorBy = o.colorBy && o.kind === 'pseudocolor' ? o.colorBy : null;
         for (let py = 0; py < ph; py++) {
           const by = Math.floor(((ph - 1 - py) / ph) * B);
@@ -170,16 +204,16 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
             const o = (py * pw + px) * 4;
             if (bands) {
               const k = bands[by * B + bx];
-              if (k > 0 || d.density[by * B + bx] > 0) {
-                const [r, g, b] = ramp(k / levels.length);
+              if ((k > 0 || d.density[by * B + bx] > 0) && !(bandGrid[by * B + bx] < outT)) {
+                const [r, g, b] = ramp(k / levels.length, table);
                 const shade = k % 2 ? 1 : 0.78;
                 img.data[o] = r * shade; img.data[o + 1] = g * shade; img.data[o + 2] = b * shade; img.data[o + 3] = 255;
               } else img.data[o + 3] = 0;
-            } else if (c > (smoothed ? mx * 1e-4 : 0)) {
+            } else if (c > (smoothed ? mx * 1e-4 : 0) && !(c < outT)) {
               // Greyscale base when overlays are shown so overlay colours stay distinct.
               const cv = colorBy ? colorBy.values[by * B + bx] : NaN;
               const tt = colorBy && Number.isFinite(cv) ? (cv - colorBy.range[0]) / ((colorBy.range[1] - colorBy.range[0]) || 1) : Math.log1p(c) / lmx;
-              const [r, g, b] = greyBase ? ([1, 1, 1].map(() => Math.round(215 - 135 * tt)) as [number, number, number]) : ramp(tt);
+              const [r, g, b] = greyBase ? ([1, 1, 1].map(() => Math.round(215 - 135 * tt)) as [number, number, number]) : ramp(tt, table);
               img.data[o] = r; img.data[o + 1] = g; img.data[o + 2] = b; img.data[o + 3] = 255;
             } else img.data[o + 3] = 0;
           }
@@ -188,10 +222,18 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
         tmp.width = pw; tmp.height = ph;
         tmp.getContext('2d')!.putImageData(img, 0, 0);
         ctx.drawImage(tmp, PLOT.ml, PLOT.mt);
+        if (Number.isFinite(outT)) {
+          ctx.fillStyle = fore ?? 'rgba(40,40,40,0.6)';
+          for (let i = 0; i < d.points.length; i += 2) {
+            const bx = Math.floor(((d.points[i] - o.x.range[0]) / (o.x.range[1] - o.x.range[0])) * B);
+            const by = Math.floor(((d.points[i + 1] - yAxis.range[0]) / (yAxis.range[1] - yAxis.range[0])) * B);
+            if (smoothed![Math.min(B - 1, Math.max(0, by)) * B + Math.min(B - 1, Math.max(0, bx))] < outT) ctx.fillRect(sx(Math.min(Math.max(d.points[i], o.x.range[0]), o.x.range[1])), sy(Math.min(Math.max(d.points[i + 1], yAxis.range[0]), yAxis.range[1])) - 1, 1.5, 1.5);
+          }
+        }
       } else if (o.y && o.kind === 'contour') {
         contourSegments = drawContours(ctx, d, o, sx, sy, yAxis);
       } else if (o.y) {
-        ctx.fillStyle = 'rgba(20,40,120,0.55)';
+        ctx.fillStyle = fore ?? 'rgba(20,40,120,0.55)';
         for (let i = 0; i < d.points.length; i += 2) {
           const X = sx(Math.min(Math.max(d.points[i], o.x.range[0]), o.x.range[1]));
           const Y = sy(Math.min(Math.max(d.points[i + 1], yAxis.range[0]), yAxis.range[1]));
@@ -199,19 +241,22 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
         }
       } else {
         const B = d.bins;
-        const f = hs.factor(d.density);
+        const hd = baseCurve!;
+        const f = hs.factor(hd);
         ctx.beginPath();
         ctx.moveTo(PLOT.ml, PLOT.mt + ph);
         for (let i = 0; i < B; i++) {
           const x0 = PLOT.ml + (i / B) * pw;
-          ctx.lineTo(x0, hy(d.density[i] * f));
-          ctx.lineTo(x0 + pw / B, hy(d.density[i] * f));
+          ctx.lineTo(x0, hy(hd[i] * f));
+          ctx.lineTo(x0 + pw / B, hy(hd[i] * f));
         }
         ctx.lineTo(PLOT.ml + pw, PLOT.mt + ph);
         ctx.closePath();
-        ctx.fillStyle = 'rgba(60,110,200,0.35)';
+        ctx.save();
+        if (fore) { ctx.globalAlpha = 0.35; ctx.fillStyle = fore; } else ctx.fillStyle = 'rgba(60,110,200,0.35)';
         ctx.fill();
-        ctx.strokeStyle = '#2a4f9c';
+        ctx.restore();
+        ctx.strokeStyle = fore ?? '#2a4f9c';
         ctx.stroke();
       }
     }
@@ -228,10 +273,10 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
           for (let i = 0; i < P.length; i += 2) {
             const X = sx(Math.min(Math.max(P[i], o.x.range[0]), o.x.range[1]));
             const Y = sy(Math.min(Math.max(P[i + 1], yAxis.range[0]), yAxis.range[1]));
-            ctx.fillRect(X - 0.75, Y - 0.75, 1.6, 1.6);
+            if (o.overlayLarge) ctx.fillRect(X - 1.5, Y - 1.5, 3, 3); else ctx.fillRect(X - 0.75, Y - 0.75, 1.6, 1.6);
           }
         } else {
-          const D = ov.data.density;
+          const D = curve(ov.data.density);
           const f = hs.factor(D);
           if (maxOf(D) > 0) {
             ctx.strokeStyle = col;
@@ -250,7 +295,7 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
       // legend
       ctx.font = '11px sans-serif';
       ctx.textAlign = 'right';
-      o.overlays.forEach((ov, k) => {
+      if (!o.noLegend) o.overlays.forEach((ov, k) => {
         ctx.fillStyle = OVERLAY_COLORS[k % OVERLAY_COLORS.length];
         ctx.fillText(`${ov.label} (${ov.data.count.toLocaleString()})`, PLOT.ml + pw - 4, PLOT.mt + 26 + k * 13);
       });
@@ -267,7 +312,7 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
     for (const t of ticks(o.x.t)) {
       const X = sx(t.pos);
       if (ax.includes('t')) { ctx.beginPath(); ctx.moveTo(X, PLOT.mt + ph); ctx.lineTo(X, PLOT.mt + ph + (t.major ? 5 : 2)); ctx.stroke(); }
-      if (t.label && ax.includes('n')) drawLabel(ctx, t.label, X, PLOT.mt + ph + 16, 'center');
+      if (t.label && ax.includes('n')) drawLabel(ctx, t.label, X, PLOT.mt + ph + 16, 'center', o.scientific !== false);
     }
     ctx.font = '11px sans-serif';
     if (ax.includes('l')) ctx.fillText(o.xTitle ?? o.x.channel, PLOT.ml + pw / 2, PLOT.h - 8);
@@ -277,7 +322,7 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
       for (const t of ticks(o.y.t)) {
         const Y = sy(t.pos);
         if (ax.includes('T')) { ctx.beginPath(); ctx.moveTo(PLOT.ml, Y); ctx.lineTo(PLOT.ml - (t.major ? 5 : 2), Y); ctx.stroke(); }
-        if (t.label && ax.includes('N')) drawLabel(ctx, t.label, PLOT.ml - 7, Y + 3, 'right');
+        if (t.label && ax.includes('N')) drawLabel(ctx, t.label, PLOT.ml - 7, Y + 3, 'right', o.scientific !== false);
       }
     } else if (ax.includes('N')) {
       for (let k = 0; k <= 4; k++) {
@@ -333,7 +378,10 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
     const placed: LabelBox[] = [];
     for (const g of o.gates) {
       const sel = g.pop.id === o.selectedId;
-      ctx.strokeStyle = sel ? '#d0021b' : '#111';
+      // Gate colour (Gate.getTint) and Tint: a tinted gate is outlined in its
+      // colour and filled at 40%.
+      const gateColor = g.pop.tint ?? '#111';
+      ctx.strokeStyle = sel ? '#d0021b' : gateColor;
       ctx.lineWidth = sel ? 2 : 1.3;
       const c = o.counts[g.pop.id];
       const pct = c && c.parentCount > 0 ? formatFreq((100 * c.count) / c.parentCount) : '';
@@ -368,6 +416,9 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
         lx = gate.side[0] ? PLOT.ml + pw - 110 : PLOT.ml + 4;
         ly = gate.side[1] ? PLOT.mt + 14 : PLOT.mt + ph - 6;
       }
+      if (g.pop.tinted && g.kind !== 'range' && g.kind !== 'quadrant' && g.kind !== 'spline') {
+        ctx.save(); ctx.globalAlpha = 0.4; ctx.fillStyle = g.pop.tint ?? '#808080'; ctx.fill(); ctx.restore();
+      }
       ctx.stroke();
       if (g.kind === 'polygon' && sel) for (const [a, b] of g.pts) ctx.strokeRect(sx(a) - 3, sy(b) - 3, 6, 6);
       if (g.kind === 'ellipse' && sel && g.editable) for (const [a, b] of g.handles) ctx.strokeRect(sx(a) - 3, sy(b) - 3, 6, 6);
@@ -378,7 +429,7 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
         for (const [a, b] of spiderHandles(g.shape)) ctx.strokeRect(cl(sx(a), PLOT.ml, PLOT.ml + pw) - 3, cl(sy(b), PLOT.mt, PLOT.mt + ph) - 3, 6, 6);
       }
       if (g.kind === 'spline' && sel && g.editable) for (const [a, b] of [...g.xPts, ...g.yPts]) ctx.strokeRect(sx(a) - 3, sy(b) - 3, 6, 6);
-      ctx.fillStyle = sel ? '#d0021b' : '#111';
+      ctx.fillStyle = sel ? '#d0021b' : gateColor;
       // Name on the first line, frequency on the second; quadrant names up to the colon.
       const name = o.gateNames === false ? '' : g.kind === 'quadrant' || g.kind === 'spline' ? g.pop.name.split(':')[0] : g.pop.name;
       const lines = [name, o.gateFreq === false ? '' : pct].filter(Boolean);
@@ -397,18 +448,20 @@ export function renderPlot(ctx: CanvasRenderingContext2D, o: RenderOptions): num
 function drawContours(ctx: CanvasRenderingContext2D, d: PlotResult, o: RenderOptions, sx: (v: number) => number, sy: (v: number) => number, yAxis: Axis): number {
   let n = 0;
   const B = d.bins;
-  const sm = smooth(d.density, B, 1.5);
+  // Contours are always smoothed (DisplayType.isSmoothedByDefault), with the
+  // engine's adaptive kernel.
+  const sm = smoothGrid(d.density, B);
   const ts = probabilityThresholds(sm, contourLevels(o.contourLevel ?? 5));
   if (o.showOutliers && ts.length) {
     // Events in bins below the outermost contour are drawn as dots.
-    ctx.fillStyle = 'rgba(40,40,40,0.6)';
+    ctx.fillStyle = o.foreColor ?? 'rgba(40,40,40,0.6)';
     for (let i = 0; i < d.points.length; i += 2) {
       const bx = Math.min(B - 1, Math.max(0, Math.floor(((d.points[i] - o.x.range[0]) / (o.x.range[1] - o.x.range[0])) * B)));
       const by = Math.min(B - 1, Math.max(0, Math.floor(((d.points[i + 1] - yAxis.range[0]) / (yAxis.range[1] - yAxis.range[0])) * B)));
       if (sm[by * B + bx] < ts[0]) ctx.fillRect(sx(d.points[i]), sy(d.points[i + 1]) - 1, 1.5, 1.5);
     }
   }
-  ctx.strokeStyle = '#1d2a55';
+  ctx.strokeStyle = o.foreColor ?? '#1d2a55';
   ctx.lineWidth = 0.8;
   ctx.beginPath();
   for (const t of ts) {

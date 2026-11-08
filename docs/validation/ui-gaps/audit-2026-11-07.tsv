@@ -1,0 +1,546 @@
+command	label	status	evidence_or_gap
+WSCommand.CLOSE	Close	MISSING	no Close/New workspace; Open replaces current (App.tsx:1692)
+WSCommand.LAYOUTEDITOR	Layout Editor	IMPL	src/ui/App.tsx:1689/1753 open-layout "Layout Editor", Ctrl/Cmd+L
+WSCommand.TABLEEDITOR	Table Editor	IMPL	src/ui/App.tsx:1688/1752 open-tables "Table Editor", Ctrl/Cmd+T; Editors.tsx:46
+WSCommand.REPORTEDITOR	Report Editor	MISSING	no Report Editor
+WSCommand.OPENGRAPH	Gate	IMPL	src/ui/App.tsx:1161/1178 double-click sample/pop row opens graph window (openWin); Menu+Enter shortcut absent
+WSCommand.WSTOFRONT	Workspace	NA	single-page window model
+WSCommand.ADDSTAT	Add Statistic...	PARTIAL	src/ui/App.tsx:1615 add-stat + ctx "Add Statistic" (1129), Ctrl/Cmd+B; one stat/param per click from Statistics panel, no multi-select dialog
+WSCommand.ADDSAMPLES	Add Samples...	IMPL	src/ui/App.tsx:1685/1749 add-fcs "Add Samples" file input; drag-drop
+WSCommand.ADDSAMPLEFROMENVOY	Add Sample From BD Research Cloud...	NA	BD Research Cloud
+WSCommand.BROWSESAMPLES	Search for FCS files...	MISSING	no folder/network FCS search; file picker only
+WSCommand.FINDSAMPLEONDISK	Open Parent Folder(s)...	NA	browser cannot reveal folders
+WSCommand.NEWGROUP	Create Group...	IMPL	src/ui/App.tsx:1249 create-group / 1686 quick-create-group, Ctrl/Cmd+G; GroupDialog.tsx
+WSCommand.AUTOQUAD	BifurGate	IMPL	GateActions.tsx:46 bifurgate "BifurGate"
+WSCommand.AUTOCC	Create Cell Cycle Gates	MISSING	cell cycle platform fits model (Platforms.tsx) but creates no gates
+WSCommand.ADDCOMP	Add Compensation...	IMPL	Dialogs.tsx:183-236 Compensation dialog: new matrix from keyword, import CSV, load .mtx; App.tsx:1687 open-comp
+WSCommand.EDITCOMP	Edit Compensation Definition	IMPL	Dialogs.tsx:238 fj-wizard / 292 wizard (controls, pos/neg gates, run)
+WSCommand.EDITMATRIX	Edit Compensation Matrix	PARTIAL	Dialogs.tsx:364-385 editable matrix cells; no live plot preview (apply via Save and apply)
+WSCommand.APPLYMATRIX	Apply Compensation Matrix	IMPL	Dialogs.tsx:420-421 "Save and apply to sample/group"; drop .mtx on sample/group (App.tsx dropFiles)
+WSCommand.REAPPLYACQ	Reapply Acquisition Matrix	IMPL	Dialogs.tsx:189 "Use file keyword (sample)"
+WSCommand.REAPPLYACQALL	Reapply Acquisition Matrix to Group	IMPL	Dialogs.tsx:190 "Use file keyword (group)"
+WSCommand.SCRIPTEDITOR	Script Editor	MISSING	no scripting console
+WSCommand.STATMEDIANPOPUP	Median	IMPL	src/ui/App.tsx:1591 stat-kind select (median)
+WSCommand.STATCVPOPUP	CV	IMPL	src/ui/App.tsx:1591 stat-kind select (CV, robust CV)
+WSCommand.STATFREQOFPOPUP	Freq. of	IMPL	src/ui/App.tsx:1591 stat-kind freqOf + 1609 stat-ancestor
+WSCommand.STAT_RAINDANCE		NA	RainDance vendor-specific
+WSCommand.STATMENUITEMTOTAL	Total	IMPL	src/ui/App.tsx:1591 stat-kind Freq. of Total
+WSCommand.STATMENUITEMPARENT	Parent	IMPL	src/ui/App.tsx:1591 stat-kind Freq. of Parent
+WSCommand.STATMENUITEMGRANDPARENT	Grandparent	IMPL	src/ui/App.tsx:1591 stat-kind Freq. of Grandparent
+WSCommand.RENAME	Rename...	IMPL	src/ui/App.tsx:1124 ctx "Rename"; plot ctx "Rename..." 968; Alt+double-click inline; no Ctrl/Cmd+R
+WSCommand.SAMPLEPROPERTIES	Inspect...	IMPL	src/ui/App.tsx:1701/1798 open-keywords "Inspect", ctx "Inspect..." 1131, Ctrl/Cmd+I
+WSCommand.EXPORT	Export/Concatenate	IMPL	src/ui/App.tsx:1695/1774 open-export "Export / Concatenate", Ctrl/Cmd+E; ExportDialog 2155
+WSCommand.EXPORT_POPULATIONS	Export / Concatenate Populations	PARTIAL	src/ui/App.tsx:2179 exp-mode-export "Export this population"; one selected population only, not a multi-selection
+WSCommand.EXPORT_GROUP	Export / Concatenate Group	PARTIAL	src/ui/App.tsx:2180 exp-mode-concat concatenates the group; no per-sample batch export of equivalent pops; no Ctrl+Shift+X
+WSCommand.EXPORT_DIVA	Export to FACSDiva	MISSING	no FACSDiva export (vendor interchange)
+WSCommand.IMPORT_DIVA	Import from FACSDiva	MISSING	no FACSDiva import (vendor interchange)
+WSCommand.TREECOLLAPSEALL	Collapse All	IMPL	src/ui/App.tsx:1706/1791 collapse-all "Collapse All", Ctrl/Cmd+Shift+U
+WSCommand.TREEEXPANDALL	Expand All	IMPL	src/ui/App.tsx:1705/1790 expand-all "Expand All", Ctrl/Cmd+U
+WSCommand.TREECOLLAPSELEVEL	Collapse Selection	PARTIAL	src/ui/App.tsx:1136 ctx "Collapse" / twisty; one node, not a multi-selection
+WSCommand.TREEEXPANDLEVEL	Expand Selection	PARTIAL	src/ui/App.tsx:1136 ctx "Expand" / twisty; one node, not a multi-selection
+WSCommand.REVERT	Revert	MISSING	no Revert (undo history only)
+WSCommand.SAVEAS	Save as Workspace (WSP)	IMPL	src/ui/App.tsx:2228 export-wsp "FlowJo-style .wsp" (not validated in FlowJo; spline quads skipped); native save 1693
+WSCommand.TEMPLATE	Export as Template (WSPT)	MISSING	no .wspt template export/apply
+WSCommand.EXCEL	Export to Excel (XLS)	PARTIAL	src/ui/App.tsx:1621-1623 export-stats CSV / copy-table / all groups; no XLS
+WSCommand.ACS	Save as Archive (ACS)	MISSING	no archive (workspace+FCS) save
+WSCommand.IMPORT_CSV_CLR	Import Parameters from CSV/CLR...	MISSING	no CSV/CLR parameter import (compat matrix own rule)
+WSCommand.CONSENSUS_DP	Consensus Gate	MISSING	no consensus derived parameter (compat matrix)
+WSCommand.CLUSTER_FREQ_DP	Cluster Frequency	MISSING	no cluster-frequency derived parameter (compat matrix)
+WSCommand.FIND	Find	IMPL	src/ui/App.tsx:1698/1777 open-find "Find", Ctrl/Cmd+F; Dialogs.tsx:589
+WSCommand.FINDNEXT	Find Next	IMPL	Dialogs.tsx:597 find-next "Find Next"
+WSCommand.REPLACE	Replace	PARTIAL	Dialogs.tsx:598 only "Replace All"; no single-hit Replace
+WSCommand.REPLACE_ALL	Replace All	IMPL	Dialogs.tsx:598 find-replace-all "Replace All" (annotation keywords only)
+WSCommand.REPLACE_PARTIAL	Replace partial	IMPL	Dialogs.tsx:596 "Replace partial" checkbox
+WSCommand.FIND_CASE_SENSITIVE	Match case	IMPL	Dialogs.tsx:594 find-case "Match case"
+WSCommand.FIND_WHOLE_WORD	Match whole word only	IMPL	Dialogs.tsx:595 find-whole "Match whole word"
+WSCommand.CHECKSAMPLEQUALITY	Check Sample Quality	MISSING	no sample quality check/badges
+WSCommand.RECALALLSTATS	Recalculate Statistics	MISSING	no button; stats recalc automatically (low impact)
+WSCommand.OPEN_FJSERVER_WEB_PAGE	FlowJo Enterprise	NA	FlowJo Enterprise server
+WSCommand.OPEN_ENVOY_WEB_PAGE	BD Research Cloud	NA	BD Research Cloud
+WSCommand.SELECTALTERNATINGNODES	Select Samples	IMPL	src/ui/App.tsx:1281 check-every-nth "Check every Nth sample"
+WSCommand.SELECTEQUIVALENTNODES	Select Equivalent Nodes	IMPL	src/ui/App.tsx:1787 ribbon-select-equivalent, ctx 1135, Ctrl/Cmd+Shift+E (checks samples)
+WSCommand.SELECTALLNODES	Select All	MISSING	no Select All nodes (Ctrl/Cmd+A)
+WSCommand.CYTOGENIE	CytoGenie	NA	third-party link
+WSCommand.LABARCHIVES	LabArchives	NA	third-party link
+WSCommand.CYTOBANK	CytoBank	NA	third-party link
+WSCommand.LABKEY	LabKey	NA	third-party link
+WSCommand.IMMPORT	Immport	NA	third-party link
+WSCommand.BIOBOOK	BioBook	NA	third-party link
+WSCommand.MIFlowCyt	Annotate Experiment...	MISSING	no MIFlowCyt annotation dialog (free annotations only)
+WSCommand.HELPABOUT	About	NA	FlowJo version/config info
+WSCommand.HELP	Workspace Links	NA	FlowJo documentation links
+WSCommand.CONTACT	Contact FlowJo	NA	FlowJo company contact
+WSCommand.INSTRUMENTATION	Instrumentation	NA	FlowJo documentation links
+WSCommand.DEBUG_DIAGNOSTICS	Diagnostics	NA	debug tools
+WSCommand.DEBUG_NODES	Nodes	NA	debug / R binding
+WSCommand.DEBUGEXTRA	Extra	NA	debug tools
+WSCommand.DEBUGDUMP	Debugging Output	NA	debug output
+WSCommand.PLUGINS	Plugins	NA	plugin system
+WSCommand.ENTERPRISE_PLUGINS	Install FJ Enterprise Plugins	NA	FlowJo Enterprise plugins
+WSCommand.GROUPNEW	Create Group...	IMPL	src/ui/App.tsx:1249 create-group "Create group..." -> GroupDialog
+WSCommand.GROUPEDIT	Edit Group Properties	IMPL	src/ui/App.tsx:1250 edit-group "Modify group..."; double-click group row 1818
+WSCommand.APPLY_TO_STUDY	Apply to Study	NA	likely Portal/Envoy study (unsure)
+WSCommand.GROUPADDKEY	Add Keyword	IMPL	src/ui/App.tsx:1702/1765 open-add-keyword "Add Keyword", ctx 1128, Ctrl/Cmd+Shift+I; adds to every sample
+WSCommand.ADDKEYTOGROUP	Add Keyword to Group	PARTIAL	Add Keyword always adds to all samples (project.ts addKeywordToAll), not group-only
+WSCommand.GROUPPASTEKEY	Paste keyword to group	PARTIAL	src/ui/App.tsx:877 text paste into table: single value fills checked samples, else row-wise from selection; not whole current group
+WSCommand.GROUPVALUESERIES	Create keyword value series...	MISSING	no keyword value series
+WSCommand.KEYWORDCREATEFROMVALUE	Create group from keyword value	IMPL	src/ui/App.tsx:1253-1257 group-key + group-by "Make groups" (one live group per value)
+WSCommand.COPYGATETOGROUP	Copy analysis to group	IMPL	src/ui/App.tsx:1430 apply-group "Copy analysis to group", ctx 1133, Ctrl/Cmd+Shift+G
+WSCommand.COPYTOGROUP	Copy value to group	MISSING	no copy keyword value to group members
+WSCommand.GROUPFROMSELECTION	Group selected samples	IMPL	src/ui/App.tsx:1235 new-group "New group from checked"
+WSCommand.REMOVEGROUPANALYSIS		PARTIAL	src/ui/App.tsx:717-721 deleting a group-owned pop asks Delete Entirely / Allocate; no separate command or group node
+WSCommand.REMOVEGROUP		IMPL	src/ui/App.tsx:1240 delete-group "Delete group" (asks)
+WSCommand.GATECOMBINATION	Create Combination Gates	MISSING	no Create Combination Gates
+WSCommand.GATEOR	Make Or Gate	IMPL	src/ui/App.tsx:1376 "OR" button; Ctrl/Cmd+Shift+O
+WSCommand.GATEAND	Make And Gate	IMPL	src/ui/App.tsx:1375 "AND" button; Ctrl/Cmd+Shift+A
+WSCommand.GATENOT	Make Not Gate	IMPL	src/ui/App.tsx:1377 bool-not "NOT"; Ctrl/Cmd+Shift+N
+WSCommand.GATEIS	Identical Gate	MISSING	no Identical (reference) gate
+WSCommand.BOOLEANCREATE	Boolean Expression...	PARTIAL	AND/OR/NOT buttons only; no Boolean Expression dialog for mixed expressions
+WSCommand.BOOLEANEDIT		MISSING	no edit of an existing boolean gate
+WSCommand.SORT1		MISSING	no workspace table column sort
+WSCommand.SORT2		MISSING	no workspace table column sort
+WSCommand.SORT3		MISSING	no workspace table column sort
+WSCommand.TREESORT	Sort	MISSING	no workspace table column sort
+WSCommand.TREESORTASCENDING	Sort Ascending	MISSING	no workspace table column sort
+WSCommand.TREESORTDESCENDING	Sort Descending	MISSING	no workspace table column sort
+WSCommand.TREEREMOVECOLUMN	Remove Column	MISSING	sample table columns fixed (Name/Statistic/#Cells)
+WSCommand.EDITCOLUMNS	Edit Columns...	MISSING	no keyword columns in workspace table (annotations shown in stats table only)
+WSCommand.COLUMNWIDTH	Reset Column Widths	MISSING	no reset column widths (cosmetic)
+WSCommand.PREFS	Preferences...	IMPL	src/ui/App.tsx:1713/1766 open-prefs "Preferences", Ctrl/Cmd+Y; Editors.tsx:10 (few settings)
+WSCommand.TOGGLESTATS	Hide Stats	MISSING	stat nodes always shown
+WSCommand.TOGGLECOMP	Show Compensation Nodes	MISSING	no compensation nodes in tree
+WSCommand.TOGGLEPLATFORMS	Hide Platforms	MISSING	no platform nodes toggle
+WSCommand.TOGGLEDERIVEDPARMS	Hide Derived Parameters	MISSING	no derived-parameter nodes toggle
+WSCommand.APPLY	Apply Changes	IMPL	GroupDialog.tsx:99 gd-save "Save"
+WSCommand.CREATE	Create Group	IMPL	GroupDialog.tsx:99 gd-save in Create Group mode
+WSCommand.MULTIPLE	Multiple	MISSING	stain sets combine into one group; no one-group-per-stain-set
+WSCommand.MORECHOICES	More Choices	IMPL	GroupDialog.tsx:68-79 all criteria rows always shown (no toggle needed)
+WSCommand.FEWERCHOICES	Fewer Choices	IMPL	GroupDialog.tsx:68-79 all criteria rows always shown (no toggle needed)
+WSCommand.ONLY	Only include samples that have:	IMPL	GroupDialog.tsx:88-93 reference group "only (both)"
+WSCommand.ALSO		IMPL	GroupDialog.tsx:88-93 reference group "also (either)"
+WSCommand.GROUP_DLOG_KEYWORD	Keyword	IMPL	GroupDialog.tsx:73 gd-key-N keyword field
+WSCommand.GROUP_DLOG_CLOSE	Close	IMPL	GroupDialog.tsx:105 Cancel
+WSCommand.GROUPHELP	Help with Groups	NA	FlowJo help link
+WSCommand.MIFLOW		MISSING	MIFlowCyt annotation (see MIFlowCyt)
+WSCommand.RIBBONSETDEFAULT	Apply defaults	MISSING	ribbon not customizable (cosmetic)
+WSCommand.RIBBONCONFIG	Customize Ribbon	MISSING	ribbon not customizable (cosmetic)
+WSCommand.RIBBONCOMMITTOPREFS	Commit to Preferences	MISSING	ribbon not customizable (cosmetic)
+WSCommand.EXITSIMPLE		NA	unlabelled UI-mode internal
+WSCommand.RAINDANCE0		NA	RainDance vendor-specific
+WSCommand.RAINDANCE1		NA	RainDance vendor-specific
+WSCommand.RAINDANCE2		NA	RainDance vendor-specific
+WSCommand.RAINDANCE3		NA	RainDance vendor-specific
+WSCommand.DUPLICATEPOP	Duplicate Population	IMPL	src/ui/App.tsx:1126 ctx "Duplicate"
+WSCommand.CHOOSE_STAT_POPULATION	Choose Target Population	IMPL	src/ui/App.tsx:1129 ctx "Add Statistic" on chosen population (addStatFor path)
+WSCommand.CHOOSE_STAT_ANCESTOR	Choose Ancestor	IMPL	src/ui/App.tsx:1609 stat-ancestor select
+PlatformNavCommand.COMPENSATION	Compensation	IMPL	src/ui/App.tsx:1687/1751 open-comp "Compensation"; no Ctrl/Cmd+M
+PlatformNavCommand.MATRIXEDITOR	Matrix Editor	PARTIAL	Dialogs.tsx:364-385 matrix cells editable; no by-eye live preview
+PlatformNavCommand.CC	Cell Cycle...	IMPL	Platforms.tsx:87 platform-kind Cell cycle (DJF/Watson); App.tsx:1710/1764 open-platforms
+PlatformNavCommand.KINETICS	Kinetics...	IMPL	Platforms.tsx:90 Kinetics; Kinetics.tsx kin-panel
+PlatformNavCommand.PROLIFERATION	Proliferation Modeling...	IMPL	Platforms.tsx:89 Proliferation
+PlatformNavCommand.QB	Q&B	MISSING	no Q&B cytometer regression
+PlatformNavCommand.QC		MISSING	no QC platform (unlabelled; inferred)
+PlatformNavCommand.COMPARISON	Compare Populations...	MISSING	no Compare Populations (KS, chi-square, etc.)
+PlatformNavCommand.THREE_D	3D Viewer	MISSING	no 3D viewer
+PlatformNavCommand.CALIBRATION	Create Calibration Parameter...	MISSING	no MESF calibration parameter
+PlatformNavCommand.FCSSCAN	FCS Scan	MISSING	no FCS scan of file system
+PlatformNavCommand.DERIVED	Derive Parameters...	IMPL	src/ui/App.tsx:1709/1797 open-derived "Derive Parameters"; Dialogs.tsx:474-514
+PlatformNavCommand.TIMESERIES		MISSING	no time series platform (unlabelled; inferred; kinetics covers time plots)
+PlatformNavCommand.SEARCHCATALOGS	Reagent Catalogs	NA	external reagent site
+PlatformNavCommand.PLATE	Plate Editor	MISSING	no Plate Editor
+PlatformNavCommand.COMBOGATES		MISSING	no combination gates (unlabelled; inferred)
+GWCommand.WSTOFRONT	Show Workspace	NA	single-page app: workspace always visible (separate popout windows have no "show workspace" command)
+GWCommand.PARENT	Up to Parent Population	IMPL	src/ui/App.tsx:1039 Ctrl/Cmd+U with plot focused; breadcrumb links data-testid crumb-* src/ui/App.tsx:1448-1450
+GWCommand.CHILD	Open Child Population	IMPL	src/ui/App.tsx:1040 Ctrl/Cmd+O on selected gate; double-click gate (Plot onOpen src/ui/App.tsx:1529)
+GWCommand.PREFS	Preferences	PARTIAL	src/ui/App.tsx:1713 open-prefs / Ctrl+Y opens Preferences (src/ui/Editors.tsx:7), but only 4 settings (undo, autosave, edge warning, dont-ask reset)
+GWCommand.PREVSIBLING	Previous Sample	IMPL	src/ui/App.tsx:1445 prev-sample button "<", PageUp / Ctrl+PageDown src/ui/App.tsx:159
+GWCommand.NEXTSIBLING	Next Sample	IMPL	src/ui/App.tsx:1446 next-sample button ">", PageDown / Ctrl+PageUp, Space on plot src/ui/Plot.tsx:545
+GWCommand.FIRSTSIBLING		MISSING	no jump to first sample at this level (only prev/next, no wrap)
+GWCommand.LASTSIBLING		MISSING	no jump to last sample at this level
+GWCommand.NAVIGATE_TO_NODE		IMPL	src/ui/App.tsx:1444-1451 Gating Path breadcrumb (crumb-root, crumb-<name>) selects any ancestor
+GWCommand.INCLUDEEVENTS	Events Inside	IMPL	src/ui/App.tsx:1381 toggle-exclude "Exclude" button (inverse of Events Inside); in population panel, not graph menu
+GWCommand.MAGNETIC	Magnetic	IMPL	src/ui/GateActions.tsx:30 gate-magnetic checkbox "Magnetic"
+GWCommand.TINTGATE	Tint	MISSING	no gate tint/fill option
+GWCommand.SETGATECOLOR		MISSING	no per-gate colour setting
+GWCommand.SCALEFIG_INCREASE	Increase Size	IMPL	src/ui/App.tsx:973 plot context menu "Increase Size"; Ctrl/Cmd+= src/ui/Plot.tsx:542
+GWCommand.SCALEFIG_DECREASE	Decrease Size	IMPL	src/ui/App.tsx:974 plot context menu "Decrease Size"; Ctrl/Cmd+- src/ui/Plot.tsx:542
+GWCommand.CREATE_CLUSTER_GATES	Create Cluster Gates	MISSING	no range gates per cluster value (no cluster parameters either)
+GWCommand.CREATE_GATES_ON_PEAKS	Create Gates On Peaks	MISSING	no histogram peak gates (BifurGate src/ui/GateActions.tsx:46 only bisects bimodal valleys)
+GWCommand.SETGRAPHTYPE	Type:	IMPL	src/ui/App.tsx:1455 plot-kind select: Pseudocolor, Dot, Histogram, Contour, Density, Zebra
+GWCommand.SETCONTOURLEVEL		IMPL	src/ui/App.tsx:1478 contour-level select (2/5/10/20% only; FlowJo also offers other level/log options - unverified)
+GWCommand.SETGRAPHRESOLUTION	Set Graph Resolution	MISSING	no graph resolution control (fixed 200/256 bins)
+GWCommand.YRANGE	Set Y Axis Range	MISSING	no histogram Y-axis top setting (auto only)
+GWCommand.SHOWOUTLIERS	Show Outliers	PARTIAL	src/ui/App.tsx:1481 contour-outliers checkbox; contour only (not zebra/density), drawn from sampled events
+GWCommand.SMOOTH	Smooth	MISSING	no smoothing toggle; smoothing only via separate "Density (smoothed)" plot type src/ui/App.tsx:1460; histograms unsmoothed
+GWCommand.ADJUSTSMOOTHING	Smooth	MISSING	no smoothing-amount control (fixed 1.5-bin Gaussian in density/contour)
+GWCommand.FORECOLOR		MISSING	no foreground (dot/curve) colour setting
+GWCommand.BACKCOLOR		MISSING	no background colour setting
+GWCommand.N_DOTS		MISSING	no control of number of dots drawn (dot plot fixed 5000 sampled events)
+GWCommand.ADJUSTCOLOR	Adjust color table	MISSING	no colour table / colour-map adjustment
+GWCommand.PREVX	Previous X	IMPL	src/ui/App.tsx:1035 Ctrl/Cmd+J with plot focused (also x-channel select src/ui/App.tsx:1463)
+GWCommand.NEXTX	Next X	IMPL	src/ui/App.tsx:1034 Ctrl/Cmd+K with plot focused
+GWCommand.PREVY	Previous Y	IMPL	src/ui/App.tsx:1036 Ctrl/Cmd+Shift+Y (FlowJo key is Menu+F10)
+GWCommand.NEXTY	Next Y	IMPL	src/ui/App.tsx:1036 Ctrl/Cmd+Y with plot focused
+GWCommand.PREV_COLOR	Previous Color	IMPL	src/ui/App.tsx:1037 Ctrl/Cmd+[ (pseudocolor only); display-color select src/ui/App.tsx:1499
+GWCommand.NEXT_COLOR	Next Color	IMPL	src/ui/App.tsx:1037 Ctrl/Cmd+] (pseudocolor only)
+GWCommand.SAVEAS	Export Graphic As...	IMPL	src/ui/App.tsx:2225-2226 export-png "Plot PNG" / export-svg in Export dialog (not in graph window; Ctrl+E opens data export)
+GWCommand.PRINT	Print...	MISSING	no print (browser print only)
+GWCommand.RESET	Reset This Graph Window's Size	NA	graph windows are fixed-size (not resizable), nothing to reset
+GWCommand.RESETALL	Reset All Graph Windows Size	NA	graph windows are fixed-size (not resizable)
+GWCommand.CLOSEALL	Close All Graph Windows	MISSING	only per-window close (gw-close); no Close All
+GWCommand.CLOSE	Close Window	IMPL	src/ui/App.tsx:1854 gw-close "x" on graph window title
+GWCommand.TRANSPOSE	Transpose Axes	IMPL	src/ui/App.tsx:1033 Ctrl/Cmd+T with plot focused (shortcut only, no button/menu)
+GWCommand.DERIVEPARM	Derive Parameter...	IMPL	src/ui/App.tsx:1709/1797 open-derived "Derive Parameters" (src/ui/Dialogs.tsx:471 DerivedDialog); workspace toolbar, not graph window
+GWCommand.MANUALGATE	Manually Enter Gate...	IMPL	src/ui/App.tsx:1510 manual-gate "Manual..." + Ctrl/Cmd+G; src/ui/GateActions.tsx:59 ManualGateDialog
+GWCommand.MAKEMOVIE	Make Movie...	MISSING	no movie export
+GWCommand.ADDSTAT	Add Statistic...	PARTIAL	src/ui/App.tsx:977 plot context menu "Add Statistic", src/ui/App.tsx:1615 add-stat; adds the stat preselected in Statistics panel, no Add Statistic dialog
+GWCommand.SHOWCUBE	Show in 3D	MISSING	no 3D view
+GWCommand.COPYHISTOGRAM	Copy Histogram Function	IMPL	src/ui/App.tsx:979 context menu "Copy Histogram Function"; Ctrl/Cmd+F src/ui/App.tsx:1032 (own text layout)
+GWCommand.COPYPICTURETRANS	Copy Image	IMPL	src/ui/App.tsx:978 context menu "Copy Image"; Ctrl/Cmd+C on plot src/ui/App.tsx:1031 (PNG)
+GWCommand.COPYPICTURENOTRANS	Copy Image Without Transparency	MISSING	only one Copy Image variant
+GWCommand.COPYSTATS	Copy Statistics	IMPL	src/ui/App.tsx:980 context menu "Copy Statistics"
+GWCommand.COPYGATE	Copy Selected Gate	IMPL	src/ui/GateActions.tsx:42 gate-copy "Copy" / Ctrl+C in workspace (copies populations with children)
+GWCommand.COPYLE	Copy to Layout Editor	IMPL	src/ui/App.tsx:1562 add-to-layout "Add to layout"; context menu "Copy to Layout Editor" src/ui/App.tsx:981
+GWCommand.CLEAR	Clear	IMPL	src/ui/App.tsx:969 context menu "Clear"; Delete/Backspace on selected gate src/ui/Plot.tsx:544
+GWCommand.RENAME	Rename...	IMPL	src/ui/App.tsx:968 context menu "Rename..."
+GWCommand.PASTEGATE		IMPL	src/ui/GateActions.tsx:44 gate-paste "Paste", gate-paste-group; Ctrl+V src/ui/App.tsx:1046
+GWCommand.SCINOTATION	Use Scientific Notation	MISSING	no toggle; log axes always labelled 10^n (src/ui/axes.ts:91)
+GWCommand.SHOWUNCOMPED	Show Uncompensated Parameters	IMPL	src/ui/App.tsx:1497 display-uncomp "Show Uncompensated Parameters"
+GWCommand.SHOWEVENTNUM	Show Event # Parameter	IMPL	src/ui/App.tsx:1498 display-event-number "Show Event # Parameter"
+GWCommand.SHOWMEDIANS	Show Medians	IMPL	src/ui/App.tsx:1496 display-medians "Show Medians"
+GWCommand.SHOWGRID	Show Grid	IMPL	src/ui/App.tsx:1492 display-grid "Show Grid"
+GWCommand.SHOWNAMES	Show Gate Names	IMPL	src/ui/App.tsx:1495 display-names "Show Gate Names"
+GWCommand.SHOWFREQ	Show Gate Frequencies	IMPL	src/ui/App.tsx:1494 display-freq "Show Gate Frequencies"
+GWCommand.SHOWLARGEDOTS	Draw Large Dots	IMPL	src/ui/App.tsx:1493 display-large-dots "Draw Large Dots" (dot plots only)
+GWCommand.DUPLICATEGW	Duplicate View	IMPL	src/ui/App.tsx:1853 gw-duplicate "Duplicate View" (FlowJo layout; no Ctrl+D)
+TransformCommand.CHANGE_TRANSFORM_VALUES	Change Transform Values...	IMPL	src/ui/Dialogs.tsx:97-130 TransformDialog parameter inputs (T/W/M/A, biex width/pos/neg), opened by x-scale/y-scale src/ui/App.tsx:1466,1472
+TransformCommand.CHANGE_PARAMETER_RANGE	Change Displayed Parameter Range...	PARTIAL	only top of scale via T/max field; no explicit displayed min/max range dialog
+TransformCommand.CALCULATE_NEG_TRANSFORM_VALUE	Auto-calculate Extra Negative Decades	MISSING	no auto-calculation of extra negative decades
+TransformCommand.APPLY_TRANSFORM_TO_PARAM	Apply To All	IMPL	src/ui/App.tsx:2030 transform always stored per channel for all samples (ws.channelTransforms); implicit, no separate button
+TransformCommand.APPLY_TRANSFORM_TO_ALL_COMPS	Apply To All Compensated Parameters	MISSING	no apply-to-all-compensated-parameters; one channel at a time
+TransformCommand.REMOVE_TRANSFORM_FROM_ALL_COMPS	Remove Transforms	MISSING	no bulk remove/reset of transforms
+TransformCommand.USE_LOG_AXIS	Log Axis	IMPL	src/ui/Dialogs.tsx:109 transform-kind select "log" / "flowjo-log"
+TransformCommand.USE_LINEAR_AXIS	Linear Axis	IMPL	src/ui/Dialogs.tsx:109 transform-kind select "linear"
+TransformCommand.USE_BIEX	Biexponential Transform	IMPL	src/ui/Dialogs.tsx:109 transform-kind select "flowjo-biex" (also logicle, hyperlog, asinh)
+TransformCommand.USE_CUSTOM	Customize Axis...	IMPL	src/ui/Dialogs.tsx:97 TransformDialog "Scale for <channel>" via x-scale/y-scale buttons
+TransformCommand.RESET	Reset	MISSING	no reset to data-set default transform
+TransformCommand.USER_TRANSFORM	User Transform	NA	plugin transform
+TransformCommand.TRANSFORM_OFF	Transform Off	MISSING	no "off" (raw) option in transform-kind list; linear is closest
+TransformCommand.POPUP	Transform Data Display	IMPL	src/ui/App.tsx:1466/1472 x-scale / y-scale "scale" buttons beside axis selects
+TransformCommand.AUTO_WIDTH_CALCULATE	Calculate Width Basis	MISSING	no data-driven width basis calculation
+TransformCommand.DERIVE_LIN_PARM	Derive Linear Parameter	PARTIAL	only by writing a formula in Derive Parameters dialog; no one-click command
+TransformCommand.DERIVE_LOG_PARM	Derive Log Parameter	PARTIAL	only by writing log()/ln() formula in Derive Parameters; no one-click command
+TECommand.ADDKEY	Add Keyword...	IMPL	src/ui/Editors.tsx:58-59 table-kw text + table-add-kw "Add keyword" (free text, no picker)
+TECommand.ADDPARMKEY	Add Parameter Keyword	PARTIAL	only by typing a literal $PnX keyword in table-kw; no per-parameter keyword picker
+TECommand.ADDKEYWORDPOPUP	Keywords	PARTIAL	src/ui/Editors.tsx:58 keyword typed by hand; no keyword list popup
+TECommand.BATCHFLOWJO	Display	IMPL	src/ui/Editors.tsx:71 table-preview live table in Table editor dialog
+TECommand.BATCHOPTIONS	Batch Options	MISSING	no batch options dialog for tables
+TECommand.BATCHFILE	To File	IMPL	src/ui/Editors.tsx:73-75 table-csv / table-tab / table-html downloads
+TECommand.BATCHPRINTER	To Printer	MISSING	no print
+TECommand.BATCHCLIPBOARD	To Clipboard	MISSING	table editor has no clipboard output (only the Statistics panel copy-table src/ui/App.tsx:1622)
+TECommand.BATCHLAYOUT	Batch To Current Layout	MISSING	tables cannot be placed in the layout
+TECommand.BATCHEXT	File Type:	PARTIAL	CSV / TAB / HTML only as separate buttons; no Excel/XML/other formats
+TECommand.BATCHTOFIGURE	Batch to Figure	MISSING	no figure list (Experiment Annotation not modelled)
+TECommand.BATCHSELECTDESTINATION	Output Target	PARTIAL	file download only; no display/clipboard/layout/printer targets
+TECommand.BATCH_ON_SERVER	Batch Table on Server	NA	server batch
+TECommand.APPLY_TO_STUDY	Apply to Study	NA	cloud study
+TECommand.COLUMNADD	Add Column	IMPL	src/ui/Editors.tsx:55-61 table-add-stat / table-add-kw / table-add-formula
+TECommand.COLUMNEDIT	Edit Column...	MISSING	columns can only be added/removed, not edited (no header/stat edit)
+TECommand.EDITHEADER	Edit Header / Footer	MISSING	no header/footer
+TECommand.EDITSELECTALL	Select All	MISSING	no column/row selection in table editor
+TECommand.EDITCLEAR	Clear	PARTIAL	src/ui/Editors.tsx:71 per-column "x" removes one column; no selection-based clear
+TECommand.EDIT_COL_NAMES	Create Column Names	MISSING	headers fixed to auto labels; no create/edit names command
+TECommand.FORMATHEATMAP	Heat Map	PARTIAL	src/ui/Editors.tsx:71 per-column "heat" checkbox; colours only in HTML export, not in preview
+TECommand.FORMATSTDEV	Standard Deviation	MISSING	core has sdHighlight (src/core/tableEditor.ts:103) but no UI control
+TECommand.FORMATEXPECTEDRANGE	Expected Range	MISSING	no expected-range formatting
+TECommand.MAKEBATCH	Create Table	IMPL	src/ui/Editors.tsx:51 table-new + src/ui/Editors.tsx:71 live table-preview (no separate generated-table window)
+TECommand.PLOTBOXWHISKERS	Box-n-Whisker Plot	MISSING	no table plots
+TECommand.PLOTREGRESSIONPLOT	Correlation	MISSING	no table plots
+TECommand.PLOTTIMESERIES	Time Series	MISSING	no table plots
+TECommand.PLOTPOINTCLOUD	3D Plot	MISSING	no table plots
+TECommand.RIBBONSETDEFAULT	Apply defaults	NA	ribbon customization chrome
+TECommand.RIBBONCONFIG	Customize Ribbon	NA	ribbon customization chrome
+TECommand.STATMEDIAN	Median	PARTIAL	table can only add stat columns already defined in Statistics panel (stat-kind incl. Median {A}:1591)
+TECommand.STATCV	CV	PARTIAL	as Median: only via existing Statistics-panel columns
+TECommand.STAT_CHANGEPOP	Population:	PARTIAL	population fixed by the chosen Statistics-panel column; no population picker in table editor
+TECommand.STAT_CHANGEANCESTER	<Ancestor>	PARTIAL	ancestor picker only in Statistics panel stat-ancestor src/ui/App.tsx:1609
+TECommand.SCATTER_SAVE	Save as...	MISSING	no table plots
+TECommand.SCATTER_TRANSPOSE	Transpose Axes	MISSING	no table plots
+TECommand.TEMPLATEADD	Add	IMPL	src/ui/Editors.tsx:51 table-new "New table"
+TECommand.TEMPLATEDUPLICATE	Duplicate	MISSING	no duplicate table
+TECommand.TEMPLATEDELETE	Delete	IMPL	src/ui/Editors.tsx:52 table-delete "Delete table"
+TECommand.OUTPUTFORMAT		PARTIAL	format = choice of CSV/TAB/HTML button; no format selector/Excel
+TECommand.OUTPUTFILE	Destination:	IMPL	src/ui/Editors.tsx:73-75 browser download (destination chosen by browser)
+TECommand.ITERATIONKEYWORD	Select Keywords...	IMPL	src/ui/Editors.tsx:64-67 table-iter "Keyword" + table-iter-kw (typed, no picker)
+FJTableCommand.ADD_TO_LAYOUT	Add to Layout	MISSING	tables cannot go into layout
+FJTableCommand.GRAPH	Graph	MISSING	no graphing of table columns
+FJTableCommand.COPY	Copy Table to Clipboard	PARTIAL	src/ui/App.tsx:1622 copy-table for Statistics panel table only; Table editor tables have no copy
+FJTableCommand.COPY_HTML	Copy As HTML	PARTIAL	src/ui/App.tsx:869 copy-table writes text/html (stats panel); table editor: table-html download src/ui/Editors.tsx:75
+FJTableCommand.DELETE_SELECTED_ROWS	Delete Selected Rows	MISSING	no row selection/deletion
+FJTableCommand.FIND	Find	MISSING	no find in tables (workspace Find only)
+FJTableCommand.SELECT_TABLE_IN_LAYOUT	Select Table in Layout	MISSING	tables not in layout
+FJTableCommand.MAKE_GROUP	Create Group from Selection	MISSING	no group from table rows
+FJTableCommand.HELP_ON_TABLES	Help on Tables	NA	web help link
+FJTableCommand.SELECT_ALL	Select All	MISSING	no row selection
+FJTableCommand.SELECT_NONE	Select None	MISSING	no row selection
+FJTableCommand.OPENSAMPLES	Open Selected Samples	MISSING	no open samples from table rows
+FJTableCommand.FIND_MESSAGE	Please enter the text to find in the table:	MISSING	prompt of table Find (absent)
+FJTableCommand.PRINT	Print...	MISSING	no print
+FJTableCommand.CLOSE	Close	IMPL	src/ui/Editors.tsx:77 tables-close "Close" (no separate generated-table window)
+FJTableCommand.RESIZE	Resize Columns	NA	HTML tables auto-size
+FJTableCommand.SAVEAS		IMPL	src/ui/Editors.tsx:73-75 CSV/TAB/HTML; stats panel export-stats src/ui/App.tsx:1621
+FJTableCommand.SAVEASBB	Send to BioBook	NA	BioBook integration
+FJTableCommand.SAVE_FIGURE	Save As Figure	MISSING	no figure list
+FJTableCommand.SHOW_SUMMARY_STATS	Show Summary Stats	IMPL	src/ui/Editors.tsx:69 table-summary "Show Summary Stats"
+CompCommand.CALCULATE	Calculate	IMPL	src/ui/Dialogs.tsx:265 fj-run "Calculate" (FlowJo wizard); wizard-run src/ui/Dialogs.tsx:319
+CompCommand.COMPUTE		IMPL	src/ui/Dialogs.tsx:265 same compute path as Calculate (blank label; inferred)
+CompCommand.CALCSSM	View Matrix...	IMPL	src/ui/Dialogs.tsx:365-385 editable matrix cells (number inputs) for selected matrix
+CompCommand.OPTIMIZEWT	Optimize Weights	MISSING	no detector weight optimisation
+CompCommand.SHOWHTML	View Matrix	IMPL	src/ui/Dialogs.tsx:365 matrix table shown in dialog
+CompCommand.SHOWOVERLAY	Show Overlay	MISSING	no compensation control plot grid / overlay
+CompCommand.MAKEMOVIE	Animate	MISSING	no compensation animation
+CompCommand.APPLYWORKSPACE	Apply To Workspace	PARTIAL	src/ui/Dialogs.tsx:420-421 apply to sample or current group only (workspace-wide only by selecting All Samples group)
+CompCommand.APPLYGROUP	Apply To Group	IMPL	src/ui/Dialogs.tsx:421 "Save and apply to group"
+CompCommand.ADDTOGROUP		IMPL	src/ui/Dialogs.tsx:421 "Save and apply to group" (blank label; inferred as add matrix to group - unsure)
+CompCommand.ADDTOLAYOUT	Copy To New Layout	MISSING	no comp plots to layout
+CompCommand.APPLYDRAG	Matrix Icon	PARTIAL	no draggable matrix icon; apply via buttons only
+CompCommand.REMOVE		MISSING	no remove-parameter from matrix (blank label; inferred)
+CompCommand.REMOVEUNEG		MISSING	blank label; inferred remove-unused/negative parameters - absent
+CompCommand.REMOVEUNUSED		MISSING	no remove unused parameters from matrix
+CompCommand.SHOWALLPARAMS	Show All	MISSING	no per-parameter visibility checkboxes
+CompCommand.PARAMETERS	Parameter	PARTIAL	matrix parameters come from file keyword / wizard controls (src/ui/Dialogs.tsx:257 fj-primary); no parameter set chooser
+CompCommand.ADDFCS2		IMPL	src/ui/Dialogs.tsx:194 "New matrix from file keyword" ($COMP/$SPILLOVER) - blank label, inferred, unsure
+CompCommand.ADDFCS3		IMPL	src/ui/Dialogs.tsx:194 "New matrix from file keyword" - blank label, inferred, unsure
+CompCommand.PREFS	Preferences...	PARTIAL	global Preferences only (src/ui/Editors.tsx:7); no compensation preferences
+CompCommand.IDENTITY_MATRIX	New Identity Matrix	MISSING	no new identity matrix
+CompCommand.LOAD_FILE	From File	IMPL	src/ui/Dialogs.tsx:221 mtx-load "Load FlowJo matrix (.mtx)"; src/ui/Dialogs.tsx:197 "Import matrix CSV"
+CompCommand.SAVE	Save Matrix	IMPL	src/ui/Dialogs.tsx:352 mtx-save
+CompCommand.SAVE_FJFORMAT	FlowJo Matrix File	IMPL	src/ui/Dialogs.tsx:352 mtx-save "Save as .mtx"
+CompCommand.SAVE_CSVFORMAT	CSV File	IMPL	src/ui/Dialogs.tsx:353 mtx-save-csv "Save as CSV"
+CompCommand.SSM	SSM	PARTIAL	src/ui/Dialogs.tsx:282 fj-ssm shown only right after a wizard run, not for a saved matrix
+CompCommand.SSM_VIEW	Display SSM	PARTIAL	src/ui/Dialogs.tsx:282 fj-ssm table after wizard run only
+CompCommand.SSM_CLOSE	Display SSM	IMPL	SSM shown beside spillover matrix (src/ui/Dialogs.tsx:282), no toggle needed
+CompCommand.SSM_SAVE	Export SSM	IMPL	src/ui/Dialogs.tsx:286 fj-ssm-save "Save SSM"
+CompCommand.S_WEIGHTS_IMPORT	Import Weights	MISSING	no weights dialog
+CompCommand.S_WEIGHTS_EXPORT	Export Weights	MISSING	no weights dialog
+CompCommand.S_WEIGHTS_CLOSE	Close	MISSING	no weights dialog
+CompCommand.S_WEIGHTS_OK	OK	MISSING	no weights dialog
+CompCommand.EDIT	Edit	IMPL	src/ui/Dialogs.tsx:373 matrix cell number inputs
+CompCommand.RESET	Reset	PARTIAL	no reset of edits; can recreate via "New matrix from file keyword" src/ui/Dialogs.tsx:194
+CompCommand.COMPARE	Compare	MISSING	no matrix comparison
+CompCommand.ZOOMIN	Zoom In	MISSING	no comp plot grid to zoom
+CompCommand.ZOOMOUT	Zoom Out	MISSING	no comp plot grid to zoom
+CompCommand.ZOOMFIT	Scale To Fit	MISSING	no comp plot grid
+CompCommand.ZOOM100	Reset Scale	MISSING	no comp plot grid
+CompCommand.NXN	N x N View	MISSING	no N x N compensation plot view
+CompCommand.ALLBY	All By...	MISSING	no All-By plot view
+CompCommand.HISTOS	Histograms	MISSING	no histogram view in comp editor
+CompCommand.NEWMATRIX	New Matrix	IMPL	src/ui/Dialogs.tsx:194/197/221 new matrix from file keyword, CSV, .mtx or wizard
+CompCommand.DUPMATRIX	Duplicate Matrix	MISSING	no duplicate of an arbitrary matrix (only copy of file keyword)
+CompCommand.REMOVEMATRIX	Remove Matrix	IMPL	src/ui/Dialogs.tsx:354 "Delete matrix"
+CompCommand.PREVIEW_SAMPLE	Preview Sample	MISSING	no preview plots in comp editor
+CompCommand.PREVIEW_POP_PATH	Preview Population	MISSING	no preview plots in comp editor
+LECommand.AVOIDPAGEBREAKS	Avoid Page Breaks	IMPL	Layout.tsx:545 layout-avoid-breaks "Avoid page breaks"
+LECommand.SAVEIMAGE	Export Image	IMPL	Layout.tsx:596-598 layout-export / layout-export-svg / layout-export-pdf (PNG/SVG/PDF)
+LECommand.EDITHEADER	Edit Header / Footer	MISSING	no header/footer on layout pages or PDF
+LECommand.PRINT	Print	PARTIAL	Layout.tsx:598 Export PDF (raster pages); no print dialog
+LECommand.PAGEUP		IMPL	Layout.tsx:380 PageUp steps iteration value back (I9)
+LECommand.PAGEDN		IMPL	Layout.tsx:379 PageDown steps iteration value forward (I9)
+LECommand.MAKEBATCH	Create Batch Report	IMPL	Layout.tsx:599-622 layout-batch "Batch (N values)"
+LECommand.BATCH_ON_SERVER	Batch Report on Server	NA	server/enterprise batch
+LECommand.APPLY_TO_STUDY	Apply to Study	NA	enterprise study feature
+LECommand.BATCHSELECTDESTINATION	Output Target	PARTIAL	Layout.tsx:623 layout-batch-format PDF/PNG/SVG only; no layout/web/PPT/HTML targets
+LECommand.COMMAND_LINE_BATCH	Command Line	NA	desktop command-line spawn
+LECommand.FIGPROPERTIES	Properties...	MISSING	no figure Properties dialog (color, stroke, font)
+LECommand.COLORFILL	Fill	MISSING	no fill color for figures
+LECommand.COLORLINE	Line	MISSING	no line color for figures
+LECommand.COLORGRAD	Gradient	MISSING	no gradient color
+LECommand.LINEWEIGHT	Line Weight	MISSING	no line weight setting
+LECommand.LINESTROKE	Line Style	MISSING	no line style setting
+LECommand.GRADIENTTYPE	Gradient Type	MISSING	no gradient type
+LECommand.ARROWHEAD_FORWARD	Forward	MISSING	no line/arrow shapes in layout
+LECommand.ARROWHEAD_BACKWARD	Backward	MISSING	no line/arrow shapes in layout
+LECommand.ARROWHEAD_DOUBLE	Double-headed	MISSING	no line/arrow shapes in layout
+LECommand.ARROWHEAD_NONE	None	MISSING	no line/arrow shapes in layout
+LECommand.INSERTPICTURE	Insert Graphic...	MISSING	no image figures (imported Image figures skipped, specs 25.4)
+LECommand.LOCKPOSITION	Lock Position	IMPL	Layout.tsx:542 layout-lock "Lock"/"Unlock" (position)
+LECommand.LOCKCONTENT	Lock Content	MISSING	no content lock
+LECommand.LOCKSIZE	Lock Size	MISSING	no size lock (figures cannot be resized at all)
+LECommand.OPENGRAPH	Open Original Graph	MISSING	no jump from a layout chart to its graph window
+LECommand.OPENWORKSPACE	View Workspace	IMPL	Layout.tsx:503 Close "x" returns to workspace (layout is a modal)
+LECommand.RIBBONSETDEFAULT	Apply Default Ribbons	MISSING	no ribbon customization in layout editor
+LECommand.RIBBONCONFIG	Customize Ribbon	MISSING	no ribbon customization dialog
+LECommand.SCALEPAGE	Scale To Page	MISSING	no figure scaling commands (no resize)
+LECommand.SCALEWIDTH	Scale To Width	MISSING	no figure scaling commands
+LECommand.SCALEHEIGHT	Scale To Height	MISSING	no figure scaling commands
+LECommand.ZOOMIN	Zoom In	PARTIAL	Layout.tsx:522 layout-zoom select (50/75/100/150%); no zoom-in step/shortcut
+LECommand.ZOOMOUT	Zoom Out	PARTIAL	Layout.tsx:522 layout-zoom select; no zoom-out step/shortcut
+LECommand.ZOOMFIT	Fit to Window	MISSING	no fit-to-window zoom
+LECommand.ZOOM100	Reset Zoom	IMPL	Layout.tsx:522 layout-zoom option 100%
+LECommand.ZOOMMENU	Zoom Menu	PARTIAL	Layout.tsx:522 layout-zoom, 4 fixed levels only
+LECommand.TEMPLATEADD	Add	MISSING	one layout per workspace (ws.layout); cannot add layouts
+LECommand.TEMPLATEDUPLICATE	Duplicate	MISSING	one layout per workspace; no duplicate layout
+LECommand.TEMPLATEDELETE	Delete	MISSING	one layout per workspace; no delete layout
+LECommand.FIGPRESETAPPLY	Apply	MISSING	no figure presets
+LECommand.FIGPRESETCREATE	Add	MISSING	no figure presets
+LECommand.FIGPRESETREMOVE	Delete	MISSING	no figure presets
+LECommand.ALIGN_H_LEFT	Left	IMPL	Layout.tsx:532 layout-align-left "Left" (Ctrl/Cmd+L)
+LECommand.ALIGN_H_RIGHT	Right	IMPL	Layout.tsx:532 layout-align-right "Right" (Ctrl/Cmd+R)
+LECommand.ALIGN_H_CENTER	Center	IMPL	Layout.tsx:532 layout-align-hcenter "Center"
+LECommand.ALIGN_H_SPACING	Spacing	IMPL	Layout.tsx:533 layout-space-h "Space H" (Ctrl/Cmd+J)
+LECommand.ALIGN_H_SPREAD	Spread	MISSING	not offered; documented as no-op in FlowJo 10.6.2 (specs 21.2 A10)
+LECommand.ALIGN_V_TOP	Top	IMPL	Layout.tsx:532 layout-align-top "Top" (Ctrl/Cmd+T)
+LECommand.ALIGN_V_BOTTOM	Bottom	IMPL	Layout.tsx:532 layout-align-bottom "Bottom" (Ctrl/Cmd+B)
+LECommand.ALIGN_V_CENTER	Center	IMPL	Layout.tsx:532 layout-align-vcenter "Middle" (Ctrl/Cmd+M)
+LECommand.ALIGN_V_SPACING	Spacing	IMPL	Layout.tsx:534 layout-space-v "Space V" (Ctrl/Cmd+K)
+LECommand.ALIGN_V_SPREAD	Spread	MISSING	not offered; documented as no-op in FlowJo 10.6.2 (A10)
+LECommand.ALIGN_GRID	Align To Grid	IMPL	Layout.tsx:535 layout-align-grid "To grid" (36 pt)
+LECommand.ORDER_FORWARD	Bring Forward	IMPL	Layout.tsx:537 layout-forward "Forward"
+LECommand.ORDER_FRONT	Bring to Front	IMPL	Layout.tsx:536 layout-front "Front"
+LECommand.ORDER_BACKWARD	Send Backward	IMPL	Layout.tsx:538 layout-backward "Backward"
+LECommand.ORDER_BACK	Send to Back	IMPL	Layout.tsx:539 layout-back "Back"
+LECommand.GROUP	Group	IMPL	Layout.tsx:540 layout-group "Group"
+LECommand.UNGROUP	Ungroup	IMPL	Layout.tsx:541 layout-ungroup "Ungroup"
+LECommand.SPECIALCHAR	Special Characters	MISSING	text is a plain textarea; no special-character map
+LECommand.OVERLAY	Overlay Mode	PARTIAL	histogram overlay mode only via graph-window hist-normalize (App.tsx:1487) before Add to layout; no layout control
+LECommand.SHOWGATES	Show Gates	IMPL	Layout.tsx:558 layout-show-gates "Show Gates"
+LECommand.SHOWFREQUENCIES	Show Frequencies	IMPL	Layout.tsx:559 layout-gate-freq "with Frequencies"
+LECommand.SHOWNAMES	Show Population Names	IMPL	Layout.tsx:560 layout-gate-names "with Names"
+LECommand.SHOWHORIZONTAL	Horizontal	PARTIAL	Layout.tsx:563 ancestry row always horizontal; no vertical option
+LECommand.PROPERTIES	Properties	PARTIAL	Layout.tsx:552-577 inline per-chart options row; no chart Properties dialog (fonts, colors, size, labels)
+LECommand.APPLY	Apply	NA	generic dialog button; edits apply live
+LECommand.OK	OK	NA	generic dialog button; edits apply live
+LECommand.CANCEL	Cancel	NA	generic dialog button; undo instead
+LECommand.HELP	Help	MISSING	no help link in layout editor
+LECommand.USEPLACEHOLDERS	Use Placeholders	MISSING	no placeholder mode; always renders
+LECommand.SHOWPAGEBREAKS	Show Pagebreaks	PARTIAL	Layout.tsx:644-645 page breaks always drawn; no toggle
+LECommand.SHOWGUIDES	Show Guides	IMPL	Layout.tsx:524 layout-show-guides "Guides" (+ add guide buttons 526-527)
+LECommand.SHOWGRID	Show Grid	IMPL	Layout.tsx:523 layout-show-grid "Grid"
+LECommand.SHOWRULERS	Show Rulers	MISSING	no rulers (specs 21.2 own rule)
+LECommand.SHOWDEBUG	Show Debug	NA	debug mode
+LECommand.SELECT_DUPLICATE	Duplicate	IMPL	Layout.tsx:543 layout-duplicate "Duplicate" (Ctrl/Cmd+D)
+LECommand.SELECT_DELETE	Delete	IMPL	Layout.tsx:544 layout-remove "Delete" (Delete/Backspace key, :377)
+LECommand.SELECT_INVERT	Invert Selection	MISSING	no invert selection
+LECommand.SELECT_ALL	Select All	MISSING	no Select All (no Ctrl+A in onKey :366-391); only shift-click
+LECommand.ITERATIONTYPE	Iteration Type	IMPL	Layout.tsx:507 layout-iter Off/Sample/Keyword/Panel
+LECommand.ITERATIONGROUPNAME	Iteration Group	PARTIAL	iterates the workspace's selected group (App.tsx:1898 groupSamples); no group chooser in layout
+LECommand.ITERATIONKEYWORD	Select Keywords...	IMPL	Layout.tsx:510 layout-iter-kw (free-text keyword, no picker)
+LECommand.ITERATIONDISCRIMINATOR	Discriminator	IMPL	Layout.tsx:511 layout-iter-disc
+LECommand.ITERATIONVALUE	Value	IMPL	Layout.tsx:513 layout-sample "Value" select
+LECommand.COPYTRANSPARENT	Copy Selection With Transparency	MISSING	no copy of layout selection to clipboard
+LECommand.COPYNOTRANSPARENT	Copy Selection Without transparency	MISSING	no copy of layout selection to clipboard
+LECommand.PASTE	Paste	MISSING	no paste into layout (only Add to layout from graph, App.tsx:1562)
+LECommand.CUT	Cut	MISSING	no cut in layout
+LECommand.OUTPUTFOLDER	Destination:	NA	browser chooses download location
+LECommand.OUTPUTFILENAME	File Name:	PARTIAL	Layout.tsx:607,618 batch names fixed (layout_<value> / layout_batch); not editable
+LECommand.OUTPUT_APPEND	Append Output	MISSING	no append to existing output
+LECommand.GEOM_SEPARATE_PAGES	Separate Pages	PARTIAL	Layout.tsx:611 tiles always step by whole pages (I10); no toggle
+LECommand.GEOM_ACROSS	Across	PARTIAL	Layout.tsx:615 tiles always fill across; no explicit option
+LECommand.GEOM_DOWN	Down	MISSING	no down-first tile order
+LECommand.GEOM_ROWS	Rows	MISSING	no fixed-rows tiling
+LECommand.GEOM_COLS	Columns	IMPL	Layout.tsx:626 layout-tiles "Tiles across"
+LECommand.WEB_RESET_ZOOM	Reset Zoom	MISSING	no embedded web-page figure
+LECommand.WEB_RESET_POSITION	Reset Position	MISSING	no embedded web-page figure
+LECommand.WEB_NAVIGATE_DIALOG	Navigate To...	MISSING	no embedded web-page figure
+LECommand.WEB_REFRESH_IMAGE	Refresh Image	MISSING	no embedded web-page figure
+LECommand.WEB_RELOAD_PAGE	Reload Page	MISSING	no embedded web-page figure
+LECommand.PARAMETER		MISSING	(inferred: parameter chooser for legend/stat-table figure) no such figure
+LECommand.EXPECTED_RANGE	Range	MISSING	no statistic table figure / heat-map range
+LECommand.ADD_COLUMN	Add Column	MISSING	no legend/stat table figure columns
+LECommand.STAT_TABLE_HELP		MISSING	no statistic table figure (help)
+LECommand.REMOVE_LAYER	Remove Layer	PARTIAL	overlay layers editable only in graph window (App.tsx:1568 overlay-picker) before Add to layout; none in layout
+LECommand.SET_CONTROL	Set As Control	MISSING	no control layer; overlays always iterate (layout-model I2)
+LECommand.GRID_HELP	About Grids...	MISSING	no grid documentation link
+LECommand.DIFF_TABLE_CONTROL_SAMPLE	Select a control sample	MISSING	no difference table figure
+LECommand.INSERT_ANNOTATION	Insert Annotation	MISSING	text figures are plain; no annotation commands
+LECommand.INSERT_KEYWORD	Insert Keyword	MISSING	no live keyword fields in text (imported FJML shown as literal "{name: path}")
+LECommand.REFERENCED_SAMPLE	Sample	MISSING	no live text commands, so no referenced sample
+LECommand.SET_EXPECTED_RANGE	Expected Range	MISSING	no statistic heat-map range
+LECommand.FJML_HELP		MISSING	no FJML text commands
+LECommand.CHOOSE_PLATE_STAT		MISSING	no plate figure
+LECommand.CHOOSE_HEATMAP_RANGE	Statistic Heatmapping Range	MISSING	no plate/stat heat-map figure
+LECommand.CHOOSE_PLATESTAT_DISPLAY_TARGET	Display As	MISSING	no plate figure
+LECommand.CHOOSE_PLATE_GROUP	Choose Group	MISSING	no plate figure
+LECommand.CHOOSE_PLATE_DISPLAY_MODE	Display Type	MISSING	no plate figure
+LECommand.REFRESH_PLATE	Refresh	MISSING	no plate figure
+LECommand.PLATE_SHOW_SAMPLE	Show Sample Name	MISSING	no plate figure
+LECommand.REMOVE_UNUSED_PLATE_STATS	Remove Unused	MISSING	no plate figure
+LECommand.REMOVE_PLATE_STAT	Delete Statistic	MISSING	no plate figure
+ChartCommand.ANCESTRY	Ancestry	IMPL	Layout.tsx:563 layout-ancestry "Show Ancestry"
+ChartCommand.BACKGATING	Backgating	IMPL	Layout.tsx:566 layout-backgating "with Backgating"
+ChartCommand.SHOWADJUNCT	Adjunct Histograms	IMPL	Layout.tsx:562 layout-adjunct "Show Adjunct Histograms"
+ChartCommand.SHOWLEGEND	Legend	PARTIAL	overlay legend always drawn inside plot (renderPlot.ts:250); no toggle, no separate legend figure
+ChartCommand.SHOWANNO	Annotation	IMPL	Layout.tsx:561 layout-show-annotation "Show Annotation"
+ChartCommand.SHOWAXES	Axes	IMPL	Layout.tsx:567-572 layout-hide-{x,y}-{ticks,numbers,label} checkboxes
+ChartCommand.HIDE_MULTIGRAPH	Hide Multigraphs	IMPL	Layout.tsx:564 layout-multigraph option "off"
+ChartCommand.MAKE_DOT_PLOT	Make NxN Dot Plots	MISSING	N x N cells always pseudocolor (specs 25.3)
+ChartCommand.MAKE_PSEUDOCOLOR_PLOT	Make NxN Pseudocolor Plots	IMPL	Layout.tsx:186 N x N cells are pseudocolor (default, not switchable)
+ChartCommand.MAKE_CONTOUR_PLOT	Make NxN Contour Plots	MISSING	N x N cells always pseudocolor
+ChartCommand.MULTIGRAPH_MULTISELECT_PARAMS	Select Multiple Parameters...	IMPL	Layout.tsx:565 layout-multigraph-params multi-select (max 10)
+ChartCommand.HISTOGRAMS	Histograms	IMPL	Layout.tsx:564 layout-multigraph "Histograms"
+ChartCommand.ALLBY	All Parameters by Y	MISSING	all-by-Y multigraph not offered (specs 25.3)
+ChartCommand.SLINKY	Slinky Chart	MISSING	slinky chart not offered
+ChartCommand.NXN	NxN Plots	IMPL	Layout.tsx:564 layout-multigraph "N x N"
+ChartCommand.HALFNXN		MISSING	(inferred: half N x N) not offered (specs 25.3)
+ChartCommand.REMOVEDATA	Remove Data from Chart	MISSING	no empty drop-box charts
+ChartCommand.BACKGATELARGE	Show Large Dots	MISSING	no large-dot option for backgating overlay
+ChartCommand.BACKGATECONTOURS	Show Contours	MISSING	no contour option for backgating
+ChartCommand.BACKGATINGHORIZ	Horizontal	PARTIAL	Layout.tsx:156-171 ancestry/backgating row is horizontal only (no choice)
+ChartCommand.BACKGATINGVERT	Vertical	MISSING	no vertical ancestry/backgating layout
+ChartCommand.XAXIS	Chart X Axis	PARTIAL	axis chosen in graph window before Add to layout; layout chart X axis not changeable
+ChartCommand.YAXIS	Chart Y Axis	PARTIAL	axis chosen in graph window before Add to layout; layout chart Y axis not changeable
+PECommand.TEMPLATEADD	Add New Plate	MISSING	no plate editor in flowjo-rea
+PECommand.TEMPLATEDUPLICATE	Duplicate Plate	MISSING	no plate editor in flowjo-rea
+PECommand.TEMPLATEDELETE	Delete Plate	MISSING	no plate editor in flowjo-rea
+PECommand.OPEN	Open...	MISSING	no plate editor in flowjo-rea
+PECommand.CLOSE	Close	MISSING	no plate editor in flowjo-rea
+PECommand.CLOSEDLOG	Close	MISSING	no plate editor in flowjo-rea
+PECommand.SAVE	Save	MISSING	no plate editor in flowjo-rea
+PECommand.SAVEAS	Save As CSV Table	MISSING	no plate editor in flowjo-rea
+PECommand.SHOW	Show Instructions	MISSING	no plate editor in flowjo-rea
+PECommand.HIDE	Hide Instructions	MISSING	no plate editor in flowjo-rea
+PECommand.TEMPLATE	Save As Template	MISSING	no plate editor in flowjo-rea
+PECommand.MOVE	Apply Plate Keywords to Group	MISSING	no plate editor in flowjo-rea
+PECommand.FROM_WORKSPACE	Read Attributes from Group	MISSING	no plate editor in flowjo-rea
+PECommand.ATTACH_SAMPLES_FROM_GROUP	Read Samples from Group	MISSING	no plate editor in flowjo-rea
+PECommand.ADDKEYS	Add Keywords From File...	MISSING	no plate editor in flowjo-rea
+PECommand.REMOVEKEYS	Clear Selected Keywords From Table	MISSING	no plate editor in flowjo-rea
+PECommand.REMOVEKEY	Remove Keywords	PARTIAL	no plate; per-sample annotation remove "x" (App.tsx:1347)
+PECommand.CLEARWELLS	Clear Selected Wells	MISSING	no plate editor in flowjo-rea
+PECommand.ADD1KEYWORD	Add	PARTIAL	no plate; per-sample annotation add in Annotations panel (App.tsx:1343-1354) / Add Keyword dialog (App.tsx:1128)
+PECommand.ADDWELL	Add Staging Well	MISSING	no plate editor in flowjo-rea
+PECommand.DUPLICATEWELL		MISSING	no plate editor in flowjo-rea
+PECommand.REMOVEWELL	Remove Staging Well	MISSING	no plate editor in flowjo-rea
+PECommand.MIFLOWCYT	Annotate Experiment...	MISSING	no MIFlowCyt experiment annotation
+PECommand.RIBBONCONFIG	Configure Ribbon	MISSING	no plate editor in flowjo-rea
+PECommand.SETDIMENSIONS	Set Plate Dimensions...	MISSING	no plate editor in flowjo-rea
+PECommand.SIZE96	96 well plate	MISSING	no plate editor in flowjo-rea
+PECommand.SIZE384	384 well plate	MISSING	no plate editor in flowjo-rea
+PECommand.SIZE1536	1536 well plate	MISSING	no plate editor in flowjo-rea
+PECommand.SIZECUSTOM	Custom	MISSING	no plate editor in flowjo-rea
+PECommand.TOGGLE	Toggle Notation	MISSING	no plate editor in flowjo-rea
+PECommand.NOTATION	Toggle Notation	MISSING	no plate editor in flowjo-rea
+PECommand.SELECTION_SAVE	Save Well Selection	MISSING	no plate editor in flowjo-rea
+PECommand.MAKEGROUP	Make Group...	PARTIAL	no plate; groups by keyword/annotation via App.tsx:1257 group-by, not from selected wells
+PECommand.SELECTION_RESTORE		MISSING	no plate editor in flowjo-rea
+PECommand.SELECT_ALL	Select All	MISSING	no plate editor in flowjo-rea
+PECommand.INVERT_SELECTION	Invert Selection	MISSING	no plate editor in flowjo-rea
+PECommand.SELECT_GROUP	Select Group	MISSING	no plate editor in flowjo-rea
+PECommand.DESELECT_ALL	Deselect All	MISSING	no plate editor in flowjo-rea
+PECommand.TITRATE	Dilution Series...	MISSING	no plate editor in flowjo-rea
+PECommand.CUT	Cut	MISSING	no plate editor in flowjo-rea
+PECommand.COPY	Copy	MISSING	no plate editor in flowjo-rea
+PECommand.FILLDOWN	Fill Down	MISSING	no plate editor in flowjo-rea
+PECommand.FILLRIGHT	Fill Right	MISSING	no plate editor in flowjo-rea
+PECommand.PASTE_PLATE	Paste	PARTIAL	no plate; tab-delimited annotation paste into sample table exists (App.tsx:875-882 pasteAnnotations), keyed by row not well ID
+PECommand.IMPORT	Import	MISSING	no plate editor in flowjo-rea
+PECommand.EXPORT	Export	MISSING	no plate editor in flowjo-rea
+PECommand.SHOWNENTRIES	Show number of attributes	MISSING	no plate editor in flowjo-rea
+PECommand.PETHICK	Use thicker borders	MISSING	no plate editor in flowjo-rea
+PECommand.PEHEATMAP	Show heatmaps of numerical keys	MISSING	no plate editor in flowjo-rea
+PECommand.PEENUM	Color borders of categorical keys	MISSING	no plate editor in flowjo-rea
+PECommand.FILTER_KEYWORDS	Filter Keywords	MISSING	no plate editor in flowjo-rea
+PECommand.WELL_ADD_KEYS_TO_TABLE	Add attributes to table	MISSING	no plate editor in flowjo-rea
+PECommand.WELL_CLEAR_KEYS	Clear attributes	MISSING	no plate editor in flowjo-rea
+PECommand.WELL_CREATE_STAGING_WELL	Create Staging Well from attributes	MISSING	no plate editor in flowjo-rea
+PECommand.RIBBONSETDEFAULT	Apply Defaults	MISSING	no plate editor in flowjo-rea

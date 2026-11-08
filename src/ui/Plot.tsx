@@ -7,7 +7,7 @@ import {
   AUTO_GATE_BINS, autoGateContours, bisectorNames, firstQuadNumber, freehandCommit, FREEHAND_MIN_POINTS, nearestContour, quadNames, reduceFig,
   SPIDER_DRAG_MARGIN_PX, SPIDER_INITIAL_OFFSET_PX, spiderPolygons, type SpiderShape,
 } from '../core/gateTools';
-import { PLOT, ph, pw, renderPlot } from './renderPlot';
+import { PLOT, ph, pw, renderPlot, type RenderOptions } from './renderPlot';
 import { channelDim, drawableGates, ellipseDrawable, MIN_SHAPE_PX, pointInPolygon, quadrantSiblings, spiderHandles, splineDrawable, tooSmall, type Axis, type Drawable } from './gateGeometry';
 
 export type PlotKind = 'pseudocolor' | 'density' | 'zebra' | 'dot' | 'contour' | 'histogram';
@@ -71,7 +71,7 @@ interface Props {
   // Display menu (specs 22.1)
   // Commands other UI (menus) can call on this plot.
   actionsRef?: React.MutableRefObject<{ scaleGate: (f: number) => boolean } | null>;
-  display?: { grid?: boolean; largeDots?: boolean; medians?: boolean; gateNames?: boolean; gateFreq?: boolean };
+  display?: Partial<Pick<RenderOptions, 'grid' | 'largeDots' | 'medians' | 'gateNames' | 'gateFreq' | 'colorBy' | 'smoothing' | 'foreColor' | 'backColor' | 'yMax' | 'scientific' | 'colorTable'>>;
   // 256 x 256 counts of the parent (index x * 256 + y) for the auto gate.
   autoCounts?: { counts: Float64Array; n: number } | null;
   // Magnetic gates as moved on this sample, anchored ranges as resolved.

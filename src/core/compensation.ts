@@ -17,7 +17,27 @@ export interface SpilloverMatrix {
   // never infers the type from shape (specs section 6.3). When absent, the
   // shape decides (older workspaces, $SPILLOVER, Gating-ML, .wsp imports).
   kind?: 'spillover' | 'spectral';
+  // Spectral detector weights for weighted least squares unmixing, one per
+  // detector (SpectralWeightsDialog); absent = all 1 (ordinary least squares).
+  weights?: number[];
+  // Spillover spreading matrix saved with a wizard-made matrix (MatrixEntryPanel
+  // SSM view; docs/validation/ui-gaps/compensation.md).
+  ssm?: { channels: string[]; values: number[][] };
+  // Event-based weighting (FlowJo 10.6.2 WeightIOptimizationAttributeModel
+  // stored on the matrix, attributes type / engineBasedLambda / lambda and a
+  // lambdas element): each event is unmixed by weighted least squares with
+  // weights 1 / (raw detector value + lambda). See eventLambdas.
+  weightOptimization?: WeightOptimizationModel;
 }
+
+export interface WeightOptimizationModel {
+  type: 'EventBasedOptimizationProcessing';
+  engineBasedLambda: boolean;
+  lambda: number;
+  lambdas?: { name: string; value: number }[]; // one per detector, matrix order
+}
+// CompensationSpec::FromXML: a lambda of 0.001 or less is read as 0.001.
+export const MIN_EVENT_LAMBDA = 0.001;
 
 export function parseSpilloverKeyword(text: string): { channels: string[]; values: number[][] } {
   const parts = text.split(',').map((s) => s.trim());
@@ -119,17 +139,73 @@ function matmul(a: number[][], b: number[][]): number[][] {
   return a.map((r) => b[0].map((_, j) => r.reduce((s, v, k) => s + v * b[k][j], 0)));
 }
 
-// Ordinary least squares unmixing operator M = S^T (S S^T)^-1 (detectors x
-// fluorochromes): fluor = raw x M minimises ||raw - fluor x S||.
+// Least squares unmixing operator M = W S^T (S W S^T)^-1 (detectors x
+// fluorochromes), W = diag(detector weights), 1 when none are set (ordinary
+// least squares): fluor = raw x M minimises sum_d w_d (raw - fluor x S)_d^2.
 export function unmixingOperator(m: SpilloverMatrix): number[][] {
   const S = m.values;
+  const w = m.weights && m.weights.length === m.channels.length ? m.weights : null;
+  const WSt = w ? transpose(S).map((r, d) => r.map((v) => v * w[d])) : transpose(S);
   let inv: number[][];
   try {
-    inv = invert(matmul(S, transpose(S)));
+    inv = invert(matmul(S, WSt));
   } catch {
     fail('COMP_SINGULAR', 'Spectral matrix rows are linearly dependent; unmixing is undefined');
   }
-  return matmul(transpose(S), inv);
+  return matmul(WSt, inv);
+}
+
+// Per-detector lambdas of event-based unmixing, or null when the matrix uses
+// one operator for all events. Compensator::Compensate uses the lambdas list
+// by position (entry d for detector d) when engineBasedLambda is set and the
+// list is not empty, otherwise the matrix lambda for every detector.
+export function eventLambdas(m: SpilloverMatrix): number[] | null {
+  const wo = m.weightOptimization;
+  if (!wo || wo.type !== 'EventBasedOptimizationProcessing' || !isSpectral(m)) return null;
+  const scalar = wo.lambda > MIN_EVENT_LAMBDA ? wo.lambda : MIN_EVENT_LAMBDA;
+  if (wo.engineBasedLambda && wo.lambdas?.length) return m.channels.map((_, d) => wo.lambdas![d]?.value ?? scalar);
+  return m.channels.map(() => scalar);
+}
+
+// One event unmixed by weighted least squares with per-event weights
+// w_d = 1 / (x_d + lambda_d) (EigenSolver::Solve with weights): solves
+// (S W S^T) f = S W x. The static detector weights are not used. A singular
+// system gives NaN.
+export function unmixEventWeighted(S: number[][], x: ArrayLike<number>, lambdas: number[], out: Float64Array): void {
+  const nf = S.length, nd = lambdas.length;
+  const A = new Float64Array(nf * (nf + 1));
+  for (let d = 0; d < nd; d++) {
+    const w = 1 / (x[d] + lambdas[d]);
+    for (let i = 0; i < nf; i++) {
+      const si = S[i][d] * w;
+      if (si === 0) continue;
+      for (let j = 0; j < nf; j++) A[i * (nf + 1) + j] += si * S[j][d];
+      A[i * (nf + 1) + nf] += si * x[d];
+    }
+  }
+  solveInPlace(A, nf, out);
+}
+
+// Gaussian elimination with partial pivoting on an n x (n+1) augmented matrix.
+function solveInPlace(A: Float64Array, n: number, out: Float64Array): void {
+  const w = n + 1;
+  for (let c = 0; c < n; c++) {
+    let p = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(A[r * w + c]) > Math.abs(A[p * w + c])) p = r;
+    const piv = A[p * w + c];
+    if (!(Math.abs(piv) > 0) || !Number.isFinite(piv)) { out.fill(NaN); return; }
+    if (p !== c) for (let k = c; k < w; k++) { const t = A[c * w + k]; A[c * w + k] = A[p * w + k]; A[p * w + k] = t; }
+    for (let r = c + 1; r < n; r++) {
+      const f = A[r * w + c] / piv;
+      if (f === 0) continue;
+      for (let k = c; k < w; k++) A[r * w + k] -= f * A[c * w + k];
+    }
+  }
+  for (let r = n - 1; r >= 0; r--) {
+    let s = A[r * w + n];
+    for (let k = r + 1; k < n; k++) s -= A[r * w + k] * out[k];
+    out[r] = s / A[r * w + r];
+  }
 }
 
 function validateSpectral(m: SpilloverMatrix, available: string[]): string[] {
@@ -150,11 +226,21 @@ function validateSpectral(m: SpilloverMatrix, available: string[]): string[] {
 // Unmixed fluorochrome columns keyed by fluorochrome name.
 export function unmix(data: Float64Array[], channelNames: string[], m: SpilloverMatrix): Map<string, Float64Array> {
   validateSpectral(m, channelNames);
-  const M = unmixingOperator(m);
   const idx = m.channels.map((c) => channelNames.indexOf(c));
   const nf = m.values.length;
   const ev = data[0]?.length ?? 0;
   const cols = Array.from({ length: nf }, () => new Float64Array(ev));
+  const lam = eventLambdas(m);
+  if (lam) {
+    const x = new Float64Array(idx.length), f = new Float64Array(nf);
+    for (let e = 0; e < ev; e++) {
+      for (let d = 0; d < idx.length; d++) x[d] = data[idx[d]][e];
+      unmixEventWeighted(m.values, x, lam, f);
+      for (let k = 0; k < nf; k++) cols[k][e] = f[k];
+    }
+    return new Map(m.outputNames!.map((n, k) => [n, cols[k]]));
+  }
+  const M = unmixingOperator(m);
   for (let e = 0; e < ev; e++) {
     for (let k = 0; k < nf; k++) {
       let s = 0;

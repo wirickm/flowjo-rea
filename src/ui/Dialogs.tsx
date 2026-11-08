@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { invert, isSpectral, parseSpilloverCsv, unmixingOperator, validateMatrix, type SpilloverMatrix } from '../core/compensation';
 import { describeTransform, makeTransform, type TransformSpec } from '../core/transforms';
 import type { SampleMeta } from '../core/service';
@@ -9,6 +9,9 @@ import { findKeywords, type FindHit } from '../core/project';
 import { compileFormula, defaultDerivedName, derivedNameError, EVENT_NUMBER, FORMULA_FUNCTIONS } from '../core/formula';
 import { specForKind } from './axes';
 import { readMtx, ssmCsv, writeMatrixCsv, writeMtx, type FlowjoWizardResult } from '../core/compFlowjo';
+import { animationScales, compareMatrices, DEFAULT_ZOOM, duplicateMatrix, fitZoom, fromDisplay, identityMatrix, loadCompPrefs, removeUnusedParameters, saveCompPrefs, scaleLabel, scaleSpillover, ssmWithSums, toDisplay, zoomIn, zoomOut, type CompPrefs, type CompView } from '../core/compEditor';
+import { eventUnmixText } from '../core/weightOptimizer';
+import { CompPlotGrid, MATRIX_DRAG_TYPE, OptimizeWeightsPanel, WeightsPanel, type EventOptResult, type PopPick, type WeightOptResult } from './CompEditor';
 
 function saveText(name: string, text: string, type: string) {
   const url = URL.createObjectURL(new Blob([text], { type }));
@@ -135,8 +138,20 @@ export function CompensationDialog(p: {
   meta: SampleMeta | null;
   current: string;
   onSave: (m: SpilloverMatrix[]) => void;
-  onAssign: (ref: string, scope: 'sample' | 'group') => void;
+  // scope: the current sample, the current group, every sample ('workspace')
+  // or a named group ('group:<id>').
+  onAssign: (ref: string, scope: 'sample' | 'group' | 'workspace' | `group:${string}`) => void;
+  // Matrix Editor (MatrixEditorNavPanel): preview samples with their
+  // population paths, the initial preview, groups to apply to, display scales
+  // and the preview data source.
+  samples?: { id: string; fileName: string; loaded: boolean; paths: string[] }[];
+  preview?: { sampleId: string; path: string };
+  groups?: { id: string; name: string }[];
+  transformFor?: (ch: string) => TransformSpec | undefined;
+  onPreview?: (sampleId: string, path: string, channels: string[]) => Promise<{ count: number; raw: Record<string, Float32Array>; missing: string[] }>;
   onClose: () => void;
+  // Copy To New Layout (CompCommand.ADDTOLAYOUT): the matrix, preview and view.
+  onCopyToLayout?: (matrixId: string, sampleId: string, path: string, view: CompView, channels: string[]) => void;
   // Compensation wizard: candidate control samples (current group), channels
   // of the current sample, population paths usable as a pre-gate.
   controls: { id: string; fileName: string; loaded: boolean }[];
@@ -147,6 +162,9 @@ export function CompensationDialog(p: {
   // FlowJo wizard: population paths per control sample, and the run.
   pathsBySample: Record<string, string[]>;
   onFlowjoWizard: (entries: { sampleId: string; primary: string; posPath: string | null; negSampleId: string; negPath: string | null }[]) => Promise<FlowjoWizardResult & { ssm: { channels: string[]; values: number[][] } }>;
+  // Optimize Weights (OPTIMIZEWT) for a spectral matrix; null when cancelled.
+  onOptimizeWeights?: (matrix: SpilloverMatrix, controls: { pos: PopPick; neg: PopPick }[], onProgress: (pr: { fraction: number; message: string }) => void, cancelled: () => boolean) => Promise<WeightOptResult | null>;
+  onOptimizeEvent?: (matrix: SpilloverMatrix, controls: { pos: PopPick; neg: PopPick }[], onProgress: (pr: { fraction: number; message: string }) => void, cancelled: () => boolean) => Promise<EventOptResult | null>;
 }) {
   const [fj, setFj] = useState<Record<string, { primary: string; pos: string; neg: string }>>({});
   const [univ, setUniv] = useState('');
@@ -163,7 +181,60 @@ export function CompensationDialog(p: {
   const [afErr, setAfErr] = useState('');
   const [selected, setSelected] = useState<string>(p.matrices[0]?.id ?? '');
   const [msg, setMsg] = useState('');
+  // Matrix Editor state (MatrixController): parameter visibility, display
+  // mode, preview, zoom, comparison, SSM view, weights, animation.
+  const [prefs, setPrefsState] = useState<CompPrefs>(() => loadCompPrefs());
+  const setPrefs = (x: CompPrefs) => { setPrefsState(x); saveCompPrefs(x); };
+  const [showPrefs, setShowPrefs] = useState(false);
+  const [hidden, setHidden] = useState<string[]>([]);
+  const [showAll, setShowAll] = useState(false);
+  const [identityPick, setIdentityPick] = useState<string[] | null>(null);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [ssmView, setSsmView] = useState(false);
+  const [weightsOpen, setWeightsOpen] = useState(false);
+  const [optOpen, setOptOpen] = useState(false);
+  const [view, setView] = useState<CompView>({ kind: 'nxn' });
+  const [overlay, setOverlay] = useState(prefs.overlay);
+  const [zoom, setZoom] = useState(DEFAULT_ZOOM);
+  const [pv, setPv] = useState(p.preview ?? { sampleId: p.samples?.[0]?.id ?? '', path: '' });
+  const [pvData, setPvData] = useState<{ count: number; raw: Record<string, Float32Array>; missing: string[] } | null>(null);
+  const [pvErr, setPvErr] = useState('');
+  const [anim, setAnim] = useState(1);
+  const [animating, setAnimating] = useState(false);
+  const [applyGroup, setApplyGroup] = useState(p.groups?.[0]?.id ?? '');
+  const [fjParams, setFjParams] = useState<string[]>(p.channels);
+  const gridBox = useRef<HTMLDivElement>(null);
   const m = mats.find((x) => x.id === selected);
+  const pvKey = m ? m.channels.join('|') : '';
+  useEffect(() => {
+    if (!p.onPreview || !m || !pv.sampleId) { setPvData(null); return; }
+    let live = true;
+    setPvErr('');
+    p.onPreview(pv.sampleId, pv.path, m.channels).then((d) => live && setPvData(d), (e) => live && (setPvData(null), setPvErr((e as Error).message)));
+    return () => { live = false; };
+    // Re-read only when the preview or the matrix detectors change; edits to
+    // values recompensate the cached events.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pv.sampleId, pv.path, pvKey]);
+  const outNames = m ? (isSpectral(m) ? m.outputNames ?? [] : m.channels) : [];
+  const visible = (c: string) => showAll || !hidden.includes(c);
+  const visibleOut = outNames.filter(visible);
+  const saved = m ? p.matrices.find((x) => x.id === m.id) : undefined;
+  const cmp = compareIds.length >= 2 ? compareMatrices(compareIds.map((id) => mats.find((x) => x.id === id)!).filter(Boolean)) : null;
+  const status = cmp ? (cmp.error ?? `Displaying ${cmp.method} of ${compareIds.length} matrices`) : m ? (ssmView && m.ssm ? `Displaying SSM of matrix '${m.name}'` : `Displaying matrix '${m.name}'`) : 'Select one or more matrices';
+  const setCell = (i: number, j: number, v: number) => {
+    if (!m) return;
+    const values = m.values.map((row) => [...row]);
+    values[i][j] = v;
+    setMats(mats.map((x) => (x.id === m.id ? { ...m, values } : x)));
+  };
+  const animate = async () => {
+    setAnimating(true);
+    for (const s of animationScales()) { setAnim(s); await new Promise((r) => setTimeout(r, 350)); }
+    setAnim(1);
+    setAnimating(false);
+  };
+  const pvSample = p.samples?.find((x) => x.id === pv.sampleId);
   let check = '';
   if (m) {
     try {
@@ -244,8 +315,19 @@ export function CompensationDialog(p: {
             {p.controls.flatMap((c) => (p.pathsBySample[c.id] ?? []).map((path) => <option key={`${c.id}|${path}`} value={`${c.id}|${path}`}>{c.fileName}: {path}</option>))}
           </select>
         </div>
+        <details data-testid="fj-params">
+          <summary>Parameter ({fjParams.length} of {p.channels.length})</summary>
+          <p className="muted">The set of parameters for which to build the matrix (Choose Parameters). Unchecked parameters are left out.</p>
+          <div className="row" style={{ flexWrap: 'wrap' }}>
+            {p.channels.map((ch) => <label key={ch}><input type="checkbox" data-testid={`fj-param-${ch}`} checked={fjParams.includes(ch)} onChange={(e) => setFjParams(e.target.checked ? p.channels.filter((c) => c === ch || fjParams.includes(c)) : fjParams.filter((c) => c !== ch))} /> {ch}</label>)}
+          </div>
+          <div className="row">
+            <button data-testid="fj-remove-unused" title="Remove all parameters that have no samples." onClick={() => setFjParams(removeUnusedParameters(fjParams, Object.values(fj).map((v) => v.primary).filter(Boolean)))}>Remove Unused Parameters</button>
+            <button data-testid="fj-reset-params" title="Recalculate with the full parameter set." onClick={() => setFjParams(p.channels)}>Reset All</button>
+          </div>
+        </details>
         <table className="grid">
-          <thead><tr><th>Control</th><th>Stained channel</th><th>Positive</th><th>Negative</th></tr></thead>
+          <thead><tr><th>Control</th><th>Stained channel</th><th>Positive</th><th>Negative</th><th /></tr></thead>
           <tbody>
             {p.controls.filter((c) => c.loaded).map((c) => {
               const r = fj[c.id] ?? { primary: '', pos: '', neg: '' };
@@ -254,9 +336,10 @@ export function CompensationDialog(p: {
               return (
                 <tr key={c.id}>
                   <td>{c.fileName}</td>
-                  <td><select value={r.primary} onChange={(e) => set({ primary: e.target.value })} data-testid={`fj-primary-${c.fileName}`}><option value="">not a control</option>{p.channels.map((ch) => <option key={ch}>{ch}</option>)}</select></td>
+                  <td><select value={r.primary} onChange={(e) => set({ primary: e.target.value })} data-testid={`fj-primary-${c.fileName}`}><option value="">not a control</option>{p.channels.filter((ch) => fjParams.includes(ch) || ch === r.primary).map((ch) => <option key={ch}>{ch}</option>)}</select></td>
                   <td><select value={r.pos} onChange={(e) => set({ pos: e.target.value })} data-testid={`fj-pos-${c.fileName}`}><option value="">-</option>{paths.map((x) => <option key={x}>{x}</option>)}</select></td>
                   <td><select value={r.neg} onChange={(e) => set({ neg: e.target.value })} data-testid={`fj-neg-${c.fileName}`}><option value="">{univ ? 'universal negative' : '-'}</option>{paths.map((x) => <option key={x}>{x}</option>)}</select></td>
+                  <td>{r.primary && <button data-testid={`fj-remove-${c.fileName}`} title="Remove this parameter from the compensation." onClick={() => { setFjParams(fjParams.filter((x) => x !== r.primary)); set({ primary: '', pos: '', neg: '' }); }}>Remove</button>}</td>
                 </tr>
               );
             })}
@@ -266,10 +349,10 @@ export function CompensationDialog(p: {
           setFjErr(''); setFjRes(null);
           try {
             const [us, up] = univ ? [univ.slice(0, univ.indexOf('|')), univ.slice(univ.indexOf('|') + 1)] : ['', ''];
-            const entries = Object.entries(fj).filter(([, v]) => v.primary).map(([sampleId, v]) => ({ sampleId, primary: v.primary, posPath: v.pos || null, negSampleId: v.neg ? sampleId : us, negPath: v.neg || up || null }));
+            const entries = Object.entries(fj).filter(([, v]) => v.primary && fjParams.includes(v.primary)).map(([sampleId, v]) => ({ sampleId, primary: v.primary, posPath: v.pos || null, negSampleId: v.neg ? sampleId : us, negPath: v.neg || up || null }));
             const r = await p.onFlowjoWizard(entries);
             setFjRes(r);
-            if (r.matrix) add({ ...r.matrix, id: `m_${Date.now().toString(36)}`, name: `Wizard matrix (${r.matrix.channels.length} controls)` });
+            if (r.matrix) add({ ...r.matrix, id: `m_${Date.now().toString(36)}`, name: `Wizard matrix (${r.matrix.channels.length} controls)`, ...(r.ssm.channels.length ? { ssm: r.ssm } : {}) });
           } catch (e) { setFjErr((e as Error).message); }
         }}>Calculate</button>
         {fjErr && <p className="error">{fjErr}</p>}
@@ -345,39 +428,100 @@ export function CompensationDialog(p: {
           </table>
         )}
       </details>
+      <h4 style={{ margin: '8px 0 4px' }}>Matrix Editor</h4>
       <div className="row">
-        <select value={selected} onChange={(e) => setSelected(e.target.value)} data-testid="matrix-select">
+        <select value={selected} onChange={(e) => { setSelected(e.target.value); setSsmView(false); setWeightsOpen(false); setOptOpen(false); }} data-testid="matrix-select">
           {mats.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
         </select>
+        <button data-testid="comp-identity" title="Create an empty matrix" onClick={() => setIdentityPick(identityPick ? null : (p.meta?.channels ?? []).map((c) => c.name).filter((c) => p.channels.includes(c)))}>New Identity Matrix</button>
+        <button disabled={!m} data-testid="comp-duplicate" title="Create an editable copy of this matrix" onClick={() => m && add(duplicateMatrix(m, mats.map((x) => x.name)))}>Duplicate Matrix</button>
         <button disabled={!m} data-testid="mtx-save" onClick={() => m && saveText(`${m.name}.mtx`, writeMtx(m), 'application/xml')}>Save as .mtx</button>
         <button disabled={!m} data-testid="mtx-save-csv" onClick={() => m && saveText(`${m.name}.csv`, writeMatrixCsv(m), 'text/csv')}>Save as CSV</button>
-        {m && <button onClick={() => { setMats(mats.filter((x) => x.id !== m.id)); setSelected(''); }}>Delete matrix</button>}
+        {m && <button data-testid="comp-remove-matrix" title="Delete this matrix from the workspace" onClick={() => { setMats(mats.filter((x) => x.id !== m.id)); setSelected(''); }}>Delete matrix</button>}
+        <button data-testid="comp-prefs" onClick={() => setShowPrefs(!showPrefs)}>Preferences...</button>
       </div>
-      {m && (
+      {showPrefs && (
+        <div className="row" data-testid="comp-prefs-panel" style={{ flexWrap: 'wrap' }}>
+          <b>Matrix Editor:</b>
+          <label><input type="checkbox" data-testid="comp-pref-overlay" checked={prefs.overlay} onChange={(e) => setPrefs({ ...prefs, overlay: e.target.checked })} /> Overlay Uncompensated</label>
+          <label><input type="checkbox" data-testid="comp-pref-status" checked={prefs.showStatus} onChange={(e) => setPrefs({ ...prefs, showStatus: e.target.checked })} /> Show Status</label>
+          <label><input type="checkbox" data-testid="comp-pref-percent" checked={prefs.usePercent} onChange={(e) => setPrefs({ ...prefs, usePercent: e.target.checked })} /> Use Percent for spillover</label>
+        </div>
+      )}
+      {identityPick && (
+        <div data-testid="comp-identity-panel" style={{ border: '1px solid #c7cfdc', padding: 6 }}>
+          <span className="muted">Parameters of the new identity matrix:</span>
+          <div className="row" style={{ flexWrap: 'wrap' }}>
+            {(p.meta?.channels ?? []).map((c) => <label key={c.name}><input type="checkbox" data-testid={`comp-identity-${c.name}`} checked={identityPick.includes(c.name)} onChange={(e) => setIdentityPick(e.target.checked ? (p.meta?.channels ?? []).map((x) => x.name).filter((x) => x === c.name || identityPick.includes(x)) : identityPick.filter((x) => x !== c.name))} /> {c.name}</label>)}
+          </div>
+          <button disabled={!identityPick.length} data-testid="comp-identity-create" onClick={() => { add(identityMatrix(identityPick, mats.map((x) => x.name))); setIdentityPick(null); }}>Create</button>
+        </div>
+      )}
+      {mats.length > 1 && (
+        <div className="row" data-testid="comp-compare" style={{ flexWrap: 'wrap' }}>
+          <span className="muted" title="Select two matrices for their difference, three or more for their standard deviation">Compare:</span>
+          {mats.map((x) => <label key={x.id}><input type="checkbox" data-testid={`comp-compare-${x.name}`} checked={compareIds.includes(x.id)} onChange={(e) => setCompareIds(e.target.checked ? mats.map((y) => y.id).filter((id) => id === x.id || compareIds.includes(id)) : compareIds.filter((id) => id !== x.id))} /> {x.name}</label>)}
+        </div>
+      )}
+      {prefs.showStatus && <p className="muted" data-testid="comp-status">{status}</p>}
+      {cmp?.matrix && (
+        <table className="grid" data-testid="comp-compare-result">
+          <thead><tr><th>{cmp.method}</th>{cmp.matrix.channels.map((c) => <th key={c}>{c}</th>)}</tr></thead>
+          <tbody>{cmp.matrix.values.map((r, i) => <tr key={i}><th>{cmp.matrix!.channels[i]}</th>{r.map((v, j) => <td key={j}>{toDisplay(v, prefs.usePercent)}</td>)}</tr>)}</tbody>
+        </table>
+      )}
+      {m && !cmp && (
         <>
           <p className="muted">
             {m.values.length !== m.channels.length
-              ? `Spectral matrix: ${m.values.length} fluorochromes (rows) x ${m.channels.length} detectors (columns); unmixed by ordinary least squares. Unmixed channels appear in channel lists under the fluorochrome names.`
+              ? `Spectral matrix: ${m.values.length} fluorochromes (rows) x ${m.channels.length} detectors (columns); unmixed by ${eventUnmixText(m) ?? `${m.weights ? 'weighted' : 'ordinary'} least squares`}. Unmixed channels appear in channel lists under the fluorochrome names.`
               : 'Spillover: row = fluorochrome channel, column = detector receiving spillover. Diagonal should be 1.'}
+            {prefs.usePercent ? ' Values in percent.' : ''}
           </p>
+          <div className="row" style={{ flexWrap: 'wrap' }} data-testid="comp-visibility">
+            <label title="When checked all fluorochromes are visible. Otherwise unchecked parameter names will be hidden."><input type="checkbox" data-testid="comp-showall" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} /> Show All</label>
+            {outNames.map((c) => <label key={c}><input type="checkbox" data-testid={`comp-vis-${c}`} disabled={showAll} checked={showAll || !hidden.includes(c)} onChange={(e) => setHidden(e.target.checked ? hidden.filter((x) => x !== c) : [...hidden, c])} /> {c}</label>)}
+            {!showAll && hidden.filter((c) => outNames.includes(c)).length > 0 && <span className="muted" data-testid="comp-hidden-count">({hidden.filter((c) => outNames.includes(c)).length} hidden)</span>}
+          </div>
+          <div className="row">
+            <button disabled={!m.ssm} data-testid="comp-ssm-view" title={m.ssm ? (ssmView ? 'Switch back to the spillover matrix' : 'Display the SSM matrix') : "Select a matrix that was created with FlowJo's compensation wizard to display or export the SSM"} onClick={() => setSsmView(!ssmView)}>{ssmView ? 'Display Matrix' : 'Display SSM'}</button>
+            <button disabled={!m.ssm} data-testid="comp-ssm-export" title="Export the SSM matrix to a CSV file" onClick={() => m.ssm && saveText(`SSM_${m.name}.csv`, ssmCsv(m.ssm), 'text/csv')}>Export SSM</button>
+            <button disabled={!saved || JSON.stringify(saved) === JSON.stringify(m)} data-testid="comp-reset" title="Remove any edits made here since the matrix was last saved" onClick={() => saved && setMats(mats.map((x) => (x.id === m.id ? structuredClone(saved) : x)))}>Reset</button>
+            {isSpectral(m) && <button data-testid="comp-weights" title="Preview, import or export weights for the weighted least square unmixing algorithm used for spectral compensation." onClick={() => setWeightsOpen(!weightsOpen)}>Weights</button>}
+            {isSpectral(m) && p.onOptimizeWeights && p.samples && <button data-testid="comp-optimize-weights" title="Optimize the detector weights of the weighted least squares unmixing so that the spillover spreading of the single-stain controls is smallest." onClick={() => setOptOpen(!optOpen)}>Optimize Weights</button>}
+          </div>
+          {weightsOpen && isSpectral(m) && <WeightsPanel matrix={m} save={(n, t) => saveText(n, t, 'text/csv')} onClose={(w) => { setMats(mats.map((x) => (x.id === m.id ? { ...m, weights: w.every((v) => v === 1) ? undefined : w } : x))); setWeightsOpen(false); }} />}
+          {optOpen && isSpectral(m) && p.onOptimizeWeights && p.samples && <OptimizeWeightsPanel matrix={m} samples={p.samples} onRun={(c, pr, cx) => p.onOptimizeWeights!(m, c, pr, cx)} onRunEvent={p.onOptimizeEvent && ((c, pr, cx) => p.onOptimizeEvent!(m, c, pr, cx))} onClose={() => setOptOpen(false)}
+            onDone={(r) => setMats((all) => all.map((x) => (x.id === m.id ? { ...x, weights: r.weights, ssm: { channels: m.outputNames ?? [], values: r.ssm }, weightOptimization: undefined } : x)))}
+            onEventModel={(model, ssm) => setMats((all) => all.map((x) => (x.id === m.id ? { ...x, weightOptimization: model, ...(ssm ? { ssm: { channels: m.outputNames ?? [], values: ssm } } : {}) } : x)))}
+            onClearWeights={() => setMats((all) => all.map((x) => (x.id === m.id ? { ...x, weights: undefined } : x)))} />}
+          {ssmView && m.ssm ? (() => {
+            const t = ssmWithSums(m.ssm.values);
+            return (
+              <table className="grid" data-testid="comp-ssm-table">
+                <thead><tr><th>SSM</th>{m.ssm.channels.map((c) => <th key={c}>{c}</th>)}<th>Sum</th></tr></thead>
+                <tbody>
+                  {t.rows.map((r, i) => <tr key={i}><th>{m.ssm!.channels[i]}</th>{r.map((v, j) => <td key={j}>{v.toFixed(3)}</td>)}</tr>)}
+                  <tr><th>Sum</th>{t.colSums.map((v, j) => <td key={j}>{v.toFixed(3)}</td>)}<td>{t.total.toFixed(3)}</td></tr>
+                </tbody>
+              </table>
+            );
+          })() : (
           <div className="matrix-wrap">
             <table className="grid matrix">
-              <thead><tr><th />{m.channels.map((c) => <th key={c}>{c}</th>)}</tr></thead>
+              <thead><tr><th />{m.channels.map((c) => (isSpectral(m) || visible(c)) && <th key={c}>{c}</th>)}</tr></thead>
               <tbody>
-                {m.values.map((r, i) => (
+                {m.values.map((r, i) => visible(outNames[i] ?? m.channels[i]) && (
                   <tr key={i}>
                     <th>{m.outputNames?.[i] ?? m.channels[i]}</th>
-                    {r.map((v, j) => (
+                    {r.map((v, j) => (isSpectral(m) || visible(m.channels[j])) && (
                       <td key={j}>
                         <input
                           type="number"
                           step="any"
-                          value={v}
-                          onChange={(e) => {
-                            const values = m.values.map((row) => [...row]);
-                            values[i][j] = Number(e.target.value);
-                            setMats(mats.map((x) => (x.id === m.id ? { ...m, values } : x)));
-                          }}
+                          title={`Spillover from parameter ${m.outputNames?.[i] ?? m.channels[i]} into ${m.channels[j]}`}
+                          value={toDisplay(v, prefs.usePercent)}
+                          onChange={(e) => setCell(i, j, fromDisplay(Number(e.target.value), prefs.usePercent))}
                         />
                       </td>
                     ))}
@@ -386,6 +530,7 @@ export function CompensationDialog(p: {
               </tbody>
             </table>
           </div>
+          )}
           <p className={check.startsWith('Invalid') ? 'error' : 'muted'} data-testid="matrix-check">{check}</p>
           {m.values.length !== m.channels.length && (
             <div className="row" data-testid="af-row">
@@ -416,9 +561,73 @@ export function CompensationDialog(p: {
               {afErr && <span className="error" data-testid="af-error">{afErr}</span>}
             </div>
           )}
-          <div className="row">
+          {p.onPreview && p.samples && (
+            <div data-testid="comp-preview" style={{ border: '1px solid #c7cfdc', padding: 6, margin: '6px 0' }}>
+              <div className="row" style={{ flexWrap: 'wrap' }}>
+                <label title="Select a sample to preview with this matrix">Preview Sample <select data-testid="comp-preview-sample" value={pv.sampleId} onChange={(e) => {
+                  const s = p.samples!.find((x) => x.id === e.target.value);
+                  // The population path is kept when the new sample has it.
+                  setPv({ sampleId: e.target.value, path: s?.paths.includes(pv.path) ? pv.path : '' });
+                }}>{p.samples.map((s) => <option key={s.id} value={s.id} disabled={!s.loaded}>{s.fileName}</option>)}</select></label>
+                <label title="Select a sub-population to graph of the selected sample">Preview Population <select data-testid="comp-preview-pop" value={pv.path} onChange={(e) => setPv({ ...pv, path: e.target.value })}>
+                  <option value="">All events</option>
+                  {(pvSample?.paths ?? []).map((x) => <option key={x} value={x}>{x}</option>)}
+                </select></label>
+                <label>View <select data-testid="comp-view" value={view.kind === 'allby' ? `allby:${view.channel}` : view.kind} onChange={(e) => { const v = e.target.value; setView(v === 'nxn' ? { kind: 'nxn' } : v === 'histos' ? { kind: 'histos' } : { kind: 'allby', channel: v.slice(6) }); }}>
+                  <option value="nxn">N x N View</option>
+                  {visibleOut.map((c) => <option key={c} value={`allby:${c}`}>All By... {c}</option>)}
+                  <option value="histos">Histograms</option>
+                </select></label>
+                <label title="Draw the raw collected parameter on top of the compensated equivalent to show the differences."><input type="checkbox" data-testid="comp-overlay" checked={overlay} onChange={(e) => setOverlay(e.target.checked)} /> Overlay Uncompensated</label>
+              </div>
+              <div className="row">
+                <button data-testid="comp-zoom-out" title="Decrease scale to see more plots." onClick={() => setZoom(zoomOut(zoom))}>Zoom Out</button>
+                <button data-testid="comp-zoom-in" title="Increase magnification to see larger plots." onClick={() => setZoom(zoomIn(zoom))}>Zoom In</button>
+                <button data-testid="comp-zoom-fit" title="Sets scale to see all plots" onClick={() => setZoom(fitZoom(gridBox.current?.clientWidth ?? 0, view.kind === 'nxn' ? visibleOut.length : Math.max(1, visibleOut.length - (view.kind === 'allby' ? 1 : 0))))}>Scale To Fit</button>
+                <button data-testid="comp-zoom-100" title="Resets scale to full view" onClick={() => setZoom(100)}>Reset Scale</button>
+                <span className="muted" data-testid="comp-zoom">{Math.round(zoom)}%</span>
+                <button data-testid="comp-animate" disabled={animating || !pvData} title="Show the compensation applied from 0.1% to 400% of the calculated amount." onClick={() => void animate()}>Animate</button>
+                {animating && <b data-testid="comp-anim-label">{scaleLabel(anim)}</b>}
+                {p.onCopyToLayout && <button data-testid="comp-copy-layout" title="Copy To New Layout: a new layout with these plots, compensated with this matrix" onClick={() => { p.onSave(mats); p.onCopyToLayout!(m.id, pv.sampleId, pv.path, view, visibleOut); }}>Copy To New Layout</button>}
+                <span
+                  data-testid="comp-matrix-icon"
+                  draggable
+                  title="Drop this on samples or groups to apply this matrix."
+                  style={{ cursor: 'grab', border: '1px solid #7a86a0', borderRadius: 3, padding: '1px 6px', background: '#eef2f8' }}
+                  onDragStart={(e) => {
+                    p.onSave(mats);
+                    e.dataTransfer.setData(MATRIX_DRAG_TYPE, m.id);
+                    e.dataTransfer.effectAllowed = 'copy';
+                    // Let the drop reach the workspace under the dialog until
+                    // the drag ends.
+                    const bg = e.currentTarget.closest('.modal-bg') as HTMLElement | null;
+                    if (!bg) return;
+                    let done = false;
+                    const restore = () => { done = true; bg.style.pointerEvents = ''; window.removeEventListener('dragend', restore, true); window.removeEventListener('drop', restore, true); };
+                    window.addEventListener('dragend', restore, true);
+                    window.addEventListener('drop', restore, true);
+                    setTimeout(() => { if (!done) bg.style.pointerEvents = 'none'; }, 0);
+                  }}
+                >Matrix Icon</span>
+              </div>
+              {pvErr && <p className="error">{pvErr}</p>}
+              {pvData && pvData.missing.length > 0 && <p className="error" data-testid="comp-preview-missing">Preview sample lacks: {pvData.missing.join(', ')}</p>}
+              {pvData && <p className="muted" data-testid="comp-preview-count">{pvData.count.toLocaleString()} events{Object.values(pvData.raw)[0] && Object.values(pvData.raw)[0].length < pvData.count ? ` (${Object.values(pvData.raw)[0].length.toLocaleString()} shown)` : ''}</p>}
+              <div ref={gridBox}>
+                {pvData && pvData.missing.length === 0 && !check.startsWith('Invalid') && <CompPlotGrid raw={pvData.raw} matrix={scaleSpillover(m, anim)} channels={visibleOut} view={view} overlay={overlay} zoom={zoom} transformFor={p.transformFor ?? (() => undefined)} />}
+              </div>
+            </div>
+          )}
+          <div className="row" style={{ flexWrap: 'wrap' }}>
             <button disabled={check.startsWith('Invalid')} onClick={() => { p.onSave(mats); p.onAssign(m.id, 'sample'); }}>Save and apply to sample</button>
             <button disabled={check.startsWith('Invalid')} onClick={() => { p.onSave(mats); p.onAssign(m.id, 'group'); }}>Save and apply to group</button>
+            <button disabled={check.startsWith('Invalid')} data-testid="comp-apply-workspace" title="Set all samples in the experiment to refer to this matrix." onClick={() => { p.onSave(mats); p.onAssign(m.id, 'workspace'); }}>Apply To Workspace</button>
+            {p.groups && p.groups.length > 0 && (
+              <>
+                <select data-testid="comp-apply-group-select" value={applyGroup} onChange={(e) => setApplyGroup(e.target.value)}>{p.groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</select>
+                <button disabled={check.startsWith('Invalid') || !applyGroup} data-testid="comp-apply-group" title="Use this compensation matrix for all samples in the chosen group." onClick={() => { p.onSave(mats); p.onAssign(m.id, `group:${applyGroup}`); }}>Apply To Group</button>
+              </>
+            )}
           </div>
         </>
       )}
@@ -477,7 +686,7 @@ export function DerivedDialog(p: {
             {p.params.map((d) => (
               <tr key={d.name}>
                 <td>{d.name}</td>
-                <td>{derivedFormula(d)}</td>
+                <td>{derivedFormula(d) || ('imported' in d ? `Imported from ${d.imported.file}` : 'gateDerived' in d ? (d.gateDerived.type === 'consensus' ? 'Consensus Gate' : 'Cluster Frequency') : '')}</td>
                 <td><button className="x" aria-label={`remove ${d.name}`} onClick={() => askRemove(d.name)}>x</button></td>
               </tr>
             ))}
@@ -595,6 +804,7 @@ export function FindDialog(p: { samples: SampleState[]; keywords: string[]; onRe
         <label><input type="checkbox" checked={wholeWord} onChange={(e) => setWholeWord(e.target.checked)} data-testid="find-whole" /> Match whole word</label>
         <label><input type="checkbox" checked={partial} onChange={(e) => setPartial(e.target.checked)} /> Replace partial</label>
         <button disabled={!hits.length} onClick={next} data-testid="find-next">Find Next</button>
+        <button disabled={at < 0 || !hits[at]?.editable} title="Replace: substitute text for the selected result's keyword value (KeywordFindRelpaceDialog.replaceSelectedRows)" onClick={() => p.onReplace([hits[at]], what, withText, { matchCase, partial })} data-testid="find-replace-one">Replace</button>
         <button disabled={!hits.some((h) => h.editable)} title="File keywords are read-only; annotation keywords are replaced" onClick={() => p.onReplace(hits, what, withText, { matchCase, partial })} data-testid="find-replace-all">Replace All</button>
         <span className="muted" data-testid="find-count">{what ? `${hits.length} match${hits.length === 1 ? '' : 'es'}` : ''}</span>
       </div>

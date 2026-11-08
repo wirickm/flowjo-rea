@@ -1034,6 +1034,45 @@ Implemented in `src/core/compFlowjo.ts` and the Compensation dialog.
   "SSM_<matrix>.csv": "SSM" then the parameters; rows the parameter without
   the comp prefix, then the values.
 
+### 14.5 Spectral weights and Optimize Weights (libNativeEngine 3.6.2, Ghidra)
+
+- Spectral unmixing is weighted least squares: unmixed = (S W S^T)^-1 S W x
+  per event (`EigenSolver`, column-pivoting Householder QR), W = diag(detector
+  weights). `CompensationSpec::FromXML` fills every detector weight with 1.0
+  and overrides only detectors listed under `weights`, so the default is
+  ordinary least squares.
+- Optimize Weights (SSM-based, `WeightOptimizer::OptimizeWeights`): weights
+  start at 1; the objective is the sum of all SSM entries of the single-stain
+  controls unmixed with the trial weights (14.3 formula on percentiles 50 and
+  84 of the unmixed fluorochromes). Coordinate search: for each detector in
+  turn try f x w and (1/f) x w with the others fixed and keep the trial that
+  lowers the best sum so far (float32 comparison). f starts at 0.6667 and
+  after every sweep becomes (f - 1) x 0.9 + 1. A sweep improving the best sum
+  by less than 1% is a stall (counted from sweep index 5); the first stall
+  switches to f = 0.3333 with damping 0.5, the third ends the search; it also
+  ends after sweep index 50. Full rules: `docs/validation/ui-gaps/
+  compensation.md`, OPTIMIZEWT. Implemented in `src/core/weightOptimizer.ts`.
+- Event-weighted unmixing (matrix type EventBasedOptimizationProcessing,
+  `Compensator::PreCompensate` / `Compensate`): per event, weights
+  w_d = 1 / (x_d + lambda_d) on the raw detector values replace the static
+  weights, then (S W S^T) f = S W x. lambda_d = entry d of the matrix's
+  lambdas list when engineBasedLambda is set and the list is not empty,
+  else the matrix lambda; a lambda of 0.001 or less reads as 0.001
+  (`CompensationSpec::FromXML`). Implemented in `src/core/compensation.ts`
+  (`eventLambdas`, `unmixEventWeighted`; Gaussian elimination instead of
+  QR, own rule).
+- Event-based optimisation (`RunVariableLambdaProcessing`, request type 2,
+  only with engineBasedLambda): lambda_d = mean over the controls of the
+  squared SD statistic (type 7) of raw detector d in the control's negative
+  population; the controls are unmixed with those lambdas and their SSM is
+  returned with the lambdas. Progress 0.5% "Compensating.", 100% "Current
+  best SSM sum is X. ". The Java side then stores the model with
+  engineBasedLambda off and lambda 0 (the result has no lambda attribute),
+  so 10.6.2 afterwards unmixes with lambda 0.001; the lambdas are kept but
+  unused. Implemented in `src/core/weightOptimizer.ts` (`EventOptimization`).
+  Fully decoded; not checked against FlowJo output (no event-based
+  reference workspace exists).
+
 ### 14.4 Applying a matrix (matches)
 
 - Compensated values solve observed = true x S per event (LU for square
@@ -1151,8 +1190,12 @@ and `src/ui/Layout.tsx`.
   with "," quoted and quotes doubled. TAB: first header "Sample:". HTML: grey
   header, right-aligned cells. Show Summary Stats adds Mean and Std.
   Deviation rows. Heat map: blue (column minimum) to yellow (maximum).
-- Not implemented: Excel, XML Excel and SQL formats, printer and clipboard
-  destinations, PowerPoint and animation batch destinations.
+- Added later (docs/validation/ui-gaps/tables.md): XML Excel
+  (SpreadsheetML), output targets Display / Clipboard / File / Layout /
+  Printer, the generated table window, column editing, Create Column Names,
+  Standard Deviation and Expected Range formats, table plots.
+- Not implemented: binary Excel (.xls), FlowJo XML and SQL formats,
+  PowerPoint and animation batch destinations, 3D plot, figures.
 
 ### 17.4 Delete
 
@@ -1401,7 +1444,8 @@ the PDF draws each page as an image inside the margins.
 | G1-G3 | Grid layout: 3 x 4 cells, 4 pt padding, filled row by row; extras left out | `FigGridLayout.<init>`, `FJLayoutGrid.getNextCell` |
 
 Own rules: there is no Spread (A10, a no-op in FlowJo) and no Same Size (A14,
-absent); a group keeps its members as items (no scaling on resize, A21); grid
+absent) (resize handles, copy / paste, figure properties, shapes and several
+layouts were added later: `docs/validation/ui-gaps/layout.md`); a group keeps its members as items (no scaling on resize, A21); grid
 figures are covered in 25.2; guides and guide snapping (S4-S5) are added and
 removed with buttons and by dragging off the page (there are no rulers to drag
 them from); every move, including a nudge, is an undo step in
@@ -1616,7 +1660,8 @@ are not offered.
   `le.chart.nxn`, `FJPrefsFJML$Layouts.multiGraphLimit`). This app offers
   Histograms (one per parameter) and N x N (pseudocolor pairs, histograms on
   the diagonal); not offered: all-by, half N x N, slinky, dot / contour cell
-  types.
+  types. (Later added: half N x N, All by Y, Slinky and dot / contour cells;
+  see `docs/validation/ui-gaps/layout.md` 3.4.)
 
 ### 25.4 .wsp layouts: page, iteration and figures
 
@@ -1648,8 +1693,10 @@ Own rules: the app's graph box is the plot frame plus its axis margins
 (`frameToBox` / `boxToFrame`, exact both ways); text figures import as plain
 text (styling dropped; FJML statistics become "{name: path}") and export as a
 simple Swing HTML body; a chart whose sample is not in the workspace follows
-the chosen sample; Image, statistic tables, shapes and other figure kinds are
-reported and skipped; export writes the attributes listed above (FlowJo
+the chosen sample; statistic tables and other figure kinds are reported and
+skipped (later added: shapes, lines with arrowheads, Image figures, text
+styling, Key / Anno live fields, several Layout elements and PrintLayout
+scaling, see `docs/validation/ui-gaps/layout.md`); export writes the attributes listed above (FlowJo
 fills its own defaults for the rest); imported grids use a 4 pt padding.
 
 ## Appendix A. FlowJo 11.2.0 (orientation only, not the reference)
@@ -1725,3 +1772,15 @@ Status: *observed* (structure), not reference-validated.
   which stored field is `a` versus `b`. Snapping the defining points to an
   integer grid is a candidate explanation for the logicle ellipse gap (2-3%),
   untested.
+
+## Sample quality check (SampleValidity, engine 3.6.2)
+
+Behavioural spec of `SampleValidity::ProcessQuery` / `CheckDataConsistency`
+as used by FlowJo 10.6.2's Check Sample Quality: at least 2000 events; K
+time segments (7, 10, 20, 30, 40 by event count); per data parameter the
+truncated median channel of each segment (channel range 4096 for float data,
+next power of two of $PnR for integer data), a least-squares line through
+the medians (ratio = |slope| * K / mean), mean and SD of the medians; the
+Java side counts parameters with |ratio| > 0.01 and grades floor(sqrt(n)).
+Full rules: docs/validation/ui-gaps/workspace.md section F2.1;
+implementation `src/core/sampleQuality.ts`.

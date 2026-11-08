@@ -68,12 +68,27 @@ table.matrix input { width: 72px; }
 .layout-page .layout-card.sel { border: 1px solid #2f6fe4; box-shadow: 0 0 0 1px #2f6fe4; }
 .layout-page .layout-card.locked { cursor: default; }
 .layout-page .layout-card img { width: 100%; height: 100%; display: block; pointer-events: none; }
-.layout-page .layout-textbox { white-space: pre-wrap; padding: 2px 4px; line-height: 1.25; overflow: hidden; height: 100%; }
+.layout-page .layout-textbox { white-space: pre-wrap; padding: 2px 4px; line-height: 1.25; overflow: hidden; height: 100%; position: relative; }
+.layout-page .layout-face { position: absolute; pointer-events: none; }
+.layout-page .layout-card.shape { border-color: transparent; }
+.layout-page .layout-card.sel { border-radius: 0; }
+.layout-page .layout-handle { position: absolute; width: 12px; height: 12px; background: radial-gradient(#fff 3px, #2f6fe4 3px, #2f6fe4 4px, transparent 4px); z-index: 2; }
+.layout-page .layout-handle.h1 { left: -7px; top: -7px; cursor: nwse-resize; }
+.layout-page .layout-handle.h3 { right: -7px; top: -7px; cursor: nesw-resize; }
+.layout-page .layout-handle.h7 { left: -7px; bottom: -7px; cursor: nesw-resize; }
+.layout-page .layout-handle.h9 { right: -7px; bottom: -7px; cursor: nwse-resize; }
+.layout-page .layout-placeholder { margin: 6px; }
+.layout-ruler.h { position: relative; height: 14px; font-size: 9px; color: #555; background-image: linear-gradient(90deg, #888 1px, transparent 1px); border-bottom: 1px solid #aaa; }
+.layout-ruler.h span { position: absolute; top: 0; padding-left: 2px; }
+.layout-chars button { min-width: 20px; padding: 0 2px; }
+.button-like { border: 1px solid #bbb; border-radius: 3px; padding: 1px 6px; cursor: pointer; background: #f6f6f6; }
 .layout-page .layout-annot { position: absolute; left: 0; white-space: nowrap; color: #333; }
 .layout-page .page-break { position: absolute; pointer-events: none; }
 .layout-page .page-break.v { top: 0; border-left: 1px dashed #d33; }
 .layout-page .page-break.h { left: 0; border-top: 1px dashed #d33; }
 .layout-selrow { height: 76px; overflow-y: auto; align-content: flex-start; }
+.layout-band { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; padding-right: 8px; margin-right: 4px; border-right: 1px solid #d5dae3; }
+.chip { display: inline-flex; align-items: center; gap: 3px; border: 1px solid #c7cfdc; border-radius: 3px; padding: 1px 4px; }
 .layout-page .layout-guide { position: absolute; z-index: 9999; }
 .layout-page .layout-guide.v { top: 0; width: 7px; cursor: ew-resize; background: linear-gradient(90deg, transparent 3px, #18a0c8 3px, #18a0c8 4px, transparent 4px); }
 .layout-page .layout-guide.h { left: 0; height: 7px; cursor: ns-resize; background: linear-gradient(180deg, transparent 3px, #18a0c8 3px, #18a0c8 4px, transparent 4px); }
@@ -131,3 +146,8 @@ body.gw-popout { margin: 0; background: #fff; font: 13px system-ui, sans-serif; 
 .gw-popout .fj-gw.popped .fj-gw-title { cursor: default; border-radius: 0; }
 .layout-page .layout-gridlines { position: absolute; pointer-events: none; border: 1px solid #b9c3d6; box-sizing: border-box; background-image: linear-gradient(90deg, #d4dbe8 1px, transparent 1px), linear-gradient(#d4dbe8 1px, transparent 1px); z-index: 0; }
 .layout-gridbar { background: #f3f6fc; padding: 3px 6px; border-radius: 4px; }
+
+/* Workspace table: resizable, sortable column headers (Edit Columns, Sort). */
+.fj-table th { user-select: none; }
+.fj-table th .col-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 5px; cursor: col-resize; }
+.fj-row.comp td, .fj-row.dp td, .fj-row.platform td { color: #666; font-style: italic; }

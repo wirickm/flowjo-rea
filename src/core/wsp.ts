@@ -8,9 +8,10 @@
 //  - "Comp-" (matrix prefix/suffix) on a parameter name means the
 //    compensated channel; quadrants are saved as four rectangle gates.
 //  - AndNode/OrNode/NotNode populations reference operands by path.
+import { isEmptyExperiment, readExperiment } from './miflowcyt';
 import type { SpilloverMatrix } from './compensation';
 import { fail } from './errors';
-import { emptyWorkspace, type Dimension, type Gate, type GridAxis, type Group, type GroupCriteria, type KeywordRule, type Population, type SampleState, type StatKind, type Workspace } from './model';
+import { emptyWorkspace, type Dimension, type Gate, type GridAxis, type Group, type GroupCriteria, type KeywordRule, type Population, type SampleState, type SavedLayout, type StatKind, type Workspace } from './model';
 import { syncLiveGroups } from './project';
 import { connectorFromText, functionFromText, MAX_KEYWORD_CRITERIA, roleFromText } from './groupCriteria';
 import { defaultGrid } from './gateGrid';
@@ -19,6 +20,7 @@ import { makeTransform, type TransformSpec } from './transforms';
 import { KIN_BY_NAME, kineticsFromAttrs } from './kinetics';
 import { attr, descendants, kid, kids, local, numAttr, parseXml, type El } from './xml';
 import { parseFigList } from './wspLayout';
+import { parseScriptElements } from './fjScript';
 
 export interface WspImport {
   workspace: Workspace;
@@ -416,6 +418,7 @@ export function parseWsp(xml: string): WspImport {
           const pop: Population = { id, name, parentId, gate, ...(exclude ? { exclude: true } : {}), ...(magnetic ? { magnetic: true } : {}) };
           if (attr(p, 'owningGroup')) owners.set(pop, attr(p, 'owningGroup')!);
           if (attr(p, 'expanded') === '0') pop.collapsed = true;
+          if (attr(p, 'annotation')) pop.annotation = attr(p, 'annotation')!;
           pops.push(pop);
         } else {
           const deps = kids(kid(p, 'Dependents') ?? p, 'Dependent').map((d) => attr(d, 'name') ?? '');
@@ -423,6 +426,7 @@ export function parseWsp(xml: string): WspImport {
           const pop: Population = { id, name, parentId, gate: { type: 'boolean', op, operands: [] } };
           if (attr(p, 'owningGroup')) owners.set(pop, attr(p, 'owningGroup')!);
           if (attr(p, 'expanded') === '0') pop.collapsed = true;
+          if (attr(p, 'annotation')) pop.annotation = attr(p, 'annotation')!;
           pops.push(pop);
           pending.push({ pop, deps });
         }
@@ -479,6 +483,7 @@ export function parseWsp(xml: string): WspImport {
       ranges[name] = [sc.linearRange[0] / f, sc.linearRange[1] / f];
     }
     if (Object.keys(ranges).length) sample.flowjoLinearRanges = ranges;
+    if (attr(node, 'annotation')) sample.nodeAnnotation = attr(node, 'annotation')!;
     ws.samples.push(sample);
     flowjoCounts[fileName] = counts;
     for (const [ch, sc] of scales) {
@@ -491,6 +496,27 @@ export function parseWsp(xml: string): WspImport {
 
   // Groups and their sample membership.
   const groups: Group[] = [];
+  // Workspace table columns (FlowJo <Columns>): kept when they differ from Name, Statistic, #Cells.
+  const colsEl = kid(root, 'Columns');
+  if (colsEl) {
+    const cols = kids(colsEl, 'TColumn').map((t) => {
+      const kw = kid(t, 'Keyword'), prop = kid(t, 'Property');
+      const key = kw && attr(kw, 'name') ? `kw:${attr(kw, 'name')}` : prop ? attr(prop, 'key') : undefined;
+      const width = Number(attr(t, 'width'));
+      return key ? { key, ...(width > 0 ? { width } : {}) } : null;
+    }).filter((c): c is { key: string; width?: number } => !!c);
+    const plain = cols.map((c) => c.key).join() === 'fj.appnode.prop.name,fj.appnode.prop.statistic,fj.appnode.prop.ncells';
+    if (cols.length && !plain) ws.tableColumns = cols;
+  }
+  // Scripts (ScriptEditorController.setElement; ui-gaps/workspace.md SCRIPTEDITOR).
+  const scriptsEl = kid(root, 'Scripts');
+  if (scriptsEl) {
+    const scripts = parseScriptElements(kids(scriptsEl, 'Script').map((e) => ({ lang: attr(e, 'lang'), name: attr(e, 'name'), text: (e as unknown as Element).textContent ?? '' })));
+    if (scripts.length) ws.scripts = scripts;
+  }
+  // Annotate Experiment (Workspace.setMetaData from the <experiment> child).
+  const expEl = kid(root, 'experiment');
+  if (expEl) { const e = readExperiment(expEl); if (!isEmptyExperiment(e)) ws.experiment = e; }
   const groupsEl = kid(root, 'Groups');
   for (const g of groupsEl ? kids(groupsEl, 'GroupNode') : []) {
     const gname = attr(g, 'name') ?? 'Group';
@@ -542,32 +568,50 @@ export function parseWsp(xml: string): WspImport {
   // contents in the fixtures).
   const le = descendants(root, 'LayoutEditor')[0];
   if (le) {
+    // Every <Layout> (ui-gaps/layout.md, layout list): the current one fills the
+    // workspace's layout fields, the others go to otherLayouts.
     const layouts = kids(le, 'Layout');
     const cur = layouts.find((l) => attr(l, 'name') === attr(le, 'current')) ?? layouts[0];
-    if (cur) {
-      const pl = kids(cur, 'PrintLayout')[0];
+    const readLayout = (lay: El): SavedLayout => {
+      const out: SavedLayout = { name: attr(lay, 'name') || 'Layout' };
+      const pl = kids(lay, 'PrintLayout')[0];
       if (pl) {
         const w = Number(attr(pl, 'width')), h = Number(attr(pl, 'height'));
         // Java PageFormat: orientation 1 = portrait, 0 = landscape.
         const paper = Math.abs(Math.min(w, h) - 595.3) < 3 && Math.abs(Math.max(w, h) - 841.9) < 3 ? 'a4' : 'letter';
-        ws.layoutPage = { paper, orientation: attr(pl, 'orientation') === '0' ? 'landscape' : 'portrait' };
+        const scaling = Number(attr(pl, 'scaling'));
+        out.layoutPage = { paper, orientation: attr(pl, 'orientation') === '0' ? 'landscape' : 'portrait', ...(Number.isFinite(scaling) && scaling > 0 && Math.abs(scaling - 1) > 1e-9 ? { scale: scaling } : {}) };
       }
-      const it = kids(cur, 'Iteration')[0];
+      const it = kids(lay, 'Iteration')[0];
       const type = it ? attr(it, 'iterationType') : undefined;
-      if (type === 'SAMPLE') ws.layoutIteration = { type: 'SAMPLE' };
-      else if (type === 'KEYWORD' && attr(it!, 'iterationKeyword')) ws.layoutIteration = { type: 'KEYWORD', keyword: attr(it!, 'iterationKeyword')!, ...(attr(it!, 'discriminator') ? { discriminator: attr(it!, 'discriminator') } : {}) };
-      else if (type === 'PANEL') ws.layoutIteration = { type: 'PANEL', size: Number(attr(it!, 'panelSize')) || 1 };
-      else if (type === 'OFF') ws.layoutIteration = { type: 'OFF' };
+      if (type === 'SAMPLE') out.layoutIteration = { type: 'SAMPLE' };
+      else if (type === 'KEYWORD' && attr(it!, 'iterationKeyword')) out.layoutIteration = { type: 'KEYWORD', keyword: attr(it!, 'iterationKeyword')!, ...(attr(it!, 'discriminator') ? { discriminator: attr(it!, 'discriminator') } : {}) };
+      else if (type === 'PANEL') out.layoutIteration = { type: 'PANEL', size: Number(attr(it!, 'panelSize')) || 1 };
+      else if (type === 'OFF') out.layoutIteration = { type: 'OFF' };
+      const gn = it ? attr(it, 'groupName') : undefined;
+      if (gn && gn !== 'workspaceSelection') out.layoutGroup = gn;
+      // Figures (specs 25.4): charts, text, shapes, images, groups, grids.
+      const fl = kids(lay, 'FigList')[0];
+      if (fl && kids(fl).length) {
+        // A figure without a sample (plate statistics) resolves parameters with the first sample's names.
+        const r = parseFigList(fl, (sid) => sampleIdMap.get(sid), (sid, name) => (resolvers.get(sid) ?? resolvers.values().next().value ?? ((n: string) => n))(name), { statColumns: ws.statColumns });
+        out.layout = r.items;
+        if (r.grids.length) out.layoutGrids = r.grids;
+        warnings.push(...r.warnings.map((w) => `Layout editor${layouts.length > 1 ? ` (${out.name})` : ''}: ${w}`));
+      }
+      return out;
+    };
+    if (cur) {
+      const c = readLayout(cur);
+      if (c.layoutPage) ws.layoutPage = c.layoutPage;
+      if (c.layoutIteration) ws.layoutIteration = c.layoutIteration;
+      if (c.layout) ws.layout = c.layout;
+      if (c.layoutGrids) ws.layoutGrids = c.layoutGrids;
+      if (c.layoutGroup) ws.layoutGroup = c.layoutGroup;
+      if (c.name !== 'Layout') ws.layoutName = c.name;
+      const others = layouts.filter((l) => l !== cur).map(readLayout);
+      if (others.length) ws.otherLayouts = others;
     }
-    // Figures of the current layout (specs 25.4): charts, text, groups, grids.
-    const fl = cur ? kids(cur, 'FigList')[0] : undefined;
-    if (fl && kids(fl).length) {
-      const r = parseFigList(fl, (sid) => sampleIdMap.get(sid), (sid, name) => (resolvers.get(sid) ?? ((n: string) => n))(name));
-      ws.layout = r.items;
-      if (r.grids.length) ws.layoutGrids = r.grids;
-      warnings.push(...r.warnings.map((w) => `Layout editor: ${w}`));
-    }
-    if (layouts.length > 1) warnings.push(`Layout editor: ${layouts.length} layouts; the settings of "${attr(cur ?? layouts[0], 'name') ?? 'Layout'}" are used`);
   }
   const flowjoVersion = attr(root, 'flowJoVersion') ?? 'unknown';
   ws.provenance = { importedFrom: `FlowJo workspace (FlowJo ${flowjoVersion}, wsp version ${attr(root, 'version') ?? '?'})`, warnings };

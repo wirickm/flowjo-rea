@@ -1,18 +1,21 @@
 // FlowJo-style .wsp writer. Mirrors the structure observed in FlowJo-saved
 // workspaces (see wsp.ts). NOT validated by opening in FlowJo: only
 // round-trip tested through this project's reader.
+import { experimentXml } from './miflowcyt';
 import { writeFigList } from './wspLayout';
+import { currentLayout } from './layoutFigures';
 import { invert } from './compensation';
 import type { SpilloverMatrix } from './compensation';
 import { axesFromGate } from './ellipse';
 import { fail } from './errors';
-import type { Dimension, Gate, Group, GroupCriteria, Population, Workspace } from './model';
+import type { Dimension, Gate, Group, GroupCriteria, Population, SavedLayout, Workspace } from './model';
 import { connectorText, functionText, MAX_KEYWORD_CRITERIA, roleText } from './groupCriteria';
 import { makeTransform, type TransformSpec } from './transforms';
 import { kineticsNodeXml } from './kinetics';
 import { derivedFormula } from './model';
 import { FLOWJO_STAT_NAMES } from './stats';
 import { esc } from './xml';
+import { scriptsXml } from './fjScript';
 
 export interface WspExportInput {
   ws: Workspace;
@@ -90,6 +93,11 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
     const gateXml = (p: Population): string | null => {
       const g: Gate = p.gate;
       if (g.type === 'boolean') return null;
+      if (g.type === 'mask') {
+        // FileMaskGate.getElement: MaskGate with nEvents and the mask file
+        // reference (maskfile importFile); FlowJo re-reads the file.
+        return `<MaskGate eventsInside="${p.exclude ? 0 : 1}"${p.magnetic ? ' magnetic="1"' : ''} nEvents="${s.eventCount}"><maskfile importFile="${esc(g.file)}" /></MaskGate>`;
+      }
       if (g.dims.some((d) => d.kind !== 'channel')) {
         warn(`"${path(p)}" uses a ratio dimension; not representable, skipped`);
         return null;
@@ -208,6 +216,8 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
     // Subpopulations (specs 12): type algebraic (eventNumber for "Event #"),
     // formula, the raw text in <Formula> and the scale in <Transform>.
     const dpXml = (ws.derivedParameters ?? []).map((d) => {
+      // Imported and gate-derived parameters have no formula to write.
+      if (d.formula === undefined && !('num' in d)) return '';
       const f = derivedFormula(d);
       const type = f.trim().toUpperCase() === 'EVENT #' ? 'eventNumber' : 'algebraic';
       const t = fjTransform(ws.channelTransforms[d.name] ?? { kind: 'linear', T: d.formula !== undefined ? 1000 : 16, A: 0 }, warn, d.name, 0);
@@ -228,7 +238,7 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
         .map((p) => {
           const count = counts?.[p.id];
           const ownerName = p.owningGroup ? ws.groups.find((g) => g.id === p.owningGroup)?.name : undefined;
-          const head = `name="${esc(p.name)}"${ownerName ? ` owningGroup="${esc(ownerName)}"` : ''} count="${count ?? -1}"`;
+          const head = `name="${esc(p.name)}"${p.annotation ? ` annotation="${esc(p.annotation)}"` : ''}${ownerName ? ` owningGroup="${esc(ownerName)}"` : ''} count="${count ?? -1}"`;
           if (p.gate.type === 'boolean') {
             const tag = p.gate.op === 'and' ? 'AndNode' : p.gate.op === 'or' ? 'OrNode' : 'NotNode';
             if (p.gate.operands.some((o) => o.complement)) warn(`"${path(p)}" uses a complemented operand; FlowJo boolean nodes have no such flag, written without it`);
@@ -252,7 +262,7 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
     const tx = [...scales.entries()].map(([name, t]) => t.xml(name)).join('');
     const total = s.eventCount || -1;
     sampleXml.push(
-      `<Sample><DataSet uri="file:/${esc(encodeURIComponent(s.fileName))}" sampleID="${sid}" />${matrixXml}<Transformations>${tx}</Transformations><Keywords>${kw}</Keywords><SampleNode name="${esc(s.fileName)}" count="${total}" sampleID="${sid}">${tree}</SampleNode></Sample>`,
+      `<Sample><DataSet uri="file:/${esc(encodeURIComponent(s.fileName))}" sampleID="${sid}" />${matrixXml}<Transformations>${tx}</Transformations><Keywords>${kw}</Keywords><SampleNode name="${esc(s.fileName)}"${s.nodeAnnotation ? ` annotation="${esc(s.nodeAnnotation)}"` : ''} count="${total}" sampleID="${sid}">${tree}</SampleNode></Sample>`,
     );
   });
   // Live keyword groups are written as FlowJo criteria (plus their current
@@ -287,22 +297,39 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
   if (!ws.samples.length) fail('WORKSPACE_INVALID', 'Workspace has no samples to export');
   // The layout (specs 25.4): page, iteration and figures in FlowJo's LayoutEditor element.
   const layoutXml = () => {
-    if (!ws.layout?.length && !ws.layoutPage && !ws.layoutIteration) return '';
-    const page = ws.layoutPage ?? { paper: 'letter', orientation: 'portrait' };
-    const [pw, ph] = page.paper === 'a4' ? [595.3, 841.9] : [612, 792];
-    const it = ws.layoutIteration ?? { type: 'OFF' as const };
-    const iter = `<Iteration iterationType="${it.type}"  iterationValue=""  iterationKeyword="${it.type === 'KEYWORD' ? esc(it.keyword) : ''}"  discriminator="${it.type === 'KEYWORD' && it.discriminator ? esc(it.discriminator) : ''}"  panelSize="${it.type === 'PANEL' ? it.size : 1}"  groupName="workspaceSelection" />`;
+    const others = ws.otherLayouts ?? [];
+    if (!ws.layout?.length && !ws.layoutPage && !ws.layoutIteration && !others.length) return '';
     const sid = (appId: string | undefined) => String(Math.max(0, ws.samples.findIndex((x) => x.id === appId)) + 1);
-    const param = (appId: string | undefined, ch: string) => (appId && input.sampleMatrix(appId)?.channels.includes(ch) ? `${PREFIX}${ch}` : ch);
-    const figs = writeFigList(ws.layout ?? [], ws.layoutGrids ?? [], sid, param);
-    return `<LayoutEditor current="Layout"  showGrid="0"  showPageBreaks="1"  showGuides="0" ><Layout name="Layout"  isBatch="0"  showGrid="0"  showRulers="1"  showGuides="0"  showPageBreaks="1"  scale="1" ><PrintLayout rows="1"  columns="1"  padding="36"  scalingMode="fj.print.scale.none"  scaling="1"  orientation="${page.orientation === 'landscape' ? 0 : 1}"  width="${pw}"  height="${ph}" />${iter}${figs}</Layout></LayoutEditor>`;
+    // No sample (plate statistics, unbound charts): the first sample, as sid() does.
+    const param = (appId: string | undefined, ch: string) => { const a = appId ?? ws.samples[0]?.id; return a && input.sampleMatrix(a)?.channels.includes(ch) ? `${PREFIX}${ch}` : ch; };
+    // One <Layout> per layout (ui-gaps/layout.md); LayoutEditor@current names the current one.
+    const one = (l: SavedLayout) => {
+      const page = l.layoutPage ?? { paper: 'letter', orientation: 'portrait' };
+      const [pw, ph] = page.paper === 'a4' ? [595.3, 841.9] : [612, 792];
+      const it = l.layoutIteration ?? { type: 'OFF' as const };
+      const iter = `<Iteration iterationType="${it.type}"  iterationValue=""  iterationKeyword="${it.type === 'KEYWORD' ? esc(it.keyword) : ''}"  discriminator="${it.type === 'KEYWORD' && it.discriminator ? esc(it.discriminator) : ''}"  panelSize="${it.type === 'PANEL' ? it.size : 1}"  groupName="${l.layoutGroup ? esc(l.layoutGroup) : 'workspaceSelection'}" />`;
+      const figs = writeFigList(l.layout ?? [], l.layoutGrids ?? [], sid, param, { statColumns: ws.statColumns });
+      const scale = page.scale && page.scale > 0 ? page.scale : 1;
+      return `<Layout name="${esc(l.name)}"  isBatch="0"  showGrid="0"  showRulers="1"  showGuides="0"  showPageBreaks="1"  scale="1" ><PrintLayout rows="1"  columns="1"  padding="36"  scalingMode="${scale === 1 ? 'fj.print.scale.none' : 'fj.print.scale.custom'}"  scaling="${+scale.toFixed(10)}"  orientation="${page.orientation === 'landscape' ? 0 : 1}"  width="${pw}"  height="${ph}" />${iter}${figs}</Layout>`;
+    };
+    const cur = currentLayout(ws);
+    return `<LayoutEditor current="${esc(cur.name)}"  showGrid="0"  showPageBreaks="1"  showGuides="0" >${[cur, ...others].map(one).join('')}</LayoutEditor>`;
   };
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <Workspace version="20.0" flowJoVersion="flowjo-rea export (unvalidated)" xmlns:gating="http://www.isac-net.org/std/Gating-ML/v2.0/gating" xmlns:transforms="http://www.isac-net.org/std/Gating-ML/v2.0/transformations" xmlns:data-type="http://www.isac-net.org/std/Gating-ML/v2.0/datatypes">
-<Groups>${groups}</Groups>
+${columnsXml(ws)}<Groups>${groups}</Groups>
 <SampleList>${sampleXml.join('\n')}</SampleList>
 ${layoutXml()}
+${scriptsXml(ws.scripts)}${ws.experiment ? experimentXml(ws.experiment) : ''}
 </Workspace>
 `;
   return { xml, warnings };
+}
+
+// Workspace table columns (FlowJo <Columns>: TColumn width, Property key or
+// Keyword name; docs/validation/ui-gaps/workspace.md, T1). Written only when
+// the columns differ from the default.
+function columnsXml(ws: Workspace): string {
+  if (!ws.tableColumns?.length) return '';
+  return `<Columns>${ws.tableColumns.map((c) => `<TColumn${c.width ? ` width="${Math.round(c.width)}"` : ''} >${c.key.startsWith('kw:') ? `<Keyword name="${esc(c.key.slice(3))}" />` : `<Property key="${esc(c.key)}" />`}</TColumn>`).join('')}</Columns>\n`;
 }

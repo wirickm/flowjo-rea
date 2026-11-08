@@ -62,7 +62,11 @@ export type Gate =
   // FlowJo anchored range (TetheredRangeGate, specs 10.6): a 1-D range whose
   // bounds are a live statistic times a multiplier; a missing bound is open.
   | { type: 'anchored'; dims: [Dimension]; min: AnchorBound | null; max: AnchorBound | null }
-  | { type: 'boolean'; op: 'and' | 'or' | 'not'; operands: { ref: string; complement?: boolean }[] };
+  | { type: 'boolean'; op: 'and' | 'or' | 'not'; operands: { ref: string; complement?: boolean }[] }
+  // FlowJo FileMaskGate (script gating.fileMask, docs/validation/ui-gaps/
+  // workspace.md O2): the events marked in a file, one row per event; bits is
+  // base64, bit i (LSB first) set = event i inside (src/core/scriptApi.ts).
+  | { type: 'mask'; dims: []; file: string; bits: string };
 
 // A statistic of a population of the same sample (populationPath '' = all
 // events) times a multiplier, in scale (data) units. scale: the FlowJo channel
@@ -91,6 +95,12 @@ export interface Population {
   magnetic?: boolean;
   // Tree expansion (FlowJo expanded="0|1"; specs 22.4); undefined = expanded.
   collapsed?: boolean;
+  // FlowJo gate colour (Gate.setTint) and Tint (Gate.setTinted): a tinted gate
+  // is drawn in its colour with a 40% fill.
+  tint?: string;
+  tinted?: boolean;
+  // FlowJo node annotation (AppNode.fAnnotation, the "annotation" attribute).
+  annotation?: string;
 }
 
 export interface SampleState {
@@ -103,6 +113,7 @@ export interface SampleState {
   populations: Population[];
   keywordsSnapshot: Record<string, string>;
   annotations?: Record<string, string>; // user-entered sample metadata
+  nodeAnnotation?: string; // FlowJo sample node annotation (AppNode.fAnnotation)
   // Edited parameter stains ($PnS) by parameter name; they replace the file's
   // stain in axis labels, gate names and the Keywords window (specs 18.1).
   stains?: Record<string, string>;
@@ -129,6 +140,9 @@ export interface Group {
   // FlowJo group display: text colour (#rrggbb) and font style.
   color?: string;
   fontStyle?: 'plain' | 'bold' | 'italic';
+  // Template analysis (Export as Template, src/core/template.ts): the
+  // group-owned populations a workspace template gives to new members.
+  analysis?: Population[];
 }
 
 export type GroupRole = 'undefined' | 'test' | 'controls' | 'replicate' | 'compensation' | 'instrumentation' | 'baseline' | 'gatingLevel';
@@ -175,22 +189,56 @@ export interface Workspace {
   // FlowJo Kinetics node settings and timeslices per population path (specs 11).
   kinetics?: Record<string, import('./kinetics').KineticsSettings>;
   layout?: LayoutItem[];
+  // Several layouts (FlowJo's layout list, ui-gaps/layout.md): the fields above are the
+  // current layout, named layoutName (default "Layout"); the others are kept here.
+  layoutName?: string;
+  otherLayouts?: SavedLayout[];
+  // Iteration Group of the current layout (Iteration groupName): a group name;
+  // absent = the workspace's selected group ("workspaceSelection").
+  layoutGroup?: string;
+  // Header / footer of printed layout pages (workspace-wide, as FlowJo's prefs).
+  layoutHeaderFooter?: import('./layoutFigures').HeaderFooter;
+  // Figure presets (FigPreset): named figure properties to apply to figures.
+  layoutFigPresets?: import('./layoutFigures').FigPreset[];
   statTemplates?: { id: string; name: string; columns: StatColumn[] }[];
   // FlowJo table editor templates (specs 17).
   tables?: import('./tableEditor').TableTemplate[];
   derivedParameters?: DerivedParameter[];
+  // FlowJo Plate Editor definitions (src/core/plate.ts, ui-gaps/platforms.md).
+  plateEditor?: import('./plate').PlateEditorState;
+  // Workspace table columns (FlowJo <Columns>, Edit Columns) and sort keys
+  // (src/core/workspaceTable.ts); absent = Name, Statistic, #Cells, unsorted.
+  tableColumns?: TableColumn[];
+  tableSort?: { key: string; ascending: boolean }[];
+  // FlowJo scripts (<Scripts>, Script Editor; src/core/fjScript.ts).
+  scripts?: import('./fjScript').FJScript[];
+  // Annotate Experiment (MIFlowCyt, the workspace's <experiment> element).
+  experiment?: import('./miflowcyt').Experiment;
 }
+
+// key: a FlowJo property key ("fj.appnode.prop.name") or "kw:<keyword>".
+export interface TableColumn { key: string; width?: number }
 
 // A user-defined channel. formula: a FlowJo 10 algebraic derived parameter
 // (src/core/formula.ts, specs 12), evaluated per event on the sample's
 // compensated values; "Event #" alone is the event number. Without a
 // formula: this app's earlier ratio A*(num-B)/(den-C), kept so older
 // workspaces open unchanged.
+// imported: FlowJo "Import Parameters from CSV/CLR..." (src/core/paramImport.ts):
+// per-event values read from a file, base64 float32 per sample id; other
+// samples see NaN. gateDerived: FlowJo Consensus Gate / Cluster Frequency
+// (src/core/clusterParams.ts), recomputed from the populations of one sample
+// (clusterFrequency: populations[0] is the primary population).
 export type DerivedParameter =
   | { name: string; formula: string }
-  | { name: string; formula?: undefined; num: string; den: string; A: number; B: number; C: number };
-// The formula FlowJo would store for a derived parameter.
-export const derivedFormula = (d: DerivedParameter) => (d.formula !== undefined ? d.formula : `${d.A}*(${d.num}-${d.B})/(${d.den}-${d.C})`);
+  | { name: string; formula?: undefined; num: string; den: string; A: number; B: number; C: number }
+  | { name: string; formula?: undefined; imported: { source: 'csv' | 'clr'; file: string; range: number; data: Record<string, string> } }
+  | { name: string; formula?: undefined; gateDerived: { type: 'consensus' | 'clusterFrequency'; sampleId: string; populations: string[] } };
+// The ratio form of an older derived parameter, if it is one.
+export const isRatioDerived = (d: DerivedParameter): d is Extract<DerivedParameter, { num: string }> => 'num' in d && d.formula === undefined;
+// The formula FlowJo would store for a derived parameter ('' for imported and
+// gate-derived parameters, which have none).
+export const derivedFormula = (d: DerivedParameter) => (d.formula !== undefined ? d.formula : isRatioDerived(d) ? `${d.A}*(${d.num}-${d.B})/(${d.den}-${d.C})` : '');
 
 export interface PlotSettings {
   x: string;
@@ -207,10 +255,30 @@ export interface PlotSettings {
   hideGateFreq?: boolean;
   hideGateNames?: boolean;
   colorBy?: string; // colour axis parameter (specs 24.1)
+  // Graph window options (docs/validation/ui-gaps/graph.md, src/core/graphDisplay.ts).
+  smoothing?: number; // 0 off, 6..208 on; undefined = the plot type's default
+  resolution?: number; // 256 .. 4096
+  nDots?: number; // dot plot: events drawn (default 8000)
+  yMax?: number; // histogram Y axis top; undefined = Auto
+  foreColor?: string; // #rrggbb dots / curves / contour lines
+  backColor?: string; // #rrggbb plot background
 }
 
-// A layout cell: a plot rendered for whichever sample is chosen, or a text block.
-export type LayoutItem = LayoutPlot | LayoutText;
+// A layout that is not the current one.
+export interface SavedLayout {
+  name: string;
+  layout?: LayoutItem[];
+  layoutPage?: import('./layoutArrange').PageSetup;
+  layoutIteration?: import('./layoutArrange').LayoutIteration;
+  layoutGuides?: import('./layoutArrange').Guides;
+  layoutGrids?: import('./layoutArrange').GridDef[];
+  layoutGroup?: string;
+}
+
+// A layout cell: a plot rendered for whichever sample is chosen, a text block,
+// a drawn shape (rectangle, ellipse, line) or an inserted image.
+export type LayoutItem = LayoutPlot | LayoutText | LayoutShape | LayoutImage | LayoutObject;
+export const isPlotItem = (it: LayoutItem): it is LayoutPlot => it.text === undefined && it.shape === undefined && it.image === undefined && it.object === undefined;
 // Position, size and z-order (list order) in points, as in FlowJo 10's layout
 // editor (specs 21); items without a position get one from their index.
 export interface LayoutPlace {
@@ -221,6 +289,10 @@ export interface LayoutPlace {
   locked?: boolean; // position lock (le.lock.position)
   groupId?: string; // grouped items move, align and order together
   cell?: { grid: string; row: number; col: number }; // cell of a grid figure (specs 25.2)
+  sizeLock?: boolean; // Lock Size (le.lock.size): no resizing
+  contentLock?: boolean; // Lock Content (le.lock.content): settings and text fixed
+  aspectLock?: boolean; // aspectRatioLock: resizing keeps the aspect ratio
+  style?: import('./layoutFigures').FigStyle; // Figure Properties: fill, line, gradient
 }
 export interface LayoutPlot extends PlotSettings, LayoutPlace {
   id: string;
@@ -234,13 +306,67 @@ export interface LayoutPlot extends PlotSettings, LayoutPlace {
   adjunct?: boolean; // Show Adjunct Histograms (N5)
   ancestry?: boolean; // Show Ancestry (N3)
   backgating?: boolean; // with Backgating (N4; needs ancestry)
-  multigraph?: 'histograms' | 'nxn'; // Show Multigraph (N6)
+  multigraph?: 'histograms' | 'nxn' | 'halfnxn' | 'allby' | 'slinky'; // Show Multigraph (N6)
   multiParams?: string[]; // its parameters (at most 10)
+  multiKind?: 'pseudocolor' | 'dot' | 'contour'; // Make NxN Dot / Contour / Pseudocolor Plots
+  legend?: boolean; // Legend toggle (ChartCommand.SHOWLEGEND); default on
+  ancestryVertical?: boolean; // ancestry charts in a column (BACKGATINGVERT)
+  backgateLarge?: boolean; // backgated population as large dots (BACKGATELARGE)
+  backgateContours?: boolean; // backgated population as contours (BACKGATECONTOURS)
+  empty?: boolean; // Remove Data from Chart: an empty drop box
+  // Set As Control (LegendSpec@control): overlay paths that keep the chart's own
+  // sample when the layout iterates (src/core/layoutObjects.ts).
+  controls?: string[];
+  // Legend columns (LegendModel, legend Properties); absent = Sample Name, Subset Name, Count.
+  legendColumns?: import('./layoutTables').StatTableColumn[];
+  compMatrix?: string; // matrix override (Copy To New Layout from the matrix editor)
   text?: undefined;
+  shape?: undefined;
+  image?: undefined;
+  object?: undefined;
 }
 export interface LayoutText extends LayoutPlace {
   id: string;
+  // Live fields: {{keyword:NAME}} and {{anno:KEY}} (Insert Keyword / Annotation).
   text: string;
+  font?: string; // font family (default SansSerif)
+  size?: number; // pt (default 11)
+  bold?: boolean;
+  italic?: boolean;
+  color?: string;
+  shape?: undefined;
+  image?: undefined;
+  object?: undefined;
+}
+// Drawing tools (FigRect, FigEllipse, FigRoundRect, FigLine). A line runs
+// between two corners of its box: ends = [x1, y1, x2, y2], each 0 (left / top)
+// or 1 (right / bottom).
+export interface LayoutShape extends LayoutPlace {
+  id: string;
+  shape: 'rect' | 'ellipse' | 'roundrect' | 'line';
+  ends?: [number, number, number, number];
+  arrow?: 'none' | 'forward' | 'backward' | 'double';
+  text?: undefined;
+  image?: undefined;
+  object?: undefined;
+}
+// Insert Graphic (FigImage): image is a data: or http(s) URL.
+export interface LayoutImage extends LayoutPlace {
+  id: string;
+  image: string;
+  text?: undefined;
+  shape?: undefined;
+  object?: undefined;
+}
+// Statistic table, difference table, table-editor table, plate display and web
+// page figures (FigStatTable, FigDifferenceTable, FigTableDisplay,
+// FigPlateDisplay, FigWebBrowser; src/core/layoutTables.ts, layoutPlate.ts).
+export interface LayoutObject extends LayoutPlace {
+  id: string;
+  object: import('./layoutTables').LayoutObjectSpec;
+  text?: undefined;
+  shape?: undefined;
+  image?: undefined;
 }
 
 export type StatKind =

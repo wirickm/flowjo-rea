@@ -71,7 +71,7 @@ export function drawableGates(pops: Population[], parentId: string | null, x: Ax
   for (const p of pops) {
     if (p.parentId !== parentId) continue;
     const g = p.gate;
-    if (g.type === 'boolean') continue;
+    if (g.type === 'boolean' || g.type === 'mask') continue;
     const ch = g.dims.map((d) => (d.kind === 'channel' ? d.channel : null));
     if (g.type === 'rect') {
       if (y && g.dims.length === 2 && ch[0] === x.channel && ch[1] === y.channel) {

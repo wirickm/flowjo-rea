@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { boxToFrame, frameToBox, parseFigList, writeFigList } from '../src/core/wspLayout';
 import { parseXml } from '../src/core/xml';
-import { emptyWorkspace, type LayoutItem } from '../src/core/model';
+import { emptyWorkspace, isPlotItem, type LayoutItem } from '../src/core/model';
 import { parseWsp } from '../src/core/wsp';
 import { writeWsp } from '../src/core/wspWriter';
 
@@ -37,6 +37,7 @@ const FIG = `<FigList>
     <Labels><Row index="0"  column="1" /><Column index="1"  row="0" /></Labels>
   </GridLayout>
   <Image url="logo.png"  x="0"  y="0"  width="10"  height="10" />
+  <HeatMapGridLayout x="0"  y="0"  width="10"  height="10" />
 </FigList>`;
 
 const strip = (n: string) => n.replace(/^Comp-/, '');
@@ -58,7 +59,12 @@ describe('.wsp layout figures (specs 25.4)', () => {
     expect(r.items[4]).toMatchObject({ kind: 'histogram', cell: { row: 0, col: 1 } });
   });
   it('unsupported figures are reported', () => {
-    expect(r.warnings.join('\n')).toMatch(/Image \(1\) is not supported/);
+    expect(r.warnings.join('\n')).toMatch(/HeatMapGridLayout \(1\) is not supported/);
+    expect(r.items.length).toBe(6);
+  });
+  it('an Image figure is imported with its URL (Insert Graphic)', () => {
+    expect(r.items[5]).toMatchObject({ image: 'logo.png', left: 0, top: 0, width: 10, height: 10 });
+    expect(r.warnings.join('\n')).not.toMatch(/Image/);
   });
   it('writes the figures back so they read the same', () => {
     const xml = writeFigList(r.items, r.grids, (id) => (id === 's3' ? '3' : '1'), (_id, ch) => (ch.startsWith('CD') ? `Comp-${ch}` : ch));
@@ -66,7 +72,7 @@ describe('.wsp layout figures (specs 25.4)', () => {
     expect(xml).toContain('scaleH="0.625"');
     expect(xml).toContain('&amp;lt;html&amp;gt;');
     const back = parseFigList(parseXml(xml).documentElement, (sid) => (sid === '3' ? 's3' : undefined), (_sid, n) => strip(n));
-    const pick = (it: LayoutItem) => (it.text !== undefined ? { text: it.text, left: it.left } : { path: it.populationPath, x: it.x, y: it.y, kind: it.kind, left: it.left, top: it.top, cell: it.cell ? `${it.cell.row},${it.cell.col}` : '' });
+    const pick = (it: LayoutItem) => (it.text !== undefined ? { text: it.text, left: it.left } : !isPlotItem(it) ? { left: it.left } : { path: it.populationPath, x: it.x, y: it.y, kind: it.kind, left: it.left, top: it.top, cell: it.cell ? `${it.cell.row},${it.cell.col}` : '' });
     expect(back.items.map(pick)).toEqual(r.items.map(pick));
     expect(back.grids[0]).toMatchObject({ rows: 1, cols: 2, cellW: 192 });
   });
@@ -85,6 +91,6 @@ describe('.wsp layout figures (specs 25.4)', () => {
     const back = parseWsp(xml).workspace;
     expect(back.layoutPage).toEqual({ paper: 'letter', orientation: 'landscape' });
     expect(back.layoutIteration).toEqual({ type: 'SAMPLE' });
-    expect(back.layout?.map((it) => (it.text !== undefined ? it.text : `${it.populationPath}|${it.kind}|${it.sampleId}`))).toEqual(['Lymph|dot|s1', 'Figure 1']);
+    expect(back.layout?.map((it) => (it.text !== undefined ? it.text : !isPlotItem(it) ? '' : `${it.populationPath}|${it.kind}|${it.sampleId}`))).toEqual(['Lymph|dot|s1', 'Figure 1']);
   });
 });

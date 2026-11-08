@@ -265,6 +265,7 @@ export function exportGatingMl(pops: Population[], matrices: SpilloverMatrix[], 
     if (p.exclude && g.type === 'boolean') fail('UNSUPPORTED_FEATURE', `Exclusion flag on boolean population "${p.name}" is not exported`);
     if (g.type === 'anchored') fail('UNSUPPORTED_FEATURE', `Anchored range "${p.name}" has no Gating-ML 2.0 representation`);
     if (g.type === 'splineQuadrant') fail('UNSUPPORTED_FEATURE', `Spline quadrant "${p.name}" has no Gating-ML 2.0 representation`);
+    if (g.type === 'mask') fail('UNSUPPORTED_FEATURE', `File mask gate "${p.name}" has no Gating-ML 2.0 representation`);
     const head = `gating:id="${esc(gid)}"${p.parentId ? ` gating:parent_id="${esc(p.parentId)}"` : ''}`;
     const nameInfo = `<data-type:custom_info><name>${esc(p.exclude ? `${p.name} (gate)` : p.name)}</name></data-type:custom_info>`;
     if (g.type === 'rect') {

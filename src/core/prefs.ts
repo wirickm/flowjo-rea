@@ -15,8 +15,22 @@ export interface Prefs {
   useStainForGateName: boolean;
   dontAsk: string[]; // message keys answered "don't ask again"
   gateNames: string[]; // Gates / common gate names: the gate namer's Favorites (specs 18.2)
+  // Graphs (docs/validation/ui-gaps/graph.md): scientificNotation (log axis
+  // labels as 10 with superscripts, default on), smoothing1D (new histograms
+  // smoothed, default on), dotsToDraw (default 8000), adjustColor (offer
+  // "Adjust color table" in the graph menu, default off), colorTable (the
+  // pseudocolor table, '' = built in; segments "start-end-entries-linear|log").
+  scientificNotation: boolean;
+  smoothing1D: boolean;
+  dotsToDraw: number;
+  adjustColor: boolean;
+  colorTable: string;
+  // Compensation: the hidden FlowJo preference element WeightOptimization
+  // (type EventBasedOptimizationProcessing, show on) that makes Optimize
+  // Weights ask for the method (OptimizeWeightDialog). Default off.
+  eventWeightOptimization: boolean;
 }
-export const DEFAULT_PREFS: Prefs = { noUndo: false, autoSave: false, autoSaveMinutes: 10, resetDontAskOnExit: false, eventsOnAxis: true, warningThreshold: 5, useStainForGateName: true, dontAsk: [], gateNames: [] };
+export const DEFAULT_PREFS: Prefs = { noUndo: false, autoSave: false, autoSaveMinutes: 10, resetDontAskOnExit: false, eventsOnAxis: true, warningThreshold: 5, useStainForGateName: true, dontAsk: [], gateNames: [], scientificNotation: true, smoothing1D: true, dotsToDraw: 8000, adjustColor: false, colorTable: '', eventWeightOptimization: false };
 
 // Confirmations that offer "Don't ask again" (STreeMgr.confirmNodeDeletion);
 // group deletion always asks.

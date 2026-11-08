@@ -1052,6 +1052,26 @@ Implemented in `src/core/compFlowjo.ts` and the Compensation dialog.
   switches to f = 0.3333 with damping 0.5, the third ends the search; it also
   ends after sweep index 50. Full rules: `docs/validation/ui-gaps/
   compensation.md`, OPTIMIZEWT. Implemented in `src/core/weightOptimizer.ts`.
+- Event-weighted unmixing (matrix type EventBasedOptimizationProcessing,
+  `Compensator::PreCompensate` / `Compensate`): per event, weights
+  w_d = 1 / (x_d + lambda_d) on the raw detector values replace the static
+  weights, then (S W S^T) f = S W x. lambda_d = entry d of the matrix's
+  lambdas list when engineBasedLambda is set and the list is not empty,
+  else the matrix lambda; a lambda of 0.001 or less reads as 0.001
+  (`CompensationSpec::FromXML`). Implemented in `src/core/compensation.ts`
+  (`eventLambdas`, `unmixEventWeighted`; Gaussian elimination instead of
+  QR, own rule).
+- Event-based optimisation (`RunVariableLambdaProcessing`, request type 2,
+  only with engineBasedLambda): lambda_d = mean over the controls of the
+  squared SD statistic (type 7) of raw detector d in the control's negative
+  population; the controls are unmixed with those lambdas and their SSM is
+  returned with the lambdas. Progress 0.5% "Compensating.", 100% "Current
+  best SSM sum is X. ". The Java side then stores the model with
+  engineBasedLambda off and lambda 0 (the result has no lambda attribute),
+  so 10.6.2 afterwards unmixes with lambda 0.001; the lambdas are kept but
+  unused. Implemented in `src/core/weightOptimizer.ts` (`EventOptimization`).
+  Fully decoded; not checked against FlowJo output (no event-based
+  reference workspace exists).
 
 ### 14.4 Applying a matrix (matches)
 

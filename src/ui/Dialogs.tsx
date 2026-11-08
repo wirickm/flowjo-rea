@@ -10,7 +10,8 @@ import { compileFormula, defaultDerivedName, derivedNameError, EVENT_NUMBER, FOR
 import { specForKind } from './axes';
 import { readMtx, ssmCsv, writeMatrixCsv, writeMtx, type FlowjoWizardResult } from '../core/compFlowjo';
 import { animationScales, compareMatrices, DEFAULT_ZOOM, duplicateMatrix, fitZoom, fromDisplay, identityMatrix, loadCompPrefs, removeUnusedParameters, saveCompPrefs, scaleLabel, scaleSpillover, ssmWithSums, toDisplay, zoomIn, zoomOut, type CompPrefs, type CompView } from '../core/compEditor';
-import { CompPlotGrid, MATRIX_DRAG_TYPE, OptimizeWeightsPanel, WeightsPanel, type PopPick, type WeightOptResult } from './CompEditor';
+import { eventUnmixText } from '../core/weightOptimizer';
+import { CompPlotGrid, MATRIX_DRAG_TYPE, OptimizeWeightsPanel, WeightsPanel, type EventOptResult, type PopPick, type WeightOptResult } from './CompEditor';
 
 function saveText(name: string, text: string, type: string) {
   const url = URL.createObjectURL(new Blob([text], { type }));
@@ -163,6 +164,7 @@ export function CompensationDialog(p: {
   onFlowjoWizard: (entries: { sampleId: string; primary: string; posPath: string | null; negSampleId: string; negPath: string | null }[]) => Promise<FlowjoWizardResult & { ssm: { channels: string[]; values: number[][] } }>;
   // Optimize Weights (OPTIMIZEWT) for a spectral matrix; null when cancelled.
   onOptimizeWeights?: (matrix: SpilloverMatrix, controls: { pos: PopPick; neg: PopPick }[], onProgress: (pr: { fraction: number; message: string }) => void, cancelled: () => boolean) => Promise<WeightOptResult | null>;
+  onOptimizeEvent?: (matrix: SpilloverMatrix, controls: { pos: PopPick; neg: PopPick }[], onProgress: (pr: { fraction: number; message: string }) => void, cancelled: () => boolean) => Promise<EventOptResult | null>;
 }) {
   const [fj, setFj] = useState<Record<string, { primary: string; pos: string; neg: string }>>({});
   const [univ, setUniv] = useState('');
@@ -472,7 +474,7 @@ export function CompensationDialog(p: {
         <>
           <p className="muted">
             {m.values.length !== m.channels.length
-              ? `Spectral matrix: ${m.values.length} fluorochromes (rows) x ${m.channels.length} detectors (columns); unmixed by ${m.weights ? 'weighted' : 'ordinary'} least squares. Unmixed channels appear in channel lists under the fluorochrome names.`
+              ? `Spectral matrix: ${m.values.length} fluorochromes (rows) x ${m.channels.length} detectors (columns); unmixed by ${eventUnmixText(m) ?? `${m.weights ? 'weighted' : 'ordinary'} least squares`}. Unmixed channels appear in channel lists under the fluorochrome names.`
               : 'Spillover: row = fluorochrome channel, column = detector receiving spillover. Diagonal should be 1.'}
             {prefs.usePercent ? ' Values in percent.' : ''}
           </p>
@@ -489,7 +491,10 @@ export function CompensationDialog(p: {
             {isSpectral(m) && p.onOptimizeWeights && p.samples && <button data-testid="comp-optimize-weights" title="Optimize the detector weights of the weighted least squares unmixing so that the spillover spreading of the single-stain controls is smallest." onClick={() => setOptOpen(!optOpen)}>Optimize Weights</button>}
           </div>
           {weightsOpen && isSpectral(m) && <WeightsPanel matrix={m} save={(n, t) => saveText(n, t, 'text/csv')} onClose={(w) => { setMats(mats.map((x) => (x.id === m.id ? { ...m, weights: w.every((v) => v === 1) ? undefined : w } : x))); setWeightsOpen(false); }} />}
-          {optOpen && isSpectral(m) && p.onOptimizeWeights && p.samples && <OptimizeWeightsPanel matrix={m} samples={p.samples} onRun={(c, pr, cx) => p.onOptimizeWeights!(m, c, pr, cx)} onClose={() => setOptOpen(false)} onDone={(r) => setMats((all) => all.map((x) => (x.id === m.id ? { ...x, weights: r.weights, ssm: { channels: m.outputNames ?? [], values: r.ssm } } : x)))} />}
+          {optOpen && isSpectral(m) && p.onOptimizeWeights && p.samples && <OptimizeWeightsPanel matrix={m} samples={p.samples} onRun={(c, pr, cx) => p.onOptimizeWeights!(m, c, pr, cx)} onRunEvent={p.onOptimizeEvent && ((c, pr, cx) => p.onOptimizeEvent!(m, c, pr, cx))} onClose={() => setOptOpen(false)}
+            onDone={(r) => setMats((all) => all.map((x) => (x.id === m.id ? { ...x, weights: r.weights, ssm: { channels: m.outputNames ?? [], values: r.ssm }, weightOptimization: undefined } : x)))}
+            onEventModel={(model, ssm) => setMats((all) => all.map((x) => (x.id === m.id ? { ...x, weightOptimization: model, ...(ssm ? { ssm: { channels: m.outputNames ?? [], values: ssm } } : {}) } : x)))}
+            onClearWeights={() => setMats((all) => all.map((x) => (x.id === m.id ? { ...x, weights: undefined } : x)))} />}
           {ssmView && m.ssm ? (() => {
             const t = ssmWithSums(m.ssm.values);
             return (

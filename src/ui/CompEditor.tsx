@@ -3,10 +3,11 @@
 // compensation.md): the live plot grid of the preview population compensated
 // with the matrix being edited, and the spectral weights panel.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { SpilloverMatrix } from '../core/compensation';
+import type { SpilloverMatrix, WeightOptimizationModel } from '../core/compensation';
 import { compensateEvents, gridCells, parseWeightsCsv, PLOT_SIZE, weightsCsv, WEIGHTS_FILE, type CompView } from '../core/compEditor';
 import { makeTransform, type TransformSpec } from '../core/transforms';
-import { hasCustomWeights, OVERWRITE_PROMPT, PROGRESS_NOTE } from '../core/weightOptimizer';
+import { loadPrefs } from '../core/prefs';
+import { EVENT_BASED, eventModelForLambda, eventModelFromResult, hasCustomWeights, LAMBDA_INFO, METHOD_DIALOG_TITLE, OVERWRITE_PROMPT, parseLambda, PROGRESS_NOTE, SAMPLE_BASED } from '../core/weightOptimizer';
 
 // Drag type of the Matrix Icon (plat.comp.apply.drag): drop it on a sample or
 // group to apply the matrix there.
@@ -162,23 +163,38 @@ export function WeightsPanel(p: { matrix: SpilloverMatrix; onClose: (weights: nu
   );
 }
 
-// Optimize Weights (CompCommand.OPTIMIZEWT, SSM-based processing): one
-// single-stain control per fluorochrome with its positive and negative
-// populations; asks before overwriting customized weights, shows the
-// engine's progress, then stores the weights and the SSM on the matrix.
+// Optimize Weights (CompCommand.OPTIMIZEWT): one single-stain control per
+// fluorochrome with its positive and negative populations; asks before
+// overwriting customized weights. With the Event Based Weight Optimization
+// preference on, the "Weight Optimization Selection" dialog
+// (OptimizeWeightDialog) chooses the method first: Sample Based runs the SSM
+// search and stores weights and SSM; Event Based with Lambda 0 computes
+// variance based lambdas and the SSM; another Lambda is stored on the matrix
+// without a run. Close runs nothing.
 export type PopPick = { sampleId: string; path: string };
 export interface WeightOptResult { weights: number[]; ssm: number[][]; iterations: number }
+export interface EventOptResult { lambdas: { name: string; value: number }[]; ssm: number[][] }
+type Progress = (pr: { fraction: number; message: string }) => void;
 export function OptimizeWeightsPanel(p: {
   matrix: SpilloverMatrix;
   samples: { id: string; fileName: string; loaded: boolean; paths: string[] }[];
-  onRun: (controls: { pos: PopPick; neg: PopPick }[], onProgress: (pr: { fraction: number; message: string }) => void, cancelled: () => boolean) => Promise<WeightOptResult | null>;
+  onRun: (controls: { pos: PopPick; neg: PopPick }[], onProgress: Progress, cancelled: () => boolean) => Promise<WeightOptResult | null>;
+  onRunEvent?: (controls: { pos: PopPick; neg: PopPick }[], onProgress: Progress, cancelled: () => boolean) => Promise<EventOptResult | null>;
   onDone: (r: WeightOptResult) => void;
+  // Event-based model (and SSM when the engine ran) to store on the matrix.
+  onEventModel?: (model: WeightOptimizationModel, ssm?: number[][]) => void;
+  onClearWeights?: () => void;
   onClose: () => void;
 }) {
   const fluors = p.matrix.outputNames ?? p.matrix.values.map((_, k) => `Fluor ${k + 1}`);
   const [picks, setPicks] = useState<Record<string, { pos: string; neg: string }>>({});
   const [ask, setAsk] = useState(false);
+  const [choose, setChoose] = useState(false);
+  const [method, setMethod] = useState(SAMPLE_BASED);
+  const [lambdaText, setLambdaText] = useState('0');
+  const lastGood = useRef('0');
   const [running, setRunning] = useState(false);
+  const [eventRun, setEventRun] = useState(false);
   const [prog, setProg] = useState<{ fraction: number; message: string } | null>(null);
   const [err, setErr] = useState('');
   const [done, setDone] = useState('');
@@ -186,13 +202,49 @@ export function OptimizeWeightsPanel(p: {
   const options = p.samples.filter((s) => s.loaded).flatMap((s) => s.paths.map((path) => ({ v: `${s.id}|${path}`, label: `${s.fileName}: ${path}` })));
   const split = (v: string): PopPick => ({ sampleId: v.slice(0, v.indexOf('|')), path: v.slice(v.indexOf('|') + 1) });
   const ready = fluors.every((f) => picks[f]?.pos && picks[f]?.neg);
-  const run = async () => {
-    setAsk(false); setErr(''); setDone(''); setRunning(true); cancel.current = false;
-    try {
-      const r = await p.onRun(fluors.map((f) => ({ pos: split(picks[f].pos), neg: split(picks[f].neg) })), setProg, () => cancel.current);
-      if (r) { p.onDone(r); setDone(`Done. ${r.iterations} iterations; SSM sum ${r.ssm.flat().reduce((s, v) => s + v, 0).toFixed(3)}.`); }
-    } catch (e) { setErr((e as Error).message); }
+  const controls = () => fluors.map((f) => ({ pos: split(picks[f].pos), neg: split(picks[f].neg) }));
+  const runWith = async (body: () => Promise<string | null>, event = false) => {
+    setErr(''); setDone(''); setRunning(true); setEventRun(event); cancel.current = false;
+    try { const msg = await body(); if (msg) setDone(msg); } catch (e) { setErr((e as Error).message); }
     setRunning(false); setProg(null);
+  };
+  const runSample = () => runWith(async () => {
+    const r = await p.onRun(controls(), setProg, () => cancel.current);
+    if (!r) return null;
+    p.onDone(r);
+    return `Done. ${r.iterations} iterations; SSM sum ${r.ssm.flat().reduce((s, v) => s + v, 0).toFixed(3)}.`;
+  });
+  const runEvent = () => runWith(async () => {
+    const r = await p.onRunEvent!(controls(), setProg, () => cancel.current);
+    if (!r) return null;
+    p.onEventModel?.(eventModelFromResult(r.lambdas), r.ssm);
+    return `Done. Event based: variance based lambdas ${r.lambdas.map((l) => `${l.name} ${+l.value.toPrecision(4)}`).join(', ')}; SSM sum ${r.ssm.flat().reduce((s, v) => s + v, 0).toFixed(3)}.`;
+  }, true);
+  // CompensationAction OPTIMIZEWT after shouldOptimize: the preference is read
+  // at each click (isEventOptimizationEnabledInPrefs) and every click opens a
+  // new dialog (Sample Based, Lambda 0).
+  const proceed = () => {
+    setAsk(false);
+    if (loadPrefs().eventWeightOptimization && p.onRunEvent) { setMethod(SAMPLE_BASED); setLambdaText('0'); lastGood.current = '0'; setChoose(true); } else runSample();
+  };
+  // The Lambda field's verifier: an invalid value goes back to the last good
+  // one and the click that left the field does nothing.
+  const verifyLambda = (): number | null => {
+    const v = parseLambda(lambdaText);
+    if (v === null) { setLambdaText(lastGood.current); return null; }
+    lastGood.current = lambdaText;
+    return v;
+  };
+  const ok = () => {
+    if (method === SAMPLE_BASED) { setChoose(false); runSample(); return; }
+    const v = verifyLambda();
+    if (v === null) return;
+    setChoose(false);
+    const { runEngine, model } = eventModelForLambda(v);
+    if (runEngine) { runEvent(); return; }
+    p.onEventModel?.(model);
+    setErr('');
+    setDone(`Lambda ${model.lambda} stored on the matrix: events are unmixed with weights 1 / (value + lambda).`);
   };
   return (
     <div data-testid="comp-optimize-panel" style={{ border: '1px solid #c7cfdc', padding: 6, margin: '6px 0' }}>
@@ -215,20 +267,42 @@ export function OptimizeWeightsPanel(p: {
       {ask && (
         <div className="row" data-testid="comp-opt-confirm">
           <span>{OVERWRITE_PROMPT}</span>
-          <button data-testid="comp-opt-yes" onClick={run}>Yes</button>
+          <button data-testid="comp-opt-yes" onClick={() => { p.onClearWeights?.(); proceed(); }}>Yes</button>
           <button data-testid="comp-opt-no" onClick={() => setAsk(false)}>No</button>
+        </div>
+      )}
+      {choose && (
+        <div role="group" aria-label={METHOD_DIALOG_TITLE} data-testid="comp-opt-method-dialog" style={{ border: '1px solid #8a94a6', padding: 8, margin: '6px 0', background: '#f7f9fc' }}>
+          <b>{METHOD_DIALOG_TITLE}</b>
+          <div className="row">
+            <select data-testid="comp-opt-method" value={method} onChange={(e) => setMethod(e.target.value)} style={{ width: 300 }}>
+              <option value={SAMPLE_BASED}>{SAMPLE_BASED}</option>
+              <option value={EVENT_BASED}>{EVENT_BASED}</option>
+            </select>
+          </div>
+          {method === EVENT_BASED && (
+            <div className="row" data-testid="comp-opt-lambda-row">
+              <label>Lambda <input data-testid="comp-opt-lambda" style={{ width: 70, textAlign: 'right' }} value={lambdaText}
+                onChange={(e) => setLambdaText(e.target.value.replace(/[^0-9.eE+-]/g, ''))} onBlur={verifyLambda} /></label>
+              <b data-testid="comp-opt-lambda-info">{LAMBDA_INFO}</b>
+            </div>
+          )}
+          <div className="row">
+            <button data-testid="comp-opt-method-ok" onMouseDown={(e) => e.preventDefault()} onClick={ok}>OK</button>
+            <button data-testid="comp-opt-method-close" onClick={() => setChoose(false)}>Close</button>
+          </div>
         </div>
       )}
       {running && prog && (
         <div data-testid="comp-opt-progress">
           <progress max={1} value={prog.fraction} style={{ width: 240 }} /> <span data-testid="comp-opt-message">{prog.message}</span>
-          <p className="muted">{PROGRESS_NOTE}</p>
+          {!eventRun && <p className="muted">{PROGRESS_NOTE}</p>}
         </div>
       )}
       {err && <p className="error" data-testid="comp-opt-error">{err}</p>}
       {done && <p data-testid="comp-opt-done">{done}</p>}
       <div className="row">
-        <button disabled={!ready || running} data-testid="comp-opt-run" title={ready ? '' : 'Choose a positive and a negative population for every fluorochrome'} onClick={() => (hasCustomWeights(p.matrix.weights) ? setAsk(true) : run())}>Optimize</button>
+        <button disabled={!ready || running || choose} data-testid="comp-opt-run" title={ready ? '' : 'Choose a positive and a negative population for every fluorochrome'} onClick={() => (hasCustomWeights(p.matrix.weights) ? setAsk(true) : proceed())}>Optimize</button>
         {running && <button data-testid="comp-opt-cancel" onClick={() => { cancel.current = true; }}>Cancel</button>}
         <button disabled={running} data-testid="comp-opt-close" onClick={p.onClose}>Close</button>
       </div>

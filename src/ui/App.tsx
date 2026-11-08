@@ -1397,7 +1397,7 @@ export function App() {
       ...(pop ? [{ label: `${pop.tinted ? '* ' : ''}Tint`, testId: 'ctx-Tint', onClick: () => setGateLook(pop.id, { tinted: !pop.tinted }) }] as MenuItem[] : []),
       { label: 'Add Statistic', onClick: () => addStatFor(pop ? populationPath(sample.populations, pop.id) : popPath) },
       { label: 'Copy Image', onClick: () => copyPlotImage(true) },
-      { label: 'Copy Image Without Transparency', onClick: () => copyPlotImage(false) },
+      { label: 'Copy Image Without Transparency', testId: 'ctx-Copy-Image-Without-Transparency', onClick: () => copyPlotImage(false) },
       { label: 'Copy Histogram Function', disabled: kind !== 'histogram', onClick: copyHistogram },
       { label: 'Copy Statistics', onClick: copyStatistics },
       { label: 'Copy to Layout Editor', onClick: () => document.querySelector<HTMLButtonElement>('[data-testid=add-to-layout]')?.click() },
@@ -1406,10 +1406,10 @@ export function App() {
       // Peaks on histograms.
       ...(kind !== 'dot' && kind !== 'contour' ? [{ label: `${smoothing > 0 ? '* ' : ''}Smooth`, testId: 'ctx-Smooth', onClick: () => setPlotSettings({ smoothing: smoothing > 0 ? 0 : 13 }) }] : []),
       ...(prefs.adjustColor && (smoothing > 0 || kind === 'contour') ? [{ label: 'Adjust color table', onClick: () => setColorTableOpen(true) }] : []),
-      ...(xAxis?.channel === 'cluster' || yAxis?.channel === 'cluster' ? [{ label: 'Create Cluster Gates', onClick: clusterGates }] : []),
-      ...(kind === 'histogram' ? [{ label: 'Create Gates On Peaks', onClick: () => void run(gatesOnPeaks) }] : []),
+      ...(xAxis?.channel === 'cluster' || yAxis?.channel === 'cluster' ? [{ label: 'Create Cluster Gates', testId: 'ctx-Create-Cluster-Gates', onClick: clusterGates }] : []),
+      ...(kind === 'histogram' ? [{ label: 'Create Gates On Peaks', testId: 'ctx-Create-Gates-On-Peaks', onClick: () => void run(gatesOnPeaks) }] : []),
       null,
-      { label: 'Print...', onClick: printPlot },
+      { label: 'Print...', testId: 'ctx-Print', onClick: printPlot },
       { label: 'Make Movie...', disabled: groupSamples.length < 2, onClick: () => void makeMovie() },
       // GWNavAction SHOWCUBE "Show in 3D" (openCubeView): the 3D Viewer of this
       // population with the graph's X and Y axes.
@@ -2830,6 +2830,21 @@ export function App() {
               const r = await client.weightOptStep(start.id);
               onProgress(r);
               if (r.done) { note('info', `Optimized weights for ${matrix.name} in ${r.iterations} iterations`); return { weights: r.weights!, ssm: r.ssm!, iterations: r.iterations! }; }
+            }
+          }}
+          onOptimizeEvent={async (matrix, picks, onProgress, cancelled) => {
+            // Event based (lambda 0): SD statistics of the raw detectors use their scales.
+            const fluors = matrix.outputNames ?? [];
+            const sc = statScales(ws.channelTransforms, sample.flowjoLinearRanges, [...fluors, ...matrix.channels]);
+            const scales = fluors.map((f) => sc[f] ?? ({ kind: 'logicle', T: 262144, W: 0.5, M: 4.5, A: 0 } as const));
+            const ref = (q: { sampleId: string; path: string }) => { const s = ws.samples.find((x) => x.id === q.sampleId)!; return { sampleId: s.id, compensation: s.compensation, populations: s.populations, path: q.path }; };
+            const start = await client.eventOptStart({ matrix, controls: picks.map((c) => ({ pos: ref(c.pos), neg: ref(c.neg) })), scales, detectorScales: matrix.channels.map((d) => sc[d]), matrices: ws.matrices });
+            onProgress(start);
+            for (;;) {
+              if (cancelled()) { await client.weightOptCancel(start.id); note('info', 'Weight optimization canceled'); return null; }
+              const r = await client.eventOptStep(start.id);
+              onProgress(r);
+              if (r.done) { note('info', `Event based weight optimization for ${matrix.name}: ${r.message}`); return { lambdas: r.lambdas!, ssm: r.ssm! }; }
             }
           }}
           onEstimateAf={async (sampleId, detectors, gatePath) => {

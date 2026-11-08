@@ -12,9 +12,11 @@ Code: `src/core/compEditor.ts` (rules), `src/ui/CompEditor.tsx` (plot grid,
 weights panel), `src/ui/Dialogs.tsx` `CompensationDialog` (editor UI),
 `src/core/service.ts` `compPreview` (preview events), `src/core/compensation.ts`
 (weights, SSM fields). Tests: `tests/comp-editor.test.ts` (unit),
-`e2e/comp-gaps.mjs` (38 checks). Optimize Weights: `src/core/weightOptimizer.ts`
+`e2e/comp-gaps.mjs` (51 checks). Optimize Weights: `src/core/weightOptimizer.ts`
 (rules), `src/ui/CompEditor.tsx` `OptimizeWeightsPanel`, `src/core/service.ts`
-`weightOptStart` / `weightOptStep` (worker), `tests/weight-optimizer.test.ts`.
+`weightOptStart` / `weightOptStep` and `eventOptStart` / `eventOptStep`
+(worker), `tests/weight-optimizer.test.ts`; event-weighted unmixing in
+`src/core/compensation.ts` (`eventLambdas`, `unmixEventWeighted`).
 
 Which action handles which command: `MatrixActionManager.createActions`
 builds `MatrixAction` for APPLYWORKSPACE, APPLYGROUP, SHOWHTML, MAKEMOVIE,
@@ -26,7 +28,9 @@ APPLYWORKSPACE, APPLYGROUP, PREFS, OPTIMIZEWT), `CompSetScaleAction`
 add popup LOAD_FILE / IDENTITY_MATRIX; `PresentationTypeCombo` handles NXN,
 ALLBY, HISTOS; `MatrixEditorNavPanel` handles PREVIEW_SAMPLE and
 PREVIEW_POP_PATH; `SpectralWeightsDialog.createActions` handles
-S_WEIGHTS_CLOSE / IMPORT / EXPORT.
+S_WEIGHTS_CLOSE / IMPORT / EXPORT; `OptimizeWeightDialog.createActions`
+builds its Close button from S_WEIGHTS_CLOSE and its OK button from
+S_WEIGHTS_OK.
 
 Status legend: Done (test), Own rule (deliberate difference), Deferred
 (reason), Not in 10.6.2 UI (enum constant that no 10.6.2 class uses).
@@ -279,8 +283,13 @@ Status legend: Done (test), Own rule (deliberate difference), Deferred
   (names line, weights line); errors "Data Format is not Valid" and "Detector
   Names Don't match the detector names of the sample(s) in the Workspace...".
   Close (button or window close) stores the weights on the workspace and
-  marks the matrix for recalculation. S_WEIGHTS_OK is never used (no OK
-  button in 10.6.2).
+  marks the matrix for recalculation. The weights dialog has no OK button;
+  S_WEIGHTS_OK ("OK", `plat.comp.io.spectralweights.ok`) is the OK button of
+  `OptimizeWeightDialog` ("Weight Optimization Selection", see OPTIMIZEWT):
+  `OptimizeWeightDialog.createActions` makes `OptimizeWeightDialog$2` from
+  it, whose `doAction` calls `runOptimization`; Close
+  (`OptimizeWeightDialog$1`, S_WEIGHTS_CLOSE) and the window close
+  (`OptimizeWeightDialog$3.windowClosing`) call `closeDialog`.
 - flowjo-rea: Done (unit "spectral weights"; e2e "Export Weights", "Import
   Weights ... weighted least squares", "a weights file with other detectors
   is refused"). For a spectral matrix a Weights button opens the panel; Close
@@ -292,7 +301,10 @@ Status legend: Done (test), Own rule (deliberate difference), Deferred
   and `EigenSolver` (built by `Compensator::PreCompensate` for a spectral
   matrix) solves (S W S^T) M = S W with a column-pivoting Householder QR, so
   with no stored weights FlowJo unmixes by ordinary least squares, as this
-  app does. S_WEIGHTS_OK: Not in 10.6.2 UI.
+  app does. S_WEIGHTS_OK: Done (e2e "with the preference on, Optimize opens
+  "Weight Optimization Selection" ...", "Close in the method dialog runs
+  nothing", "OK with Lambda 2.5 stores it ...", "OK with Lambda 0 runs the
+  event-based optimisation ..."; rules in OPTIMIZEWT below).
 
 ### CompCommand.OPTIMIZEWT "Optimize Weights"
 Evidence: Java `CompensationAction` (OPTIMIZEWT branch,
@@ -313,13 +325,51 @@ Java side (what the user sees):
   this workspace. Do you want to overwrite them?". Anything but Yes aborts;
   Yes clears the stored weights first. Weights of 1 or above do not count.
 - The request type defaults to SSMBasedOptimizationProcessing and no dialog
-  is shown. Only when the preference WeightOptimization type is
-  EventBasedOptimizationProcessing with show on does `OptimizeWeightDialog`
-  ("Weight Optimization Selection", modal) open: a method combo with "Sample
-  Based Weight Optimization" (SSM based) and "Event Based Weight
-  Optimization", a Lambda field (0 to float max, default 0, "Lambda = 0
-  means use variance based lambda"), OK and Close; Close sets NoOptimization
-  (nothing runs). The model's own default lambda is 0.001.
+  is shown. `isEventOptimizationEnabledInPrefs` is true only when the
+  application preferences have a `WeightOptimization` child whose `type` is
+  EventBasedOptimizationProcessing and whose `show` is true. No preferences
+  panel writes that element (no FlowJo 10.6.2 class besides
+  `CompensationAction` reads it; a hidden preference, off by default). The
+  preference is read on every OPTIMIZEWT, and each time a new
+  `OptimizeWeightDialog` opens.
+- `OptimizeWeightDialog` (title "Weight Optimization Selection", modal,
+  `initWizard`): a method combo (`OptimizeWeightDialog$4`, choices "Sample
+  Based Weight Optimization" and "Event Based Weight Optimization", current
+  value from the model's request type, so Sample Based first). Choosing Event
+  Based adds the centre row: label "Lambda", a `RangedDoubleTextField`
+  (min 0, max 3.4028234663852886E38 = Float.MAX_VALUE, shown value 0) and the
+  bold note "<Lambda = 0 means use variance based lambda.>"; choosing Sample
+  Based removes it. Buttons OK (S_WEIGHTS_OK) and Close (S_WEIGHTS_CLOSE).
+- Lambda field validation (`DoubleTextFieldDocument`, `RangedDoubleVerifier`):
+  only digits, the decimal separator, the minus sign and the exponent
+  separator can be typed. When the field loses focus, text that is not a
+  number or lies outside 0..Float.MAX_VALUE is replaced by the last good
+  value and focus stays in the field (the error label is not shown in this
+  dialog), so the click that left the field does nothing.
+- Close or the window close (`closeDialog`): request type NoOptimization,
+  nothing runs (the overwrite answer has already cleared the weights).
+- OK (`runOptimization`): Sample Based: useLambda and useEngineBaseLambda off;
+  `CompensationAction` then runs the SSM-based optimisation, which first
+  removes any event-based model from the workspace and the matrix
+  (`runSSMBasedOptimization`). Event Based: the field value is cast to float;
+  useLambda on, useEngineBaseLambda = (lambda == 0), lambda stored. The model
+  goes onto the workspace and the wizard matrix
+  (`setWeightOptimizationModel`), and the engine runs only when
+  useEngineBaseLambda is on (lambda 0), with an empty progress note. Any
+  other lambda is kept on the matrix without a run.
+- The model (`WeightIOptimizationAttributeModel`; constructor defaults: type
+  null, useLambda off, useEngineBaseLambda on, lambda 0.001, which the dialog
+  always overrides) is written on the matrix element
+  (`CompensationMatrix.getElement` via `getAttributeMap`) as attributes
+  `type`, `engineBasedLambda` ("1"/"0", only with useLambda) and `lambda`
+  (only when engineBasedLambda is off), plus a `lambdas` child with one
+  `lambda` element (`name`, `value`) per variable lambda;
+  `CompensationMatrix` reads it back the same way.
+- Event-based result (`WeightOptimizationThread.setOptimizedWeights`, no
+  `weights` child): lambda = the result's `lambda` attribute (absent, so 0,
+  `SElement.getDouble`), useEngineBaseLambda off, useLambda on, the SSM
+  stored (`setSSM`) and the returned `lambdas` kept as variable lambdas. The
+  detector weights are not changed.
 - The SSM-based request (`createWeightOptRequests`) sends the wizard's
   compensation matrix and one CompControl per parameter entry with its
   positive and negative population (gate queries), and runs on a progress
@@ -359,9 +409,38 @@ Engine (SSM-based processing):
   progress bar is full near sweep 50). Then f becomes (f - 1) x damping + 1
   (float32) and 1/f is recomputed. Weights are unbounded positive numbers
   (multiplicative updates).
-- Event-based processing (`RunVariableLambdaProcessing`, a per-event
-  regularised unmixing with a fixed or variance-based lambda) is only
-  reachable through the hidden preference.
+Engine (event-based processing; `WeightOptimizationRequestTypes::
+LookupProcessingType`: OnlySSMProcessing 0, SSMBasedOptimizationProcessing
+1, EventBasedOptimizationProcessing 2; `WeightOptimizationRequest::FromXML`
+keeps one (positive, negative) population pair per CompControl;
+`ProcessQuery` calls `RunVariableLambdaProcessing` for type 2 when the
+matrix has engineBasedLambda):
+- Progress: 0.5% "Compensating.", then at 100% "Current best SSM sum is X. "
+  with X the SSM sum written as a C++ float (6 significant digits).
+- Variance based lambdas: for each detector of the matrix, lambda_d = mean
+  over the controls of SD^2, SD being the engine's SD statistic (type 7,
+  `Statistic::LookupStatType("SD")`; the histogram SD of specs 8.2) of the
+  raw detector in the control's negative population. A universal negative
+  counts once per control.
+- The controls are then unmixed with event weighting using these lambdas
+  (the request matrix copied with type EventBasedOptimizationProcessing and
+  the lambdas list) and the SSM is computed as for the SSM-based method; the
+  result carries the lambdas (detector name, value), the SSM, and lambda
+  0.001 internally, which `WeightOptimizationResult::ToXML` does not write
+  when there are lambdas.
+- Event-weighted unmixing (`Compensator::PreCompensate` builds a solver with
+  the matrix and the spec lambda instead of the static weights;
+  `Compensator::Compensate`; `EigenSolver::Solve` with weights): for every
+  event, w_d = 1 / (x_d + lambda_d) with x_d the raw detector value, then
+  weighted least squares (S W S^T) f = S W x. lambda_d is entry d of the
+  lambdas list (by position) when the matrix's engineBasedLambda is set and
+  the list is not empty, otherwise the matrix lambda for every detector;
+  `CompensationSpec::FromXML` reads a lambda of 0.001 or less as 0.001.
+  Static detector weights are not used. Values where x_d + lambda_d is 0 or
+  negative are not guarded (infinite or negative weights).
+- Consequence in 10.6.2: after an event-based run the Java side writes
+  engineBasedLambda 0 and lambda 0, so the matrix unmixes with lambda 0.001
+  for every detector and the variance based lambdas are stored but not used.
 
 flowjo-rea: Done (unit `tests/weight-optimizer.test.ts`: stall rule, factor
 pairs and damping, 52-sweep limit, progress, SSM formula on unmixed
@@ -386,8 +465,34 @@ least squares) and its SSM (Display SSM). Own rules and uncertainty:
   gates drawn on unmixed parameters.
 - An unmixed fluorochrome without a display transform uses the default
   logicle scale (T 262144, W 0.5, M 4.5) for its percentiles.
-- Event-based optimisation and its dialog: Deferred (preference-gated in
-  10.6.2, default off; its regularised per-event unmixing was not decoded).
+- Event-based optimisation and its dialog: Done (unit
+  `tests/weight-optimizer.test.ts` "event-weighted unmixing", "method
+  dialog", "variance based lambdas and the event-based run"; e2e
+  `e2e/comp-gaps.mjs` checks from "with the preference on, Optimize opens
+  ..." to "Sample Based from the dialog runs the SSM search and removes the
+  event weighting", and "Preferences offer Event Based Weight Optimization
+  ..."). Preferences has "Offer Event Based Weight Optimization" (off by
+  default; Own rule: FlowJo has no UI for its hidden prefs-file element, so
+  this app shows a checkbox; it is kept in this browser like the other
+  preferences). With it on, Optimize (after the overwrite question) shows the
+  "Weight Optimization Selection" panel with the method combo, the Lambda
+  field and OK / Close as above. The event-based run happens in the analysis
+  worker in slices (lambdas, one control population per slice, then the SSM)
+  with the engine's two progress messages. The model is stored on the matrix
+  (`SpilloverMatrix.weightOptimization`) and every unmixing of that matrix
+  (analysis and the editor preview) uses event weighting; the editor
+  describes it ("per-event weighted least squares, weights 1 / (value +
+  lambda) with lambda ..."). Own rules and uncertainty:
+  - The per-event system is solved by Gaussian elimination with partial
+    pivoting (FlowJo: QR on the same normal equations); a singular system
+    gives NaN for that event.
+  - A detector without a FlowJo scale uses the exact sample SD for its
+    lambda.
+  - The model is kept in this app's workspace (not written to .wsp, like the
+    detector weights).
+  - A lambdas list shorter than the detector list makes the engine read past
+    its end (undefined); this app uses the matrix lambda for the missing
+    entries.
 
 ### CompCommand.MAKEMOVIE "Animate"
 - FlowJo (`MatrixAction.makeWebMovie`, `CompAnimationBatch(controller, 15,
@@ -422,8 +527,9 @@ ADDFCS2, ADDFCS3: Not in 10.6.2 UI.
 | SSM, SSM_VIEW | Done |
 | PREFS | Done (Confirm Edit omitted, own rule) |
 | S_WEIGHTS_IMPORT, S_WEIGHTS_EXPORT, S_WEIGHTS_CLOSE | Done (default weights 1: matches) |
+| S_WEIGHTS_OK | Done (OK of the Weight Optimization Selection dialog) |
 | RESET | Own rule (no-op in 10.6.2) |
 | MAKEMOVIE | Own rule (in-place animation) |
 | ADDTOLAYOUT | Done (own rule: copies the preview grid) |
-| OPTIMIZEWT | Done (SSM-based; event-based dialog deferred) |
-| REMOVEUNEG, S_WEIGHTS_OK | Not in 10.6.2 UI |
+| OPTIMIZEWT | Done (SSM-based and event-based with the method dialog; preference checkbox own rule) |
+| REMOVEUNEG | Not in 10.6.2 UI |

@@ -277,6 +277,61 @@ await page.getByTestId('comp-ssm-view').click();
 await optimize();
 const w2 = await weightsRead();
 check('Optimize Weights is deterministic (same weights on a second run)', JSON.stringify(w1) === JSON.stringify(w2), JSON.stringify(w2));
+
+// Event based weight optimisation: with the WeightOptimization preference on,
+// Optimize asks for the method first (OptimizeWeightDialog, OK = S_WEIGHTS_OK).
+// The panel reads the stored preference at each click, as FlowJo does.
+await page.evaluate(() => { const k = 'flowjo-rea.prefs'; const p = JSON.parse(localStorage.getItem(k) ?? '{}'); localStorage.setItem(k, JSON.stringify({ ...p, eventWeightOptimization: true })); });
+const desc = async () => (await dlg().textContent()) ?? '';
+const openMethod = async () => {
+  await page.getByTestId('comp-opt-run').click();
+  if (await page.getByTestId('comp-opt-confirm').count()) await page.getByTestId('comp-opt-yes').click();
+  await page.getByTestId('comp-opt-method-dialog').waitFor({ timeout: 5000 }).catch(() => {});
+};
+const waitDone = async (prefix) => {
+  for (let i = 0; i < 600; i++) { const t = (await page.getByTestId('comp-opt-done').count()) ? (await page.getByTestId('comp-opt-done').textContent()) ?? '' : ''; if (t.startsWith(prefix)) return t; await page.waitForTimeout(50); }
+  return '';
+};
+await openMethod();
+const md = page.getByTestId('comp-opt-method-dialog');
+check('with the preference on, Optimize opens "Weight Optimization Selection" with Sample Based chosen and no Lambda field',
+  (await md.count()) === 1 && (await md.textContent()).includes('Weight Optimization Selection') && (await page.getByTestId('comp-opt-method').inputValue()) === 'Sample Based Weight Optimization' && (await page.getByTestId('comp-opt-lambda').count()) === 0 && (await page.getByTestId('comp-opt-method-ok').textContent()) === 'OK');
+const doneBefore = await page.getByTestId('comp-opt-done').textContent();
+await page.getByTestId('comp-opt-method-close').click();
+check('Close in the method dialog runs nothing', (await md.count()) === 0 && (await page.getByTestId('comp-opt-progress').count()) === 0 && (await page.getByTestId('comp-opt-done').textContent()) === doneBefore);
+await openMethod();
+await page.getByTestId('comp-opt-method').selectOption('Event Based Weight Optimization');
+check('Event Based shows the Lambda field (default 0) and "<Lambda = 0 means use variance based lambda.>"', (await page.getByTestId('comp-opt-lambda').inputValue()) === '0' && (await page.getByTestId('comp-opt-lambda-info').textContent()) === '<Lambda = 0 means use variance based lambda.>');
+await page.getByTestId('comp-opt-lambda').fill('-5');
+await page.getByTestId('comp-opt-method-ok').click();
+check('a negative Lambda is refused: the field returns to 0 and OK does nothing', (await md.count()) === 1 && (await page.getByTestId('comp-opt-lambda').inputValue()) === '0');
+await page.getByTestId('comp-opt-lambda').fill('2.5');
+await page.getByTestId('comp-opt-method-ok').click();
+const fixed = await waitDone('Lambda');
+check('OK with Lambda 2.5 stores it on the matrix without a run; events unmix with weights 1 / (value + lambda)', fixed.startsWith('Lambda 2.5 stored') && (await desc()).includes('per-event weighted least squares, weights 1 / (value + lambda) with lambda 2.5'), fixed);
+check('the preview still renders with event weighting', (await page.getByTestId('comp-grid-error').count()) === 0);
+await openMethod();
+check('every Optimize opens a new dialog (Sample Based, Lambda 0)', (await page.getByTestId('comp-opt-method').inputValue()) === 'Sample Based Weight Optimization');
+await page.getByTestId('comp-opt-method').selectOption('Event Based Weight Optimization');
+await page.getByTestId('comp-opt-method-ok').click();
+const ev1 = await waitDone('Done. Event');
+check('OK with Lambda 0 runs the event-based optimisation (variance based lambdas and the SSM)', /^Done\. Event based: variance based lambdas FITC-A [\d.e+]+, PE-A [\d.e+]+, APC-A [\d.e+]+; SSM sum [\d.]+\.$/.test(ev1), ev1);
+check('after the run the matrix unmixes with lambda 0.001 (engineBasedLambda is cleared)', (await desc()).includes('with lambda 0.001'));
+await page.getByTestId('comp-ssm-view').click();
+const evSsm = await page.getByTestId('comp-ssm-table').locator('tbody tr').allInnerTexts();
+await page.getByTestId('comp-ssm-view').click();
+check('the event-based run stores the SSM of the controls', evSsm.length === 3 && Number(evSsm[2].trim().split(/\s+/).pop()) > 0, evSsm.join(' | '));
+await openMethod();
+await page.getByTestId('comp-opt-method').selectOption('Event Based Weight Optimization');
+await page.getByTestId('comp-opt-method-ok').click();
+await page.waitForTimeout(100);
+const ev2 = await waitDone('Done. Event');
+check('the event-based optimisation is deterministic', ev1 === ev2, ev2);
+await openMethod();
+await page.getByTestId('comp-opt-method-ok').click();
+const smp = await waitDone('Done. ');
+check('Sample Based from the dialog runs the SSM search and removes the event weighting', /^Done\. \d+ iterations/.test(smp) && (await desc()).includes('unmixed by weighted least squares'), smp);
+await page.evaluate(() => { const k = 'flowjo-rea.prefs'; const p = JSON.parse(localStorage.getItem(k) ?? '{}'); localStorage.setItem(k, JSON.stringify({ ...p, eventWeightOptimization: false })); });
 await page.getByTestId('comp-opt-close').click();
 
 // Apply To Workspace and the Matrix Icon.
@@ -309,6 +364,17 @@ await openComp('apc.fcs');
 check('Apply To Group applies to the chosen group', (await page.getByTestId('comp-current').textContent()) === 'New Matrix');
 await page.screenshot({ path: join(out, 'comp-gaps.png') });
 await closeDlg();
+
+// Preferences: Offer Event Based Weight Optimization (FlowJo's hidden
+// WeightOptimization preference) is off by default and saved when checked.
+await page.keyboard.press(`${process.platform === 'darwin' ? 'Meta' : 'Control'}+y`);
+await page.getByTestId('prefs-dialog').waitFor({ timeout: 5000 }).catch(() => {});
+const prefOff = !(await page.getByTestId('pref-event-weightopt').isChecked());
+await page.getByTestId('pref-event-weightopt').check();
+const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('flowjo-rea.prefs') ?? '{}').eventWeightOptimization);
+await page.getByTestId('pref-event-weightopt').uncheck();
+await page.getByTestId('prefs-close').click();
+check('Preferences offer Event Based Weight Optimization, off by default and stored when checked', prefOff && stored === true);
 
 check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 await browser.close();

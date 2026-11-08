@@ -3,6 +3,8 @@
 // The rules live in src/core/tableEditor.ts; this file is the UI.
 import { useEffect, useMemo, useState } from 'react';
 import { CONFIRM } from '../core/prefs';
+import { tableAxes } from '../core/threeD';
+import { TableThreeD } from './ThreeD';
 import { newId, populationPath, uniqueName, type LayoutText, type StatColumn, type StatKind, type Workspace } from '../core/model';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL, validPercentile } from '../core/stats';
 import {
@@ -46,6 +48,7 @@ export function TablesDialog(p: TablesDialogProps) {
   const [hf, setHf] = useState<null | { header: string; footer: string }>(null);
   const [win, setWin] = useState(false);
   const [plot, setPlot] = useState<null | { kind: 'box' | 'corr' | 'time'; cols: number[]; transpose: boolean }>(null);
+  const [cube, setCube] = useState<null | { axes: { name: string; values: Float32Array }[] }>(null);
   useEffect(() => { setSel([]); setWin(false); setPlot(null); }, [id]);
 
   // Statistic specs per column (older columns: their Statistics-panel column).
@@ -155,6 +158,17 @@ export function TablesDialog(p: TablesDialogProps) {
     if (plotBlocked(cols.map((k) => data.map((r) => Number(r.cells[k]))))) { p.note?.('warn', PLOT_SAME_VALUE); void ask(PLOT_SAME_VALUE, ['OK']); return; }
     setPlot({ kind, cols: kind === 'corr' ? cols.slice(0, 2) : cols, transpose: false });
   };
+  // TEPlotAction PLOTPOINTCLOUD "3D Plot": the selected columns as 3D axes
+  // (ThreeDDataModel(TableData), src/core/threeD.ts tableAxes).
+  const doCube = () => {
+    if (!t) return;
+    const cols = sel.filter((k) => t.columns[k]);
+    if (cols.length < 3) { p.note?.('warn', 'Select three columns to plot in 3D'); return; }
+    if (plotBlocked(cols.map((k) => data.map((r) => Number(r.cells[k]))))) { p.note?.('warn', PLOT_SAME_VALUE); void ask(PLOT_SAME_VALUE, ['OK']); return; }
+    const r = tableAxes(cols.map((k) => ({ name: headerText(t.columns[k].header), values: data.map((row) => (row.cells[k] === '' || row.cells[k] == null ? NaN : Number(row.cells[k]))), frequency: specOf(t.columns[k])?.stat?.startsWith('freq') })));
+    if ('error' in r) { p.note?.('error', r.error); void ask(r.error, ['OK']); return; }
+    setCube({ axes: r.axes });
+  };
   const describe = (c: TableColumn) => {
     const s = specOf(c);
     if (c.kind === 'statistic') return s ? [s.populationPath || 'All events', s.stat === 'freqOf' ? `Freq. of ${s.ancestor ?? ''}` : `${s.stat === 'percentile' ? `${s.percentile} ` : ''}${STAT_LABELS[s.stat]}`, s.channel ? `${s.channel}${s.correlate ? ` vs ${s.correlate}` : ''}` : ''] : ['(missing)', '', ''];
@@ -242,8 +256,10 @@ export function TablesDialog(p: TablesDialogProps) {
           <button data-testid="table-plot-box" title="A plot which marks median, mean, Q1-Q3 spread and outliers." onClick={() => doPlot('box')}>Box-n-Whisker Plot</button>
           <button data-testid="table-plot-corr" title="A two dimensional correlation of two parameters." onClick={() => doPlot('corr')}>Correlation</button>
           <button data-testid="table-plot-time" title="A one dimensional tracking of a parameter over time, often for QC purposes." onClick={() => doPlot('time')}>Time Series</button>
+          <button data-testid="table-plot-3d" title="A three dimensional visualization of three selected parameters." onClick={doCube}>3D Plot</button>
         </fieldset>
         <TableGrid t={t} rows={preview} nData={data.length} testid="table-preview" />
+        {cube && t && <TableThreeD title={t.name} axes={cube.axes} onClose={() => setCube(null)} downloadBlob={(n, b) => download(n, b, b.type)} download={(n, d, ty) => download(n, d, ty)} />}
         {plot && <TablePlot t={t} rows={data} ws={ws} plot={plot} setPlot={setPlot} download={download} />}
         {win && <TableWindow t={t} data={data} withSummary={withSummary} onClose={() => setWin(false)} copyTable={copyTable} printTable={printTable} toLayout={toLayout}
           download={download} ask={ask} toggleSummary={() => edit((x) => { x.summary = !x.summary; })}

@@ -1,6 +1,7 @@
 // FlowJo-style .wsp writer. Mirrors the structure observed in FlowJo-saved
 // workspaces (see wsp.ts). NOT validated by opening in FlowJo: only
 // round-trip tested through this project's reader.
+import { experimentXml } from './miflowcyt';
 import { writeFigList } from './wspLayout';
 import { invert } from './compensation';
 import type { SpilloverMatrix } from './compensation';
@@ -302,6 +303,7 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
 ${columnsXml(ws)}<Groups>${groups}</Groups>
 <SampleList>${sampleXml.join('\n')}</SampleList>
 ${layoutXml()}
+${ws.experiment ? experimentXml(ws.experiment) : ''}
 </Workspace>
 `;
   return { xml, warnings };

@@ -37,6 +37,7 @@ import { initHistory, pushHistory, redo, undo, type History } from './history';
 import { createAnalysisClient } from './workerClient';
 import { autoSaveMessage, CONFIRM, edgeWarning, loadPrefs, rememberDontAsk, savePrefs, shouldAutoSave, skipConfirm, type Prefs } from '../core/prefs';
 import { PrefsDialog, TablesDialog } from './Editors';
+import { ExperimentDialog } from './Experiment';
 import { AddStatDialog, BooleanExprDialog, EditColumnsDialog, NamingDialog, ValueSeriesDialog } from './WorkspaceTools';
 import { compileBoolExpr, exprOfGate, makeAndOr, makeCombination, makeIdentities, makeNots, MAX_COMBINATION, parseBoolExpr, BoolExprError } from '../core/booleanExpr';
 import { columnLabel, excelRows, isKeywordColumn, keywordEditable, keywordName, NAME, NCELLS, populationCell, sampleCell, setKeyword, sortSamples, STATISTIC, tableColumns, type TableRow } from '../core/workspaceTable';
@@ -49,7 +50,7 @@ import { autoWidthBasis, canShowOutliers, canSetForeground, clusterRanges, color
 const client = createAnalysisClient();
 
 type Analysis = { results: PopulationResult[]; total: number; compError?: string };
-type Dialog = null | { kind: 'addKeyword' } | { kind: 'find' } | { kind: 'group'; id: string | null } | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export'; mode?: 'group' } | { kind: 'layout' } | { kind: 'derived' } | { kind: 'platforms' } | { kind: 'manual' } | { kind: 'prefs' } | { kind: 'tables' } | { kind: 'tool'; tool: PlatformTool } | { kind: 'boolExpr'; editId?: string } | { kind: 'naming'; op: 'and' | 'or' | 'combo'; ids: string[] } | { kind: 'columns' } | { kind: 'addStat' } | { kind: 'series' } | { kind: 'addKeywordGroup' };
+type Dialog = null | { kind: 'addKeyword' } | { kind: 'find' } | { kind: 'group'; id: string | null } | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export'; mode?: 'group' } | { kind: 'layout' } | { kind: 'derived' } | { kind: 'platforms' } | { kind: 'manual' } | { kind: 'prefs' } | { kind: 'tables' } | { kind: 'tool'; tool: PlatformTool; axes?: (string | null)[] } | { kind: 'boolExpr'; editId?: string } | { kind: 'naming'; op: 'and' | 'or' | 'combo'; ids: string[] } | { kind: 'columns' } | { kind: 'addStat' } | { kind: 'series' } | { kind: 'addKeywordGroup' } | { kind: 'miflow' };
 
 function download(name: string, data: BlobPart, type = 'application/octet-stream') {
   const url = URL.createObjectURL(new Blob([data], { type }));
@@ -1331,6 +1332,9 @@ export function App() {
       null,
       { label: 'Print...', onClick: printPlot },
       { label: 'Make Movie...', disabled: groupSamples.length < 2, onClick: () => void makeMovie() },
+      // GWNavAction SHOWCUBE "Show in 3D" (openCubeView): the 3D Viewer of this
+      // population with the graph's X and Y axes.
+      { label: 'Show in 3D', testId: 'ctx-Show-in-3D', disabled: !meta[sample.id], onClick: () => setDialog({ kind: 'tool', tool: 'threeD', axes: [plotSettings.x, plotSettings.y] }) },
     ];
     setCtx({ x, y, items });
   };
@@ -2220,7 +2224,7 @@ export function App() {
   </>);
 
   // Experiment platforms (ui-gaps/platforms.md): Plate Editor, Compare Populations, 3D Viewer, Calibration, FCS Scan.
-  const platformButtons = (<>{([['plate', 'Plate Editor', false], ['compare', 'Compare Populations...', true], ['threeD', '3D Viewer', true], ['calibration', 'Create Calibration Parameter...', true], ['fcsScan', 'FCS Scan', false]] as const).map(([t, l, needs]) => <button key={t} disabled={needs && !sMeta} onClick={() => setDialog({ kind: 'tool', tool: t })} data-testid={`open-${t}`}>{l}</button>)}</>);
+  const platformButtons = (<><button onClick={() => setDialog({ kind: 'miflow' })} data-testid="open-miflow" title="Edit the experimental description, as per the MIFlowCyt standard for cytometry annotation.">Annotate Experiment...</button>{([['plate', 'Plate Editor', false], ['compare', 'Compare Populations...', true], ['threeD', '3D Viewer', true], ['calibration', 'Create Calibration Parameter...', true], ['fcsScan', 'FCS Scan', false]] as const).map(([t, l, needs]) => <button key={t} disabled={needs && !sMeta} onClick={() => setDialog({ kind: 'tool', tool: t })} data-testid={`open-${t}`}>{l}</button>)}</>);
   return (
     <div className={`app ${uiLayout}`} onMouseMove={(e) => { const d = winDrag.current; if (d) setWins((ws0) => ws0.map((w) => (w.id === d.id ? { ...w, x: Math.max(0, e.clientX - d.dx), y: Math.max(0, e.clientY - d.dy) } : w))); }} onMouseUp={() => { winDrag.current = null; }} onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); }} onDrop={(e) => { if (e.dataTransfer.files.length) { e.preventDefault(); void dropFiles(e.dataTransfer.files); } }}>
       {uiLayout === 'classic' ? (<>
@@ -2492,7 +2496,7 @@ export function App() {
           onClose={() => setDialog(null)}
         />
       )}
-      {dialog?.kind === 'tool' && <PlatformToolHost tool={dialog.tool} ws={ws} meta={meta} client={client} sample={sample} popId={selPopValid ? sel.popId : null} groupId={group?.id ?? ''} updateWs={updateWs} download={(n, d, t) => download(n, d, t)} downloadBlob={(n, b) => download(n, b, b.type)} addFiles={(f) => void addFiles(f)} onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'tool' && <PlatformToolHost tool={dialog.tool} axes={dialog.axes} ws={ws} meta={meta} client={client} sample={sample} popId={selPopValid ? sel.popId : null} groupId={group?.id ?? ''} updateWs={updateWs} download={(n, d, t) => download(n, d, t)} downloadBlob={(n, b) => download(n, b, b.type)} addFiles={(f) => void addFiles(f)} onClose={() => setDialog(null)} />}
       {dialog?.kind === 'platforms' && sample && sMeta && (() => {
         const base = { sampleId: sample.id, compensation: sample.compensation, populations: sample.populations, matrices: ws.matrices, derived: ws.derivedParameters, popId: selPopValid ? sel.popId : null };
         return (
@@ -2620,6 +2624,10 @@ export function App() {
       })()}
       {dialog?.kind === 'columns' && <EditColumnsDialog columns={tableColumns(ws)} keywords={groupKeys} onClose={() => setDialog(null)} onOk={(c) => { updateWs((w) => { w.tableColumns = c; w.tableSort = w.tableSort?.filter((k) => c.some((x) => x.key === k.key)); }); setDialog(null); }} />}
       {dialog?.kind === 'addStat' && <AddStatDialog targets={statTargets()} channels={channels.map((c) => c.name)} onOk={addStats} onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'miflow' && <ExperimentDialog initial={ws.experiment} docName={ws.name} groupNames={ws.groups.map((g) => g.name)} figureNames={[...(ws.layout?.length ? ['Layout'] : []), ...(ws.tables ?? []).map((t) => t.name)]}
+        gatingText={() => (sample ? [sample.fileName, ...sample.populations.map((q) => `  ${populationPath(sample.populations, q.id)}`)].join('\n') : '')}
+        compText={() => { const m = sample ? ws.matrices.find((x) => x.id === sample.compensation) : undefined; return m ? [m.name, `\t${m.channels.join('\t')}`, ...m.values.map((r, i) => `${m.channels[i]}\t${r.join('\t')}`)].join('\n') : ''; }}
+        download={(n, d, t) => download(n, d, t)} onOk={(e) => { updateWs((w, say) => { w.experiment = e; say('info', 'Experiment annotation saved'); }); setDialog(null); }} onClose={() => setDialog(null)} />}
       {dialog?.kind === 'series' && (() => {
         const ordered = sortSamples(ws, groupSamples);
         const start = Math.max(0, ordered.findIndex((s) => s.id === sel.sampleId));

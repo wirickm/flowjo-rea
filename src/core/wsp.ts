@@ -8,6 +8,7 @@
 //  - "Comp-" (matrix prefix/suffix) on a parameter name means the
 //    compensated channel; quadrants are saved as four rectangle gates.
 //  - AndNode/OrNode/NotNode populations reference operands by path.
+import { isEmptyExperiment, readExperiment } from './miflowcyt';
 import type { SpilloverMatrix } from './compensation';
 import { fail } from './errors';
 import { emptyWorkspace, type Dimension, type Gate, type GridAxis, type Group, type GroupCriteria, type KeywordRule, type Population, type SampleState, type StatKind, type Workspace } from './model';
@@ -503,6 +504,9 @@ export function parseWsp(xml: string): WspImport {
     const plain = cols.map((c) => c.key).join() === 'fj.appnode.prop.name,fj.appnode.prop.statistic,fj.appnode.prop.ncells';
     if (cols.length && !plain) ws.tableColumns = cols;
   }
+  // Annotate Experiment (Workspace.setMetaData from the <experiment> child).
+  const expEl = kid(root, 'experiment');
+  if (expEl) { const e = readExperiment(expEl); if (!isEmptyExperiment(e)) ws.experiment = e; }
   const groupsEl = kid(root, 'Groups');
   for (const g of groupsEl ? kids(groupsEl, 'GroupNode') : []) {
     const gname = attr(g, 'name') ?? 'Group';

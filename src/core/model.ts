@@ -192,6 +192,8 @@ export interface Workspace {
   // (src/core/workspaceTable.ts); absent = Name, Statistic, #Cells, unsorted.
   tableColumns?: TableColumn[];
   tableSort?: { key: string; ascending: boolean }[];
+  // Annotate Experiment (MIFlowCyt, the workspace's <experiment> element).
+  experiment?: import('./miflowcyt').Experiment;
 }
 
 // key: a FlowJo property key ("fj.appnode.prop.name") or "kw:<keyword>".

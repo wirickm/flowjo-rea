@@ -16,6 +16,7 @@ import { readMtx } from '../core/compFlowjo';
 import { EVENT_NUMBER } from '../core/formula';
 import { AddKeywordDialog, CompensationDialog, DerivedDialog, FindDialog, GateNamerDialog, KeywordsDialog, TransformDialog } from './Dialogs';
 import { MATRIX_DRAG_TYPE } from './CompEditor';
+import { ClusterParamButtons, FormatFileButtons } from './FormatTools';
 import { GroupDialog } from './GroupDialog';
 import { ContextMenu, GateActions, ManualGateDialog, type MenuItem } from './GateActions';
 import { everyNth, FLOWJO_FUNCTIONS, removeFromGroup, stainSet } from '../core/groupCriteria';
@@ -25,6 +26,10 @@ import { loadOverlayMode, overlayNormalize } from '../core/layoutPrefs';
 import { compGridItems, compLayoutName, newLayoutWith } from '../core/layoutFigures';
 import { COPY_TO_LAYOUT_POINT, placeRow } from '../core/layoutArrange';
 import { PlatformsDialog } from './Platforms';
+import { useRibbon } from './RibbonConfig';
+import { QualityReport } from './QualityReport';
+import { QUALITY_LOOK, checkSampleQuality, elapsedSeconds, qualityChannels, qualityParameters, type SampleQualityResult } from '../core/sampleQuality';
+import { WS_RIBBON } from './ribbons';
 import { PlatformToolHost, type PlatformTool } from './PlatformTools';
 import { KineticsPanel } from './Kinetics';
 import { defaultKinetics, KIN_KEYS, KIN_LABELS } from '../core/kinetics';
@@ -39,19 +44,22 @@ import { initHistory, pushHistory, redo, undo, type History } from './history';
 import { createAnalysisClient } from './workerClient';
 import { autoSaveMessage, CONFIRM, edgeWarning, loadPrefs, rememberDontAsk, savePrefs, shouldAutoSave, skipConfirm, type Prefs } from '../core/prefs';
 import { PrefsDialog, TablesDialog } from './Editors';
+import { ExperimentDialog } from './Experiment';
 import { AddStatDialog, BooleanExprDialog, EditColumnsDialog, NamingDialog, ValueSeriesDialog } from './WorkspaceTools';
+import { ScriptEditorDialog } from './ScriptEditor';
+import type { ScriptOp, ScriptSnapshot } from '../core/scriptApi';
 import { compileBoolExpr, exprOfGate, makeAndOr, makeCombination, makeIdentities, makeNots, MAX_COMBINATION, parseBoolExpr, BoolExprError } from '../core/booleanExpr';
 import { columnLabel, excelRows, isKeywordColumn, keywordEditable, keywordName, NAME, NCELLS, populationCell, sampleCell, setKeyword, sortSamples, STATISTIC, tableColumns, type TableRow } from '../core/workspaceTable';
 import { applyGroupTemplates, buildArchive, makeTemplate, readArchive } from '../core/template';
 import { xlsxBytes } from '../core/xlsx';
 import { writeZip } from '../core/zip';
 import { ColorTableDialog, GraphOptionsPanel, RangeDialog } from './GraphOptions';
-import { autoWidthBasis, canShowOutliers, canSetForeground, clusterRanges, colorRowsFromString, colorTable, derivedFor, likeParameters, linLogSpec, peakRanges, resolutionOf, smoothingOf, specWithRange } from '../core/graphDisplay';
+import { arcsinhAutoM, autoWidthBasis, canShowOutliers, canSetForeground, clusterRanges, colorRowsFromString, colorTable, derivedFor, likeParameters, linLogSpec, peakRanges, resolutionOf, smoothingOf, specWithRange } from '../core/graphDisplay';
 
 const client = createAnalysisClient();
 
 type Analysis = { results: PopulationResult[]; total: number; compError?: string };
-type Dialog = null | { kind: 'addKeyword' } | { kind: 'find' } | { kind: 'group'; id: string | null } | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export'; mode?: 'group' } | { kind: 'layout' } | { kind: 'derived' } | { kind: 'platforms' } | { kind: 'manual' } | { kind: 'prefs' } | { kind: 'tables' } | { kind: 'tool'; tool: PlatformTool } | { kind: 'boolExpr'; editId?: string } | { kind: 'naming'; op: 'and' | 'or' | 'combo'; ids: string[] } | { kind: 'columns' } | { kind: 'addStat' } | { kind: 'series' } | { kind: 'addKeywordGroup' };
+type Dialog = null | { kind: 'addKeyword' } | { kind: 'find' } | { kind: 'group'; id: string | null } | { kind: 'comp' } | { kind: 'keywords' } | { kind: 'transform'; channel: string } | { kind: 'export'; mode?: 'group' } | { kind: 'layout' } | { kind: 'derived' } | { kind: 'platforms' } | { kind: 'manual' } | { kind: 'prefs' } | { kind: 'tables' } | { kind: 'boolExpr'; editId?: string } | { kind: 'naming'; op: 'and' | 'or' | 'combo'; ids: string[] } | { kind: 'columns' } | { kind: 'addStat' } | { kind: 'series' } | { kind: 'addKeywordGroup' } | { kind: 'scripts' } | { kind: 'tool'; tool: PlatformTool; axes?: (string | null)[] } | { kind: 'miflow' };
 
 function download(name: string, data: BlobPart, type = 'application/octet-stream') {
   const url = URL.createObjectURL(new Blob([data], { type }));
@@ -511,6 +519,12 @@ export function App() {
   });
   const switchLayout = (l: 'flowjo' | 'classic') => { setUiLayout(l); try { localStorage.setItem('flowjo-rea.layout', l); } catch { /* per-viewer convenience */ } };
   const [ribbonTab, setRibbonTab] = useState('Workspace');
+  // Ribbon customisation (WSRibbonStructure; docs/validation/ui-gaps/workspace.md).
+  const wsRib = useRibbon(WS_RIBBON);
+  const rb = (band: string) => wsRib.has(ribbonTab, band);
+  const rs = (band: string) => wsRib.style(ribbonTab, band);
+  // Follow-up formats (FACSDiva, CSV/CLR, consensus / cluster frequency): src/ui/FormatTools.tsx.
+  const formatProps = { ws, updateWs: (f: (w: Workspace) => void) => updateWs((w) => f(w)), sample, counts: sample ? Object.fromEntries((analysis[sample.id]?.results ?? []).filter(Boolean).map((r) => [r.id, r.count])) : undefined, download, note };
   const [drawer, setDrawer] = useState<'stats' | 'groups' | 'samples' | 'log' | null>('stats');
   const [collapsedSamples, setCollapsedSamples] = useState<string[]>([]);
   // Workspace table: multi-row selection ("<sampleId>|<popId>"), view toggles
@@ -754,6 +768,44 @@ export function App() {
     setTool('select');
     note('info', `Created ${names.join(', ')}`);
   };
+
+  // Script Editor (docs/validation/ui-gaps/workspace.md, SCRIPTEDITOR): the
+  // workspace as the scripting API sees it, and the changes a script made.
+  const scriptSnapshot = (): ScriptSnapshot => ({
+    name: ws.name,
+    groups: ws.groups.map((g) => ({ name: g.name, sampleIds: g.id === 'all' ? ws.samples.map((s) => s.id) : [...g.sampleIds] })),
+    samples: ws.samples.map((s) => {
+      const a = analysis[s.id];
+      const chans = meta[s.id]?.channels ?? s.channelNames.map((n, i) => ({ name: n, label: '', index: i + 1 }));
+      return {
+        id: s.id, name: s.fileName, keywords: { ...s.keywordsSnapshot, ...(s.annotations ?? {}) }, total: a ? a.total : null,
+        params: chans.map((c) => ({ name: c.name, stain: s.stains?.[c.name] ?? c.label, longName: c.label, index: c.index })),
+        pops: s.populations.map((q) => ({ id: q.id, name: q.name, parentId: q.parentId, count: a?.results.find((r) => r.id === q.id)?.count ?? null })),
+      };
+    }),
+  });
+  const applyScriptOps = (ops: ScriptOp[]) => updateWs((w) => {
+    const ids = new Map<string, string>();
+    for (const o of ops) {
+      const s = 'sampleId' in o ? w.samples.find((x) => x.id === o.sampleId) : undefined;
+      if (o.op === 'rename') { const q = s?.populations.find((x) => x.id === o.popId); if (q) q.name = o.name; }
+      else if (o.op === 'keyword' && s) { if (o.value === null) { if (s.annotations) delete s.annotations[o.key]; } else setKeyword([s], o.key, o.value); }
+      else if (o.op === 'groupCreate') { if (!w.groups.some((g) => g.name === o.name)) w.groups.push({ id: newId('grp'), name: o.name, sampleIds: [] }); }
+      else if (o.op === 'groupRemove') w.groups = w.groups.filter((g) => g.id === 'all' || g.name !== o.name);
+      else if (o.op === 'groupAdd') { const g = w.groups.find((x) => x.name === o.name); if (g && g.id !== 'all' && !g.sampleIds.includes(o.sampleId)) g.sampleIds.push(o.sampleId); }
+      else if (o.op === 'groupRemoveSample') { const g = w.groups.find((x) => x.name === o.name); if (g && g.id !== 'all') g.sampleIds = g.sampleIds.filter((x) => x !== o.sampleId); }
+      else if (o.op === 'gate' && s) {
+        const parentId = o.parentId ? ids.get(o.parentId) ?? o.parentId : null;
+        const m = meta[s.id];
+        const dims = o.params.map((ch) => ({ kind: 'channel' as const, channel: ch, transform: (m ? makeAxis(m.channels, m.keywords, w.channelTransforms, ch)?.spec : undefined) ?? w.channelTransforms[ch] ?? { kind: 'none' as const } }));
+        const tf = dims.map((d) => makeTransform(d.transform));
+        const id = newId('pop');
+        ids.set(o.id, id);
+        const name = uniqueName(o.name, s.populations.filter((x) => x.parentId === parentId).map((x) => x.name));
+        s.populations.push({ id, name, parentId, gate: { type: 'rect', dims, min: o.min.map((v, i) => tf[i].apply(v)), max: o.max.map((v, i) => tf[i].apply(v)) } });
+      }
+    }
+  });
 
   // FlowJo 10's rename dialog refuses a name a sibling already has (specs 6.7).
   const renamePop = (id: string, name: string) => {
@@ -1092,6 +1144,7 @@ export function App() {
   const isTime = (n: string) => /^time$/i.test(n);
   const calcWidth = async (ch: string) => {
     const spec = specOf(ch);
+    if (spec?.kind === 'asinh') { const M = arcsinhAutoM(spec.T); setSpecs({ [ch]: { ...spec, M } }); return note('info', `${ch}: width basis ${+(-(10 ** M)).toPrecision(4)}`); }
     if (!sample || !spec || (spec.kind !== 'flowjo-biex' && spec.kind !== 'logicle')) return note('warn', 'Calculate Width Basis applies to biexponential (logicle) scales');
     const values = await client.dimensionValues({ sampleId: sample.id, compensation: sample.compensation, populations: sample.populations, matrices: ws.matrices, derived: ws.derivedParameters }, { kind: 'channel', channel: ch, transform: { kind: 'none' } });
     const t = makeTransform(spec);
@@ -1103,6 +1156,31 @@ export function App() {
     else { const W = Math.min(spec.M / 2, Math.log10(-w) / 2); next = { ...spec, W, A: Math.min(Math.max(spec.A, -W), spec.M - 2 * W) }; }
     setSpecs({ [ch]: next });
     note('info', `${ch}: width basis ${+w.toPrecision(4)}`);
+  };
+  // Check Sample Quality (WSSampleQualityAction: every sample of the current
+  // group; SampleQualityControl / engine SampleValidity rules in
+  // src/core/sampleQuality.ts). Results live with the window, not the file.
+  const [quality, setQuality] = useState<Record<string, SampleQualityResult>>({});
+  const [qualityReport, setQualityReport] = useState<string | null>(null);
+  const checkQuality = async () => {
+    const out: Record<string, SampleQualityResult> = {};
+    for (const s of groupSamples) {
+      const m = meta[s.id];
+      if (!m) continue;
+      const req = { sampleId: s.id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters };
+      const raw = (ch: string) => client.dimensionValues(req, { kind: 'channel', channel: ch, transform: { kind: 'none' } });
+      const params = [];
+      for (const n of qualityParameters(m.channels.map((c) => c.name))) {
+        const c = m.channels.find((x) => x.name === n)!;
+        const t = makeTransform(ws.channelTransforms[n] ?? defaultTransform(c, m.keywords));
+        const nb = qualityChannels(m.keywords['$DATATYPE'], c.range);
+        params.push({ name: n, values: await raw(n), channels: nb, toChannel: (v: number) => ((t.apply(v) - t.displayMin) / (t.displayMax - t.displayMin)) * nb });
+      }
+      const tc = m.channels.find((c) => /^time$/i.test(c.name));
+      out[s.id] = checkSampleQuality({ events: params[0]?.values.length ?? m.eventCount, params, time: tc ? await raw(tc.name) : undefined, sampleTime: elapsedSeconds(m.keywords['$BTIM'], m.keywords['$ETIM']) });
+    }
+    setQuality((q) => ({ ...q, ...out }));
+    note('info', `Sample quality checked for ${Object.keys(out).length} sample(s)`);
   };
   const deriveParm = (ch: string, log: boolean) => {
     const top = channelRange(channels.find((c) => c.name === ch)!);
@@ -1126,7 +1204,7 @@ export function App() {
       { label: 'Reset', testId: 'tm-reset', onClick: () => setSpecs({ [ch]: null }) },
       { label: 'Customize Axis...', testId: 'tm-custom', onClick: () => setDialog({ kind: 'transform', channel: ch }) },
       { label: 'Change Displayed Parameter Range...', testId: 'tm-range', onClick: () => setRangeDlg({ channel: ch, min: lo, max: hi }) },
-      { label: 'Calculate Width Basis', testId: 'tm-autowidth', disabled: spec.kind !== 'flowjo-biex' && spec.kind !== 'logicle', onClick: () => void run(() => calcWidth(ch)) },
+      { label: 'Calculate Width Basis', testId: 'tm-autowidth', disabled: spec.kind !== 'flowjo-biex' && spec.kind !== 'logicle' && spec.kind !== 'asinh', onClick: () => void run(() => calcWidth(ch)) },
       null,
       { label: 'Apply To All Compensated Parameters', testId: 'tm-applycomp', onClick: () => { setSpecs(Object.fromEntries(like.filter((n) => n !== ch).map((n) => [n, { ...spec }]))); note('info', `Scale of ${ch} applied to ${like.length - 1} parameter(s)`); } },
       { label: 'Remove Transforms', testId: 'tm-remove', onClick: () => setSpecs(Object.fromEntries(like.map((n) => [n, null]))) },
@@ -1333,6 +1411,9 @@ export function App() {
       null,
       { label: 'Print...', onClick: printPlot },
       { label: 'Make Movie...', disabled: groupSamples.length < 2, onClick: () => void makeMovie() },
+      // GWNavAction SHOWCUBE "Show in 3D" (openCubeView): the 3D Viewer of this
+      // population with the graph's X and Y axes.
+      { label: 'Show in 3D', testId: 'ctx-Show-in-3D', disabled: !meta[sample.id], onClick: () => setDialog({ kind: 'tool', tool: 'threeD', axes: [plotSettings.x, plotSettings.y] }) },
     ];
     setCtx({ x, y, items });
   };
@@ -1634,6 +1715,7 @@ export function App() {
             if (c.key === NAME) return (
               <td key={c.key} style={{ paddingLeft: row.kind === 'sample' ? undefined : 6 + (row.depth - 1) * 16 }}>
                 <span className="twisty" onClick={(e) => { e.stopPropagation(); if (!row.kids) return; if (row.kind === 'sample') setCollapsedSamples((cs) => (cs.includes(s.id) ? cs.filter((x) => x !== s.id) : [...cs, s.id])); else setCollapsed([p!.id], !p!.collapsed, s.id); }}>{row.kids ? (row.open ? '-' : '+') : ''}</span>
+                {row.kind === 'sample' && quality[s.id] && <span className="qc-dot" role="button" data-testid={`quality-${s.fileName}`} data-status={quality[s.id].status} title={`Sample quality: ${QUALITY_LOOK[quality[s.id].status].label}`} onClick={(e) => { e.stopPropagation(); setQualityReport(s.id); }} style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', marginRight: 4, border: '1px solid #555', background: QUALITY_LOOK[quality[s.id].status].color, cursor: 'pointer' }} />}
                 {row.kind === 'sample' ? (meta[s.id] ? s.fileName : <i className="missing">{s.fileName} (data missing)</i>)
                   : renaming === p!.id && isSel ? <input autoFocus defaultValue={p!.name} aria-label="Population name" onBlur={(e) => { renamePop(p!.id, e.target.value.trim()); setRenaming(null); }} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />
                   : <span onDoubleClick={(e) => { if (isSel && sel.popId === p!.id && e.altKey) { e.stopPropagation(); setRenaming(p!.id); } }}>{p!.gate.type === 'boolean' ? `[${p!.gate.op}] ` : ''}{p!.exclude ? '[excl] ' : ''}{p!.name}{p!.owningGroup ? ' (G)' : ''}</span>}
@@ -2222,7 +2304,7 @@ export function App() {
   </>);
 
   // Experiment platforms (ui-gaps/platforms.md): Plate Editor, Compare Populations, 3D Viewer, Calibration, FCS Scan.
-  const platformButtons = (<>{([['plate', 'Plate Editor', false], ['compare', 'Compare Populations...', true], ['threeD', '3D Viewer', true], ['calibration', 'Create Calibration Parameter...', true], ['fcsScan', 'FCS Scan', false]] as const).map(([t, l, needs]) => <button key={t} disabled={needs && !sMeta} onClick={() => setDialog({ kind: 'tool', tool: t })} data-testid={`open-${t}`}>{l}</button>)}</>);
+  const platformButtons = (<><button onClick={() => setDialog({ kind: 'miflow' })} data-testid="open-miflow" title="Edit the experimental description, as per the MIFlowCyt standard for cytometry annotation.">Annotate Experiment...</button>{([['plate', 'Plate Editor', false], ['compare', 'Compare Populations...', true], ['threeD', '3D Viewer', true], ['calibration', 'Create Calibration Parameter...', true], ['fcsScan', 'FCS Scan', false]] as const).map(([t, l, needs]) => <button key={t} disabled={needs && !sMeta} onClick={() => setDialog({ kind: 'tool', tool: t })} data-testid={`open-${t}`}>{l}</button>)}</>);
   return (
     <div className={`app ${uiLayout}`} onMouseMove={(e) => { const d = winDrag.current; if (d) setWins((ws0) => ws0.map((w) => (w.id === d.id ? { ...w, x: Math.max(0, e.clientX - d.dx), y: Math.max(0, e.clientY - d.dy) } : w))); }} onMouseUp={() => { winDrag.current = null; }} onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); }} onDrop={(e) => { if (e.dataTransfer.files.length) { e.preventDefault(); void dropFiles(e.dataTransfer.files); } }}>
       {uiLayout === 'classic' ? (<>
@@ -2238,6 +2320,7 @@ export function App() {
           <button disabled={!sample} onClick={() => setDialog({ kind: 'comp' })} data-testid="open-comp">Compensation</button>
           <button data-testid="open-tables" onClick={() => setDialog({ kind: 'tables' })} title="Table Editor (Ctrl/Cmd+T)">Tables ({ws.tables?.length ?? 0})</button>
           <button onClick={() => setDialog({ kind: 'layout' })} data-testid="open-layout" title="Layout Editor (Ctrl/Cmd+L)">Layout ({ws.layout?.length ?? 0})</button>
+          <button onClick={() => setDialog({ kind: 'scripts' })} data-testid="open-scripts" title="Edit and manage FlowJo Scripts and query this workspace with the FlowJo Scripting Console">Scripts</button>
         </span>
         <span className="band" aria-label="Document"><span className="band-label">Document</span>
           <label className="file-btn">Open workspace / FlowJo .wsp<input type="file" accept=".json,.wsp,.frea,.wspt,.zip,.acs" data-testid="open-ws" onChange={(e) => { const f = e.target.files?.[0]; if (f) openWorkspace(f); e.target.value = ''; }} /></label>
@@ -2303,67 +2386,75 @@ export function App() {
         <button disabled={!sample} onClick={() => setDialog({ kind: 'comp' })} data-testid="open-comp">Compensation</button>
         <button data-testid="open-tables" onClick={() => setDialog({ kind: 'tables' })} title="Table Editor (Ctrl/Cmd+T)">Table Editor ({ws.tables?.length ?? 0})</button>
         <button onClick={() => setDialog({ kind: 'layout' })} data-testid="open-layout" title="Layout Editor (Ctrl/Cmd+L)">Layout Editor ({ws.layout?.length ?? 0})</button>
+        <button onClick={() => setDialog({ kind: 'scripts' })} data-testid="open-scripts" title="Edit and manage FlowJo Scripts and query this workspace with the FlowJo Scripting Console">Script Editor</button>
+        <button onClick={() => wsRib.openConfig(ribbonTab)} data-testid="ribbon-config" title="Open the ribbon customization dialog">Customize Ribbon</button>
         <span className="sep" />
         <span className="status" data-testid="busy">{busy > 0 ? 'Working...' : 'Ready'}</span>
       </header>
+      {wsRib.dialog}
+      {qualityReport && quality[qualityReport] && <QualityReport name={ws.samples.find((x) => x.id === qualityReport)?.fileName ?? ''} result={quality[qualityReport]} onClose={() => setQualityReport(null)} />}
       <nav className="fj-ribbon" aria-label="Ribbon">
         <div className="fj-tabs" role="tablist">
           {['FlowJo', 'File', 'Edit', 'Workspace', 'Tools', 'Configure'].map((t) => <button key={t} role="tab" aria-selected={ribbonTab === t} className={ribbonTab === t ? 'active' : ''} onClick={() => setRibbonTab(t)} data-testid={`ribbon-tab-${t}`}>{t}</button>)}
         </div>
         <div className="fj-bands" role="tabpanel" data-testid="ribbon-panel">
-          {ribbonTab === 'FlowJo' && <>
-            <div className="fj-band"><div className="fj-band-body">
+          <>
+            {rb('navigate') && <div style={rs('navigate')} className="fj-band"><div className="fj-band-body">
               <button onClick={() => setDialog({ kind: 'platforms' })} disabled={!sMeta} data-testid="open-platforms">Biology (Cell Cycle, Proliferation)</button>
               <button onClick={() => setDialog({ kind: 'addKeyword' })} disabled={!ws.samples.length} data-testid="open-add-keyword">Add Keyword</button>
               <button data-testid="open-prefs" onClick={() => setDialog({ kind: 'prefs' })} title="Preferences (Ctrl/Cmd+Y)">Preferences</button>
-            </div><div className="fj-band-title">Navigate / Experiment</div></div>
-          </>}
-          {ribbonTab === 'File' && <>
-            <div className="fj-band"><div className="fj-band-body">
+            </div><div className="fj-band-title">Navigate / Experiment</div></div>}
+          </>
+          <>
+            {rb('document') && <div style={rs('document')} className="fj-band"><div className="fj-band-body">
               <label className="file-btn">Open...<input type="file" accept=".json,.wsp,.frea,.wspt,.zip,.acs" data-testid="open-ws" onChange={(e) => { const f = e.target.files?.[0]; if (f) openWorkspace(f); e.target.value = ''; }} /></label>
               <button data-testid="save-ws" title="Save (Ctrl/Cmd+S)" onClick={() => { setSavedOnce(true); baselineRef.current = ws; download(`${ws.name.replace(/\.(wsp|json)$/i, '') || 'workspace'}.frea.json`, serializeWorkspace(ws), 'application/json'); }}>Save</button>
               <label className="file-btn">Import Gating-ML<input type="file" accept=".xml" data-testid="import-gml" onChange={(e) => { const f = e.target.files?.[0]; if (f) importGatingMl(f); e.target.value = ''; }} /></label>
               <button disabled={!sample} onClick={() => setDialog({ kind: 'export' })} data-testid="open-export">Export / Concatenate</button>
               <label className="file-btn" title="Search for FCS files: choose a folder; every FCS file under it is added">Search for FCS files...<input type="file" multiple {...{ webkitdirectory: '', directory: '' }} data-testid="add-folder" onChange={(e) => { if (e.target.files) addFolder(e.target.files); e.target.value = ''; }} /></label>
+              <FormatFileButtons {...formatProps} />
               <button disabled={!ws.samples.length} onClick={exportExcel} data-testid="export-excel" title="Export to Excel: the workspace table as shown (.xlsx)">Export to Excel</button>
               <button onClick={exportTemplate} data-testid="export-template" title="Export as Template (WSPT): groups and their analysis, no samples">Export as Template</button>
               <button disabled={!ws.samples.length} onClick={() => void saveArchive()} data-testid="save-archive" title="Save as Archive: workspace and FCS files in one ZIP">Save as Archive</button>
               <button onClick={() => void revertWs()} data-testid="revert-ws" title="Revert workspace to original state">Revert</button>
               <button onClick={() => void closeWs()} data-testid="close-ws" title="Closes this current workspace">Close</button>
-            </div><div className="fj-band-title">Document</div></div>
-            <div className="fj-band"><div className="fj-band-body">
+            </div><div className="fj-band-title">Document</div></div>}
+            {rb('find') && <div style={rs('find')} className="fj-band"><div className="fj-band-body">
               <button disabled={!ws.samples.length} onClick={() => setDialog({ kind: 'find' })} data-testid="open-find">Find</button>
-            </div><div className="fj-band-title">Find</div></div>
-          </>}
-          {ribbonTab === 'Edit' && <>
-            <div className="fj-band"><div className="fj-band-body">
+            </div><div className="fj-band-title">Find</div></div>}
+          </>
+          <>
+            {rb('clipboard') && <div style={rs('clipboard')} className="fj-band"><div className="fj-band-body">
               <button disabled={!sample || !(multi.length || sel.popId)} onClick={copySel} data-testid="ribbon-copy">Copy</button>
               <button disabled={!sel.popId} onClick={cutSel} data-testid="ribbon-cut">Cut</button>
               <button disabled={!clip?.length || !sample} onClick={() => pasteTo(checked.length ? [...new Set([sample!.id, ...checked])] : [sample!.id])} data-testid="ribbon-paste">Paste</button>
-            </div><div className="fj-band-title">Clipboard</div></div>
-            <div className="fj-band"><div className="fj-band-body">
+            </div><div className="fj-band-title">Clipboard</div></div>}
+            {rb('select') && <div style={rs('select')} className="fj-band"><div className="fj-band-body">
               <button disabled={!sample} onClick={selectEquivalent} data-testid="ribbon-select-equivalent">Select Equivalent Nodes</button>
               <button disabled={!groupSamples.length} onClick={selectAllNodes} data-testid="ribbon-select-all" title="Select All (Ctrl/Cmd+A): all nodes in the workspace">Select All</button>
-            </div><div className="fj-band-title">Select</div></div>
-            <div className="fj-band"><div className="fj-band-body">
+            </div><div className="fj-band-title">Select</div></div>}
+            {rb('expand') && <div style={rs('expand')} className="fj-band"><div className="fj-band-body">
               <button disabled={!ws.samples.length} onClick={() => { setCollapsed('all', false); setCollapsedSamples([]); }} data-testid="expand-all">Expand All</button>
               <button disabled={!ws.samples.length} onClick={() => { setCollapsed('all', true); setCollapsedSamples(groupSamples.map((x) => x.id)); }} data-testid="collapse-all">Collapse All</button>
               <button disabled={!sel.sampleId} onClick={() => expandSelection(false)} data-testid="expand-selection" title="Expand all selected tree nodes">Expand Selection</button>
               <button disabled={!sel.sampleId} onClick={() => expandSelection(true)} data-testid="collapse-selection" title="Collapse all selected tree nodes">Collapse Selection</button>
-            </div><div className="fj-band-title">Expand</div></div>
-          </>}
-          {ribbonTab === 'Workspace' && <>
-            <div className="fj-band wide"><div className="fj-band-body column">{popActionsBlock ?? <span className="muted">Select a sample or population in the table.</span>}</div><div className="fj-band-title">Populations / Groups / Boolean</div></div>
-            <div className="fj-band"><div className="fj-band-body column">
+            </div><div className="fj-band-title">Expand</div></div>}
+          </>
+          <>
+            {rb('populations') && <div style={rs('populations')} className="fj-band wide"><div className="fj-band-body column">{popActionsBlock ?? <span className="muted">Select a sample or population in the table.</span>}</div><div className="fj-band-title">Populations / Groups / Boolean</div></div>}
+            {rb('derived') && <div style={rs('derived')} className="fj-band"><div className="fj-band-body column">
+              <ClusterParamButtons {...formatProps} focused={selPopValid ? sel.popId : null} selected={multi} />
+            </div><div className="fj-band-title">Derived Parameters</div></div>}
+            {rb('statistics') && <div style={rs('statistics')} className="fj-band"><div className="fj-band-body column">
               <button disabled={!sample} onClick={() => setDialog({ kind: 'addStat' })} data-testid="open-add-stat" title="Add Statistic... (several statistics and parameters for the selected populations)">Add Statistic...</button>
               <button onClick={recalcStats} data-testid="recalc-stats" title="Recalculate Statistics: refresh all statistics in this workspace">Recalculate</button>
-            </div><div className="fj-band-title">Statistics</div></div>
-            <div className="fj-band"><div className="fj-band-body column">
+            </div><div className="fj-band-title">Statistics</div></div>}
+            {rb('keywords') && <div style={rs('keywords')} className="fj-band"><div className="fj-band-body column">
               <button disabled={!groupSamples.length} onClick={() => setDialog({ kind: 'addKeywordGroup' })} data-testid="add-key-group" title="Add Keyword to Group: a new keyword for the samples of the current group">Add Keyword to Group</button>
               <button disabled={!groupSamples.length} onClick={() => void pasteKeywordToGroup()} data-testid="paste-key-group" title="Paste keyword to group: the clipboard's keyword value(s) into the current group">Paste keyword to group</button>
               <button disabled={!sel.sampleId} onClick={() => setDialog({ kind: 'series' })} data-testid="open-series" title="Create keyword value series...">Keyword value series...</button>
-            </div><div className="fj-band-title">Keywords</div></div>
-            <div className="fj-band"><div className="fj-band-body column">
+            </div><div className="fj-band-title">Keywords</div></div>}
+            {rb('columns') && <div style={rs('columns')} className="fj-band"><div className="fj-band-body column">
               <button onClick={() => setDialog({ kind: 'columns' })} data-testid="edit-columns" title="Edit Columns...: the keyword columns shown in the workspace window">Edit Columns...</button>
               <button onClick={resetWidths} data-testid="reset-widths" title="Reset Column Widths">Reset Column Widths</button>
               {[0, 1, 2].map((i) => (
@@ -2373,27 +2464,28 @@ export function App() {
                   {[NAME, ...groupKeys.map((k) => `kw:${k}`)].map((k) => <option key={k} value={k}>{columnLabel(k)}</option>)}
                 </select>{ws.tableSort?.[i] && <button className="link" data-testid={`sort-dir-${i + 1}`} onClick={() => updateWs((w) => { w.tableSort![i].ascending = !w.tableSort![i].ascending; })}>{ws.tableSort[i].ascending ? 'asc' : 'desc'}</button>}</label>
               ))}
-            </div><div className="fj-band-title">Columns / Sort</div></div>
-            <div className="fj-band"><div className="fj-band-body column">
+            </div><div className="fj-band-title">Columns / Sort</div></div>}
+            {rb('view') && <div style={rs('view')} className="fj-band"><div className="fj-band-body column">
               <button onClick={() => setViewOpts((v) => ({ ...v, stats: !v.stats }))} data-testid="toggle-stats" title="Show/hide the display of statistics in the workspace">{viewOpts.stats ? 'Hide Stats' : 'Show Stats'}</button>
               <button onClick={() => setViewOpts((v) => ({ ...v, comp: !v.comp }))} data-testid="toggle-comp" title="Show/hide the display of compensation nodes in the workspace">{viewOpts.comp ? 'Hide Compensation Nodes' : 'Show Compensation Nodes'}</button>
               <button onClick={() => setViewOpts((v) => ({ ...v, platforms: !v.platforms }))} data-testid="toggle-platforms" title="Show/hide the display of platform analyses in the workspace">{viewOpts.platforms ? 'Hide Platforms' : 'Show Platforms'}</button>
               <button onClick={() => setViewOpts((v) => ({ ...v, dp: !v.dp }))} data-testid="toggle-dp" title="Show/hide the display of derived parameters in the workspace">{viewOpts.dp ? 'Hide Derived Parameters' : 'Show Derived Parameters'}</button>
-            </div><div className="fj-band-title">View</div></div>
-          </>}
-          {ribbonTab === 'Tools' && <>
-            <div className="fj-band"><div className="fj-band-body">
+            </div><div className="fj-band-title">View</div></div>}
+          </>
+          <>
+            {rb('cytometry') && <div style={rs('cytometry')} className="fj-band"><div className="fj-band-body">
               <button disabled={!sMeta} onClick={() => setDialog({ kind: 'derived' })} data-testid="open-derived">Derive Parameters ({ws.derivedParameters?.length ?? 0})</button>
               <button disabled={!sMeta} onClick={() => setDialog({ kind: 'keywords' })} data-testid="open-keywords" title="Inspect (Ctrl/Cmd+I)">Inspect (Keywords)</button>
-            </div><div className="fj-band-title">Cytometry</div></div>
-            <div className="fj-band"><div className="fj-band-body">{platformButtons}</div><div className="fj-band-title">Experiment / Biology</div></div>
-          </>}
-          {ribbonTab === 'Configure' && <>
-            <div className="fj-band"><div className="fj-band-body">
+              <button disabled={!groupSamples.length} onClick={() => void run(checkQuality)} data-testid="check-quality" title="A metric for determining fluidic or illumination problems in the cytometer.">Check Sample Quality</button>
+            </div><div className="fj-band-title">Cytometry</div></div>}
+            {rb('biology') && <div style={rs('biology')} className="fj-band"><div className="fj-band-body">{platformButtons}</div><div className="fj-band-title">Experiment / Biology</div></div>}
+          </>
+          <>
+            {rb('settings') && <div style={rs('settings')} className="fj-band"><div className="fj-band-body">
               <button onClick={() => switchLayout('classic')} data-testid="layout-classic" title="The earlier four-panel screen">Switch to classic layout</button>
               <label title="Each graph window opens as its own window, as in FlowJo; off: windows inside the page"><input type="checkbox" checked={separateWins} onChange={(e) => toggleSeparate(e.target.checked)} data-testid="separate-windows" /> Graph windows as separate windows</label>
-            </div><div className="fj-band-title">Settings</div></div>
-          </>}
+            </div><div className="fj-band-title">Settings</div></div>}
+          </>
         </div>
       </nav>
       <main className={`fj-main ${drawer ? 'with-drawer' : ''}`}>
@@ -2495,7 +2587,7 @@ export function App() {
           onOpenGraph={(sampleId, path) => { const s0 = ws.samples.find((x) => x.id === sampleId); const pop = path && s0 ? s0.populations.find((q) => populationPath(s0.populations, q.id) === path) : null; if (!s0 || (path && !pop)) return; setDialog(null); openWin(sampleId, pop?.id ?? null); }}
         />
       )}
-      {dialog?.kind === 'tool' && <PlatformToolHost tool={dialog.tool} ws={ws} meta={meta} client={client} sample={sample} popId={selPopValid ? sel.popId : null} groupId={group?.id ?? ''} updateWs={updateWs} download={(n, d, t) => download(n, d, t)} downloadBlob={(n, b) => download(n, b, b.type)} addFiles={(f) => void addFiles(f)} onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'tool' && <PlatformToolHost tool={dialog.tool} axes={dialog.axes} ws={ws} meta={meta} client={client} sample={sample} popId={selPopValid ? sel.popId : null} groupId={group?.id ?? ''} updateWs={updateWs} download={(n, d, t) => download(n, d, t)} downloadBlob={(n, b) => download(n, b, b.type)} addFiles={(f) => void addFiles(f)} onClose={() => setDialog(null)} />}
       {dialog?.kind === 'platforms' && sample && sMeta && (() => {
         const base = { sampleId: sample.id, compensation: sample.compensation, populations: sample.populations, matrices: ws.matrices, derived: ws.derivedParameters, popId: selPopValid ? sel.popId : null };
         return (
@@ -2506,6 +2598,19 @@ export function App() {
             onClose={() => setDialog(null)}
             runCellCycle={(channel, model) => runOrThrow(() => client.cellCycle({ ...base, channel, model }))}
             runProliferation={(channel, maxGenerations) => runOrThrow(() => client.proliferation({ ...base, channel, maxGenerations }))}
+            onCcGates={(ch, ranges, on) => {
+              const spec = specOf(ch);
+              if (!spec) return;
+              const t = makeTransform(spec);
+              const kids = sample.populations.filter((q) => q.parentId === (selPopValid ? sel.popId : null));
+              if (!on) {
+                const gone = kids.filter((q) => ranges.some((r) => r.name === q.name)).map((q) => q.id);
+                if (gone.length) updateWs((w) => { const s2 = w.samples.find((x) => x.id === sample.id)!; s2.populations = s2.populations.filter((q) => !gone.includes(q.id) && !gone.includes(q.parentId ?? '')); });
+                return;
+              }
+              const X = { kind: 'channel' as const, channel: ch, transform: spec };
+              createGates(ranges.filter((r) => !kids.some((q) => q.name === r.name)).map((r) => ({ name: r.name, gate: { type: 'rect' as const, dims: [X], min: [t.apply(r.min)], max: [t.apply(r.max)] } })));
+            }}
             kinetics={(() => {
               // FlowJo's default Y: the first parameter with "/" in its name,
               // else Ratio; this app falls back to the first non-time channel.
@@ -2623,6 +2728,10 @@ export function App() {
       })()}
       {dialog?.kind === 'columns' && <EditColumnsDialog columns={tableColumns(ws)} keywords={groupKeys} onClose={() => setDialog(null)} onOk={(c) => { updateWs((w) => { w.tableColumns = c; w.tableSort = w.tableSort?.filter((k) => c.some((x) => x.key === k.key)); }); setDialog(null); }} />}
       {dialog?.kind === 'addStat' && <AddStatDialog targets={statTargets()} channels={channels.map((c) => c.name)} onOk={addStats} onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'miflow' && <ExperimentDialog initial={ws.experiment} docName={ws.name} groupNames={ws.groups.map((g) => g.name)} figureNames={[...(ws.layout?.length ? ['Layout'] : []), ...(ws.tables ?? []).map((t) => t.name)]}
+        gatingText={() => (sample ? [sample.fileName, ...sample.populations.map((q) => `  ${populationPath(sample.populations, q.id)}`)].join('\n') : '')}
+        compText={() => { const m = sample ? ws.matrices.find((x) => x.id === sample.compensation) : undefined; return m ? [m.name, `\t${m.channels.join('\t')}`, ...m.values.map((r, i) => `${m.channels[i]}\t${r.join('\t')}`)].join('\n') : ''; }}
+        download={(n, d, t) => download(n, d, t)} onOk={(e) => { updateWs((w, say) => { w.experiment = e; say('info', 'Experiment annotation saved'); }); setDialog(null); }} onClose={() => setDialog(null)} />}
       {dialog?.kind === 'series' && (() => {
         const ordered = sortSamples(ws, groupSamples);
         const start = Math.max(0, ordered.findIndex((s) => s.id === sel.sampleId));
@@ -2749,6 +2858,8 @@ export function App() {
           onClose={() => setDialog(null)}
         />
       )}
+      {dialog?.kind === 'scripts' && <ScriptEditorDialog ws={ws} updateWs={updateWs} snapshot={scriptSnapshot} applyOps={applyScriptOps} download={download} onClose={() => setDialog(null)}
+        statsOf={(sid, cols) => { const s = ws.samples.find((x) => x.id === sid); return s && meta[sid] ? client.stats({ sampleId: s.id, compensation: s.compensation, populations: s.populations, matrices: ws.matrices, derived: ws.derivedParameters, columns: cols, kinetics: ws.kinetics, scales: statScales(ws.channelTransforms, s.flowjoLinearRanges, cols.map((c) => c.channel)) }) : Promise.resolve(undefined); }} />}
       {dialog?.kind === 'prefs' && <PrefsDialog prefs={prefs} onChange={setPrefs} onClose={() => setDialog(null)} />}
       {colorTableOpen && <ColorTableDialog value={prefs.colorTable} onApply={(v) => setPrefs({ ...prefsRef.current, colorTable: v })} onClose={() => setColorTableOpen(false)} />}
       {rangeDlg && <RangeDialog channel={rangeDlg.channel} min={rangeDlg.min} max={rangeDlg.max} onApply={(a, b) => applyRange(rangeDlg.channel, a, b)} onClose={() => setRangeDlg(null)} />}

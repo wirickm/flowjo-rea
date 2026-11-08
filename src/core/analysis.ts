@@ -10,6 +10,8 @@ import { BIFUR_BINS, curlyQuadPolygon, magneticOffset1D, magneticOffset2D, MAGNE
 import { computeStat, gather } from './stats';
 import { compileFormula, EVENT_NUMBER, FormulaError } from './formula';
 import { splineDividers } from './spline';
+import { decodeColumn } from './paramImport';
+import { clusterFrequencyColumn, consensusColumn } from './clusterParams';
 import { makeTransform } from './transforms';
 
 export interface PopulationResult {
@@ -37,6 +39,8 @@ export class SampleEngine {
     readonly sample: Pick<SampleState, 'compensation' | 'populations'>,
     readonly matrices: SpilloverMatrix[],
     readonly derived: DerivedParameter[] = [],
+    // Sample id: selects this sample's values of imported and gate-derived parameters.
+    readonly sampleId?: string,
   ) {
     this.channelNames = fcs.channels.map((c) => c.name);
     this.root = new Uint8Array(fcs.eventCount).fill(1);
@@ -69,6 +73,12 @@ export class SampleEngine {
   }
 
   private derivedCache = new Map<string, Float64Array>();
+  // Mask of a population by id (set by run(); gate-derived parameters use it).
+  private popMask: (id: string) => Uint8Array = (id) => {
+    const m = this.masks.get(id);
+    if (!m) fail('GATE_INVALID', `Derived parameter population ${id} not found`);
+    return m;
+  };
 
   // Raw (compensated, untransformed) column for a channel or derived parameter.
   column(channel: string, compRef?: string): Float64Array {
@@ -130,6 +140,20 @@ export class SampleEngine {
           throw e;
         }
       }
+    } else if ('imported' in dp) {
+      const n = this.root.length;
+      const enc = this.sampleId !== undefined ? dp.imported.data[this.sampleId] : undefined;
+      const v = enc ? decodeColumn(enc) : null;
+      out = new Float64Array(n);
+      for (let i = 0; i < n; i++) out[i] = v && i < v.length ? v[i] : NaN;
+    } else if ('gateDerived' in dp) {
+      const n = this.root.length;
+      const g = dp.gateDerived;
+      if (g.sampleId !== this.sampleId) out = new Float64Array(n).fill(NaN);
+      else {
+        const masks = g.populations.map((id) => this.popMask(id));
+        out = g.type === 'consensus' ? consensusColumn(masks, n) : clusterFrequencyColumn(masks[0] ?? new Uint8Array(n), masks.slice(1), n);
+      }
     } else {
       if (dp.num === dp.name || dp.den === dp.name) fail('CHANNEL_MISSING', `Derived parameter "${dp.name}" refers to itself`);
       const x = this.column(dp.num, ref);
@@ -172,6 +196,11 @@ export class SampleEngine {
     const pops = this.sample.populations;
     const byId = new Map(pops.map((p) => [p.id, p]));
     const visiting = new Set<string>();
+    this.popMask = (id) => {
+      const p = byId.get(id);
+      if (!p) fail('GATE_INVALID', `Derived parameter population ${id} not found`);
+      return evalPop(p);
+    };
     const evalPop = (p: Population): Uint8Array => {
       const done = this.masks.get(p.id);
       if (done) return done;

@@ -1,6 +1,7 @@
 // FlowJo-style .wsp writer. Mirrors the structure observed in FlowJo-saved
 // workspaces (see wsp.ts). NOT validated by opening in FlowJo: only
 // round-trip tested through this project's reader.
+import { experimentXml } from './miflowcyt';
 import { writeFigList } from './wspLayout';
 import { currentLayout } from './layoutFigures';
 import { invert } from './compensation';
@@ -14,6 +15,7 @@ import { kineticsNodeXml } from './kinetics';
 import { derivedFormula } from './model';
 import { FLOWJO_STAT_NAMES } from './stats';
 import { esc } from './xml';
+import { scriptsXml } from './fjScript';
 
 export interface WspExportInput {
   ws: Workspace;
@@ -209,6 +211,8 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
     // Subpopulations (specs 12): type algebraic (eventNumber for "Event #"),
     // formula, the raw text in <Formula> and the scale in <Transform>.
     const dpXml = (ws.derivedParameters ?? []).map((d) => {
+      // Imported and gate-derived parameters have no formula to write.
+      if (d.formula === undefined && !('num' in d)) return '';
       const f = derivedFormula(d);
       const type = f.trim().toUpperCase() === 'EVENT #' ? 'eventNumber' : 'algebraic';
       const t = fjTransform(ws.channelTransforms[d.name] ?? { kind: 'linear', T: d.formula !== undefined ? 1000 : 16, A: 0 }, warn, d.name, 0);
@@ -310,6 +314,7 @@ export function writeWsp(input: WspExportInput): { xml: string; warnings: string
 ${columnsXml(ws)}<Groups>${groups}</Groups>
 <SampleList>${sampleXml.join('\n')}</SampleList>
 ${layoutXml()}
+${scriptsXml(ws.scripts)}${ws.experiment ? experimentXml(ws.experiment) : ''}
 </Workspace>
 `;
   return { xml, warnings };

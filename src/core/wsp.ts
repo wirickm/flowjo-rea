@@ -8,6 +8,7 @@
 //  - "Comp-" (matrix prefix/suffix) on a parameter name means the
 //    compensated channel; quadrants are saved as four rectangle gates.
 //  - AndNode/OrNode/NotNode populations reference operands by path.
+import { isEmptyExperiment, readExperiment } from './miflowcyt';
 import type { SpilloverMatrix } from './compensation';
 import { fail } from './errors';
 import { emptyWorkspace, type Dimension, type Gate, type GridAxis, type Group, type GroupCriteria, type KeywordRule, type Population, type SampleState, type SavedLayout, type StatKind, type Workspace } from './model';
@@ -19,6 +20,7 @@ import { makeTransform, type TransformSpec } from './transforms';
 import { KIN_BY_NAME, kineticsFromAttrs } from './kinetics';
 import { attr, descendants, kid, kids, local, numAttr, parseXml, type El } from './xml';
 import { parseFigList } from './wspLayout';
+import { parseScriptElements } from './fjScript';
 
 export interface WspImport {
   workspace: Workspace;
@@ -503,6 +505,15 @@ export function parseWsp(xml: string): WspImport {
     const plain = cols.map((c) => c.key).join() === 'fj.appnode.prop.name,fj.appnode.prop.statistic,fj.appnode.prop.ncells';
     if (cols.length && !plain) ws.tableColumns = cols;
   }
+  // Scripts (ScriptEditorController.setElement; ui-gaps/workspace.md SCRIPTEDITOR).
+  const scriptsEl = kid(root, 'Scripts');
+  if (scriptsEl) {
+    const scripts = parseScriptElements(kids(scriptsEl, 'Script').map((e) => ({ lang: attr(e, 'lang'), name: attr(e, 'name'), text: (e as unknown as Element).textContent ?? '' })));
+    if (scripts.length) ws.scripts = scripts;
+  }
+  // Annotate Experiment (Workspace.setMetaData from the <experiment> child).
+  const expEl = kid(root, 'experiment');
+  if (expEl) { const e = readExperiment(expEl); if (!isEmptyExperiment(e)) ws.experiment = e; }
   const groupsEl = kid(root, 'Groups');
   for (const g of groupsEl ? kids(groupsEl, 'GroupNode') : []) {
     const gname = attr(g, 'name') ?? 'Group';

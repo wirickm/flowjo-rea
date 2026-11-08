@@ -139,43 +139,162 @@ export function compareHistograms(sample: ArrayLike<number>, control: ArrayLike<
   return { ks, ksMaxAt: bucketValue(ks.bucket), overton: overtonPositive(sample, control), seDymax: seDymaxPositive(sample, control), chi: chiSquared(sample, control) };
 }
 
-// Multivariate probability binning (MultiDimCompare::ChiSquare): the control
-// events are split recursively, each time along the dimension of largest
-// variance at its median, until there are `bins` bins (each holding about
-// Nc/bins control events); the sample events are dropped through the same
-// tree. Own rule: the split order of FlowJo's tree is not decoded (spec).
-export function multivariateChi(control: Float64Array[], sample: Float64Array[], dims: number, bins = DEFAULT_MV_BINS): ChiResult {
-  const nc = control.length, ns = sample.length;
-  type Node = { dim: number; cut: number; lo: Node; hi: Node } | { leaf: number };
-  let leaves = 0;
-  const build = (ev: Float64Array[], depth: number, want: number): Node => {
-    if (want <= 1 || ev.length < 2) return { leaf: leaves++ };
-    let best = 0, bv = -1;
+// Multivariate probability binning (MultiDimCompare::ChiSquare,
+// BuildComparisonTree, DivideTree, SortPartition, FilterSampleThroughTree,
+// CleanUpLeafCounts; spec platforms.md section 4). Each event's value on each
+// parameter is its display-scale position u in [0, 1] stored as an integer
+// v = trunc(1024 u). A tree is built on each control population in turn (all
+// trees share one node list): a node takes the parameter whose 1024-bin
+// histogram has the largest standard deviation (BasicHistogram::
+// ChannelStdDev, n - 1 denominator, first maximum wins) and splits at its
+// median bin (ChannelMedian: first bin whose running count reaches n/2,
+// at least 1): events with v < split go left. A node whose split leaves one
+// side empty is a terminal leaf; a child with fewer than
+// max(trunc(Nc / bins), 5) events becomes a terminal leaf, otherwise it is
+// divided again. The sample and the controls are dropped through the last
+// tree built; the control counts kept are the last control's (the engine
+// overwrites them per control) while Nc is the sum of all control counts.
+// chi = sum over terminal leaves (all trees) of (p - q)^2 / (p + q), float.
+export function multivariateChi(controls: Float64Array[][], sample: Float64Array[], dims: number, bins = DEFAULT_MV_BINS): ChiResult {
+  const q = (u: number) => (Number.isFinite(u) ? Math.trunc(Math.min(1, Math.max(0, u)) * 1024) : 0);
+  const quant = (ev: Float64Array[]) => { const out = new Uint16Array(ev.length * dims); ev.forEach((e, i) => { for (let d = 0; d < dims; d++) out[i * dims + d] = q(e[d]); }); return out; };
+  const ncTotal = controls.reduce((a, c) => a + c.length, 0);
+  const minLeaf = Math.trunc(Math.max(f32(ncTotal / bins), 5));
+  // Node list; null is the shared terminal leaf entry.
+  const nodes: ({ dim: number; split: number; left: number; right: number } | null)[] = [];
+  const push = (n: (typeof nodes)[number]) => { nodes.push(n); return nodes.length; };
+  const divide = (v: Uint16Array, start: number, count: number): number => {
+    let dim = 0, best = -1;
+    const hist = new Float64Array(1024);
     for (let d = 0; d < dims; d++) {
-      let m = 0, q = 0;
-      for (const e of ev) m += e[d];
-      m /= ev.length;
-      for (const e of ev) q += (e[d] - m) ** 2;
-      if (q > bv) { bv = q; best = d; }
+      hist.fill(0);
+      for (let i = start; i < start + count; i++) hist[Math.min(1023, v[i * dims + d])]++;
+      let sd = 0;
+      if (count > 1) {
+        let m = 0;
+        for (let b = 0; b < 1024; b++) m += b * hist[b];
+        m /= count;
+        let s2 = 0;
+        for (let b = 0; b < 1024; b++) s2 += (b - m) * (b - m) * hist[b];
+        sd = Math.sqrt(s2 / (count - 1));
+      }
+      if (sd > best) { best = sd; dim = d; }
     }
-    const sorted = ev.slice().sort((a, b) => a[best] - b[best]);
-    const half = Math.floor(sorted.length / 2);
-    const cut = sorted[half][best];
-    const lw = Math.floor(want / 2);
-    return { dim: best, cut, lo: build(sorted.slice(0, half), depth + 1, lw), hi: build(sorted.slice(half), depth + 1, want - lw) };
+    hist.fill(0);
+    for (let i = start; i < start + count; i++) hist[Math.min(1023, v[i * dims + dim])]++;
+    const half = f32(f32(count * 50) * 0.01);
+    let k = 1, run = 0;
+    if (count > 0) for (;;) { if (k >= 1024) break; run += hist[k - 1]; if (run >= half) break; k++; }
+    const split = Math.trunc(Math.max(count > 0 ? k - 1 : 0, 1));
+    // SortPartition: v < split first.
+    const lo: number[] = [], hi: number[] = [];
+    for (let i = start; i < start + count; i++) (v[i * dims + dim] < split ? lo : hi).push(i);
+    const copy = v.slice(start * dims, (start + count) * dims);
+    [...lo, ...hi].forEach((src, j) => { for (let d = 0; d < dims; d++) v[(start + j) * dims + d] = copy[(src - start) * dims + d]; });
+    const left = lo.length;
+    if (left === 0 || left === count) return push(null);
+    const l = left < minLeaf ? push(null) : divide(v, start, left);
+    const r = count - left < minLeaf ? push(null) : divide(v, start + left, count - left);
+    return push({ dim, split, left: l, right: r });
   };
-  const root = build(control, 0, Math.max(1, Math.min(bins, nc)));
-  const find = (n: Node, e: Float64Array): number => ('leaf' in n ? n.leaf : find(e[n.dim] < n.cut ? n.lo : n.hi, e));
-  const cc = new Float64Array(leaves), sc = new Float64Array(leaves);
-  for (const e of control) cc[find(root, e)]++;
-  for (const e of sample) sc[find(root, e)]++;
+  let root = 0;
+  for (const c of controls) if (c.length) root = divide(quant(c), 0, c.length);
+  const leafCounts = (ev: Float64Array[]) => {
+    const counts = new Float64Array(nodes.length);
+    if (root) for (const e of ev) {
+      let n = root;
+      for (;;) {
+        const node = nodes[n - 1];
+        if (!node) { counts[n - 1]++; break; }
+        n = q(e[node.dim]) < node.split ? node.left : node.right;
+      }
+    }
+    return counts.filter((_, i) => nodes[i] === null);
+  };
+  const last = [...controls].reverse().find((c) => c.length) ?? [];
+  const cc = leafCounts(last), sc = leafCounts(sample);
+  const ns = sample.length, invS = f32(1 / ns), invC = f32(1 / ncTotal);
   let chi = 0;
-  for (let k = 0; k < leaves; k++) {
-    const p = ns ? sc[k] / ns : 0, q = nc ? cc[k] / nc : 0;
-    if (p || q) chi += (p - q) ** 2 / (p + q);
+  for (let k = 0; k < cc.length; k++) {
+    const p = f32(sc[k] * invS), qq = f32(cc[k] * invC), t = f32(qq + p);
+    if (t > 0) chi = f32(chi + f32(f32((p - qq) * (p - qq)) / t));
   }
-  const { tx, maxT } = tOf(chi, leaves, Math.min(ns, nc));
-  return { chi: f32(chi), tx, maxT, bins: leaves };
+  const nb = cc.length;
+  const { tx, maxT } = tOf(chi, nb, Math.min(ns, ncTotal));
+  return { chi, tx, maxT, bins: nb };
+}
+
+// Population measures (Comparison::MatchRatio, CalculateMatchingMatrix,
+// FMeasure). FlowJo requests them per comparator population with the
+// comparison's own population as consensus / correct and the comparator as
+// candidate; the event set is every event of the consensus population's
+// sample (membership by event index; a population that is "All events"
+// contains every event). Masks are 0/1 per event.
+type Mask = ArrayLike<number> | null;
+const inMask = (m: Mask, e: number) => (m === null ? true : e < m.length && !!m[e]);
+// MatchRatio: weight w(e) = |f(e) - 0.5| with f the fraction of consensus
+// populations holding e; a population scores w(e) for every event it agrees
+// with the consensus on. The engine lays the per-population rows out with a
+// stride of (populations - 1) instead of the event count, so rows overlap;
+// this is reproduced. One consensus and one candidate: a single value
+// score(0) / sum w; otherwise one value per population.
+export function matchRatio(consensus: Mask[], candidates: Mask[], n: number): number[] {
+  const a = consensus.length, pops = [...consensus, ...candidates], K = pops.length;
+  if (!a || !K || n < 1) return [];
+  const inv = f32(1 / a), frac = new Float64Array(n), w = new Float64Array(n);
+  let W = 0;
+  for (let e = 0; e < n; e++) {
+    let c = 0;
+    for (const m of consensus) if (inMask(m, e)) c++;
+    frac[e] = f32(c * inv);
+    w[e] = Math.abs(frac[e] - 0.5);
+    W += w[e];
+  }
+  const stride = K - 1, flat = new Float64Array(n * K);
+  pops.forEach((m, k) => {
+    for (let e = 0; e < n; e++) {
+      const inside = inMask(m, e);
+      flat[k * stride + e] = m === null ? (frac[e] > 0.5 ? w[e] : 0) : ((frac[e] > 0.5 && inside) || (frac[e] < 0.5 && !inside) ? w[e] : 0);
+    }
+  });
+  const score = pops.map((_, k) => { let s = 0; for (let e = 0; e < n; e++) s += flat[k * stride + e]; return s; });
+  if (a === 1 && candidates.length === 1) return [score[0] / W];
+  return score.map((s) => s * (1 / W));
+}
+export interface FMeasureResult { value: number; precision: number; recall: number; total: number }
+// FMeasure: matching matrix M(i, j) = events in correct population i and
+// candidate j; precision = M / |candidate j|, recall = M / |correct i|,
+// F = 2 P R / (P + R); totalFMeasure = sum over i of |correct i| / N times the
+// best F of row i. Rows are stored with a stride of (correct count - 1) as in
+// the engine. value, precision and recall are those of the last pair.
+export function fMeasure(correct: Mask[], candidates: Mask[], n: number): FMeasureResult | null {
+  const a = correct.length, b = candidates.length;
+  if (!a || !b) return null;
+  const size = (m: Mask) => { if (m === null) return 1; let s = 0; for (let e = 0; e < m.length; e++) if (m[e]) s++; return s; };
+  const M = correct.map((ca) => candidates.map((cb) => { let s = 0; for (let e = 0; e < n; e++) if (inMask(ca, e) && inMask(cb, e)) s++; return s; }));
+  const stride = a - 1, P = new Float64Array(a * b + b), R = new Float64Array(a * b + b);
+  let precision = 0, recall = 0;
+  correct.forEach((ca, i) => {
+    const sa = size(ca);
+    candidates.forEach((cb, j) => {
+      const sb = size(cb), idx = stride * i + j;
+      P[idx] = sb ? M[i][j] / sb : 0;
+      R[idx] = sa ? M[i][j] * (1 / sa) : 0;
+      recall = R[idx];
+    });
+    precision = P[stride * i + b - 1];
+  });
+  const F = new Float64Array(a * b + b);
+  let value = 0;
+  for (let i = 0; i < a; i++) for (let j = 0; j < b; j++) { const k = stride * i + j, s = P[k] + R[k]; value = s !== 0 ? (R[k] * (P[k] + P[k])) / s : 0; F[k] = value; }
+  let total = 0;
+  const perN = 1 / n;
+  correct.forEach((ca, i) => {
+    let bi = 0;
+    for (let j = 1; j < b; j++) if (F[stride * i + j] > F[stride * i + bi]) bi = j;
+    total += size(ca) * perN * F[stride * i + bi];
+  });
+  return { value, precision, recall, total };
 }
 
 // ComparisonFrame remove buttons.

@@ -185,7 +185,7 @@ export class AnalysisService {
     const key = JSON.stringify([r.compensation, r.populations, r.matrices, r.derived]);
     const hit = this.engines.get(r.sampleId);
     if (hit && hit.key === key) return hit.engine;
-    const engine = new SampleEngine(f, { compensation: r.compensation, populations: r.populations }, r.matrices, r.derived ?? []).run();
+    const engine = new SampleEngine(f, { compensation: r.compensation, populations: r.populations }, r.matrices, r.derived ?? [], r.sampleId).run();
     this.engines.set(r.sampleId, { key, engine });
     return engine;
   }
@@ -588,6 +588,15 @@ export class AnalysisService {
       count++;
     }
     return { values: Float32Array.from(out), count, total };
+  }
+
+  // Per-event membership (0/1) of a population over all the sample's events
+  // (Compare Populations Match Ratio / F-Measure).
+  populationMask(r: AnalyzeRequest & { popId: string | null }): Uint8Array {
+    const eng = this.engine(r);
+    const mask = r.popId ? eng.masks.get(r.popId) : eng.root;
+    if (!mask) throw new AppError('GATE_INVALID', 'Population not found');
+    return Uint8Array.from(mask, (v) => (v ? 1 : 0));
   }
 
   dimensionValues(r: AnalyzeRequest, d: Dimension): Float64Array {

@@ -171,8 +171,24 @@ the editor (`table-window`) with live values. **Done** (e2e "Create Table
 - flowjo-rea: File Type CSV, TAB, HTML, XML Excel (`tableExcelXml`, `.xml`,
   opens in Excel). **Own rule** for Excel: the SpreadsheetML format is
   written instead of binary .xls (no new dependency; it is FlowJo's own XML
-  Excel output). FlowJo XML and SQL: **Deferred** (no sample of either
-  output to match). HTML output now follows `createTableAsHTML` (grey
+  Excel output). FlowJo XML and SQL: **Done** (follow-up round, decoded
+  from `TableGenerator.createTableAsFlowJoXML` / `createTableAsSQL`; unit
+  "table output FlowJo XML and SQL", e2e followup-formats "To File, FlowJo
+  XML", "To File, SQL"):
+  - XML (`.xml`, label "XML"): `<Table name>` with `<Columns>`, one
+    `<Column id>` per column (`customRename` when the header differs from the
+    automatic one; `keyword`; or `analysisPath`, `statistic`, `population`,
+    `parameterName`, `stain` looked up on the first row's sample; or
+    `formula`), then one `<Row sample workspaceTitle>` per table row with an
+    `<Entry colId>` per column. Printed as `SElement.toWriter` does: no XML
+    declaration, two spaces per level, empty elements as `/>`.
+  - SQL (`.sql`): per row `INSERT INTO '<name>' ('<h1>',...) VALUES
+    ('<v1>',...)` and a line break; single quotes in the name become double
+    quotes, values are not escaped, empty headers are left out, nothing is
+    written without rows or headers, summary rows count as rows. FlowJo
+    pairs header i with TableData cell i, whose cell 0 is the sample name,
+    so the values are (sample, columns 1..n-1) and the last column is not
+    written; kept as FlowJo does. HTML output now follows `createTableAsHTML` (grey
   header, white header text, format colours, bold / italic). **Done** (unit
   "XML Excel", e2e "To File, XML Excel").
 
@@ -234,8 +250,19 @@ the editor (`table-window`) with live values. **Done** (e2e "Create Table
   Series plot").
 
 ### TECommand.PLOTPOINTCLOUD "3D Plot"
-- `ThreeDController` (Java 3D) on three columns. **Deferred**: no 3D
-  renderer in the app.
+- `TEPlotAction.plot`: refused with "Can't plot variables that are all the
+  same value." when a selected column's standard deviation is in [0, 1e-4);
+  otherwise `ThreeDDataModel(TableData)` makes one axis per selected column
+  (min / max; an empty cell fails with "Plot error: The data in column '%s'
+  can not be plotted.  Try batching the table first to check for empty
+  cells."; a frequency column spans 0..100; else a range under 0.001 becomes
+  [min, min + 1] and the range is widened 10% each side), then a
+  `ThreeDController` with point scale 0.8 and the colour axis on the third
+  column with the Spectrum gradient.
+- flowjo-rea: "3D Plot" in Plots (selected columns, at least three; X, Y, Z =
+  the first three) opens the 3D Viewer (platforms.md section 5). **Done**
+  (unit `table axes: widening, tiny range, frequency, empty cells`; e2e
+  "Table 3D Plot ..." in `e2e/followup-3d.mjs`).
 
 ## 5. Print, header / footer, figures
 
@@ -267,3 +294,23 @@ the editor (`table-window`) with live values. **Done** (e2e "Create Table
   asks every time.
 - The Statistics columns' NaN for samples whose data are not loaded is this
   app's convention (FlowJo always has its samples' data).
+
+
+### TECommand.RIBBONCONFIG "Customize Ribbon", TECommand.RIBBONSETDEFAULT "Apply defaults" (follow-up f2)
+- `TEActionManager` creates `TERibbonConfigAction(RIBBONCONFIG)` and
+  `TERibbonSetDefaultAction(RIBBONSETDEFAULT)` (confirm
+  `te.ribbon.setdefaults.confirm`, new `TERibbonStructure`, save preferences,
+  reload the ribbon). `TERibbonAddBandAction` / `TERibbonRemoveBandAction`
+  change the structure and save it to the `TERibbon` preference;
+  `TERibbonCommitToPrefsAction` exists but no TECommand constant wires it.
+  Defaults (`TERibbonStructure`): Table Editor: Tables, Iteration, Output;
+  Edit: Columns; Visualize: Formatting, Plots. Add / remove / drop rules as
+  the workspace ribbon (docs/validation/ui-gaps/workspace.md section F2.3).
+- flowjo-rea: "Customize Ribbon" (`te-ribbon-config`) in the table editor;
+  the Formatting, Iteration, Output and Plots bands can be removed, added
+  back and reordered; Apply defaults. **Done** with own rules: one strip (one
+  task) of the app's fieldsets; the table list and the column list are the
+  editor body and stay fixed; no Commit to Preferences. Tests: e2e
+  `e2e/followup-f2.mjs` "table editor: removing the Plots band hides it",
+  "table editor: bands reorder", "table editor: Apply defaults restores the
+  bands".

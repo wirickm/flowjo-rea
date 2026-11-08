@@ -3,13 +3,17 @@
 // The rules live in src/core/tableEditor.ts; this file is the UI.
 import { useEffect, useMemo, useState } from 'react';
 import { CONFIRM } from '../core/prefs';
+import { useRibbon } from './RibbonConfig';
+import { TE_RIBBON } from './ribbons';
+import { tableAxes } from '../core/threeD';
+import { TableThreeD } from './ThreeD';
 import { newId, populationPath, uniqueName, type LayoutObject, type StatColumn, type StatKind, type Workspace } from '../core/model';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL, validPercentile } from '../core/stats';
 import { teTableSpec, TETABLE_NOTE } from '../core/layoutTables';
 import {
   acquisitionTime, boxStats, cellStyle, duplicateTable, findRows, headerFromTemplate, headerText, iterate, NAME_TOKENS, OUTPUT_FORMATS, PLOT_SAME_VALUE, plotBlocked, regression,
   statKey, summaryRows, tableCsv, tableHtml, tableOutput, tableRows, tableTab, tableText,
-  type ColumnFormat, type OutputFormat, type StatSpec, type TableColumn, type TableDestination, type TableTemplate,
+  type ColumnFormat, type FlowJoXmlContext, type OutputFormat, type StatSpec, type TableColumn, type TableDestination, type TableTemplate,
 } from '../core/tableEditor';
 
 type Row = { sample: string; sampleId: string; cells: (number | string)[] };
@@ -37,6 +41,7 @@ export function TablesDialog(p: TablesDialogProps) {
   const { ws, updateWs, colLabel, ask, download, onClose } = p;
   const tables = ws.tables ?? [];
   const [id, setId] = useState<string | null>(tables[0]?.id ?? null);
+  const teRib = useRibbon(TE_RIBBON); // TECommand.RIBBONCONFIG / RIBBONSETDEFAULT
   const t = tables.find((x) => x.id === id) ?? null;
   const edit = (f: (t: TableTemplate) => void) => updateWs((w) => { const x = w.tables?.find((y) => y.id === id); if (x) f(x); });
   const [kw, setKw] = useState('');
@@ -47,6 +52,7 @@ export function TablesDialog(p: TablesDialogProps) {
   const [hf, setHf] = useState<null | { header: string; footer: string }>(null);
   const [win, setWin] = useState(false);
   const [plot, setPlot] = useState<null | { kind: 'box' | 'corr' | 'time'; cols: number[]; transpose: boolean }>(null);
+  const [cube, setCube] = useState<null | { axes: { name: string; values: Float32Array }[] }>(null);
   useEffect(() => { setSel([]); setWin(false); setPlot(null); }, [id]);
 
   // Statistic specs per column (older columns: their Statistics-panel column).
@@ -115,6 +121,8 @@ export function TablesDialog(p: TablesDialogProps) {
   const selRange = sel.length ? t?.columns[sel[0]]?.format?.expectedRange : undefined;
 
   const outFormat: OutputFormat = t?.outputFormat ?? 'CSV';
+  // FlowJo XML output: workspace title, renamed-header test and stains.
+  const xmlCtx: FlowJoXmlContext = { workspaceTitle: ws.name, autoHeader: (c) => { const s = specOf(c); return s ? autoHeader(s) : c.header; }, stainOf: (_s, ch) => stainOf(ch) };
   const dest: TableDestination = t?.destination ?? 'DISPLAY';
   const copyTable = (rows: Row[], html = false) => {
     if (!t) return;
@@ -148,7 +156,7 @@ export function TablesDialog(p: TablesDialogProps) {
     if (!t) return;
     if (dest === 'DISPLAY') setWin(true);
     else if (dest === 'CLIPBOARD') copyTable(preview);
-    else if (dest === 'FILE') download(`${t.name}.${OUTPUT_FORMATS[outFormat].ext}`, tableOutput(t, preview, outFormat, data.length), OUTPUT_FORMATS[outFormat].type);
+    else if (dest === 'FILE') download(`${t.name}.${OUTPUT_FORMATS[outFormat].ext}`, tableOutput(t, preview, outFormat, data.length, xmlCtx), OUTPUT_FORMATS[outFormat].type);
     else if (dest === 'LAYOUT') toLayout(preview);
     else printTable(preview);
   };
@@ -158,6 +166,17 @@ export function TablesDialog(p: TablesDialogProps) {
     if (!cols.length || (kind === 'corr' && cols.length < 2)) { p.note?.('warn', kind === 'corr' ? 'Select two columns to plot their correlation' : 'Select the columns to plot'); return; }
     if (plotBlocked(cols.map((k) => data.map((r) => Number(r.cells[k]))))) { p.note?.('warn', PLOT_SAME_VALUE); void ask(PLOT_SAME_VALUE, ['OK']); return; }
     setPlot({ kind, cols: kind === 'corr' ? cols.slice(0, 2) : cols, transpose: false });
+  };
+  // TEPlotAction PLOTPOINTCLOUD "3D Plot": the selected columns as 3D axes
+  // (ThreeDDataModel(TableData), src/core/threeD.ts tableAxes).
+  const doCube = () => {
+    if (!t) return;
+    const cols = sel.filter((k) => t.columns[k]);
+    if (cols.length < 3) { p.note?.('warn', 'Select three columns to plot in 3D'); return; }
+    if (plotBlocked(cols.map((k) => data.map((r) => Number(r.cells[k]))))) { p.note?.('warn', PLOT_SAME_VALUE); void ask(PLOT_SAME_VALUE, ['OK']); return; }
+    const r = tableAxes(cols.map((k) => ({ name: headerText(t.columns[k].header), values: data.map((row) => (row.cells[k] === '' || row.cells[k] == null ? NaN : Number(row.cells[k]))), frequency: specOf(t.columns[k])?.stat?.startsWith('freq') })));
+    if ('error' in r) { p.note?.('error', r.error); void ask(r.error, ['OK']); return; }
+    setCube({ axes: r.axes });
   };
   const describe = (c: TableColumn) => {
     const s = specOf(c);
@@ -175,6 +194,7 @@ export function TablesDialog(p: TablesDialogProps) {
         <button data-testid="table-new" title="Create: Click to add a new table." onClick={() => { const nid = `tbl-${Date.now()}`; updateWs((w) => { w.tables = [...(w.tables ?? []), { id: nid, name: uniqueName('Table', (w.tables ?? []).map((x) => x.name)), columns: [], iteration: { type: 'SAMPLE' } }]; }); setId(nid); }}>New table</button>
         {t && <button data-testid="table-duplicate" title="Duplicate: make another report starting from this one." onClick={() => { const nid = `tbl-${Date.now()}`; updateWs((w) => { const src = w.tables?.find((x) => x.id === id); if (src) w.tables = [...(w.tables ?? []), duplicateTable(src, nid, uniqueName(src.name, (w.tables ?? []).map((x) => x.name)))]; }); setId(nid); }}>Duplicate</button>}
         {t && <button data-testid="table-delete" onClick={async () => { if ((await ask(CONFIRM.table.text, ['Delete'], CONFIRM.table.key)) !== 'Delete') return; updateWs((w) => { w.tables = (w.tables ?? []).filter((x) => x.id !== id); }); setId(null); }}>Delete table</button>}
+        <button data-testid="te-ribbon-config" title="Open the ribbon customization dialog." onClick={() => teRib.openConfig('Table Editor')}>Customize Ribbon</button>
         {t && <label>Name <input data-testid="table-name" value={t.name} onChange={(e) => edit((x) => { x.name = e.target.value; })} /></label>}
       </div>
       {t && <>
@@ -214,7 +234,8 @@ export function TablesDialog(p: TablesDialogProps) {
               );
             })}</tbody></table>
         </fieldset>
-        <fieldset><legend>Formatting (selected columns)</legend>
+        <div style={{ display: 'flex', flexDirection: 'column' }} data-testid="te-bands">
+        {teRib.has('Table Editor', 'formatting') && <fieldset style={teRib.style('Table Editor', 'formatting')}><legend>Formatting (selected columns)</legend>
           {([['none', 'None'], ['heat', 'Heat Map'], ['stdev', 'Standard Deviation'], ['range', 'Expected Range']] as const).map(([k, l]) => (
             <label key={k} title={k === 'heat' ? 'Set the background color of table cells to display distribution information (blue - yellow).' : k === 'stdev' ? 'Use the values deviation from the column mean to set formatting, highlighting outliers.' : k === 'range' ? 'Compare the value to a minimum and maximum.' : ''}>
               <input type="radio" name="table-format" data-testid={`table-format-${k}`} disabled={!sel.length} checked={selFormat === k} onChange={() => setFormat(k)} /> {l}
@@ -224,16 +245,16 @@ export function TablesDialog(p: TablesDialogProps) {
             {' '}min <input type="number" data-testid="table-range-min" style={{ width: 70 }} value={selRange?.min ?? 0} onChange={(e) => setFormat('range', { min: Number(e.target.value), max: selRange?.max ?? 100 })} />
             {' '}max <input type="number" data-testid="table-range-max" style={{ width: 70 }} value={selRange?.max ?? 100} onChange={(e) => setFormat('range', { min: selRange?.min ?? 0, max: Number(e.target.value) })} />
           </>}
-        </fieldset>
-        <fieldset><legend>Iteration</legend>
+        </fieldset>}
+        {teRib.has('Table Editor', 'iteration') && <fieldset style={teRib.style('Table Editor', 'iteration')}><legend>Iteration</legend>
           Iterate by <select data-testid="table-iter" value={t.iteration.type} onChange={(e) => edit((x) => { x.iteration = { ...x.iteration, type: e.target.value as TableTemplate['iteration']['type'] }; })}>
             <option value="SAMPLE">Sample</option><option value="KEYWORD">Keyword</option><option value="PANEL">Panel</option>
           </select>
           {t.iteration.type === 'KEYWORD' && <input data-testid="table-iter-kw" placeholder="keyword" value={t.iteration.keyword ?? ''} onChange={(e) => edit((x) => { x.iteration.keyword = e.target.value; })} />}
           {t.iteration.type === 'PANEL' && <input type="number" min={1} data-testid="table-iter-panel" value={t.iteration.panelSize ?? 1} onChange={(e) => edit((x) => { x.iteration.panelSize = Number(e.target.value) || 1; })} />}
           <label><input type="checkbox" data-testid="table-summary" checked={!!t.summary} onChange={(e) => edit((x) => { x.summary = e.target.checked; })} /> Show Summary Stats</label>
-        </fieldset>
-        <fieldset><legend>Output</legend>
+        </fieldset>}
+        {teRib.has('Table Editor', 'output') && <fieldset style={teRib.style('Table Editor', 'output')}><legend>Output</legend>
           Output Target <select data-testid="table-dest" value={dest} onChange={(e) => edit((x) => { x.destination = e.target.value as TableDestination; })}>{DESTS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
           {' '}File Type: <select data-testid="table-format" value={outFormat} onChange={(e) => edit((x) => { x.outputFormat = e.target.value as OutputFormat; })}>{(Object.keys(OUTPUT_FORMATS) as OutputFormat[]).map((k) => <option key={k} value={k}>{OUTPUT_FORMATS[k].label}</option>)}</select>
           {' '}<button data-testid="table-create" className="active" title="Create Table" onClick={createTable}>Create Table</button>
@@ -241,15 +262,18 @@ export function TablesDialog(p: TablesDialogProps) {
           {' '}<button data-testid="table-csv" onClick={() => download(`${t.name}.csv`, tableCsv(t, preview), 'text/csv')}>CSV</button>
           <button data-testid="table-tab" onClick={() => download(`${t.name}.txt`, tableTab(t, preview), 'text/plain')}>TAB</button>
           <button data-testid="table-html" onClick={() => download(`${t.name}.html`, tableHtml(t, preview, { data: data.length }), 'text/html')}>HTML</button>
-        </fieldset>
-        <fieldset><legend>Plots (selected columns)</legend>
+        </fieldset>}
+        {teRib.has('Table Editor', 'plots') && <fieldset style={teRib.style('Table Editor', 'plots')}><legend>Plots (selected columns)</legend>
           <button data-testid="table-plot-box" title="A plot which marks median, mean, Q1-Q3 spread and outliers." onClick={() => doPlot('box')}>Box-n-Whisker Plot</button>
           <button data-testid="table-plot-corr" title="A two dimensional correlation of two parameters." onClick={() => doPlot('corr')}>Correlation</button>
           <button data-testid="table-plot-time" title="A one dimensional tracking of a parameter over time, often for QC purposes." onClick={() => doPlot('time')}>Time Series</button>
-        </fieldset>
+          <button data-testid="table-plot-3d" title="A three dimensional visualization of three selected parameters." onClick={doCube}>3D Plot</button>
+        </fieldset>}
+        </div>
         <TableGrid t={t} rows={preview} nData={data.length} testid="table-preview" />
+        {cube && t && <TableThreeD title={t.name} axes={cube.axes} onClose={() => setCube(null)} downloadBlob={(n, b) => download(n, b, b.type)} download={(n, d, ty) => download(n, d, ty)} />}
         {plot && <TablePlot t={t} rows={data} ws={ws} plot={plot} setPlot={setPlot} download={download} />}
-        {win && <TableWindow t={t} data={data} withSummary={withSummary} onClose={() => setWin(false)} copyTable={copyTable} printTable={printTable} toLayout={toLayout}
+        {win && <TableWindow t={t} xmlCtx={xmlCtx} data={data} withSummary={withSummary} onClose={() => setWin(false)} copyTable={copyTable} printTable={printTable} toLayout={toLayout}
           download={download} ask={ask} toggleSummary={() => edit((x) => { x.summary = !x.summary; })}
           makeGroup={(name, ids) => { updateWs((w) => { w.groups.push({ id: newId('grp'), name: uniqueName(name, w.groups.map((g) => g.name)), sampleIds: ids }); }); p.note?.('info', `Created group ${name}`); }}
           openSamples={(ids) => p.openSamples?.(ids, specs.find((s) => s)?.populationPath ?? '')} />}
@@ -280,6 +304,7 @@ export function TablesDialog(p: TablesDialogProps) {
           <button onClick={() => setHf(null)}>Cancel</button>
         </div></div></div>
       )}
+      {teRib.dialog}
       <div><button data-testid="tables-close" onClick={onClose}>Close</button></div>
     </div></div></div>
   );
@@ -303,8 +328,8 @@ function TableGrid({ t, rows, nData, testid, selected, onRow }: { t: TableTempla
 
 // The generated table window (CalculatedTable / FJTableActionManager): live
 // values, row selection, Find, Delete Selected Rows, groups, samples, copy.
-function TableWindow({ t, data, withSummary, onClose, copyTable, printTable, toLayout, download, ask, toggleSummary, makeGroup, openSamples }: {
-  t: TableTemplate; data: Row[]; withSummary: (r: Row[]) => Row[]; onClose: () => void;
+function TableWindow({ t, xmlCtx, data, withSummary, onClose, copyTable, printTable, toLayout, download, ask, toggleSummary, makeGroup, openSamples }: {
+  t: TableTemplate; xmlCtx: FlowJoXmlContext; data: Row[]; withSummary: (r: Row[]) => Row[]; onClose: () => void;
   copyTable: (rows: Row[], html?: boolean) => void; printTable: (rows: Row[]) => void; toLayout: (rows: Row[]) => void;
   download: (name: string, data: BlobPart, type?: string) => void; ask: (text: string, choices: string[], key?: string) => Promise<string | null>;
   toggleSummary: () => void; makeGroup: (name: string, sampleIds: string[]) => void; openSamples: (sampleIds: string[]) => void;
@@ -340,7 +365,7 @@ function TableWindow({ t, data, withSummary, onClose, copyTable, printTable, toL
         <button data-testid="tw-open" disabled={!selIds.length} onClick={() => openSamples(selIds)}>Open Selected Samples</button>
         <button data-testid="tw-summary" className={t.summary ? 'active' : ''} title="Select to show summary statistics appended to the end of this table" onClick={toggleSummary}>Show Summary Stats</button>
         <button data-testid="tw-layout" title="Copy this table into the current layout in the layout editor." onClick={() => toLayout(shown)}>Add to Layout</button>
-        <button data-testid="tw-save" onClick={() => download(`${t.name}.${OUTPUT_FORMATS[t.outputFormat ?? 'CSV'].ext}`, tableOutput(t, shown, t.outputFormat ?? 'CSV', rows.length), OUTPUT_FORMATS[t.outputFormat ?? 'CSV'].type)}>Save As...</button>
+        <button data-testid="tw-save" onClick={() => download(`${t.name}.${OUTPUT_FORMATS[t.outputFormat ?? 'CSV'].ext}`, tableOutput(t, shown, t.outputFormat ?? 'CSV', rows.length, xmlCtx), OUTPUT_FORMATS[t.outputFormat ?? 'CSV'].type)}>Save As...</button>
         <button data-testid="tw-print" title="Prepare a hard copy output of this generated table." onClick={() => printTable(shown)}>Print...</button>
         <button data-testid="tw-close" title="Close this generated table." onClick={onClose}>Close</button>
       </div>

@@ -681,7 +681,7 @@ export function DerivedDialog(p: {
             {p.params.map((d) => (
               <tr key={d.name}>
                 <td>{d.name}</td>
-                <td>{derivedFormula(d)}</td>
+                <td>{derivedFormula(d) || ('imported' in d ? `Imported from ${d.imported.file}` : 'gateDerived' in d ? (d.gateDerived.type === 'consensus' ? 'Consensus Gate' : 'Cluster Frequency') : '')}</td>
                 <td><button className="x" aria-label={`remove ${d.name}`} onClick={() => askRemove(d.name)}>x</button></td>
               </tr>
             ))}

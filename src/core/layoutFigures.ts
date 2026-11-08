@@ -246,3 +246,23 @@ export function renameLayout(ws: Workspace, name: string): LayoutPatch {
   return { layoutName: uniqueName(n, (ws.otherLayouts ?? []).map((l) => l.name)) };
 }
 export const LAYOUT_KEYS = KEYS;
+
+// Copy To New Layout (CompCommand.ADDTOLAYOUT, AddToLayoutAction.getLayout /
+// createFigsInLayout): a new layout named "Comp-" plus the current group's
+// name ("Compensation" without a group), iteration off, holding the
+// compensation figures. flowjo-rea copies the Matrix Editor's preview grid
+// (own rule: FlowJo copies the wizard's control validation figures) as charts
+// of the preview population compensated with the matrix, cells of 150 pt.
+export const compLayoutName = (group?: string) => (group ? `Comp-${group}` : 'Compensation');
+export type CompGridView = { kind: 'nxn' } | { kind: 'histos' } | { kind: 'allby'; channel: string };
+export function compGridItems(channels: string[], view: CompGridView, sampleId: string, path: string, matrixId: string, stamp = Date.now().toString(36)): LayoutItem[] {
+  const ch = channels.slice(0, 10), S = 150, out: LayoutItem[] = [];
+  const add = (r: number, c: number, x: string, y: string | null) => out.push({ id: `comp_${stamp}_${out.length}`, populationPath: path, sampleId, compMatrix: matrixId, x, y, kind: y ? 'dot' : 'histogram', left: 20 + c * S, top: 20 + r * S, width: S - 6, height: S - 6 });
+  if (view.kind === 'nxn') ch.forEach((ry, r) => ch.forEach((cx, c) => add(r, c, cx, r === c ? null : ry)));
+  else if (view.kind === 'histos') ch.forEach((cx, k) => add(Math.floor(k / 4), k % 4, cx, null));
+  else ch.filter((cx) => cx !== view.channel).forEach((cx, k) => add(Math.floor(k / 4), k % 4, cx, view.channel));
+  return out;
+}
+export function newLayoutWith(ws: Workspace, name: string, items: LayoutItem[]): LayoutPatch {
+  return { ...addLayout(ws), layoutName: uniqueName(name, layoutNames(ws)), layout: items, layoutIteration: { type: 'OFF' } };
+}

@@ -21,6 +21,8 @@ import { ContextMenu, GateActions, ManualGateDialog, type MenuItem } from './Gat
 import { everyNth, FLOWJO_FUNCTIONS, removeFromGroup, stainSet } from '../core/groupCriteria';
 import { concatGroups, type ConcatMode, type HeaderFormat } from '../core/exportRules';
 import { GRAPH_H, GRAPH_W, LayoutView } from './Layout';
+import { loadOverlayMode, overlayNormalize } from '../core/layoutPrefs';
+import { compGridItems, compLayoutName, newLayoutWith } from '../core/layoutFigures';
 import { COPY_TO_LAYOUT_POINT, placeRow } from '../core/layoutArrange';
 import { PlatformsDialog } from './Platforms';
 import { PlatformToolHost, type PlatformTool } from './PlatformTools';
@@ -2106,7 +2108,7 @@ export function App() {
                 } : undefined}
               />
               <div className="row">
-                <button data-testid="add-to-layout" title="Copy to Layout Editor: placed centred on (200, 200) pt (GWAction.copyToLayout)" onClick={() => { const [at] = placeRow([{ w: GRAPH_W, h: GRAPH_H }], COPY_TO_LAYOUT_POINT); updateWs((w) => { w.layout = [...(w.layout ?? []), { id: newId('lay'), populationPath: popPath, ...plotSettings, sampleId: sample.id, left: at.x, top: at.y, width: GRAPH_W, height: GRAPH_H }]; }); note('info', `Added ${popPath || 'All events'} (${plotSettings.x}${kind === 'histogram' ? '' : ` vs ${plotSettings.y}`}) to the layout`); }}>Add to layout</button>
+                <button data-testid="add-to-layout" title="Copy to Layout Editor: placed centred on (200, 200) pt (GWAction.copyToLayout)" onClick={() => { const [at] = placeRow([{ w: GRAPH_W, h: GRAPH_H }], COPY_TO_LAYOUT_POINT); updateWs((w) => { w.layout = [...(w.layout ?? []), { id: newId('lay'), populationPath: popPath, ...plotSettings, ...(kind === 'histogram' && plotSettings.normalize === undefined && overlayNormalize(loadOverlayMode()) ? { normalize: true } : {}), sampleId: sample.id, left: at.x, top: at.y, width: GRAPH_W, height: GRAPH_H }]; }); note('info', `Added ${popPath || 'All events'} (${plotSettings.x}${kind === 'histogram' ? '' : ` vs ${plotSettings.y}`}) to the layout`); }}>Add to layout</button>
               </div>
               <div className="muted" data-testid="plot-caption">
                 {popPath || 'All events'}: {plotData ? plotData.count.toLocaleString() : '-'} events shown
@@ -2685,6 +2687,7 @@ export function App() {
           pathsBySample={Object.fromEntries(groupSamples.map((s) => [s.id, s.populations.map((q) => populationPath(s.populations, q.id))]))}
           samples={ws.samples.map((s) => ({ id: s.id, fileName: s.fileName, loaded: !!meta[s.id], paths: s.populations.map((q) => populationPath(s.populations, q.id)) }))}
           preview={{ sampleId: sample.id, path: popPath }}
+          onCopyToLayout={(matrixId, sid, path, view, chans) => { updateWs((w) => { Object.assign(w, newLayoutWith(w, compLayoutName(group?.name), compGridItems(chans, view, sid, path, matrixId))); }); setDialog({ kind: 'layout' }); note('info', 'Copied the compensation plots to a new layout'); }}
           groups={ws.groups.map((g) => ({ id: g.id, name: g.name }))}
           transformFor={(ch) => { const c = sMeta?.channels.find((x) => x.name === ch); return ws.channelTransforms[ch] ?? (c && sMeta ? defaultTransform(c, sMeta.keywords) : undefined); }}
           onPreview={(sampleId, path, chans) => {

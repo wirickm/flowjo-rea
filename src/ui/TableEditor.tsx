@@ -3,8 +3,9 @@
 // The rules live in src/core/tableEditor.ts; this file is the UI.
 import { useEffect, useMemo, useState } from 'react';
 import { CONFIRM } from '../core/prefs';
-import { newId, populationPath, uniqueName, type LayoutText, type StatColumn, type StatKind, type Workspace } from '../core/model';
+import { newId, populationPath, uniqueName, type LayoutObject, type StatColumn, type StatKind, type Workspace } from '../core/model';
 import { STAT_LABELS, STAT_NEEDS_CHANNEL, validPercentile } from '../core/stats';
+import { teTableSpec, TETABLE_NOTE } from '../core/layoutTables';
 import {
   acquisitionTime, boxStats, cellStyle, duplicateTable, findRows, headerFromTemplate, headerText, iterate, NAME_TOKENS, OUTPUT_FORMATS, PLOT_SAME_VALUE, plotBlocked, regression,
   statKey, summaryRows, tableCsv, tableHtml, tableOutput, tableRows, tableTab, tableText,
@@ -131,13 +132,16 @@ export function TablesDialog(p: TablesDialogProps) {
     w.document.write(html); w.document.close();
     w.setTimeout(() => w.print(), 300);
   };
+  // Add to Layout / Batch To Current Layout (FJTableAction.addToLayout,
+  // FigTableDisplay.install): a table figure with the header and the rows'
+  // values and format colours, at (40, 40); not live (te.calculated.table.notifystatic).
   const toLayout = (rows: Row[]) => {
     if (!t) return;
-    const text = tableText(t, rows);
-    const lines = text.split('\n');
-    const item: LayoutText = { id: newId('lay'), text, left: 40, top: 40, width: Math.min(560, Math.max(120, 6 * Math.max(...lines.map((l) => l.length)))), height: 16 * lines.length + 8 };
+    const nd = Math.min(rows.length, data.length);
+    const styles = rows.map((r, i) => r.cells.map((v, k) => { if (i >= nd) return null; const st = cellStyle(t.columns[k]?.format, v, rows.slice(0, nd).map((x) => x.cells[k])); return st.background || st.color || st.bold || st.italic || st.arrow ? st : null; }));
+    const item: LayoutObject = { id: newId('lay'), object: teTableSpec(t.name, t.columns.map((c) => headerText(c.header)), rows, styles), left: 40, top: 40 };
     updateWs((w) => { w.layout = [...(w.layout ?? []), item]; });
-    p.note?.('info', 'Calculated tables added to the layout are not live and will not update.');
+    p.note?.('info', TETABLE_NOTE);
   };
   // Create Table (TEBatchAction MAKEBATCH, TableFactory.makeTable).
   const createTable = () => {
